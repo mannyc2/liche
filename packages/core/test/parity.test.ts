@@ -132,6 +132,20 @@ describe('parity: mcp add and skills add flag handling', () => {
     expect(result.stdout.trim()).toBe(`wrote ${home}/.cursor/skills/app/SKILL.md`)
     expect(await Bun.file(`${home}/.cursor/skills/app/SKILL.md`).text()).toContain('# app')
   })
+
+  test('skills add --json emits an envelope instead of plain text', async () => {
+    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    process.chdir(cwd)
+    const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor', '--json'], { env: { HOME: home } })
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.cursor/skills/app/SKILL.md` } })
+  })
+
+  test('mcp add --json emits an envelope instead of plain text', async () => {
+    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    process.chdir(cwd)
+    const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: home } })
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.claude.json` } })
+  })
 })
 
 describe('parity: gen typegen built-in', () => {
@@ -150,6 +164,20 @@ describe('parity: gen typegen built-in', () => {
       expect(generated).toContain('declare module')
       expect(generated).toContain('"build"')
       expect(generated).toContain('"publish"')
+    } finally {
+      process.chdir(originalCwd)
+      rmSync(cwd, { force: true, recursive: true })
+    }
+  })
+
+  test('gen --json emits an envelope instead of plain text', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'lili-gen-'))
+    const originalCwd = process.cwd()
+    process.chdir(cwd)
+    try {
+      const cli = Cli.create('app').command('build', { run: () => ({ ok: true }) })
+      const result = await runCli(cli, ['gen', '--json'])
+      expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: './lili.generated.ts' } })
     } finally {
       process.chdir(originalCwd)
       rmSync(cwd, { force: true, recursive: true })

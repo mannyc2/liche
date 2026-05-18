@@ -35,7 +35,7 @@ export async function runBuiltin(
       global: !sub.noGlobal,
       env,
     })
-    io.out(`wrote ${path}\n`)
+    emitWrote(io, flags, outputFormat, path)
     return true
   }
 
@@ -52,7 +52,7 @@ export async function runBuiltin(
       global: !sub.noGlobal,
       env,
     })
-    io.out(`wrote ${path}\n`)
+    emitWrote(io, flags, outputFormat, path)
     return true
   }
 
@@ -60,7 +60,7 @@ export async function runBuiltin(
     const sub = parseSubcommandFlags(rest)
     const out = sub.out ?? './lili.generated.ts'
     await Bun.write(out, renderTypegen(name, state))
-    io.out(`wrote ${out}\n`)
+    emitWrote(io, flags, outputFormat, out)
     return true
   }
 
@@ -72,6 +72,14 @@ export async function runBuiltin(
   }
 
   return false
+}
+
+function emitWrote(io: BuiltinIo, flags: GlobalFlags, outputFormat: Format, path: string): void {
+  if (flags.formatExplicit) {
+    io.out(`${format({ ok: true, data: { path } }, outputFormat)}\n`)
+  } else {
+    io.out(`wrote ${path}\n`)
+  }
 }
 
 type SubcommandFlags = {
