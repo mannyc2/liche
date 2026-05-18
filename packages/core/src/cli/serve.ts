@@ -28,7 +28,7 @@ export async function serveCli(
 
   let flags
   try {
-    flags = parseGlobals(argv, state.def.config?.flag)
+    flags = parseGlobals(argv, state.def.config?.flag, state.def.generated?.disabledGlobals)
   } catch (error) {
     if (error instanceof ParseError) {
       io.err(`Error (PARSE_ERROR): ${error.shortMessage}\n`)
@@ -107,7 +107,8 @@ export async function serveCli(
   })
 
   const exitCode = result.ok ? 0 : Number(result.error.exitCode ?? 1)
-  let data: unknown = flags.fullOutput ? result : result.ok ? result.data : result.error
+  const envelopeMode = state.def.generated?.machineOutput === 'envelope' && formatExplicit
+  let data: unknown = flags.fullOutput || envelopeMode ? result : result.ok ? result.data : result.error
   if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
 
   let text = flags.tokenCount ? String(tokenCount(format(data, outputFormat))) : format(data, outputFormat)

@@ -2,6 +2,17 @@
 
 This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/build` starts importing `@lili/core`.
 
+## Phase 3 re-freeze (Commit 3)
+
+Deliberate, narrow widening to support generated CLIs:
+
+- `ResultMeta` widened to `Record<string, unknown> & { cta?: CtaBlock }`. Arbitrary meta keys round-trip through `ctx.ok(data, meta)` to the result envelope.
+- `RunContext.ok` signature now accepts `meta?: ResultMeta` (was `meta?: { cta?: CtaBlock }`).
+- `CreateOptions.generated?: { machineOutput: 'envelope'; disabledGlobals?: readonly DisabledGlobal[] }` opts a CLI into envelope output under `--json` and global-flag rejection.
+- New public type `DisabledGlobal` (currently `'format'`).
+
+Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
+
 Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
 ## Freeze rules

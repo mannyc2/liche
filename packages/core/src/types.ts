@@ -3,6 +3,7 @@ import type { z } from 'zod'
 export type Dict<T = unknown> = Record<string, T>
 export type Awaitable<T> = T | Promise<T>
 export type Format = 'toon' | 'json' | 'yaml' | 'md' | 'jsonl'
+export type DisabledGlobal = 'format'
 export type OutputPolicy = 'all' | 'agent-only'
 export type Schema<T = unknown> = z.ZodType<T>
 export type InferSchema<T> = T extends z.ZodType<infer O> ? O : unknown
@@ -40,7 +41,7 @@ export type CommandError = {
   status?: number | undefined
 }
 
-export type ResultMeta = {
+export type ResultMeta = Record<string, unknown> & {
   cta?: CtaBlock | undefined
 }
 
@@ -88,7 +89,7 @@ export type RunContext<
   format: Format
   formatExplicit: boolean
   name: string
-  ok(data?: unknown, meta?: { cta?: CtaBlock | undefined }): never
+  ok(data?: unknown, meta?: ResultMeta): never
   options: O
   set(key: string, value: unknown): void
   var: V
@@ -161,6 +162,12 @@ export type CreateOptions<
       }
     | undefined
   format?: Format | undefined
+  generated?:
+    | {
+        machineOutput: 'envelope'
+        disabledGlobals?: readonly DisabledGlobal[] | undefined
+      }
+    | undefined
   mcp?: { agents?: string[] | undefined; command?: string | undefined } | undefined
   name?: string | undefined
   sync?:

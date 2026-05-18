@@ -14,6 +14,7 @@ export type {
   CreateOptions,
   Cta,
   CtaBlock,
+  DisabledGlobal,
   Example,
   FetchHandler,
   FieldError,

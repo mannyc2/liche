@@ -1,4 +1,4 @@
-import type { Format } from '../types.js'
+import type { DisabledGlobal, Format } from '../types.js'
 import { ParseError } from '../errors/error.js'
 
 export type GlobalFlags = {
@@ -22,10 +22,15 @@ export type GlobalFlags = {
 
 const validFormats: ReadonlySet<Format> = new Set(['toon', 'json', 'yaml', 'md', 'jsonl'])
 
-export function parseGlobals(argv: string[], configFlag?: string | undefined): GlobalFlags {
+export function parseGlobals(
+  argv: string[],
+  configFlag?: string | undefined,
+  disabledGlobals?: readonly DisabledGlobal[] | undefined,
+): GlobalFlags {
   const flags: GlobalFlags = { rest: [] }
   const valueFlags = new Set(['format', 'filter-output', 'token-limit', 'token-offset', 'config'])
   if (configFlag) valueFlags.add(configFlag)
+  const disabled = new Set<string>(disabledGlobals ?? [])
 
   for (let index = 0; index < argv.length; index++) {
     const token = argv[index]!
@@ -46,6 +51,11 @@ export function parseGlobals(argv: string[], configFlag?: string | undefined): G
       flags.json = true
       flags.formatExplicit = true
     } else if (key === 'format') {
+      if (disabled.has('format')) {
+        throw new ParseError({
+          message: `--format is disabled for this CLI; use --json for machine output`,
+        })
+      }
       if (!validFormats.has(value as Format)) {
         throw new ParseError({
           message: `Invalid format: "${value}". Expected one of: ${[...validFormats].join(', ')}`,

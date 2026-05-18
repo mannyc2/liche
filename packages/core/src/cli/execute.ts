@@ -63,7 +63,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       formatExplicit: input.formatExplicit,
       name: binaryName,
       ok(data, meta) {
-        throw new Done({ ok: true, data, meta: meta?.cta ? { cta: meta.cta } : undefined })
+        throw new Done({ ok: true, data, ...(meta && Object.keys(meta).length > 0 ? { meta } : {}) })
       },
       options: options as Dict,
       set(key, value) {
