@@ -10,6 +10,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@lili/core": "workspace:*",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "catalog:test",

@@ -17,7 +17,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@lili/core": "workspace:*"
+    "@lili/core": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:test",
