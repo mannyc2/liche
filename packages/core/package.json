@@ -1,0 +1,41 @@
+{
+  "name": "@lili/core",
+  "version": "0.2.0",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["src", "README.md"],
+  "scripts": {
+    "build": "bun build src/index.ts --target=bun --format=esm --outdir=dist",
+    "check": "tsc --noEmit",
+    "test": "bun test",
+    "test:contract": "bun test test/contract.test.ts",
+    "test:golden": "bun test test/golden.test.ts",
+    "test:property": "bun test test/property.test.ts --rerun-each=3 --randomize",
+    "test:coverage": "bun test --coverage",
+    "mutate": "stryker run"
+  },
+  "dependencies": {
+    "@toon-format/toon": "catalog:",
+    "tokenx": "catalog:",
+    "yaml": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@hughescr/stryker-bun-runner": "catalog:test",
+    "@stryker-mutator/core": "catalog:test",
+    "@stryker-mutator/typescript-checker": "catalog:test",
+    "@types/bun": "catalog:test",
+    "fast-check": "catalog:test",
+    "typescript": "catalog:"
+  }
+}

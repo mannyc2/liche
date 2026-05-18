@@ -1,0 +1,26 @@
+{
+  "name": "@lili/build",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["src"],
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "@lili/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:test",
+    "typescript": "catalog:"
+  }
+}

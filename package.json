@@ -1,42 +1,34 @@
 {
   "name": "lili",
-  "version": "0.2.0",
+  "private": true,
   "type": "module",
-  "description": "Bun-native, LLM-friendly CLI core with exact TOON output and requirements-first tests.",
   "license": "MIT",
-  "sideEffects": false,
+  "description": "Bun-native, LLM-friendly CLI core + build + releases monorepo.",
   "engines": {
     "bun": ">=1.3.0"
   },
-  "dependencies": {
-    "@toon-format/toon": "^2.2.0",
-    "tokenx": "^1.3.0",
-    "yaml": "^2.9.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@hughescr/stryker-bun-runner": "^1.2.2",
-    "@stryker-mutator/core": "^9.6.1",
-    "@stryker-mutator/typescript-checker": "^9.6.1",
-    "@types/bun": "latest",
-    "fast-check": "^4.8.0",
-    "typescript": "latest"
-  },
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+  "workspaces": {
+    "packages": ["packages/*"],
+    "catalog": {
+      "typescript": "latest",
+      "zod": "^4.4.3",
+      "@toon-format/toon": "^2.2.0",
+      "tokenx": "^1.3.0",
+      "yaml": "^2.9.0"
+    },
+    "catalogs": {
+      "test": {
+        "fast-check": "^4.8.0",
+        "@stryker-mutator/core": "^9.6.1",
+        "@stryker-mutator/typescript-checker": "^9.6.1",
+        "@hughescr/stryker-bun-runner": "^1.2.2",
+        "@types/bun": "latest"
+      }
     }
   },
-  "files": ["src", "test", "requirements", "README.md", "stryker.conf.mjs", "tsconfig.json"],
   "scripts": {
-    "build": "bun build src/index.ts --target=bun --format=esm --outdir=dist",
-    "check": "tsc --noEmit",
-    "test": "bun test",
-    "test:contract": "bun test test/contract.test.ts",
-    "test:golden": "bun test test/golden.test.ts",
-    "test:property": "bun test test/property.test.ts --rerun-each=3 --randomize",
-    "test:coverage": "bun test --coverage",
-    "mutate": "stryker run"
+    "check": "bun run --filter '*' check",
+    "test": "bun run --filter '*' test",
+    "test:core": "bun run --filter @lili/core test"
   }
 }
