@@ -45,7 +45,7 @@ Lock down the public runtime surface before adding generator behavior:
 
 Verification:
 
-- Core parity, golden, contract, property, formatter, MCP, skill, and OpenAPI tests pass from `packages/core`.
+- Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@lili/build` when that package's IR-driven generator lands.
 - A dependency boundary test proves `@lili/core` does not import `@lili/build` or `@lili/releases`.
 - The remote transport pure serializer is testable without network.
 - A generated-command fixture can request `--json` and receive a structured envelope, not ad hoc text.

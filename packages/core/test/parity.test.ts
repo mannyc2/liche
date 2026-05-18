@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Cli, middleware, z } from '../src/index.js'
 import { parseJsonOutput, runCli } from './helpers.js'
-import { ingestOpenApi, emitOpenApi } from '../src/command/openapi.js'
 import { renderTypegen } from '../src/command/typegen.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
@@ -355,45 +354,3 @@ describe('parity: config loader defaults', () => {
   })
 })
 
-describe('parity: OpenAPI emission and ingest', () => {
-  test('emitOpenApi produces a 3.1 doc keyed by command paths', () => {
-    const cli = Cli.create('api', { version: '2.0.0' }).command('users', {
-      args: z.object({ id: z.string() }),
-      options: z.object({ active: z.boolean().default(false) }),
-      run: () => ({ ok: true }),
-    })
-    const state = (cli as InternalCli)[stateSymbol]
-    const spec = emitOpenApi('api', state)
-    expect(spec).toMatchObject({ openapi: '3.1.0', info: { title: 'api', version: '2.0.0' } })
-    expect((spec as any).paths['/users'].post.operationId).toBe('users')
-  })
-
-  test('ingestOpenApi maps path/query/body parameters into command descriptors', () => {
-    const operations = ingestOpenApi({
-      paths: {
-        '/users/{id}': {
-          get: {
-            operationId: 'getUser',
-            parameters: [
-              { in: 'path', name: 'id' },
-              { in: 'query', name: 'active' },
-            ],
-            requestBody: {
-              content: { 'application/json': { schema: { type: 'object', properties: { name: {} } } } },
-            },
-          },
-        },
-      },
-    })
-    expect(operations).toEqual([
-      {
-        args: ['id'],
-        bodyKeys: ['name'],
-        method: 'GET',
-        operationId: 'getUser',
-        path: '/users/{id}',
-        queryKeys: ['active'],
-      },
-    ])
-  })
-})

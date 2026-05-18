@@ -2,15 +2,7 @@
 
 `@lili/build` normalizes runtime schema values into canonical IR before generation.
 
-## Current runtime emit and ingest
-
-`GET /openapi.json` on a CLI mounted via `cli.fetch` returns an OpenAPI 3.1.0 document. Each command becomes one path keyed by its space-to-slash command name; `operationId` is the underscored command name (matches the MCP tool name). The `requestBody` schema collects `args` and `options` as nested objects; the `200` response wraps the command's `output` schema inside the standard `{ok:true, data}` envelope; `400` describes a validation error envelope.
-
-`ingestOpenApi(spec)` extracts a flat list of `OperationDescriptor` objects (`args` from path params, `queryKeys`, `bodyKeys`, `operationId`, `path`, `method`). Build-time wiring can use this list to synthesize typed subcommands.
-
-Behavior IDs: `OPENAPI-001`, `OPENAPI-002`.
-
-OpenAPI is a projection of canonical IR for HTTP-compatible operations.
+OpenAPI is owned by `@lili/build`, not `@lili/core`. Core's `cli.fetch` handler exposes command-tree execution and MCP, but does not emit or ingest OpenAPI documents. The previous runtime-reflection emit and ingest in core have been removed; `@lili/build` will produce OpenAPI from canonical IR and `remote.bind` (see below). OpenAPI is a projection of canonical IR for HTTP-compatible operations.
 
 ## Runtime and canonical IR split
 

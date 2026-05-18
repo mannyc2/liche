@@ -121,7 +121,6 @@ export type CommandDefinition<
   fetch?: FetchHandler | undefined
   hint?: string | undefined
   middleware?: MiddlewareHandler[] | undefined
-  openapi?: Dict | undefined
   options?: O | undefined
   optionEnv?: Dict<string> | undefined
   output?: Out | undefined

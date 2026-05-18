@@ -243,17 +243,10 @@ describe('contract: fetch and schema', () => {
     expect(await invalid.json()).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } })
   })
 
-  test('fetch exposes manifest, MCP endpoint, HEAD behavior, and invalid JSON fallback', async () => {
+  test('fetch exposes MCP endpoint, HEAD behavior, and invalid JSON fallback', async () => {
     const cli = Cli.create('api', { version: '3.0.0' }).command('echo', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ options }) => ({ message: options.message }),
-    })
-
-    const manifest = await cli.fetch(new Request('http://localhost/openapi.json'))
-    expect(await manifest.json()).toMatchObject({
-      openapi: '3.1.0',
-      info: { title: 'api', version: '3.0.0' },
-      paths: { '/echo': { post: { operationId: 'echo' } } },
     })
 
     const mcp = await cli.fetch(

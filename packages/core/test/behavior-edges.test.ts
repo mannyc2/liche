@@ -71,14 +71,11 @@ describe('fetch command proxy behavior', () => {
     expect(objectError).toEqual({ ok: false, error: { code: 'FETCH_ERROR', message: '{"reason":"bad"}', status: 400 } })
   })
 
-  test('fetch exposes both manifest paths and ignores request bodies for GET and HEAD', async () => {
+  test('fetch ignores request bodies for GET and HEAD', async () => {
     const cli = Cli.create('api').command('echo', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ options }) => options,
     })
-
-    const wellKnown = await cli.fetch(new Request('http://localhost/.well-known/openapi.json'))
-    expect(await wellKnown.json()).toMatchObject({ openapi: '3.1.0', info: { title: 'api' }, paths: { '/echo': {} } })
 
     const getWithBody = await cli.fetch(new Request('http://localhost/echo?message=query', { method: 'GET' }))
     expect(await getWithBody.json()).toEqual({ ok: true, data: { message: 'query' } })

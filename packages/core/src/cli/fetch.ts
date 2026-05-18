@@ -1,14 +1,12 @@
 import type { CliState, Dict } from '../types.js'
 import { execute } from './execute.js'
 import { selectCommand } from '../command/registry.js'
-import { emitOpenApi } from '../command/openapi.js'
 import { handleMcpHttp } from '../mcp/http.js'
 import { isObject } from '../internal.js'
 
 export async function fetchCli(name: string, state: CliState, request: Request): Promise<Response> {
   const url = new URL(request.url)
 
-  if (url.pathname === '/openapi.json' || url.pathname === '/.well-known/openapi.json') return Response.json(emitOpenApi(name, state))
   if (url.pathname === '/mcp') return await handleMcpHttp(name, state, request)
 
   const path = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
