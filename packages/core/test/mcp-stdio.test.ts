@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, Mcp } from '../src/index.js'
+import { Cli } from '../src/index.js'
+import * as Mcp from '../src/mcp/index.js'
 import { stateOf } from './helpers.js'
 
 async function* feedLines(...chunks: string[]): AsyncIterable<string> {

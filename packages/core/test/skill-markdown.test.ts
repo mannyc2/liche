@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, Skill, z } from '../src/index.js'
+import { Cli, z } from '../src/index.js'
+import * as Skill from '../src/skills/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 
 function stateOf(cli: any) {

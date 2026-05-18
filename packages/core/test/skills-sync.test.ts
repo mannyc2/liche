@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli, Skill } from '../src/index.js'
+import { Cli } from '../src/index.js'
+import * as Skill from '../src/skills/index.js'
 import { stateOf } from './helpers.js'
 
 describe('writeSkill — agent-specific target dirs', () => {

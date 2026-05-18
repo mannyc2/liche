@@ -10,10 +10,10 @@ export type InferSchema<T> = T extends z.ZodType<infer O> ? O : unknown
 export type Cta =
   | string
   | {
-      args?: Dict | undefined
+      args?: Record<string, unknown> | undefined
       command: string
       description?: string | undefined
-      options?: Dict | undefined
+      options?: Record<string, unknown> | undefined
     }
 
 export type CtaBlock = {
@@ -67,7 +67,12 @@ export type CommandManifest = {
   version?: string | undefined
 }
 
-export type RunContext<A = Dict, O = Dict, E = Dict, V = Dict> = {
+export type RunContext<
+  A = Record<string, unknown>,
+  O = Record<string, unknown>,
+  E = Record<string, unknown>,
+  V = Record<string, unknown>,
+> = {
   agent: boolean
   args: A
   displayName: string
@@ -96,7 +101,14 @@ export type MiddlewareHandler = (
 ) => Awaitable<void | Result | unknown>
 
 export type FetchHandler = (request: Request) => Awaitable<Response>
-export type Example = string | { args?: Dict; command?: string; description?: string; options?: Dict }
+export type Example =
+  | string
+  | {
+      args?: Record<string, unknown>
+      command?: string
+      description?: string
+      options?: Record<string, unknown>
+    }
 export type UsageObject = {
   args?: string[] | Partial<Record<string, true>> | undefined
   options?: string[] | Partial<Record<string, true>> | undefined
@@ -111,7 +123,7 @@ export type CommandDefinition<
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = {
-  alias?: Dict<string> | undefined
+  alias?: Record<string, string> | undefined
   aliases?: string[] | undefined
   args?: A | undefined
   basePath?: string | undefined
@@ -122,11 +134,11 @@ export type CommandDefinition<
   hint?: string | undefined
   middleware?: MiddlewareHandler[] | undefined
   options?: O | undefined
-  optionEnv?: Dict<string> | undefined
+  optionEnv?: Record<string, string> | undefined
   output?: Out | undefined
   outputPolicy?: OutputPolicy | undefined
   run?:
-    | ((context: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Dict>) =>
+    | ((context: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Record<string, unknown>>) =>
         | unknown
         | AsyncGenerator<unknown, unknown, unknown>
         | Promise<unknown | AsyncGenerator<unknown, unknown, unknown> | void>
@@ -145,7 +157,7 @@ export type CreateOptions<
     | {
         files?: string[] | undefined
         flag?: string | undefined
-        loader?: ((path: string | undefined) => Awaitable<Dict | undefined>) | undefined
+        loader?: ((path: string | undefined) => Awaitable<Record<string, unknown> | undefined>) | undefined
       }
     | undefined
   format?: Format | undefined
@@ -192,7 +204,7 @@ export type CliState = {
 }
 
 export type ServeOptions = {
-  env?: Dict<string | undefined> | undefined
+  env?: Record<string, string | undefined> | undefined
   exit?: ((code: number) => void) | undefined
   isTty?: boolean | undefined
   stderr?: ((s: string) => void) | undefined
@@ -221,7 +233,7 @@ export type CliInstance = {
 }
 
 export type SelectedCommand = {
-  argv: { args: string[]; options?: Dict | undefined }
+  argv: { args: string[]; options?: Record<string, unknown> | undefined }
   entry: Entry
   middlewares: MiddlewareHandler[]
   path: string[]

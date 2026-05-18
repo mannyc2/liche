@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, Completions, Formatter, Mcp, middleware, z } from '../src/index.js'
+import { Cli, Formatter, middleware, z } from '../src/index.js'
+import * as Completions from '../src/completions/index.js'
+import * as Mcp from '../src/mcp/index.js'
 import { parseJsonOutput, runCli } from './helpers.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 

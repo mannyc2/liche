@@ -7,7 +7,7 @@ import { parseJsonOutput, runCli } from './helpers.js'
 import { renderTypegen } from '../src/command/typegen.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
-import { Mcp } from '../src/index.js'
+import * as Mcp from '../src/mcp/index.js'
 
 // Sources: https://github.com/wevm/incur (README.md, SKILL.md)
 // All expected behaviors below are quoted in the plan and derived from upstream incur.

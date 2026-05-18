@@ -1,0 +1,85 @@
+# Core API boundary freeze
+
+This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/build` starts importing `@lili/core`.
+
+Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
+
+## Freeze rules
+
+- Generated CLI code registers through `Cli.create().command()` and uses core runtime behavior through documented top-level APIs only.
+- Generated code must not import `stateSymbol`, `InternalCli`, `CliState`, parser helpers, command registry helpers, command guards, help renderers, or schema-adapter internals.
+- Runtime reflection in core remains a handwritten-CLI compatibility surface. Schema-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces belong to `@lili/build`.
+- Remove or reshape current index exports before freezing. Do not keep duplicate or state-shaped exports just because tests currently reach them.
+
+## Keep public
+
+- `Cli` (`packages/core/src/cli/create.ts:65`) — imported by core tests; referenced by `docs/behavior-plan.md`, `docs/next-plan.md`, `docs/package-layout.md`, `docs/build-system.md`, and `docs/invariant.md`; this is the generated CLI entrypoint.
+- `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
+- `z` (`packages/core/src/schema/zod.ts:5`) — imported by many core tests and used in docs examples; public schema authoring convenience.
+- `Formatter` (`packages/core/src/format/index.ts:1`) — imported by `contract.test.ts`, `toon-oracle.test.ts`, and `behavior-edges.test.ts`; docs require formatter/output envelope behavior.
+- `BaseError` (`packages/core/src/errors/error.ts:3`) — direct error test coverage; public base class for structured core errors.
+- `LiliError` (`packages/core/src/errors/error.ts:25`) — direct error test coverage and docs/log references; user-thrown structured error type.
+- `ParseError` (`packages/core/src/errors/error.ts:70`) — imported through index by `parser-config.test.ts`; public parse failure type.
+- `ValidationError` (`packages/core/src/errors/error.ts:52`) — direct schema/error test coverage; public validation failure type.
+- `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
+- `CliInstance` (`packages/core/src/types.ts:203`) — imported through index by `helpers.ts`; public return type for `Cli.create()`.
+- `CommandDefinition` (`packages/core/src/types.ts:108`) — public `.command()` input type.
+- `CreateOptions` (`packages/core/src/types.ts:138`) — must be exported because `Cli.create()` signatures expose it.
+- `Cta` (`packages/core/src/types.ts:10`) — public CTA metadata used by result envelopes.
+- `CtaBlock` (`packages/core/src/types.ts:19`) — public CTA metadata used by `ctx.ok()` and `ctx.error()`.
+- `Example` (`packages/core/src/types.ts:99`) — public command help/docs metadata.
+- `FetchHandler` (`packages/core/src/types.ts:98`) — referenced by `docs/invariant.md`; public in-process fetch-backed command bridge.
+- `Format` (`packages/core/src/types.ts:5`) — public formatter/global flag vocabulary.
+- `MiddlewareContext` (`packages/core/src/types.ts:92`) — public because `MiddlewareHandler` exposes it.
+- `MiddlewareHandler` (`packages/core/src/types.ts:93`) — public middleware authoring type.
+- `OutputPolicy` (`packages/core/src/types.ts:6`) — command definition/output envelope contract.
+- `Result` (`packages/core/src/types.ts:47`) — public execution envelope type after its helper types are exported.
+- `RunContext` (`packages/core/src/types.ts:70`) — public command handler context type.
+- `Schema` (`packages/core/src/types.ts:7`) — export under this exact type name before freeze; current `ZodSchema` alias does not match public signatures.
+- `ServeOptions` (`packages/core/src/types.ts:194`) — imported through index by `helpers.ts`; public `.serve()` configuration.
+- `Usage` (`packages/core/src/types.ts:106`) — public help metadata.
+- `UsageObject` (`packages/core/src/types.ts:100`) — public help metadata.
+
+Also export `CommandError` (`packages/core/src/types.ts:33`), `FieldError` (`packages/core/src/types.ts:24`), `InferSchema` (`packages/core/src/types.ts:8`), and `ResultMeta` (`packages/core/src/types.ts:43`) because public types otherwise reference unexported helpers.
+
+## Mark internal
+
+- `Errors` (`packages/core/src/errors/index.ts:1`) — no test imports the namespace from index. Keep top-level error classes public; keep `errorToObject` internal.
+- `Help` (`packages/core/src/help/index.ts:1`) — direct tests cover `renderHelp`, but the signature requires `CliState`; do not expose the state-shaped renderer.
+- `Parser` (`packages/core/src/parser/index.ts:1`) — `behavior-edges.test.ts` imports it through index, but generated code should not parse argv itself. Parser/config/env validation is core behavior, not a public helper namespace.
+- `Filter` (`packages/core/src/format/filter.ts:3`) — no direct index test import; `Formatter.pick` is enough.
+- `Dict` (`packages/core/src/types.ts:3`) — replace uses in public types with explicit `Record<string, unknown>` or narrower public records, then stop exporting it.
+
+## Remove from the public index
+
+- `default` (`packages/core/src/cli/context.ts:7`) — no test, docs, or source caller; delete this default export before freeze.
+- `create` (`packages/core/src/cli/create.ts:18`) — keep the implementation for `Cli.create`, but do not freeze a duplicate top-level `create()` API.
+
+## Rename or reshape
+
+- `Completions` (`packages/core/src/completions/index.ts:1`) — `contract.test.ts` imports `Completions.complete`, but current helpers take `CliState`. Either keep completions as built-in CLI behavior only or expose a wrapper that accepts `CliInstance`.
+- `Fetch` (`packages/core/src/fetch/index.ts:1`) — `behavior-edges.test.ts` covers `parseCurl` and `callFetch`, but these are in-process fetch-command internals. The public remote surface must be the documented `serializeHttpOperationRequest` and `callHttpOperation` primitives when implemented.
+- `Mcp` (`packages/core/src/mcp/index.ts:1`) — tests import it through index, and docs require MCP basics, but current functions take `CliState`. Public MCP helpers must accept `CliInstance` or be reachable through `cli.fetch()`/`cli.serve()`.
+- `Schema` namespace (`packages/core/src/schema/index.ts:1`) — `behavior-edges.test.ts` imports it through index, but helpers such as `objectShape`, `kind`, and `parseSchema` expose the Zod adapter internals. Keep `z` public and reserve the `Schema` name for the public type.
+- `Skill` (`packages/core/src/skills/index.ts:1`) — tests import it through index and docs name skill/docs helpers, but current functions take `CliState`. Public helpers must accept `CliInstance` or a documented manifest, not internal state.
+- `Typegen` (`packages/core/src/command/registry.ts:5`) — the current namespace is actually command registry reflection, not type generation. Remove it from core's public index. `li gen` remains temporary runtime behavior until `@lili/build` owns typegen, as noted in `docs/build-system.md`.
+- `ZodSchema` (`packages/core/src/types.ts:7` via index alias) — replace with `Schema`; do not freeze this alias.
+
+## Test-only internal imports
+
+These imports are not promotion candidates:
+
+- `stateSymbol` and `InternalCli` from `packages/core/src/cli/create.ts`
+- `formatHumanValidationError` from `packages/core/src/cli/format-error.ts`
+- `SelectedCommand`, `CliState`, `Entry`, `FetchEntry`, `GroupEntry`, and `AliasEntry` from `packages/core/src/types.ts`
+- `renderHelp` from `packages/core/src/help/render.ts`
+- `renderTypegen` from `packages/core/src/command/typegen.ts`
+- `manifestEnvelope`, `mcpToolName`, `selectCommand`, `commandScope`, `childCommands`, `completionCommands`, `outputPolicy`, and `collectCommands` from `packages/core/src/command/registry.ts`
+- command guards from `packages/core/src/command/guards.ts`
+- `builtinHelpLines` and `builtinSuggestions` from `packages/core/src/cli/builtin-metadata.ts`
+- helpers from `packages/core/src/internal.ts`
+- `handleMcpHttp` from `packages/core/src/mcp/http.ts`
+- parser/config functions from `packages/core/src/parser/*`
+- Zod adapter helpers from `packages/core/src/schema/zod.ts`
+
+White-box tests can keep using these while the source tree is tested directly. Package and generated-code boundary tests should prove no consumer imports them from `@lili/core`.

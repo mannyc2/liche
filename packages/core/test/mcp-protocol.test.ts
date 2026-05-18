@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, Mcp, z } from '../src/index.js'
+import { Cli, z } from '../src/index.js'
+import * as Mcp from '../src/mcp/index.js'
 import { stateOf } from './helpers.js'
 
 describe('mcpMessage — initialize', () => {

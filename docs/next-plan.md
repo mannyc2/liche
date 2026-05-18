@@ -43,10 +43,13 @@ Lock down the public runtime surface before adding generator behavior:
 - outbound HTTP operation serializer and transport
 - JSON envelope support for generated schema-driven commands, including metadata channels for locality
 
+The concrete public/exported surface decision lives in `docs/core-api-boundary.md`.
+
 Verification:
 
 - Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@lili/build` when that package's IR-driven generator lands.
 - A dependency boundary test proves `@lili/core` does not import `@lili/build` or `@lili/releases`.
+- A package boundary check proves generated-code fixtures import only the approved `@lili/core` surface from `docs/core-api-boundary.md`.
 - The remote transport pure serializer is testable without network.
 - A generated-command fixture can request `--json` and receive a structured envelope, not ad hoc text.
 
