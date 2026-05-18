@@ -36,12 +36,13 @@ Verification:
 Lock down the public runtime surface before adding generator behavior:
 
 - `Cli.create()`, `.command()`, `.serve()`, `.fetch()`
-- parser/config/env validation
+- parser/config/env validation (core behavior, not a public helper namespace)
 - formatter and output envelopes
-- MCP basics
-- skill/docs helpers
-- outbound HTTP operation serializer and transport
+- MCP basics (core behavior; reachable through `cli.fetch()`/`cli.serve()`)
+- skill/docs helpers (core behavior; not exposed as a state-shaped namespace)
 - JSON envelope support for generated schema-driven commands, including metadata channels for locality
+
+Outbound HTTP operation serializer and transport (`serializeHttpOperationRequest`, `callHttpOperation`) are deliberately not in the Phase 2 freeze: they do not exist in code yet. They are added and frozen as part of Phase 4 (remote and conformance slice), and the public surface re-freezes at that point.
 
 The concrete public/exported surface decision lives in `docs/core-api-boundary.md`.
 
@@ -49,9 +50,9 @@ Verification:
 
 - Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@lili/build` when that package's IR-driven generator lands.
 - A dependency boundary test proves `@lili/core` does not import `@lili/build` or `@lili/releases`.
-- A package boundary check proves generated-code fixtures import only the approved `@lili/core` surface from `docs/core-api-boundary.md`.
-- The remote transport pure serializer is testable without network.
-- A generated-command fixture can request `--json` and receive a structured envelope, not ad hoc text.
+- A package-consumer boundary test in `@lili/build` imports `@lili/core` by package name and asserts the resolved value exports equal the approved frozen surface from `docs/core-api-boundary.md`.
+- A source-level API snapshot test in `@lili/core` locks both value and type exports against `docs/core-api-boundary.md`.
+- A generated-command fixture can request `--json` and receive a structured envelope, not ad hoc text. (Deferred until Phase 3 produces the first generated fixture.)
 
 ## Phase 2A: agent consistency closure
 
