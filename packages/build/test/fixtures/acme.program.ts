@@ -10,7 +10,7 @@ export default defineProgram({
       verb: 'get',
       command: ['projects', 'get'],
       description: 'Get one project',
-      locality: { modes: ['local'], default: 'local' },
+      locality: { modes: ['local', 'remote'], default: 'local' },
       input: z.object({
         projectId: z.string(),
         includeDeployments: z.boolean().default(false),

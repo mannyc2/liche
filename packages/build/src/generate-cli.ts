@@ -105,19 +105,59 @@ function groupByFirstSegment(operations: OperationIR[]): Map<string, OperationIR
 
 function renderCommandCall(indent: string, name: string, op: OperationIR): string[] {
   const lines: string[] = []
+  const multimode = op.locality.modes.length > 1
+  const inputSchema = multimode ? withLocalityFlags(op.input.jsonSchema) : op.input.jsonSchema
   lines.push(`${indent}.command(${q(name)}, {`)
   if (op.description) lines.push(`${indent}  description: ${q(op.description)},`)
-  lines.push(`${indent}  options: ${renderSchema(op.input.jsonSchema, `${indent}  `)},`)
+  lines.push(`${indent}  options: ${renderSchema(inputSchema, `${indent}  `)},`)
   lines.push(`${indent}  output: ${renderSchema(op.output.jsonSchema, `${indent}  `)},`)
   lines.push(`${indent}  async run(ctx) {`)
   if (!op.local) {
     throw new Error(`Operation '${op.id}' has no local implementation; remote-only generation is Phase 4`)
   }
-  lines.push(`${indent}    const data = await ${op.local.export}(ctx.options)`)
-  lines.push(`${indent}    return ctx.ok(data, { locality: { mode: ${q(op.locality.default)}, source: 'schema-default' } })`)
+  if (multimode) {
+    lines.push(`${indent}    if (ctx.options.local === true && ctx.options.remote === true) {`)
+    lines.push(`${indent}      return ctx.error({ code: 'LOCALITY_CONFLICT', message: '--local and --remote are mutually exclusive' })`)
+    lines.push(`${indent}    }`)
+    lines.push(`${indent}    let mode = ${q(op.locality.default)}`)
+    lines.push(`${indent}    let source = 'schema-default'`)
+    lines.push(`${indent}    if (ctx.options.local === true) { mode = 'local'; source = 'flag' }`)
+    lines.push(`${indent}    else if (ctx.options.remote === true) {`)
+    if (op.remote) {
+      lines.push(`${indent}      mode = 'remote'; source = 'flag'`)
+      lines.push(`${indent}      return ctx.error({ code: 'REMOTE_NOT_IMPLEMENTED', message: 'Remote transport is not implemented yet (Phase 4)' })`)
+    } else {
+      lines.push(`${indent}      return ctx.error({ code: 'REMOTE_NOT_IMPLEMENTED', message: 'Remote transport is not implemented yet (Phase 4)' })`)
+    }
+    lines.push(`${indent}    }`)
+    lines.push(`${indent}    const { local: _local, remote: _remote, ...input } = ctx.options`)
+    lines.push(`${indent}    const data = await ${op.local.export}(input)`)
+    lines.push(`${indent}    return ctx.ok(data, { locality: { mode, source } })`)
+  } else {
+    lines.push(`${indent}    const data = await ${op.local.export}(ctx.options)`)
+    lines.push(`${indent}    return ctx.ok(data, { locality: { mode: ${q(op.locality.default)}, source: 'schema-default' } })`)
+  }
   lines.push(`${indent}  },`)
   lines.push(`${indent}})`)
   return lines
+}
+
+// Add optional --local and --remote control flags to the input JSON Schema for
+// multimode operations. Locality is the only place control flags get layered
+// into the operation's options schema; single-mode ops never advertise these.
+function withLocalityFlags(jsonSchema: unknown): unknown {
+  const root = jsonSchema as JsonSchemaNode
+  if (root.type !== 'object') {
+    throw new Error('Multimode operations require an object-typed input schema')
+  }
+  return {
+    ...root,
+    properties: {
+      ...(root.properties ?? {}),
+      local: { type: 'boolean' as const },
+      remote: { type: 'boolean' as const },
+    },
+  }
 }
 
 function renderSchema(jsonSchema: unknown, indent: string): string {
