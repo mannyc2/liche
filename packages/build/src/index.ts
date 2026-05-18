@@ -37,3 +37,6 @@ export type {
 } from './ir.js'
 
 export { canonicalDigest, canonicalize } from './digest.js'
+
+export { lintProgram } from './lints.js'
+export type { LintIssue } from './lints.js'
