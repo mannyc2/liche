@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { Cli, z } from '../src/index.js'
 
-function captureRun(argv: string[], options: Parameters<typeof Cli.create>[1] | undefined, command: { name: string; def: Parameters<ReturnType<typeof Cli.create>['command']>[1] }) {
+function captureRun(argv: string[], options: any, command: { name: string; def: any }) {
   let out = ''
   let err = ''
   let exitCode = 0
-  const cli = Cli.create('app', options as any).command(command.name, command.def as any)
+  const cli = Cli.create('app', options).command(command.name, command.def)
   const promise = cli.serve(argv, {
     stdout: (s) => { out += s },
     stderr: (s) => { err += s },
@@ -23,7 +23,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
-        run(ctx) {
+        run(ctx: any) {
           return ctx.ok({ message: 'pong' }, { locality: { mode: 'local', source: 'schema-default' } })
         },
       },
@@ -40,7 +40,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
-        run(ctx) { return ctx.ok({ message: 'pong' }) },
+        run(ctx: any) { return ctx.ok({ message: 'pong' }) },
       },
     })
     await capture.promise
@@ -57,7 +57,7 @@ describe('disabledGlobals — reject --format on generated CLIs', () => {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
-        run(ctx) { return ctx.ok({ message: 'pong' }) },
+        run(ctx: any) { return ctx.ok({ message: 'pong' }) },
       },
     })
     await capture.promise
@@ -70,7 +70,7 @@ describe('disabledGlobals — reject --format on generated CLIs', () => {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
-        run(ctx) { return ctx.ok({ message: 'pong' }) },
+        run(ctx: any) { return ctx.ok({ message: 'pong' }) },
       },
     })
     await capture.promise
@@ -86,7 +86,7 @@ describe('ResultMeta — arbitrary keys round-trip through ctx.ok', () => {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
-        run(ctx) {
+        run(ctx: any) {
           return ctx.ok({ message: 'pong' }, { custom: { foo: 1 } })
         },
       },

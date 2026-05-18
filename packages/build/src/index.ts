@@ -40,3 +40,6 @@ export { canonicalDigest, canonicalize } from './digest.js'
 
 export { lintProgram } from './lints.js'
 export type { LintIssue } from './lints.js'
+
+export { generateCli } from './generate-cli.js'
+export type { GenerateOptions } from './generate-cli.js'
