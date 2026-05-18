@@ -1,0 +1,9 @@
+[test]
+timeout = 10000
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "src/index.ts",
+  "src/bin.ts",
+  "src/**/__fixtures__/**",
+]
+coverageReporter = ["text"]
