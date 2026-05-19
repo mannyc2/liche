@@ -24,7 +24,7 @@ async function runCli(
 
 describe('li-build CLI', () => {
   let dir: string
-  const productPath = join(import.meta.dir, 'fixtures/sample-product.ts')
+  const productPath = join(import.meta.dir, 'fixtures/workers.product.ts')
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'lili-build-cli-'))

@@ -8,7 +8,7 @@ import {
   generateToDir,
   normalizeProduct,
 } from '../src/index.js'
-import product from './fixtures/sample-product.js'
+import product from './fixtures/workers.product.js'
 
 const GEN_FILE = 'lili.generated.ts'
 const MANIFEST_FILE = 'lili.generated.manifest.json'
@@ -82,8 +82,8 @@ describe('generate --check drift detection', () => {
     const result = await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     const m = result.manifest
     expect(m.manifestVersion).toBe(1)
-    expect(m.schema.name).toBe('sample')
-    expect(m.schema.version).toBe('0.1.0')
+    expect(m.schema.name).toBe('workers')
+    expect(m.schema.version).toBe('1.0.0')
     expect(m.schema.digest).toMatch(/^sha256:[0-9a-f]{64}$/)
     expect(m.generatorVersion).toBe('0.0.0')
     expect(m.surfaces).toHaveLength(1)
