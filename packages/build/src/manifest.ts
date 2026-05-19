@@ -10,7 +10,7 @@ export type GeneratedSurfaceManifest = {
   generatorVersion: string
   surfaces: Array<{
     id: string
-    source: 'canonical-ir' | 'openapi'
+    source: 'catalog' | 'openapi'
     inputDigest: string
     generationOptionsDigest: string
     outputDigest: string

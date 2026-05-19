@@ -1,9 +1,9 @@
 import { join, relative } from 'node:path'
+import { normalizeProduct, type Catalog } from './catalog.js'
 import { canonicalDigest } from './digest.js'
 import { generateCli } from './generate-cli.js'
-import { normalizeContract } from './ir.js'
 import { type GeneratedSurfaceManifest, hashString, manifestEqualForSurface } from './manifest.js'
-import type { Contract } from './schema.js'
+import type { Product } from './product.js'
 
 export type GenerateToDirOptions = {
   outDir: string
@@ -30,20 +30,20 @@ type Prepared = {
   manifestPath: string
 }
 
-function prepareGeneration(contract: Contract, options: GenerateToDirOptions): Prepared {
+function prepareGeneration(product: Product, options: GenerateToDirOptions): Prepared {
   const surfaceId = options.surfaceId ?? 'cli'
   const generatedFileName = options.generatedFileName ?? 'lili.generated.ts'
   const manifestFileName = options.manifestFileName ?? 'lili.generated.manifest.json'
 
-  const ir = normalizeContract(contract)
-  const inputDigest = canonicalDigest(ir)
+  const catalog: Catalog = normalizeProduct(product)
+  const inputDigest = canonicalDigest(catalog)
   const generationOptionsDigest = canonicalDigest({
     surfaceId,
     generatedFileName,
     manifestFileName,
   })
 
-  const source = generateCli(ir, {
+  const source = generateCli(catalog, {
     generatorVersion: options.generatorVersion,
     canonicalIrDigest: inputDigest,
     generationOptionsDigest,
@@ -52,12 +52,12 @@ function prepareGeneration(contract: Contract, options: GenerateToDirOptions): P
 
   const manifest: GeneratedSurfaceManifest = {
     manifestVersion: 1,
-    schema: { name: ir.name, version: ir.version, digest: inputDigest },
+    schema: { name: catalog.product.id, version: catalog.product.version, digest: inputDigest },
     generatorVersion: options.generatorVersion,
     surfaces: [
       {
         id: surfaceId,
-        source: 'canonical-ir',
+        source: 'catalog',
         inputDigest,
         generationOptionsDigest,
         outputDigest: hashString(source),
@@ -76,21 +76,21 @@ function prepareGeneration(contract: Contract, options: GenerateToDirOptions): P
 }
 
 export async function generateToDir(
-  contract: Contract,
+  product: Product,
   options: GenerateToDirOptions,
 ): Promise<GenerateResult> {
-  const { source, manifest, generatedPath, manifestPath } = prepareGeneration(contract, options)
+  const { source, manifest, generatedPath, manifestPath } = prepareGeneration(product, options)
   await Bun.write(generatedPath, source)
   await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   return { manifest, generatedPath, manifestPath, generatedSource: source }
 }
 
 export async function checkAgainstDir(
-  contract: Contract,
+  product: Product,
   options: GenerateToDirOptions,
 ): Promise<CheckResult> {
   const { surfaceId, source: expectedSource, manifest: expectedManifest, generatedPath, manifestPath } =
-    prepareGeneration(contract, options)
+    prepareGeneration(product, options)
   const drift: string[] = []
 
   const generatedFile = Bun.file(generatedPath)

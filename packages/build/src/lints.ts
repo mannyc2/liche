@@ -1,5 +1,10 @@
-import type { z } from 'zod'
-import type { Contract } from './schema.js'
+import type {
+  Capability,
+  Catalog,
+  CommandCapability,
+  NormalizedShape,
+  ResourceOperationCapability,
+} from './catalog.js'
 
 export type LintIssue = {
   code: string
@@ -8,114 +13,160 @@ export type LintIssue = {
   recommendation?: string
 }
 
-const ID_PATTERN = /^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*)*$/
+const ID_PATTERN = /^[a-z][a-zA-Z0-9]*(?:[.-][a-z][a-zA-Z0-9]*)*$/
 
-export function lintContract(contract: Contract): LintIssue[] {
+export function lintCatalog(catalog: Catalog): LintIssue[] {
   const issues: LintIssue[] = []
-  lintContractRemote(contract, issues)
-  contract.operations.forEach((op, index) => lintOperation(op, index, contract, issues))
+  lintProductHeader(catalog, issues)
+  catalog.resources.forEach((resource, index) => {
+    const path = `resources[${index}]`
+    if (!hasText(resource.path)) {
+      issues.push({
+        code: 'resource/path-required',
+        path: `${path}.path`,
+        message: `Resource '${resource.id}' must declare a non-empty path`,
+      })
+    }
+    if (!ID_PATTERN.test(resource.id)) {
+      issues.push({
+        code: 'resource/id-stable',
+        path: `${path}.id`,
+        message: `Resource id '${resource.id}' does not match the stable id pattern`,
+      })
+    }
+  })
+
+  const resourceIds = new Set(catalog.resources.map((r) => r.id))
+  catalog.capabilities.forEach((cap, index) => lintCapability(cap, index, catalog, resourceIds, issues))
   return issues
 }
 
-function lintContractRemote(contract: Contract, issues: LintIssue[]): void {
-  if (!contract.remote) return
-  const baseUrl = contract.remote.baseUrl as { envVar?: string; literal?: string }
-  if (!hasText(baseUrl.envVar) && !hasText(baseUrl.literal)) {
+function lintProductHeader(catalog: Catalog, issues: LintIssue[]): void {
+  if (!hasText(catalog.product.id)) {
     issues.push({
-      code: 'contract/remote-base-url',
-      path: 'remote.baseUrl',
-      message: `Contract '${contract.name}' remote.baseUrl must declare envVar or literal`,
-      recommendation: `set remote.baseUrl.envVar to the environment variable that provides the API base URL, or set remote.baseUrl.literal for a fixed base URL`,
+      code: 'product/id-required',
+      path: 'product.id',
+      message: 'Product id must be a non-empty string',
+    })
+  } else if (!ID_PATTERN.test(catalog.product.id)) {
+    issues.push({
+      code: 'product/id-stable',
+      path: 'product.id',
+      message: `Product id '${catalog.product.id}' does not match the stable id pattern`,
+    })
+  }
+  if (!hasText(catalog.product.version)) {
+    issues.push({
+      code: 'product/version-required',
+      path: 'product.version',
+      message: 'Product version must be a non-empty string',
     })
   }
 }
 
-function lintOperation(
-  op: Contract['operations'][number],
+function lintCapability(
+  cap: Capability,
   index: number,
-  contract: Contract,
+  catalog: Catalog,
+  resourceIds: Set<string>,
   issues: LintIssue[],
 ): void {
-  const base = `operations[${index}]`
-  const vocab = contract.vocabulary
-
-  // operation/id-stable
-  if (!ID_PATTERN.test(op.id)) {
-    issues.push({
-      code: 'operation/id-stable',
-      path: `${base}.id`,
-      message: `Operation id '${op.id}' does not match the stable id pattern (lowerCamel dot-segments)`,
-    })
+  const base = `capabilities[${index}]`
+  if (cap.kind === 'resource-operation') {
+    lintResourceOperation(cap, base, catalog, issues)
+  } else {
+    lintCommand(cap, base, catalog, issues)
   }
+  if (cap.input) lintShapeReferences(cap.input, `${base}.input`, resourceIds, issues)
+  if (cap.kind === 'resource-operation') {
+    lintShapeReferences(cap.output, `${base}.output`, resourceIds, issues)
+  } else if (cap.output) {
+    lintShapeReferences(cap.output, `${base}.output`, resourceIds, issues)
+  }
+}
 
-  const verb = op.command.at(-1)
-  if (!verb) {
-    issues.push({
-      code: 'operation/command-required',
-      path: `${base}.command`,
-      message: `Operation '${op.id}' must declare at least one command segment`,
-    })
-  } else if (!vocab.verbs.includes(verb)) {
+function lintResourceOperation(
+  cap: ResourceOperationCapability,
+  base: string,
+  catalog: Catalog,
+  issues: LintIssue[],
+): void {
+  const vocab = catalog.vocabulary
+  if (!vocab.verbs.includes(cap.verb)) {
     issues.push({
       code: 'vocabulary/verb',
-      path: `${base}.command`,
-      message: `Command action '${verb}' is not in the contract vocabulary`,
-      recommendation: `add '${verb}' to vocabulary({ verbs: [...] }) or use one of: ${vocab.verbs.join(', ')}`,
+      path: `${base}.verb`,
+      message: `Resource operation verb '${cap.verb}' is not in the product vocabulary`,
+      recommendation: `add '${cap.verb}' to vocabulary({ verbs: [...] }) or use one of: ${vocab.verbs.join(', ')}`,
     })
   }
-
-  // operation/output-required — output is required by the TS type, but catch
-  // explicitly-empty outputs (void/never/undefined) that produce no useful surface.
-  const emptyOutputKind = emptyOutputSchemaKind(op.output)
-  if (emptyOutputKind) {
+  if (!isNonEmptyShape(cap.output)) {
     issues.push({
       code: 'operation/output-required',
       path: `${base}.output`,
-      message: `Operation '${op.id}' must declare a non-empty output schema (got z.${emptyOutputKind}())`,
+      message: `Resource operation '${cap.id}' must declare a non-empty output schema`,
     })
   }
+}
 
-  // operation/locality-required
-  if (op.locality.modes.length === 0) {
+function lintCommand(
+  cap: CommandCapability,
+  base: string,
+  _catalog: Catalog,
+  issues: LintIssue[],
+): void {
+  if (!ID_PATTERN.test(cap.id)) {
     issues.push({
-      code: 'operation/locality-required',
-      path: `${base}.locality.modes`,
-      message: `Operation '${op.id}' must declare at least one locality mode`,
-    })
-  } else if (!op.locality.modes.includes(op.locality.default)) {
-    issues.push({
-      code: 'operation/locality-required',
-      path: `${base}.locality.default`,
-      message: `Operation '${op.id}' locality.default '${op.locality.default}' is not in modes [${op.locality.modes.join(', ')}]`,
+      code: 'command/id-stable',
+      path: `${base}.id`,
+      message: `Command id '${cap.id}' does not match the stable id pattern`,
     })
   }
+  // execution coherence: detect authoring intent that normalization
+  // erases (e.g., openapi=true on a local command silently becomes false).
+  if (cap.execution.mode === 'local' && cap.surfaces.openapiRequested === true) {
+    issues.push({
+      code: 'surface/openapi-on-local',
+      path: `${base}.surfaces.openapi`,
+      message: `Local command '${cap.id}' must not appear in OpenAPI; remove surfaces.openapi or change execution mode`,
+    })
+  }
+  if (
+    cap.execution.mode === 'hybrid-workflow' &&
+    cap.surfaces.openapiRequested === true &&
+    !cap.execution.http
+  ) {
+    issues.push({
+      code: 'command/execution-coherent',
+      path: `${base}.execution.http`,
+      message: `Hybrid-workflow command '${cap.id}' opted into OpenAPI but has no http trigger`,
+      recommendation: 'declare http: { method, path } on the workflow or set surfaces.openapi=false',
+    })
+  }
+}
 
-  if (op.locality.modes.includes('local') && !op.local) {
+function lintShapeReferences(
+  shape: NormalizedShape,
+  path: string,
+  resourceIds: Set<string>,
+  issues: LintIssue[],
+): void {
+  if (shape.kind !== 'list') return
+  if (!resourceIds.has(shape.resourceId)) {
     issues.push({
-      code: 'operation/locality-binding',
-      path: `${base}.local`,
-      message: `Operation '${op.id}' declares local locality but has no local binding`,
-      recommendation: `add local: { module, export } or remove 'local' from locality.modes`,
+      code: 'shape/unknown-resource-ref',
+      path,
+      message: `Shape.list references unknown resource '${shape.resourceId}'`,
+      recommendation: 'declare the resource with Product.create(...).resource(id, ...) or fix the reference',
     })
   }
-  if (op.locality.modes.includes('remote') && !op.remote) {
-    issues.push({
-      code: 'operation/locality-binding',
-      path: `${base}.remote`,
-      message: `Operation '${op.id}' declares remote locality but has no remote binding`,
-      recommendation: `add remote: { method, path, bind } or remove 'remote' from locality.modes`,
-    })
-  }
+}
+
+function isNonEmptyShape(shape: NormalizedShape): boolean {
+  if (shape.kind === 'list') return true
+  return Object.keys(shape.properties).length > 0
 }
 
 function hasText(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0
-}
-
-// Single place where Zod internals are inspected. Returns the empty-output type
-// name (void/never/undefined) if the schema is empty, else null.
-function emptyOutputSchemaKind(schema: z.ZodType): 'void' | 'never' | 'undefined' | null {
-  const type = (schema as { _def?: { type?: string } })?._def?.type
-  if (type === 'void' || type === 'never' || type === 'undefined') return type
-  return null
 }

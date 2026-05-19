@@ -2,19 +2,19 @@
 import { dirname, isAbsolute, resolve } from 'node:path'
 import { Cli, z } from '@lili/core'
 import { checkAgainstDir, generateToDir } from './generate.js'
+import { Product } from './product.js'
 import { LI_BUILD_SKILL_INDEX, LI_BUILD_SKILL_MARKDOWN } from './skill.js'
-import type { Contract } from './schema.js'
 
 const GENERATOR_VERSION = '0.0.0'
 
-async function loadContract(contractPath: string): Promise<Contract> {
-  const absolute = isAbsolute(contractPath) ? contractPath : resolve(process.cwd(), contractPath)
+async function loadProduct(productPath: string): Promise<Product> {
+  const absolute = isAbsolute(productPath) ? productPath : resolve(process.cwd(), productPath)
   const mod = await import(absolute)
-  const contract = mod.default as Contract | undefined
-  if (!contract || contract.kind !== 'lili.contract') {
-    throw new Error(`Module at ${absolute} does not default-export a Contract.create() result`)
+  const product = mod.default as Product | undefined
+  if (!product || product.kind !== 'lili.product') {
+    throw new Error(`Module at ${absolute} does not default-export a Product.create() result`)
   }
-  return contract
+  return product
 }
 
 export const cli = Cli.create('li-build', {
@@ -26,19 +26,19 @@ export const cli = Cli.create('li-build', {
   version: GENERATOR_VERSION,
 }).command('generate', {
   alias: { out: 'o' },
-  args: z.object({ contract: z.string() }),
+  args: z.object({ product: z.string() }),
   options: z.object({
     check: z.boolean().default(false),
     out: z.string().optional(),
   }),
   async run(ctx) {
-    const contractPath = resolve(process.cwd(), ctx.args.contract)
-    const outDir = ctx.options.out ? resolve(process.cwd(), ctx.options.out) : dirname(contractPath)
-    const contract = await loadContract(contractPath)
+    const productPath = resolve(process.cwd(), ctx.args.product)
+    const outDir = ctx.options.out ? resolve(process.cwd(), ctx.options.out) : dirname(productPath)
+    const product = await loadProduct(productPath)
     const options = { outDir, generatorVersion: GENERATOR_VERSION }
 
     if (ctx.options.check) {
-      const result = await checkAgainstDir(contract, options)
+      const result = await checkAgainstDir(product, options)
       if (result.ok) return { inSync: true }
       return ctx.error({
         code: 'GENERATED_SURFACE_DRIFT',
@@ -47,7 +47,7 @@ export const cli = Cli.create('li-build', {
       })
     }
 
-    const result = await generateToDir(contract, options)
+    const result = await generateToDir(product, options)
     return {
       generatedPath: result.generatedPath,
       manifestPath: result.manifestPath,

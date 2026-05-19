@@ -24,6 +24,7 @@ async function runCli(
 
 describe('li-build CLI', () => {
   let dir: string
+  const productPath = join(import.meta.dir, 'fixtures/sample-product.ts')
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'lili-build-cli-'))
@@ -34,8 +35,7 @@ describe('li-build CLI', () => {
   })
 
   test('generate runs through the core CLI runtime', async () => {
-    const contractPath = join(import.meta.dir, 'fixtures/acme.contract.ts')
-    const result = await runCli(['generate', contractPath, '--out', dir, '--json'])
+    const result = await runCli(['generate', productPath, '--out', dir, '--json'])
     expect(result.exitCode).toBe(0)
     expect(result.stderr).toBe('')
 
@@ -49,8 +49,7 @@ describe('li-build CLI', () => {
   })
 
   test('generate --check reports drift as a structured error', async () => {
-    const contractPath = join(import.meta.dir, 'fixtures/acme.contract.ts')
-    const result = await runCli(['generate', contractPath, '--out', dir, '--check', '--json'])
+    const result = await runCli(['generate', productPath, '--out', dir, '--check', '--json'])
     expect(result.exitCode).toBe(1)
     const error = JSON.parse(result.stdout)
     expect(error).toMatchObject({
@@ -66,9 +65,9 @@ describe('li-build CLI', () => {
     const body = JSON.parse(result.stdout)
     expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-build/SKILL.md') } })
     const content = await Bun.file(body.data.path).text()
-    expect(content).toContain('description: Author and maintain lili build contracts')
-    expect(content).toContain('Contract.create(...).operation(...)')
-    expect(content).toContain('li-build generate <contract.ts> --check')
+    expect(content).toContain('description: Author and maintain lili product schemas')
+    expect(content).toContain('Product.create(')
+    expect(content).toContain('li-build generate <product.ts> --check')
   })
 
   test('mcp add is enabled for li-build', async () => {

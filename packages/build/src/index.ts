@@ -1,50 +1,13 @@
-export {
-  Contract,
-  DEFAULT_GENERATED_VOCABULARY,
-  vocabulary,
-} from './schema.js'
 export { z } from 'zod'
-export type {
-  ContractInit,
-  ContractRemote,
-  Effects,
-  Locality,
-  LocalityModes,
-  LocalOperation,
-  Operation,
-  OperationExample,
-  OperationPolicy,
-  RemoteBind,
-  RemoteOperation,
-  RuntimeContract,
-  RuntimeValue,
-  Vocabulary,
-  VocabularyOverrides,
-} from './schema.js'
 
-export { normalizeContract } from './ir.js'
-export type {
-  ContractIR,
-  ContractRemoteIR,
-  LocalOperationIR,
-  OperationEffectsIR,
-  OperationExampleIR,
-  OperationIR,
-  OperationPolicyIR,
-  RemoteBindIR,
-  RemoteOperationIR,
-  SchemaProjectionIR,
-  VocabularyIR,
-} from './ir.js'
-
-export type { JsonSchemaNode, LocalityIR, RemoteAuthIR } from './types.js'
+export type { JsonSchemaNode } from './types.js'
 
 export { canonicalDigest, canonicalize } from './digest.js'
 
-export { lintContract } from './lints.js'
+export { lintCatalog } from './lints.js'
 export type { LintIssue } from './lints.js'
 
-export { generateCli, generateCliFromCatalog } from './generate-cli.js'
+export { generateCli } from './generate-cli.js'
 export type { GenerateOptions } from './generate-cli.js'
 
 export { generateToDir, checkAgainstDir } from './generate.js'
@@ -91,6 +54,9 @@ export type {
   RuntimeProduct,
 } from './product.js'
 
+export { DEFAULT_GENERATED_VOCABULARY, vocabulary } from './vocabulary.js'
+export type { Vocabulary, VocabularyOverrides } from './vocabulary.js'
+
 export { fieldToJsonSchema, normalizeProduct, resolveListShape } from './catalog.js'
 export type {
   Capability,
@@ -106,6 +72,7 @@ export type {
   NormalizedResource,
   NormalizedShape,
   NormalizedSurfaces,
+  NormalizedVocabulary,
   NormalizedWorkflowStep,
   ResolvedListShape,
   ResourceOperationCapability,

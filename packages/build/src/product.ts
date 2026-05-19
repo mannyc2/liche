@@ -1,6 +1,7 @@
 import type { CommandSpec, HttpSpec, SurfaceHints } from './command.js'
 import type { FieldBuilder } from './field.js'
 import type { Shape } from './shape.js'
+import { DEFAULT_GENERATED_VOCABULARY, type Vocabulary } from './vocabulary.js'
 
 export type ProductScope = {
   kind: string
@@ -13,6 +14,7 @@ export type ProductInit = {
   version: string
   description?: string
   scope?: ProductScope
+  vocabulary?: Vocabulary
 }
 
 export type ResourceInit = {
@@ -94,6 +96,7 @@ export class Product {
   readonly version: string
   readonly description?: string
   readonly scope?: ProductScope
+  readonly vocabulary: Vocabulary
   #resources: ResourceBuilder[] = []
   #commands: ProductCommandEntry[] = []
   #bindings: BindingSpec[] = []
@@ -102,6 +105,7 @@ export class Product {
     this.id = init.id
     this.name = init.name
     this.version = init.version
+    this.vocabulary = init.vocabulary ?? DEFAULT_GENERATED_VOCABULARY
     if (init.description) this.description = init.description
     if (init.scope) this.scope = init.scope
   }

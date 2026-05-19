@@ -16,6 +16,7 @@ import type {
 } from './product.js'
 import type { ListShape, ObjectShape, Shape } from './shape.js'
 import type { JsonSchemaNode } from './types.js'
+import type { Vocabulary } from './vocabulary.js'
 
 export type NormalizedHttpBind = {
   path: string[]
@@ -55,6 +56,10 @@ export type NormalizedSurfaces = {
   dashboardPlacement?: string
   agent: boolean
   openapi: boolean
+  // The authored surfaces.openapi value, preserved so lints can spot
+  // authoring intent that normalization erases (e.g., openapi=true on a
+  // local command). Undefined when the author did not write surfaces.openapi.
+  openapiRequested?: boolean
 }
 
 export type NormalizedObjectShape = {
@@ -121,6 +126,12 @@ export type NormalizedProductScope = {
   param: string
 }
 
+export type NormalizedVocabulary = {
+  verbs: string[]
+  flags: string[]
+  aliases: Record<string, string>
+}
+
 export type Catalog = {
   kind: 'lili.catalog'
   catalogVersion: 1
@@ -131,6 +142,7 @@ export type Catalog = {
     description?: string
     scope?: NormalizedProductScope
   }
+  vocabulary: NormalizedVocabulary
   resources: NormalizedResource[]
   bindings: NormalizedBinding[]
   capabilities: Capability[]
@@ -147,9 +159,18 @@ export function normalizeProduct(product: Product): Catalog {
     kind: 'lili.catalog',
     catalogVersion: 1,
     product: normalizeProductHeader(product),
+    vocabulary: normalizeVocabulary(product.vocabulary),
     resources,
     bindings,
     capabilities: [...resourceCapabilities, ...commandCapabilities],
+  }
+}
+
+function normalizeVocabulary(vocab: Vocabulary): NormalizedVocabulary {
+  return {
+    verbs: [...vocab.verbs],
+    flags: [...vocab.flags],
+    aliases: { ...vocab.aliases },
   }
 }
 
@@ -385,6 +406,7 @@ function normalizeSurfacesCommon(hints: SurfaceHints | undefined): NormalizedSur
   if (cli.command !== undefined) out.cliCommand = cli.command
   if (dashboard.view !== undefined) out.dashboardView = dashboard.view
   if (dashboard.placement !== undefined) out.dashboardPlacement = dashboard.placement
+  if (hints && hints.openapi !== undefined) out.openapiRequested = hints.openapi
   return out
 }
 

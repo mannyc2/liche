@@ -1,36 +1,24 @@
 import { describe, expect, test } from 'bun:test'
-import { z } from 'zod'
-import { canonicalDigest, Contract, normalizeContract } from '../src/index.js'
+import { canonicalDigest, Command, Field, normalizeProduct, Product, Shape } from '../src/index.js'
 
 function buildA() {
-  return Contract.create({
-    name: 'acme',
-    version: '0.1.0',
-  }).operation({
-    id: 'projects.get',
-    command: ['projects', 'get'],
-    locality: { modes: ['local', 'remote'], default: 'local' },
-    input: z.object({ projectId: z.string(), includeDeployments: z.boolean().default(false) }),
-    output: z.object({ project: z.object({ id: z.string(), name: z.string() }) }),
-    effects: { kind: 'read' },
-    local: { module: './impl/projects.ts', export: 'getProject' },
-  })
+  return Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+    .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (r) =>
+      r
+        .field('id', Field.string('Script ID').identifier().immutable())
+        .field('name', Field.string('Script name').humanLabel()),
+    )
+    .command('deploy', Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }))
 }
 
 function buildBReordered() {
-  // Same contract, properties supplied in different order on every nested level.
-  return Contract.create({
-    version: '0.1.0',
-    name: 'acme',
-  }).operation({
-    effects: { kind: 'read' },
-    local: { export: 'getProject', module: './impl/projects.ts' },
-    output: z.object({ project: z.object({ name: z.string(), id: z.string() }) }),
-    input: z.object({ includeDeployments: z.boolean().default(false), projectId: z.string() }),
-    locality: { default: 'local', modes: ['local', 'remote'] },
-    command: ['projects', 'get'],
-    id: 'projects.get',
-  })
+  return Product.create({ version: '1.0.0', id: 'workers', name: 'Workers' })
+    .resource('script', { path: '/workers/scripts', label: 'Worker script' }, (r) =>
+      r
+        .field('id', Field.string('Script ID').identifier().immutable())
+        .field('name', Field.string('Script name').humanLabel()),
+    )
+    .command('deploy', Command.workflow({ handler: 'wrangler.deploy', summary: 'Deploy' }))
 }
 
 describe('canonicalDigest', () => {
@@ -39,66 +27,56 @@ describe('canonicalDigest', () => {
     expect(digest).toMatch(/^sha256:[0-9a-f]{64}$/)
   })
 
-  test('two semantically identical contracts with reordered keys produce identical digests', () => {
-    const irA = normalizeContract(buildA())
-    const irB = normalizeContract(buildBReordered())
-    expect(canonicalDigest(irA)).toBe(canonicalDigest(irB))
+  test('two products with reordered init keys produce identical catalog digests', () => {
+    const catA = normalizeProduct(buildA())
+    const catB = normalizeProduct(buildBReordered())
+    expect(canonicalDigest(catA)).toBe(canonicalDigest(catB))
   })
 
-  test('two contracts with reordered input object properties but identical fields produce the same input projection digest', () => {
-    const contract1 = Contract.create({
-      name: 'acme',
-      version: '0.1.0',
-    }).operation({
-      id: 'projects.get',
-      command: ['projects', 'get'],
-      locality: { modes: ['remote'], default: 'remote' },
-      input: z.object({ a: z.string(), b: z.string() }),
-      output: z.object({ ok: z.boolean() }),
-      effects: { kind: 'read' },
-    })
-    const contract2 = Contract.create({
-      name: 'acme',
-      version: '0.1.0',
-    }).operation({
-      id: 'projects.get',
-      command: ['projects', 'get'],
-      locality: { modes: ['remote'], default: 'remote' },
-      input: z.object({ b: z.string(), a: z.string() }),
-      output: z.object({ ok: z.boolean() }),
-      effects: { kind: 'read' },
-    })
-    const ir1 = normalizeContract(contract1).operations[0]!.input
-    const ir2 = normalizeContract(contract2).operations[0]!.input
-    expect(canonicalDigest(ir1)).toBe(canonicalDigest(ir2))
+  test('reordered Shape.object properties do not change the digest', () => {
+    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+      'deploy',
+      Command.workflow({
+        summary: 'Deploy',
+        handler: 'h.deploy',
+        input: Shape.object({
+          entrypoint: Field.string('Entrypoint'),
+          environment: Field.string('Environment').optional(),
+        }),
+      }),
+    )
+    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+      'deploy',
+      Command.workflow({
+        summary: 'Deploy',
+        handler: 'h.deploy',
+        input: Shape.object({
+          environment: Field.string('Environment').optional(),
+          entrypoint: Field.string('Entrypoint'),
+        }),
+      }),
+    )
+    expect(canonicalDigest(normalizeProduct(a))).toBe(canonicalDigest(normalizeProduct(b)))
   })
 
   test('changing a field name in input changes the digest', () => {
-    const contract1 = Contract.create({
-      name: 'acme',
-      version: '0.1.0',
-    }).operation({
-      id: 'projects.get',
-      command: ['projects', 'get'],
-      locality: { modes: ['remote'], default: 'remote' },
-      input: z.object({ a: z.string() }),
-      output: z.object({ ok: z.boolean() }),
-      effects: { kind: 'read' },
-    })
-    const contract2 = Contract.create({
-      name: 'acme',
-      version: '0.1.0',
-    }).operation({
-      id: 'projects.get',
-      command: ['projects', 'get'],
-      locality: { modes: ['remote'], default: 'remote' },
-      input: z.object({ b: z.string() }),
-      output: z.object({ ok: z.boolean() }),
-      effects: { kind: 'read' },
-    })
-    const d1 = canonicalDigest(normalizeContract(contract1))
-    const d2 = canonicalDigest(normalizeContract(contract2))
-    expect(d1).not.toBe(d2)
+    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+      'deploy',
+      Command.workflow({
+        summary: 'Deploy',
+        handler: 'h.deploy',
+        input: Shape.object({ a: Field.string('a') }),
+      }),
+    )
+    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+      'deploy',
+      Command.workflow({
+        summary: 'Deploy',
+        handler: 'h.deploy',
+        input: Shape.object({ b: Field.string('a') }),
+      }),
+    )
+    expect(canonicalDigest(normalizeProduct(a))).not.toBe(canonicalDigest(normalizeProduct(b)))
   })
 
   test('throws when value contains a function (functions are not digestable)', () => {
