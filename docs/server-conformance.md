@@ -2,7 +2,7 @@
 
 `@lili/build` owns server conformance.
 
-Conformance verifies that an owned external HTTP deployment implements the schema contract. It is separate from generated-file drift checks.
+Conformance verifies that an owned external HTTP deployment implements HTTP-backed product schema capabilities. It is separate from generated-file drift checks.
 
 ## Command contract
 
@@ -17,7 +17,7 @@ Options:
 ```txt
 --base-url <url>
 --env <name>
---operation <glob>
+--capability <glob>
 --fixture <path>
 --report <path>
 --format json|toon
@@ -46,14 +46,14 @@ These commands must stay separate.
 
 ## Conformance cases
 
-Schema examples are enough for read-only operations.
+Schema examples are enough for read-only capabilities.
 
-Explicit fixture files are required for destructive or confirmation-required operations.
+Explicit fixture files are required for destructive or confirmation-required capabilities.
 
 ```ts
 export type ConformanceCase = {
   name: string;
-  operation: string;
+  capability: string;
 
   argv: string[];
   input: unknown;
@@ -93,7 +93,7 @@ import type { ConformanceCase } from "@lili/build";
 export default [
   {
     name: "projects.list read-only",
-    operation: "projects.list",
+    capability: "projects.list",
     argv: ["projects", "list", "--limit", "2", "--json"],
     input: { limit: 2 },
     expectRequest: {
@@ -110,7 +110,7 @@ export default [
 For every case:
 
 1. Parse `argv` through the generated command parser.
-2. Validate parsed input with the operation input schema.
+2. Validate parsed input with the capability input schema.
 3. Assert parsed input equals fixture input.
 4. Serialize HTTP request through the core pure serializer.
 5. Assert request method/path/query/header/body matches `expectRequest`, if provided.
@@ -122,11 +122,11 @@ For every case:
 
 Conformance must use the same serializer as `callHttpOperation`.
 
-## Destructive operation safety
+## Destructive capability safety
 
 Default behavior:
 
-| Operation | Default |
+| Capability | Default |
 |---|---|
 | `idempotent: true`, `destructive: false` | May run when example exists. |
 | `destructive: true` | Skip unless explicit fixture and `--include-destructive`. |
@@ -134,7 +134,7 @@ Default behavior:
 | No example/fixture | Skip with reason, never pass silently. |
 | Missing auth/baseUrl | Fail as configuration error. |
 
-A destructive fixture must name the target. No destructive operation runs against a generic `--base-url` by accident.
+A destructive fixture must name the target. No destructive capability runs against a generic `--base-url` by accident.
 
 ## Report schema
 
@@ -142,7 +142,7 @@ A destructive fixture must name the target. No destructive operation runs agains
 export const ConformanceReport = z.object({
   reportVersion: z.literal(1),
 
-  contract: z.object({
+  catalog: z.object({
     name: z.string(),
     version: z.string(),
     schemaDigest: z.string(),
@@ -168,7 +168,7 @@ export const ConformanceReport = z.object({
 
   cases: z.array(
     z.object({
-      operation: z.string(),
+      capability: z.string(),
       name: z.string(),
       status: z.enum(["passed", "failed", "skipped"]),
       reason: z.string().optional(),
@@ -212,7 +212,7 @@ Reports must not include raw secret values.
 bun run dev-server
 li-build conform ./lili.schema.ts \
   --base-url http://localhost:5173 \
-  --operation "projects.*" \
+  --capability "projects.*" \
   --report .lili/conformance.local.json
 ```
 
@@ -237,10 +237,10 @@ Required tests:
 
 - `conform` is separate from `generate --check`
 - read-only examples run by default
-- destructive operations skip by default
-- destructive operations require fixture plus opt-in
+- destructive capabilities skip by default
+- destructive capabilities require fixture plus opt-in
 - argv/input mismatch fails
-- `remote.bind` mismatch fails before network
+- HTTP binding mismatch fails before network
 - non-2xx response becomes structured failure
 - malformed JSON becomes structured failure
 - schema-invalid JSON becomes structured failure

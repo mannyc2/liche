@@ -14,7 +14,16 @@ Renderers must be pure functions:
 release manifest -> staged package artifact
 ```
 
-Renderers must not read schema files, generated source, package workspaces, or build output directories except through manifest references.
+Renderers must not read product schema files, generated source, package workspaces, or build output directories except through manifest references.
+
+Renderers and publishers are separate concerns:
+
+| Term | Meaning | Needs credentials? |
+|---|---|---:|
+| Renderer | Pure manifest-to-artifact stage that writes package-manager artifacts. | no |
+| Publisher | Registry or repository mutation that uploads or updates already-verified artifacts. | yes |
+
+Renderer preflight checks manifest metadata and selected-renderer configuration only. Publisher preflight checks credentials, repository bindings, registry state, and mutation ordering.
 
 Renderer selection and non-npm renderer requirements live in `docs/releases.md`.
 
@@ -40,13 +49,33 @@ export const CliReleaseManifest = z.object({
         url: z.string(),
       })
       .optional(),
+    executable: z
+      .object({
+        title: z.string().optional(),
+        publisher: z.string().optional(),
+        copyright: z.string().optional(),
+        windows: z
+          .object({
+            hideConsole: z.boolean().default(false),
+            iconSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+          })
+          .optional(),
+      })
+      .optional(),
   }),
 
-  schema: z.object({
+  product: z.object({
+    id: z.string(),
     name: z.string(),
     version: z.string(),
     commit: z.string(),
-    digest: z.string(),
+    catalogDigest: z.string(),
+    surfaceManifest: z
+      .object({
+        path: z.string(),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .optional(),
   }),
 
   release: z.object({
@@ -78,78 +107,82 @@ export const CliReleaseManifest = z.object({
   conformance: z.object({
     required: z.boolean().default(false),
     report: z.string().optional(),
+    reportVersion: z.number().int().positive().optional(),
+    reportSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     checkedAt: z.string().optional(),
-    target: z.string().optional(),
-    schemaDigest: z.string().optional(),
+    targetEnv: z.string().optional(),
+    targetBaseUrl: z.string().url().optional(),
+    catalogDigest: z.string().optional(),
+    destructiveIncluded: z.boolean().default(false),
+    summary: z
+      .object({
+        passed: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+        skipped: z.number().int().nonnegative(),
+        total: z.number().int().nonnegative(),
+      })
+      .optional(),
   }).optional(),
 
   binaries: z.array(
     z.object({
-      target: z.enum([
-        "bun-darwin-arm64",
-        "bun-darwin-x64",
-        "bun-linux-arm64",
-        "bun-linux-x64",
-        "bun-linux-arm64-musl",
-        "bun-linux-x64-musl",
-        "bun-windows-x64",
-        "bun-windows-arm64",
-      ]),
+      id: z.string(),
+      target: z.string(), // exact Bun --target value passed to bun build --compile
 
       platform: z.enum(["darwin", "linux", "windows"]),
       arch: z.enum(["arm64", "x64"]),
       libc: z.enum(["glibc", "musl"]).optional(),
+      cpuVariant: z.enum(["baseline", "modern"]).optional(),
+      filename: z.string(),
 
       url: z.string().url(),
       sha256: z.string().regex(/^[a-f0-9]{64}$/),
       size: z.number().int().positive(),
+      compileFlagsDigest: z.string().optional(),
 
       signed: z.boolean().default(false),
       notarized: z.boolean().default(false),
     }),
   ),
 
-  packages: z.object({
-    npm: z.array(
-      z.object({
-        name: z.string(),
-        version: z.string(),
-        tarball: z.string().optional(),
-        sha256: z.string().optional(),
-      }),
-    ).default([]),
-
-    pypi: z.array(
-      z.object({
-        name: z.string(),
-        version: z.string(),
-        wheel: z.string().optional(),
-        sha256: z.string().optional(),
-      }),
-    ).default([]),
-
-    homebrew: z.array(
-      z.object({
-        formula: z.string(),
-        tap: z.string().optional(),
-        sha256: z.string().optional(),
-      }),
-    ).default([]),
-
-    scoop: z.array(
-      z.object({
-        manifest: z.string(),
-        bucket: z.string().optional(),
-        sha256: z.string().optional(),
-      }),
-    ).default([]),
-  }),
+  packages: z.array(
+    z.object({
+      id: z.string(),
+      renderer: z.enum(["npm", "pypi", "homebrew", "scoop"]),
+      ecosystem: z.enum(["npm", "pypi", "homebrew", "scoop"]),
+      kind: z.string(),
+      name: z.string(),
+      version: z.string(),
+      targetBinaryId: z.string().optional(),
+      artifact: z
+        .object({
+          fileName: z.string(),
+          url: z.string().url().optional(),
+          sha256: z.string().regex(/^[a-f0-9]{64}$/),
+          size: z.number().int().positive(),
+        })
+        .optional(),
+      publish: z
+        .object({
+          registry: z.string().optional(),
+          repository: z.string().optional(),
+          channel: z.string().optional(),
+        })
+        .optional(),
+    }),
+  ).default([]),
 });
 ```
 
 `runtime.env` and `runtime.config` record runtime expectations, not secret values. For example, a binary that expects `ACME_API_URL` for remote dispatch must declare that env var in the manifest.
 
-`metadata` exists so pure package renderers do not need to read `package.json`, git config, schema source, or build directories.
+`metadata` exists so pure package renderers do not need to read `package.json`, git config, product schema source, or build directories.
+
+`product.catalogDigest` is the normalized catalog digest. Do not record a digest of raw product schema source text as the release provenance anchor.
+
+`binaries[].target` stores the exact Bun `--target` string used at compile time, including `baseline`, `modern`, and `musl` when present. `platform`, `arch`, `libc`, and `cpuVariant` are normalized fields used by renderers and must agree with the target string.
+
+`packages[]` records stable release-facing package identities and intended artifacts. The `artifact` field is present only when the artifact has a stable release-facing filename/hash/URL; local staging paths, local packed-artifact paths, temporary upload paths, and registry credentials belong in the internal build record or publisher input. Publishing automation consumes the release manifest plus verified artifact records that map package IDs to local files.
 
 ## Internal build record
 
@@ -163,6 +196,8 @@ The release manifest is not the internal build database. Use a separate internal
 - CI run URLs
 - local build logs
 - full conformance logs
+- local packed package artifact paths
+- publisher credential source names
 
 Only stable release-facing facts belong in the manifest.
 
@@ -179,7 +214,7 @@ Required pipeline:
 6. Render staged packages from the manifest.
 7. Pack final package-manager artifacts.
 8. Verify final packed artifacts against the manifest.
-9. Publish.
+9. Publish from the manifest plus verified artifact records, when requested.
 10. Support yank/rollback from one manifest reference.
 ```
 
@@ -196,7 +231,7 @@ renderers: ["pypi", "homebrew"]
 renderers: "all"
 ```
 
-An empty renderer list still writes the manifest and verifies final binary bytes. Selected renderers fail fast when their required metadata or credentials are missing. Unselected renderers must not block release.
+An empty renderer list still writes the manifest and verifies final binary bytes. Selected renderers fail fast when their required manifest metadata or renderer configuration is missing. Unselected renderers must not block release. Publisher credentials are checked only by publishing automation, after package artifacts have been rendered and verified.
 
 ## macOS ordering
 
@@ -245,7 +280,9 @@ A `release/macos-jit-entitlements` guard rail must reject any darwin binary whos
 
 ### Windows metadata
 
-Windows binaries support compile-time metadata (`--windows-icon`, `--windows-hide-console`, plus title/publisher/version/description/copyright). Set these at compile time, not in the renderer. The release manifest's `metadata` section is the canonical source for publisher and version; the build pipeline must mirror those values into the Windows resource fields when producing `bun-windows-*` artifacts.
+Windows binaries support compile-time metadata (`--windows-icon`, `--windows-hide-console`, plus title/publisher/version/description/copyright). Set these at compile time, not in the renderer. The release manifest's `metadata.executable` section records the stable values mirrored into Windows resource fields. Local icon paths belong in the internal build record; the manifest may record the embedded icon hash through `metadata.executable.windows.iconSha256`.
+
+Bun currently cannot use the Windows metadata flags while cross-compiling because those flags depend on Windows APIs. A release matrix that requires Windows resource metadata must either build Windows binaries on Windows or fail before manifest creation.
 
 ## npm renderer
 
@@ -368,9 +405,10 @@ Required checks:
 | Rule | Required check |
 |---|---|
 | `release/manifest-schema` | Manifest validates against `CliReleaseManifest`. |
-| `release/schema-provenance` | Manifest contains schema name, version, commit, and canonical IR digest. |
+| `release/catalog-provenance` | Manifest contains product id, name, version, commit, and catalog digest. |
 | `release/runtime-contract` | Manifest records env/config expectations for remote transport and other runtime config. |
 | `release/conformance-provenance` | Manifest records required conformance report metadata when release policy requires server conformance. |
+| `release/target-normalization` | Every binary target string agrees with platform, arch, libc, and cpu variant fields. |
 | `release/binary-hash` | Final signed/notarized binary bytes match manifest sha256. |
 | `release/binary-size` | Final binary size matches manifest size. |
 | `release/npm-final-tgz` | Packed npm tarball contains expected files and binary hash. |
@@ -379,6 +417,7 @@ Required checks:
 | `release/scoop-final-json` | Scoop manifest URL and hash match manifest. |
 | `release/no-package-scripts` | No artifact contains install-time script execution unless explicitly approved. |
 | `release/version-skew` | Every wrapper package version equals manifest release version. |
+| `release/package-records` | Every packed package artifact has a package or verified-artifact record with renderer, ecosystem, kind, version, sha256, and size. |
 
 ## Trust root note
 
@@ -391,17 +430,39 @@ Ecosystem trust still comes from:
 - source control provenance
 - CI provenance
 - artifact hashing and verification
+- registry-provided provenance and attestations where available
 - user trust in the release publisher
+
+Modern registry provenance should be integrated when the selected publisher supports it:
+
+- npm publishing should prefer Trusted Publishing/OIDC and preserve generated provenance attestations when available.
+- PyPI publishing should prefer Trusted Publishers and attach or preserve supported digital attestations when available.
+- GitHub Release uploads should support artifact attestation generation and verification when the release runs in GitHub Actions.
+- SBOM generation is not required for the first release slice, but the manifest and artifact record model must leave room for SBOM artifact IDs and hashes.
+
+These mechanisms raise the audit bar but do not replace binary hashing, package verification, signing/notarization, or publisher trust.
+
+Upstream reference points for these requirements:
+
+- Bun standalone executable targets, runtime config loading, Windows metadata, and macOS JIT signing: `https://bun.sh/docs/bundler/executables`
+- npm package `os`/`cpu`/`libc` fields and trusted publishing: `https://docs.npmjs.com/cli/v11/configuring-npm/package-json` and `https://docs.npmjs.com/trusted-publishers/`
+- Python wheel layout, tags, and `RECORD`: `https://packaging.python.org/en/latest/specifications/binary-distribution-format/`
+- PyPI digital attestations and trusted publishers: `https://docs.pypi.org/attestations/`
+- Homebrew formula shape: `https://docs.brew.sh/Formula-Cookbook`
+- Scoop manifest shape: `https://github.com/ScoopInstaller/Scoop/wiki/App-Manifests`
 
 ## Acceptance criteria
 
 Distribution MVP is accepted only when:
 
-- manifest includes release version, schema provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/url/sha256/size
+- manifest includes release version, product/catalog provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/cpuVariant/url/sha256/size
 - manifest includes renderer metadata needed by pure package renderers
-- manifest can record conformance report metadata when publishing policy requires it
+- manifest can record conformance report version, hash, target, summary, catalog digest, and destructive-case status when publishing policy requires conformance
+- manifest can record executable metadata needed for Windows resource fields without embedding local icon paths
+- manifest includes stable package identity records and can be joined to verified artifact records by package ID
 - renderers are pure manifest-to-staged-package functions
 - renderer selection supports zero, one, many, or all implemented renderers
+- renderer preflight and publisher credential preflight are separate
 - npm renderer uses umbrella plus platform optional dependencies with exact version pins when selected
 - npm final `.tgz` artifacts are verified, not just staging directories, when selected
 - no selected renderer emits install-time script execution unless explicitly approved

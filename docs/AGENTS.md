@@ -13,15 +13,16 @@ Read these before editing rewrite implementation or tests:
 3. `docs/next-plan.md`
 4. `docs/core-api-boundary.md`
 5. `docs/application-integration.md`
-6. `docs/http-operation-transport.md`
-7. `docs/schema-ir-openapi.md`
-8. `docs/server-conformance.md`
-9. `docs/build-system.md`
-10. `docs/distribution.md`
-11. `docs/npm-binary-packaging.md`
-12. `docs/releases.md`
-13. `docs/coverage-rewrite.md`
-14. `docs/log.md`
+6. `docs/product-schema.md`
+7. `docs/http-operation-transport.md`
+8. `docs/schema-ir-openapi.md`
+9. `docs/server-conformance.md`
+10. `docs/build-system.md`
+11. `docs/distribution.md`
+12. `docs/npm-binary-packaging.md`
+13. `docs/releases.md`
+14. `docs/coverage-rewrite.md`
+15. `docs/log.md`
 
 `docs/coverage-current.md` and `docs/behavior-plan.md` describe the existing Bun-native core, not the rewrite.
 

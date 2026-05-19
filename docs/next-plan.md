@@ -6,7 +6,7 @@ This plan starts after the current Bun-native core builder work. It assumes a ha
 
 - Root repo is a Bun workspace monorepo.
 - Current core behavior lives in `packages/core` with no build or releases dependency.
-- `packages/build` owns schema IR, generation, drift checks, compile orchestration, and server conformance.
+- `packages/build` owns product schema authoring, canonical catalog normalization, generation, drift checks, compile orchestration, and server conformance.
 - `packages/releases` owns release manifests, final binary verification, renderer selection, package-manager artifact rendering, and yank planning.
 - There is no `release-extra` package. Users choose zero to all release renderers through release configuration.
 - Generated surfaces are tracked through a surface manifest with source digests, generator versions, generation options digests, output digests, and artifact lists.
@@ -40,7 +40,7 @@ Lock down the public runtime surface before adding generator behavior:
 - formatter and output envelopes
 - MCP basics (core behavior; reachable through `cli.fetch()`/`cli.serve()`)
 - skill/docs helpers (core behavior; not exposed as a state-shaped namespace)
-- JSON envelope support for generated schema-driven commands, including metadata channels for locality
+- JSON envelope support for generated schema-driven commands, including metadata channels for execution mode
 
 Outbound HTTP operation serializer and transport (`serializeHttpOperationRequest`, `callHttpOperation`) are deliberately not in the Phase 2 freeze: they do not exist in code yet. They are added and frozen as part of Phase 4 (remote and conformance slice), and the public surface re-freezes at that point.
 
@@ -62,27 +62,27 @@ Close the agent-facing gaps found in the consistency audit before expanding gene
 2. Implement schema lints for positive vocabulary membership.
 3. Make `--json` the canonical generated CLI machine-output contract. Keep current core `--format` behavior only as handwritten compatibility unless a requirement explicitly promotes it.
 4. Make generated built-ins and helper commands honor `--json`.
-5. Add locality resolution and output signaling for generated operations.
-6. Replace runtime-reflection OpenAPI for schema-driven contracts with canonical IR OpenAPI that consumes `remote.bind`.
+5. Add execution-mode resolution and output signaling for generated capabilities.
+6. Replace runtime-reflection OpenAPI for schema-driven product schemas with catalog-derived OpenAPI that consumes HTTP bindings and field metadata.
 
 Verification:
 
-- A fixture operation using `projects info` fails `vocabulary/verb` when `info` is absent from the active vocabulary.
-- A fixture operation using a product-specific verb passes when that verb is added to the active vocabulary.
+- A fixture resource action using `projects info` fails `vocabulary/verb` when `info` is absent from the active vocabulary.
+- A fixture resource action using a product-specific verb passes when that verb is added to the active vocabulary.
 - A generated command with `--format json` fails or is absent from help; the same command with `--json` succeeds.
 - Generated helper commands emit parseable JSON when `--json` is passed.
-- Mixed local/remote fixtures reject `--local --remote`, honor flag > config > schema default, and include `meta.locality.mode` plus `meta.locality.source`.
-- Generated OpenAPI for a `GET` operation emits path/query/header/body placement from `remote.bind` and excludes local-only operations.
+- Mixed execution fixtures reject conflicting flags where both local and remote are supported, honor flag > config > schema default, and include `meta.execution.mode` plus `meta.execution.source`.
+- Generated OpenAPI for a `GET` resource operation emits path/query/header/body placement from HTTP binding metadata and excludes local-only commands.
 
 ## Phase 3: build vertical slice
 
 Implement the smallest build package slice that proves the architecture:
 
-1. Define runtime schema API and canonical IR normalization.
+1. Define runtime schema API and canonical catalog normalization.
 2. Generate one command tree through `@lili/core` public APIs.
 3. Generate deterministic provenance headers.
 4. Add `generate --check` for generated-file freshness.
-5. Include both a CRUD-like operation and a workflow command in fixtures.
+5. Include both a CRUD-like resource operation and a workflow command in fixtures.
 
 Verification:
 
@@ -96,17 +96,93 @@ Verification:
 After one generated command works, make generated outputs explicit and synchronized:
 
 - emit a generated surface manifest for CLI, command manifest, OpenAPI, MCP command tools, Agent Skill/LLM surfaces, docs/reference markdown, and config JSON Schema when configured
-- record each surface's source (`canonical-ir` or `openapi`), input digest, generator version, generation options digest, output digest, and relative artifact paths
-- keep command MCP tools IR-derived
+- record each surface's source (`catalog` or `openapi`), input digest, generator version, generation options digest, output digest, and relative artifact paths
+- keep command MCP tools catalog-derived
 - reserve OpenAPI-derived downstream surfaces for later adapters such as SDKs, Terraform providers, and Code Mode MCP servers
 - reject requested product-specific surfaces such as `wrangler.jsonc`, Workers Binding RPC metadata, dashboard metadata, or generated server/API code unless an explicit adapter requirement exists
 
 Verification:
 
 - Touching any generated surface makes `generate --check` fail with the stale surface ID.
-- Two formatted-equivalent schemas produce the same IR-derived surface input digests.
-- Changing a generation option changes the affected surface output digest without changing the canonical IR digest.
+- Two formatted-equivalent schemas produce the same catalog-derived surface input digests.
+- Changing a generation option changes the affected surface output digest without changing the catalog digest.
 - A requested unsupported product-specific surface fails with an actionable "adapter not implemented" error instead of silently emitting partial artifacts.
+
+## Phase 3B: product schema refactor
+
+Hard-cut `@lili/build` from operation-contract authoring to product-schema authoring before adding OpenAPI.
+
+Public API:
+
+```txt
+Product.create(...)
+  .resource(...)
+  .command(...)
+  .binding(...)
+
+Field.*
+Shape.*
+Command.workflow(...)
+Command.local(...)
+Command.remoteHttp(...)
+```
+
+Internal compiler model:
+
+```txt
+Runtime product schema classes
+  -> normalized Catalog
+  -> flattened Capability[]
+  -> generated surfaces
+```
+
+Implementation requirements:
+
+- replace the old `Contract.create(...).operation(...)` fixture path with `Product.create(...).resource(...).command(...)`
+- model resources, commands, and bindings as siblings
+- preserve field metadata in normalized shape projections
+- normalize surface defaults once (`cli`, `docs`, `dashboard`, `agent`, `openapi`)
+- keep command execution mode explicit: `remote-http`, `local`, or `hybrid-workflow`
+- make generated CLI consume `Capability[]`, not operation-specific records
+- keep generated code lowering through public `@lili/core` APIs
+- keep the surface manifest and `generate --check` working through the refactor
+
+Verification:
+
+- A workers fixture with one resource operation, `deploy`, `dev`, and one binding normalizes to a stable catalog.
+- The generated CLI includes the resource operation plus top-level `deploy` and `dev` commands.
+- `dev` is not treated as HTTP-capable; `deploy` remains a hybrid workflow, not a fake resource mutation.
+- Field metadata changes affect the catalog digest; source formatting and class instance identity do not.
+- `bun run --filter @lili/build check` and `bun run --filter @lili/build test` pass after removing the old operation-contract fixture.
+
+## Phase 3C: OpenAPI projection
+
+Implement OpenAPI as the next real surface after the product schema refactor.
+
+OpenAPI generation consumes:
+
+- normalized HTTP-capable capabilities
+- `http.method`, `http.path`, and `http.bind`
+- input/output shape JSON Schema
+- field metadata for descriptions and `x-lili-*` extensions
+- normalized surface membership
+
+OpenAPI generation must not consume:
+
+- generated CLI source
+- core runtime reflection
+- raw product schema source text
+- local-only command handlers
+
+Verification:
+
+- Resource HTTP operations appear in `openapi.json`.
+- `remote-http` commands appear unless `surfaces.openapi === false`.
+- `local` commands such as `dev` never appear.
+- `hybrid-workflow` commands such as `deploy` are excluded by default and only appear when explicitly opted in with an HTTP trigger.
+- Field metadata appears as OpenAPI descriptions and extensions.
+- The generated surface manifest records separate `cli` and `openapi` surface entries with independent output digests.
+- Hand-editing `openapi.json` makes `generate --check` fail with the `openapi` surface id.
 
 ## Phase 4: remote and conformance slice
 
@@ -126,26 +202,81 @@ Verification:
 
 ## Phase 5: releases spine
 
-Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special:
+Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This is the next `@lili/releases` package slice; do not implement npm packaging here except through a test fixture renderer that proves the shared release loop.
 
-- release manifest schema
-- final signed/notarized binary hashing and size verification
-- renderer registry
-- renderer selection: none, one, many, or all
-- staged artifact packing
-- final artifact verification
-- manifest-based yank dry run
+### Phase 5A: manifest schema and fixture
+
+Add `zod` to `packages/releases`, then add `packages/releases/src/manifest.ts` with:
+
+- `CliReleaseManifestSchema`
+- `parseCliReleaseManifest`
+- exported manifest and target types
+- one checked-in fixture manifest under `packages/releases/test/fixtures/`
 
 Verification:
 
-- Empty renderer selection still writes and validates a manifest.
-- Selecting an unsupported or underconfigured renderer fails before staging artifacts.
-- Renderer purity tests run without access to schema source, package workspaces, or build directories except through manifest references.
-- Final artifact tests verify packed artifacts, not staging directories.
+- `packages/releases/test/manifest.test.ts` rejects malformed manifests.
+- The fixture manifest records metadata, executable metadata, product/catalog provenance, runtime env/config expectations, one conformance-metadata case, at least one glibc and one musl binary, and at least one baseline x64 target.
+- `bun run --filter @lili/releases check` proves the exported types compile.
+
+### Phase 5B: final binary byte verification
+
+Add a binary verifier that consumes a parsed release manifest plus explicit final binary paths. It must compute sha256 and size from the bytes that will be published after any signing/notarization mutation.
+
+Verification:
+
+- `packages/releases/test/binary.test.ts` creates temporary executable bytes, records their manifest hash and size, then proves changed bytes fail verification.
+- The test must simulate a "signed" mutation before hashing so an implementation that hashes pre-signing bytes fails.
+- Target/platform/arch/libc/cpuVariant mismatches fail before any renderer runs.
+
+### Phase 5C: renderer registry and selection
+
+Add the shared renderer contract and selection logic:
+
+- renderer ids: `npm`, `pypi`, `homebrew`, `scoop`
+- selection inputs: `[]`, one renderer, many renderers, or `"all"`
+- selected-renderer metadata/config validation before staging artifacts
+- unselected renderers ignored even when their metadata is absent
+- no renderer-selection path checks publisher credentials
+
+Verification:
+
+- `packages/releases/test/renderer-selection.test.ts` covers empty, one, many, all, unsupported, duplicate, underconfigured renderer selections, and the absence of publisher credential checks.
+- The test registry uses tiny fake renderers; it must not pull npm packaging into Phase 5.
+
+### Phase 5D: release package orchestration
+
+Add the orchestration function that validates the manifest, verifies final binaries, resolves renderers, stages renderer outputs, packs final artifacts, and runs final-artifact verifiers. Use a fixture renderer in tests to prove the loop without privileging npm.
+
+Verification:
+
+- `packages/releases/test/release-package.test.ts` proves `renderers: []` still validates the manifest and verifies final binary bytes.
+- A fixture renderer receives only the parsed manifest and renderer output context, not product schema files, package workspaces, generated source, or build directories.
+- Selecting an invalid renderer fails before any staging directory is created.
+
+### Phase 5E: final artifact verification
+
+Final verification must inspect packed artifacts, not staging directories.
+
+Verification:
+
+- The fixture renderer packs an artifact, records a package artifact record with renderer/ecosystem/kind/sha256/size, the verifier unpacks or reads the packed artifact, and a corrupted packed artifact fails even if the staging directory still looks valid.
+- No test should accept "directory contains expected files" as the final proof.
+
+### Phase 5F: manifest-based yank dry run
+
+Add yank planning from one manifest reference. Phase 5 should only produce a dry-run plan; registry mutation and ecosystem-specific publishing behavior stay out of scope.
+
+Verification:
+
+- `packages/releases/test/yank.test.ts` reports every affected package artifact from the manifest.
+- The dry run must not require package names or versions that are not derivable from the manifest.
+
+Phase 5 exits only when `bun run --filter @lili/releases check`, `bun run --filter @lili/releases test`, and root `bun run check` pass with no `release-extra` package and no npm-specific renderer implementation.
 
 ## Phase 6: renderer implementations
 
-Add ecosystem renderers inside `@lili/releases`:
+Add ecosystem renderers inside `@lili/releases`. This phase renders and verifies package artifacts; it does not publish them to registries.
 
 - npm umbrella plus platform packages
 - PyPI wheels
@@ -157,7 +288,42 @@ Verification:
 
 - Each selected renderer can be tested independently from the same manifest fixture.
 - Selecting multiple renderers produces traceable artifacts for the same release version and binary hashes.
+- PyPI, Homebrew, and Scoop renderer tests cover ecosystem-specific metadata and final artifact checks, not just generic file emission.
 - Yank dry run reports every affected artifact from one manifest reference.
+
+## Phase 7: distribution automation
+
+Automate publishing npm, PyPI, Homebrew, and Scoop outputs from one release manifest after Phase 6 artifact rendering and verification are stable.
+
+The publish command or API must consume:
+
+- one `CliReleaseManifest`
+- the verified final package artifacts recorded for that manifest
+- explicit publisher selection (`[]`, one, many, or `"all"`)
+- explicit credentials or environment bindings for selected ecosystems
+
+It must not rebuild binaries, rerender packages, read product schema source, read generated source, infer versions from package workspaces, or recover artifact names from registry state. The manifest and verified artifact records are the source of truth.
+
+Required publisher adapters:
+
+| Ecosystem | Publish action |
+|---|---|
+| npm | Publish platform packages first, then publish the umbrella package after exact-version optional dependencies are available. |
+| PyPI | Upload the selected wheels/sdist artifacts that match manifest package records. |
+| Homebrew | Update the configured tap formula from manifest URL/sha256 and produce a commit or PR. |
+| Scoop | Update the configured bucket JSON manifest from manifest URL/hash and produce a commit or PR. |
+
+Verification:
+
+- A dry-run publish plan lists every registry mutation for npm, PyPI, Homebrew, and Scoop from one manifest reference.
+- Missing credentials or required repository settings for a selected publisher fail before any mutation.
+- Artifact hash verification runs immediately before publish and refuses stale or mismatched packed artifacts.
+- npm publish ordering publishes platform packages before the umbrella package.
+- npm and PyPI publisher tests include trusted-publishing/provenance-capable paths when the required CI identity is configured, while token-based fallback stays explicit.
+- Homebrew and Scoop publisher tests use local fixture git repositories or dry-run command capture, not live registry mutation.
+- Selecting a subset of publishers does not require credentials or metadata for unselected publishers.
+
+Yank/rollback automation remains manifest-based: the same manifest reference must produce the affected npm deprecations, PyPI yanks, Homebrew tap revert/update, and Scoop bucket revert/update plan.
 
 ## Do not start with
 

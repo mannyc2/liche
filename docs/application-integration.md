@@ -8,43 +8,55 @@ The target example is a web app built with Vite and TanStack Router, but the rul
 
 ```txt
 application UI routes are for humans
-lili operations are for agents and automation
-API routes implement lili operation contracts
-the generated CLI calls those API routes
-OpenAPI/MCP/docs describe the same operation contracts
+product schema capabilities are for agents and automation
+API routes implement HTTP-backed capabilities
+the generated CLI invokes resource operations and commands
+OpenAPI/MCP/docs describe filtered projections of the same catalog
 ```
 
-Do not generate a CLI directly from frontend routes. A TanStack route tree describes navigation and rendering. It is not the same as an operation contract.
+Do not generate a CLI directly from frontend routes. A TanStack route tree describes navigation and rendering. It is not the same as a product capability catalog.
 
 ## Primary workflow
 
 A developer with a Vite/TanStack app should:
 
-1. Identify agent-useful operations.
-2. Define those operations in `lili.schema.ts`.
-3. Implement matching API routes in the app's server layer.
+1. Identify product capabilities: resources, commands, and bindings.
+2. Define those capabilities in `lili.schema.ts`.
+3. Implement matching API routes and local handlers in the app's server/runtime layer.
 4. Generate CLI/OpenAPI/MCP/docs/Agent Skill/config surfaces with `@lili/build`.
 5. Run server conformance against the local dev server and, when appropriate, deployed environments.
 6. Compile and package the CLI with `@lili/build` and `@lili/releases`.
 
-Example operations:
+Example capabilities:
 
 ```txt
-projects.list
-projects.create
-deployments.status
-logs.query
-users.invite
+resources:
+  projects.list
+  projects.create
+  deployments.status
+
+commands:
+  deploy
+  doctor
+  dev
+  users.invite
+
+bindings:
+  kv_namespaces
+  vars
 ```
 
 ## Owned contract rule
 
-The schema is authoritative for operation contracts the application owner controls.
+The schema is authoritative for product capabilities the application owner controls.
 
 ```txt
-schema = source of truth for owned operation contract
-local = in-process or local implementation of that operation
-remote = HTTP deployment of that same owned operation
+schema = source of truth for owned capability catalog
+resource = durable noun with fields and operations
+command = transient verb or workflow
+binding = config declaration
+http = server implementation of an HTTP-backed capability
+handler = local or hybrid implementation of a command
 ```
 
 The MVP supports an external server in the sense that the server is outside the CLI process. It does not default to third-party API transcription.
@@ -55,7 +67,7 @@ A Cloudflare-style product-schema system maps cleanly to the lili plan when the 
 
 ```txt
 owned product schema
-  -> canonical lili IR for operations
+  -> canonical lili catalog for capabilities
   -> generated CLI, OpenAPI, MCP command tools, Agent Skills, docs, and config schema
   -> generated OpenAPI downstream surfaces when those adapters exist
 ```
@@ -64,82 +76,73 @@ For this class of system, the schema may eventually feed product-specific surfac
 
 Do not treat those surfaces as generic MVP behavior. Each product-specific surface needs a requirement that states:
 
-- whether it consumes canonical IR or generated OpenAPI
-- which metadata it requires beyond operation input/output schemas
+- whether it consumes the canonical catalog or generated OpenAPI
+- which metadata it requires beyond capability input/output schemas
 - how drift is detected
 - how conformance is proven against the owned API or platform runtime
 - who owns publication and rollback
 
 Generating the product API itself is a separate server-adapter track. Until that adapter exists, the app implements API routes manually and `li-build conform` proves the implementation matches the schema.
 
-## Resource sugar
+## Resources and commands
 
-CRUD-style helpers are allowed only as optional authoring sugar. A helper such as `resource({ name: "project", operations: { list, get, delete } })` must compile down to the same operation records as hand-authored commands.
+Resources and workflow commands are sibling concepts. CRUD-style helpers are convenience syntax for resources, not the core model.
 
-The command/operation contract remains the primitive. Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`, `generate`, `sync`, `open`, and `watch` must stay first-class. A generator, lint, or docs surface that assumes every command is a resource action is wrong.
+Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`, `generate`, `sync`, `open`, and `watch` must stay first-class. A generator, lint, or docs surface that assumes every capability is a resource action is wrong.
 
 ## Example schema
 
 ```ts
-import { Contract, vocabulary, z } from "@lili/build";
+import { Command, Field, Product, Shape } from "@lili/build";
 
-export default Contract.create({
-  name: "myapp",
+export default Product.create({
+  id: "myapp",
+  name: "My App",
   version: "1.0.0",
-
-  vocabulary: vocabulary({
-    verbs: ["get", "list", "create", "update", "delete", "run"],
-    flags: ["json", "local", "remote", "force"],
-  }),
-
-  remote: {
-    baseUrl: { envVar: "MYAPP_API_URL" },
-    auth: { kind: "bearer", envVar: "MYAPP_TOKEN" },
-  },
-}).operation({
-  id: "projects.list",
-  command: ["projects", "list"],
-  description: "List projects",
-
-  locality: {
-    modes: ["remote"],
-    default: "remote",
-  },
-
-  input: z.object({
-    limit: z.number().int().min(1).max(100).default(20),
-  }),
-
-  output: z.object({
-    projects: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-      }),
-    ),
-  }),
-
-  remote: {
-    method: "GET",
+  description: "Project deployment and operations.",
+})
+  .resource("project", {
+    label: "Project",
     path: "/api/projects",
-    bind: {
-      query: ["limit"],
+    doc: "A deployed project.",
+    scope: "account",
+  }, (resource) =>
+    resource
+      .field("id", Field.string("Project ID").identifier().immutable())
+      .field("name", Field.string("Project name").humanLabel())
+      .operation("list", {
+        summary: "List projects",
+        http: { method: "GET", path: "" },
+        output: Shape.list("project"),
+        permission: "projects:read",
+        surfaces: {
+          cli: { command: "projects list" },
+          docs: true,
+          openapi: true,
+        },
+      })
+  )
+  .command("deploy", Command.workflow({
+    summary: "Deploy a project",
+    input: Shape.object({
+      projectId: Field.string("Project ID").required(),
+      target: Field.string("Deploy target").optional(),
+    }),
+    output: Shape.object({
+      deploymentId: Field.string("Deployment ID").required(),
+    }),
+    handler: "myapp.deploy",
+    permission: "projects:deploy",
+    surfaces: {
+      cli: { command: "deploy <projectId>" },
+      docs: true,
+      agent: true,
+      openapi: false,
     },
-  },
-
-  examples: [
-    {
-      argv: ["projects", "list", "--limit", "10", "--json"],
-      input: { limit: 10 },
-      response: {
-        projects: [{ id: "proj_123", name: "Website" }],
-      },
-    },
-  ],
-});
+  }));
 ```
 
-The app implements `GET /api/projects` manually in MVP. The implementation must conform to the schema.
+The app implements `GET /api/projects` and the `myapp.deploy` handler manually in MVP. The implementation must conform to the schema.
 
 ## Package usage
 
@@ -168,7 +171,7 @@ It generates:
 - Agent Skill/LLM surfaces
 - config JSON Schema when configured
 - generated surface manifest for drift and provenance
-- conformance plans from operation examples and remote bindings
+- conformance plans from capability examples and HTTP bindings
 
 ### `@lili/releases`
 
@@ -187,7 +190,7 @@ It can require or attach a conformance report for release provenance, but it doe
 
 No framework-specific package is required for Vite or TanStack Router.
 
-The app only needs to expose HTTP routes that implement the operation contract.
+The app only needs to expose HTTP routes and handlers that implement the product schema capabilities.
 
 If the same `lili.schema.ts` can target:
 

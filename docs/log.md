@@ -1,5 +1,15 @@
 # Docs log
 
+## 2026-05-19
+
+- Added `docs/product-schema.md` as the next `@lili/build` target: static class authoring (`Product`, `Resource`, `Command`, `Shape`, `Field`), sibling resources/commands/bindings, normalized `Catalog` and `Capability[]`, first-class field metadata, normalized surface defaults, and a hard refactor path before OpenAPI.
+- Updated build/schema/application/plan coverage docs so the next implementation sequence is Phase 3B product-schema refactor, then Phase 3C OpenAPI projection from HTTP-capable catalog entries and field metadata. OpenAPI is now documented as a filtered projection of capabilities, not a reflection of generated CLI commands or a forced CRUD/resource taxonomy.
+- Expanded Phase 5 in `docs/next-plan.md` into the concrete next `@lili/releases` package slice: manifest schema, final binary byte verification, renderer registry/selection, fixture-renderer orchestration, final packed-artifact verification, and manifest-based yank dry run. Clarified that npm renderer implementation waits for Phase 6.
+- Expanded `docs/tests/release-guardrails-test-plan.md` with the exact next release-package test files, fixture rules, and known-bad implementations each test should catch.
+- Added `RELEASE-013` to `docs/coverage-rewrite.md` so the release package boundary is tested: `@lili/releases` consumes manifest/build-output data without runtime dependencies on `@lili/core` or `@lili/build`.
+- Added Phase 7 distribution automation scope: npm, PyPI, Homebrew, and Scoop publishing must run from one release manifest plus verified artifact records, with dry-run planning, credential preflight, pre-publish hash checks, and npm platform-before-umbrella ordering. Added `RELEASE-014` through `RELEASE-017` coverage rows and later publishing test-plan entries.
+- Tightened release requirements after competitive-positioning review: split renderer and publisher concerns, replaced release `schema` provenance with product/catalog provenance, added exact Bun target plus cpu-variant normalization, expanded conformance and executable metadata, added stable package artifact records, documented npm/PyPI/GitHub provenance integration, and added `RELEASE-018` through `RELEASE-021` coverage/test-plan rows.
+
 ## 2026-05-18
 
 - Created initial rewrite docs structure.

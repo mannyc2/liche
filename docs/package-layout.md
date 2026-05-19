@@ -100,8 +100,8 @@ Must not depend on `@lili/build` or `@lili/releases`.
 
 Owns:
 
-- runtime contract authoring API
-- canonical IR normalization
+- runtime product schema authoring API
+- canonical catalog normalization
 - schema lints
 - generated CLI source
 - generated OpenAPI/MCP/docs/Agent Skill/JSON Schema surfaces
@@ -147,7 +147,7 @@ Examples must prove the package boundaries:
 | `examples/generated-cli` | Uses `@lili/build` to generate a CLI from schema. |
 | `examples/fetch-backed-cli` | Demonstrates existing inbound/in-process fetch behavior without outbound remote transport confusion. |
 | `examples/remote-backed-cli` | Demonstrates core-owned outbound HTTP operation transport, with and without generated wiring. |
-| `examples/vite-tanstack-app` | Demonstrates operation-first integration for a web app: schema, API route, generated CLI, conformance against dev server. |
+| `examples/vite-tanstack-app` | Demonstrates capability-first integration for a web app: product schema, API routes, local handlers, generated CLI, conformance against dev server. |
 
 ## Non-package folders
 

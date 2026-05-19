@@ -1,11 +1,11 @@
 # Test plan: build system
 
-Authoritative sources: `docs/build-system.md`, `docs/coverage-rewrite.md`.
+Authoritative sources: `docs/product-schema.md`, `docs/build-system.md`, `docs/coverage-rewrite.md`.
 
 ## Priority order
 
 1. Core package boundary.
-2. Canonical IR normalization and digest.
+2. Product schema normalization and canonical catalog digest.
 3. Schema lints.
 4. Generated command tree through public core APIs.
 5. Core-owned remote transport.
@@ -19,12 +19,25 @@ Authoritative sources: `docs/build-system.md`, `docs/coverage-rewrite.md`.
 The first useful slice should prove:
 
 - a handwritten core CLI still works without build
-- a schema normalizes into IR
+- a schema normalizes into a deterministic catalog
 - one generated command registers through `Cli.create().command()`
 - generated and handwritten command outputs match for the same input
 - fixtures include both CRUD-like commands and workflow commands
 
 Do not start with OpenAPI, package rendering, or a broad generator framework.
+
+## Product schema refactor slice
+
+Before implementing OpenAPI, refactor `@lili/build` around product-schema authoring:
+
+- `Product.create()` with sibling resources, commands, and bindings
+- static class helpers for `Field`, `Shape`, and `Command`
+- normalized `Catalog` and flattened `Capability[]`
+- first-class field metadata in shape projections
+- normalized surface defaults for CLI, docs, dashboard, agent, and OpenAPI
+- generated CLI consumes flattened capabilities instead of operation-only records
+
+Verification fixtures should include one Workers-style product with a resource operation, `deploy`, `dev`, and a binding. The old `Contract.create(...).operation(...)` fixture should not remain as the primary generated surface fixture after the hard cutover.
 
 ## Surface graph slice
 
@@ -33,7 +46,7 @@ The surface graph slice should prove:
 - generated CLI, command manifest, OpenAPI, MCP command tools, Agent Skill/LLM surfaces, docs/reference markdown, and config JSON Schema all appear in one surface manifest when enabled
 - each surface record includes source, input digest, generator version, generation options digest, output digest, and relative artifact paths
 - `generate --check` reports the stale surface ID when any generated artifact is hand-edited
-- command MCP tools are IR-derived, while future Code Mode MCP remains an OpenAPI-derived downstream surface
+- command MCP tools are catalog-derived, while future Code Mode MCP remains an OpenAPI-derived downstream surface
 - requesting an unsupported product-specific adapter such as `wrangler.jsonc`, Workers Binding RPC metadata, dashboard metadata, or generated server/API code fails clearly
 
 ## Remote slice
@@ -51,12 +64,12 @@ This is the hardest runtime boundary and should not be left to documentation-onl
 
 The app integration slice should prove:
 
-- a Vite/TanStack-style fixture app defines operations rather than deriving commands from UI routes
-- the fixture app implements matching API routes manually
+- a Vite/TanStack-style fixture app defines product capabilities rather than deriving commands from UI routes
+- the fixture app implements matching API routes and local handlers manually
 - generated CLI calls the fixture app through core HTTP operation transport
 - conformance passes against the fixture dev server
-- generated OpenAPI places path/query/header/body fields according to `remote.bind`
-- a workflow command in the fixture remains first-class and is not modeled as a CRUD resource or HTTP endpoint
+- generated OpenAPI places path/query/header/body fields according to HTTP binding metadata
+- a workflow command in the fixture remains first-class and is not modeled as a CRUD resource or default OpenAPI endpoint
 
 ## Conformance slice
 
@@ -65,5 +78,5 @@ The conformance slice should prove:
 - `generate --check` runs without a server
 - `conform` requires a base URL or target
 - read-only examples run against a fixture server
-- destructive operations are skipped unless explicitly fixture-backed
+- destructive capabilities are skipped unless explicitly fixture-backed
 - schema-invalid successful responses fail conformance

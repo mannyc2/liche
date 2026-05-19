@@ -17,7 +17,9 @@ renderers: "all"
 
 `renderers: []` means manifest and final-binary verification only. It is valid for users who want to upload binaries manually or test release guard rails before publishing package-manager wrappers.
 
-`renderers: "all"` means every implemented renderer whose required metadata and credentials are configured. Missing required metadata for a selected renderer is a release error before staging artifacts. Missing metadata for an unselected renderer is ignored.
+`renderers: "all"` means every implemented renderer whose required manifest metadata and renderer configuration are available. Missing required metadata for a selected renderer is a release error before staging artifacts. Missing metadata for an unselected renderer is ignored.
+
+Renderer selection never checks registry credentials. Publishing automation has a separate publisher selection and preflight step after artifacts are rendered and verified.
 
 ## Package boundary
 
@@ -38,6 +40,8 @@ renderers: "all"
 
 Renderer dependencies must stay out of `@lili/core` and `@lili/build`. If an ecosystem needs heavyweight tooling, load or invoke it only when that renderer is selected; do not create another first-party release package to hide the dependency problem.
 
+Publisher adapters also live in `@lili/releases`, but they are not renderers. A publisher consumes one release manifest plus verified package artifact records and then mutates npm, PyPI, tap, bucket, or other registry state. Publisher dependencies and credential handling must stay behind publisher selection.
+
 ## Renderer purity
 
 Pure renderers need product metadata in the release manifest.
@@ -55,10 +59,17 @@ metadata: z.object({
       url: z.string(),
     })
     .optional(),
+  executable: z
+    .object({
+      title: z.string().optional(),
+      publisher: z.string().optional(),
+      copyright: z.string().optional(),
+    })
+    .optional(),
 });
 ```
 
-Renderers must not read `package.json`, schema source, git config, generated source, or build output directories to recover metadata. The manifest is the renderer contract.
+Renderers must not read `package.json`, product schema source, git config, generated source, or build output directories to recover metadata. The manifest is the renderer contract.
 
 ## npm renderer
 
@@ -94,8 +105,8 @@ Renderer shape:
 
 ```txt
 wheel per platform
-binary placed in .data/scripts/
-entry point or script wrapper invokes that binary
+binary placed in {distribution}-{version}.data/scripts/
+wrapper exposes the intended command for pipx and script installs
 RECORD hashes verified after wheel build
 ```
 
@@ -103,6 +114,9 @@ Linux tag decisions:
 
 - glibc targets map to `manylinux` decisions
 - musl targets map to `musllinux` decisions
+- wheel filenames must use normalized distribution and version components
+- wheel `RECORD` must hash every file except `RECORD` itself with sha256 or stronger
+- wheel metadata must not rely on local package workspace state
 
 Guard rails:
 
@@ -113,6 +127,7 @@ pypi/one-binary
 pypi/pipx-entry
 pypi/no-download
 pypi/final-wheel-hash
+pypi/metadata
 ```
 
 ## Homebrew renderer
@@ -126,6 +141,8 @@ install copies one binary into bin
 test do runs a real command
 ```
 
+The formula may use `on_macos`, `on_linux`, and architecture helpers to select the binary URL and hash. Every branch must map to exactly one manifest binary. The renderer must not read local build output or infer URLs from GitHub release conventions.
+
 Guard rails:
 
 ```txt
@@ -135,6 +152,7 @@ homebrew/install-one-binary
 homebrew/test
 homebrew/no-stage-leak
 homebrew/final-formula-matches-manifest
+homebrew/no-scripted-download
 ```
 
 ## Scoop renderer
@@ -147,6 +165,8 @@ architecture map
 url + hash from manifest
 bin command declaration
 ```
+
+The manifest must include version, description, homepage, license, architecture-specific URL/hash entries when needed, and `bin` entries for the installed command. Scoop supports pre/post install scripts, but this renderer must not emit them unless a later requirement explicitly approves a specific use case.
 
 Guard rails:
 

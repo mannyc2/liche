@@ -13,19 +13,19 @@ the manifest is the distribution contract
 
 Only two opt-in features are being added:
 
-1. Build system: a runtime schema IR that generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema, and compile artifacts.
+1. Build system: a runtime product schema that normalizes into a canonical capability catalog and generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema/config surfaces, and compile artifacts.
 2. Distribution: one release manifest, pure package-manager renderers, and final-artifact guard rails.
 
 Everything else remains current core runtime behavior unless a requirement document says otherwise.
 
-The canonical schema IR is a command/operation contract. It is not a product model, domain model, database model, resource graph, or universal schema for every surface a product might expose. Product/domain schemas may feed into it, but `@lili/build` owns the contract that a CLI command and its generated agent surfaces need: command path, inputs, outputs, effects, locality, examples, and execution wiring.
+The canonical catalog is a product capability contract. It models resources, commands, bindings, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is still not a database model or a license to generate every possible product surface in MVP; product-specific surfaces remain adapter-gated.
 
-Generated surfaces must be treated as a graph, not as unrelated emitters. Each generated surface declares its source (`canonical-ir` or `openapi`), generator version, generation options, input digest, output digest, drift check, and owner package. A surface that cannot name those facts is not accepted as part of the build system.
+Generated surfaces must be treated as a graph, not as unrelated emitters. Each generated surface declares its source (`catalog` or `openapi`), generator version, generation options, input digest, output digest, drift check, and owner package. A surface that cannot name those facts is not accepted as part of the build system.
 
 The MVP source graph is:
 
 ```txt
-canonical schema IR
+canonical catalog
   -> generated CLI
   -> generated OpenAPI
   -> generated MCP command tools
@@ -37,7 +37,7 @@ generated OpenAPI
   -> later downstream HTTP ecosystem surfaces
 ```
 
-Product-specific surfaces such as Workers Binding RPC metadata, `wrangler.jsonc` fragments, dashboard metadata, product docs, SDKs, Terraform providers, or Code Mode MCP servers are later surface adapters. They must consume either canonical IR or generated OpenAPI through the same surface graph; they must not read schema source, generated CLI source, or package internals directly.
+Product-specific surfaces such as Workers Binding RPC metadata, `wrangler.jsonc` fragments, dashboard metadata, product docs, SDKs, Terraform providers, or Code Mode MCP servers are later surface adapters. They must consume either the canonical catalog or generated OpenAPI through the same surface graph; they must not read schema source, generated CLI source, or package internals directly.
 
 ## Package boundary invariant
 
@@ -46,7 +46,7 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
 | `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, parser, formatter, MCP basics, skills basics, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs and the shared remote HTTP transport. |
-| `@lili/build` | yes | Opt-in schema IR, schema linting, drift checks, generators, and `bun build --compile` orchestration. | They give up generated command trees, OpenAPI/MCP/docs generation, schema linting, drift checks, and compile orchestration. Handwritten CLIs still work. |
+| `@lili/build` | yes | Opt-in product schema, catalog linting, drift checks, generators, and `bun build --compile` orchestration. | They give up generated command trees, OpenAPI/MCP/docs generation, schema linting, drift checks, and compile orchestration. Handwritten CLIs still work. |
 | `@lili/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
 
 Do not create MVP packages for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice belongs inside `@lili/releases` configuration, not in separate first-party packages.
@@ -61,7 +61,7 @@ The current core has multiple execution directions. The rewrite must name them s
 | inbound HTTP handler | `@lili/core` | `.fetch(request)` receives HTTP requests and dispatches them to registered commands. It also exposes core reflection endpoints such as MCP and schema/manifest surfaces for handwritten CLIs. |
 | in-process fetch-backed command | `@lili/core` | A command can delegate to a provided `FetchHandler`. This is an in-process Request/Response bridge, not a hosted backend client. |
 | outbound HTTP operation transport | `@lili/core` | A command can call a configured remote HTTP API, parse the response, validate it against the output schema, and map failures into the standard error envelope. |
-| generated command wiring | `@lili/build` | Generated code chooses local or remote execution and calls the core runtime primitives. It does not own transport semantics. |
+| generated command wiring | `@lili/build` | Generated code wires resource operations and commands into core runtime primitives. It does not own transport semantics. |
 
 The word `remote` in the schema means outbound HTTP operation transport. It is not a synonym for `.fetch()`.
 
@@ -69,11 +69,11 @@ The word `remote` in the schema means outbound HTTP operation transport. It is n
 
 For handwritten CLIs, core reflection is the source for command schema, MCP tools, and skill/docs helpers.
 
-For schema-driven CLIs, the normalized schema IR is the source of truth. Generated CLI code registers commands into core, and generated byproduct surfaces come from the canonical IR.
+For schema-driven CLIs, the normalized catalog is the source of truth. Generated CLI code registers commands into core, and generated byproduct surfaces come from the canonical catalog.
 
 Core reflection must be explicitly scoped as runtime reflection for handwritten CLIs or as a compatibility view over generated registrations. It must not silently compete with schema-generated OpenAPI, MCP, docs, or Agent Skill output.
 
-OpenAPI-derived downstream surfaces have a different source of truth from IR-derived command surfaces. Command MCP tools for the generated CLI come from canonical IR. A future Code Mode MCP server that models the HTTP API ecosystem may consume generated OpenAPI. These are separate surfaces and must not silently overwrite each other.
+OpenAPI-derived downstream surfaces have a different source of truth from catalog-derived command surfaces. Command MCP tools for the generated CLI come from the canonical catalog. A future Code Mode MCP server that models the HTTP API ecosystem may consume generated OpenAPI. These are separate surfaces and must not silently overwrite each other.
 
 ## Non-goals
 
@@ -99,14 +99,15 @@ no assumption that every command is CRUD, HTTP-backed, table-shaped, or resource
 
 OpenAPI is output, not input. Importing arbitrary OpenAPI specifications into an lili schema is a later adapter track.
 
-The primary MVP targets owned operation contracts:
+The primary MVP targets owned product capability catalogs:
 
 ```txt
-schema = source of truth for an API/operation contract the user owns
-CLI = generated interface to that contract
-OpenAPI = generated HTTP projection of that contract
-remote = external HTTP deployment of that contract
-local = in-process or local mirror implementation of that contract
+schema = source of truth for resources, commands, bindings, and HTTP-backed capabilities the user owns
+CLI = generated interface to user-invokable capabilities
+OpenAPI = generated HTTP projection of HTTP-backed capabilities
+remote-http = external HTTP deployment of a capability
+local = local handler implementation of a command or local capability
+hybrid-workflow = handler that may do local work and call APIs
 ```
 
 External means outside the CLI process. It does not mean third-party by default.
@@ -116,20 +117,20 @@ External means outside the CLI process. It does not mean third-party by default.
 Generated artifacts must be deterministic:
 
 ```txt
-same canonical IR
+same canonical catalog
 same generator version
 same generation options
 = same generated output
 ```
 
-Provenance digests must be computed over canonical normalized IR, not the raw schema source file. Source formatting should not change the digest unless it changes normalized behavior.
+Provenance digests must be computed over the normalized catalog, not the raw schema source file. Source formatting should not change the digest unless it changes normalized behavior.
 
 ## Build and release ordering
 
 Build, signing, hashing, manifest creation, package rendering, and verification must happen in this order:
 
 ```txt
-normalize schema IR
+normalize product schema catalog
 generate artifacts
 compile binary
 sign final binary, when configured

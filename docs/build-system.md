@@ -4,7 +4,7 @@
 
 `li gen` (typegen) ships in the current core runtime because `@lili/build` doesn't exist yet. It loads command metadata via `stateSymbol` and emits a `declare module` augmentation on `Cli.Commands`. When the build package lands, `gen` is a candidate to move there — it's arguably a build-time concern, not a runtime concern. Behavior IDs: `GEN-001`.
 
-`@lili/build` is an opt-in package. It consumes a runtime contract module, normalizes it into canonical IR, generates artifacts, checks drift, and compiles a standalone Bun binary.
+`@lili/build` is an opt-in package. It consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, and compiles a standalone Bun binary.
 
 `@lili/build` does not replace `@lili/core`. Generated code must plug into core through public runtime APIs.
 
@@ -16,13 +16,13 @@ Detailed requirements live in:
 
 ## Purpose
 
-The build system exists so a user can define an owned operation contract once and get:
+The build system exists so a user can define an owned product capability catalog once and get:
 
 - generated CLI command tree
 - generated dispatcher
 - generated outbound remote HTTP wiring
 - generated local implementation wiring
-- generated OpenAPI for HTTP-compatible operations
+- generated OpenAPI for HTTP-compatible capabilities
 - generated MCP tools
 - generated docs/reference markdown
 - generated Agent Skill/LLM surfaces
@@ -33,9 +33,9 @@ The build system exists so a user can define an owned operation contract once an
 
 Handwritten CLIs remain valid without installing `@lili/build`.
 
-The contract is authoritative for owned operation surfaces. `@lili/build` does not generate server routes in MVP, but it does generate the contract and conformance checks that a hand-written server must satisfy.
+The product schema is authoritative for owned product capabilities. `@lili/build` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
 
-The `li-build` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored build-package guidance through `CreateOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from canonical IR when the contract opts into those generated surfaces.
+The `li-build` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored build-package guidance through `CreateOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
 
 ## Generated surface graph
 
@@ -46,7 +46,7 @@ Required surface record:
 ```ts
 type GeneratedSurfaceRecord = {
   id: string;
-  source: "canonical-ir" | "openapi";
+  source: "catalog" | "openapi";
   owner: "@lili/build" | "@lili/releases" | "adapter";
   generatorVersion: string;
   generationOptionsDigest: string;
@@ -58,18 +58,18 @@ type GeneratedSurfaceRecord = {
 
 `artifacts` are relative artifact paths. Absolute local paths are internal build-record data and must not affect canonical schema digests.
 
-Initial IR-derived surfaces:
+Initial catalog-derived surfaces:
 
 | Surface | Source | MVP status |
 |---|---|---|
-| CLI command tree | canonical IR | required |
-| dispatcher and local/remote wiring | canonical IR | required |
-| command manifest / `schema --json` | canonical IR | required |
-| OpenAPI projection | canonical IR | required for HTTP-compatible operations |
-| MCP command tools | canonical IR | required |
-| Agent Skill/LLM surfaces | canonical IR | required |
-| docs/reference markdown | canonical IR | required |
-| JSON Schema for config | canonical IR | required when config is declared |
+| CLI command tree | catalog | required |
+| dispatcher and local/remote/hybrid wiring | catalog | required |
+| command manifest / `schema --json` | catalog | required |
+| OpenAPI projection | catalog | required for HTTP-compatible capabilities |
+| MCP command tools | catalog | required |
+| Agent Skill/LLM surfaces | catalog | required |
+| docs/reference markdown | catalog | required |
+| JSON Schema for config and bindings | catalog | required when config is declared |
 
 OpenAPI-derived downstream surfaces are not the first implementation slice, but the graph must leave a clean path for them:
 
@@ -85,170 +85,105 @@ Product-specific surfaces are also later adapters:
 
 | Surface | Source | Requirement before implementation |
 |---|---|---|
-| Workers Binding RPC metadata | canonical IR plus platform adapter requirement | Binding semantics, auth, deployment, and runtime compatibility must be documented. |
-| `wrangler.jsonc` fragments or schema | canonical IR plus config metadata | Config keys, defaults, env precedence, and ownership must be documented. |
-| Dashboard metadata | canonical IR plus product metadata | UI labels, lifecycle, permissions, safety, and audit behavior must be documented. |
-| Developer docs beyond reference markdown | canonical IR plus docs metadata | Narrative ownership, examples, and publication target must be documented. |
-| Product API implementation/stubs | canonical IR plus server adapter requirement | Generated server code is not MVP; conformance remains the first proof that an owned API implements the schema. |
+| Workers Binding RPC metadata | catalog plus platform adapter requirement | Binding semantics, auth, deployment, and runtime compatibility must be documented. |
+| `wrangler.jsonc` fragments or schema | catalog plus config metadata | Config keys, defaults, env precedence, and ownership must be documented. |
+| Dashboard metadata | catalog plus product metadata | UI labels, lifecycle, permissions, safety, and audit behavior must be documented. |
+| Developer docs beyond reference markdown | catalog plus docs metadata | Narrative ownership, examples, and publication target must be documented. |
+| Product API implementation/stubs | catalog plus server adapter requirement | Generated server code is not MVP; conformance remains the first proof that an owned API implements the schema. |
 
 Each generated surface must have a drift check. A stale generated CLI, stale OpenAPI document, stale Agent Skill, or stale config schema is the same class of failure: the generated surface no longer matches the canonical source graph.
 
 Do not infer a broad generator framework from this requirement. The first vertical slice still proves one generated command through core APIs before adding broad surface coverage.
 
-## Public API Shape
+## Public product schema API
 
-The build API is runtime-value first. TypeScript inference is derived from runtime schema values; erased TypeScript types are not generator input.
+The build API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
 
-```ts
-import { Contract, vocabulary, z } from "@lili/build";
+The public authoring model is product-shaped, not CLI-program-shaped. `Product.create(...).resource(...).command(...).binding(...)` is the source API. Generated CLIs still lower into `@lili/core` through `Cli.create().command(...)`.
 
-export default Contract.create({
-  name: "acme",
-  version: "1.0.0",
+The concrete product schema API, naming, defaults, and refactor path live in `docs/product-schema.md`.
 
-  vocabulary: vocabulary({
-    verbs: ["get", "list", "create", "update", "delete", "run"],
-    flags: ["json", "local", "remote", "force"],
-    aliases: { ls: "list" },
-  }),
+Required public classes:
 
-  remote: {
-    baseUrl: {
-      envVar: "ACME_API_URL",
-    },
-    auth: {
-      kind: "bearer",
-      envVar: "ACME_TOKEN",
-    },
-  },
-}).operation({
-  id: "users.list",
-  command: ["users", "list"],
-  description: "List users",
-
-  locality: {
-    modes: ["remote", "local"],
-    default: "remote",
-  },
-
-  input: z.object({
-    limit: z.number().int().min(1).max(100).default(20),
-  }),
-
-  output: z.object({
-    users: z.array(
-      z.object({
-        id: z.string(),
-        email: z.string(),
-      }),
-    ),
-  }),
-
-  remote: {
-    method: "GET",
-    path: "/users",
-    bind: {
-      query: ["limit"],
-    },
-  },
-
-  local: {
-    module: "./operations/users.ts",
-    export: "listUsers",
-  },
-
-  examples: [
-    {
-      argv: ["users", "list", "--limit", "10", "--json"],
-      input: { limit: 10 },
-    },
-  ],
-});
+```txt
+Product
+Resource
+Command
+Shape
+Field
 ```
 
-The public authoring model is contract-shaped, not CLI-program-shaped. `Contract.create(...).operation(...)` is the source API. Generated CLIs still lower into `@lili/core` through `Cli.create().command(...)`.
+The class API is authoring sugar only. `li-build` loads a product schema module, checks its runtime tag, and normalizes it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
-`Contract.kind === "lili.contract"` is a runtime loading tag. `li-build` uses it when importing an unknown module path before normalizing or generating from that value.
+## Canonical catalog
 
-## Canonical IR
-
-The normalized IR must include at least:
+The normalized catalog must include at least:
 
 ```ts
-type Contract = {
+type ProductSchema = {
+  id: string;
   name: string;
   version: string;
-  vocabulary: Vocabulary;
-  remote?: ContractRemote;
-  operations: Operation[];
+  description: string;
+  scope?: ProductScope;
+  resources: Resource[];
+  commands: Command[];
+  bindings: Binding[];
+  capabilities: Capability[];
 };
 
-type Vocabulary = {
-  verbs: string[];
-  flags: string[];
-  aliases?: Record<string, string>;
-};
+type Capability =
+  | ResourceCapability
+  | CommandCapability;
 
-type ContractRemote = {
-  baseUrl: RuntimeValue;
-  auth?: RemoteAuth;
-  timeoutMs?: number;
-};
-
-type RuntimeValue =
-  | { envVar: string; literal?: string }
-  | { envVar?: string; literal: string };
-
-type RemoteAuth =
-  | { kind: "none" }
-  | { kind: "bearer"; envVar: string }
-  | { kind: "apiKey"; envVar: string; header: string };
-
-type Operation = {
+type ResourceCapability = {
+  kind: "resource-operation";
   id: string;
-  command: string[];
-  description?: string;
+  resourceId: string;
+  action: string;
+  summary: string;
+  input: ShapeProjection;
+  output: ShapeProjection;
+  http?: HttpSpec;
+  permission?: string;
+  effects: CapabilityEffects;
+  surfaces: NormalizedSurfaces;
+};
 
-  locality: {
-    modes: ("remote" | "local")[];
-    default: "remote" | "local";
+type CommandCapability = {
+  kind: "command";
+  id: string;
+  family: "workflow" | "auth" | "setup" | "diagnostic" | "dev";
+  summary: string;
+  input: ShapeProjection;
+  output: ShapeProjection;
+  execution: Execution;
+  permission?: string;
+  effects: CapabilityEffects;
+  surfaces: NormalizedSurfaces;
+};
+
+type ShapeProjection = {
+  jsonSchema: unknown;
+  fields: FieldProjection[];
+  portability: {
+    openapi: boolean;
+    mcp: boolean;
+    docs: boolean;
+    reasons: string[];
   };
-
-  input: z.ZodType;
-  output: z.ZodType;
-
-  remote?: RemoteOperation;
-  local?: LocalOperation;
-  examples?: OperationExample[];
-  policy?: OperationPolicy;
-};
-
-type RemoteOperation = {
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  path: string;
-  bind: RemoteBinding;
-};
-
-type RemoteBinding = {
-  path?: string[];
-  query?: string[];
-  headers?: Record<string, string>;
-  body?: string[] | true;
-};
-
-type LocalOperation = {
-  module: string;
-  export: string;
 };
 ```
 
-The three non-negotiables are:
+The non-negotiables are:
 
 ```txt
 closed vocabulary
-locality as a first-class field
-one input and one output contract per operation
+execution mode as a first-class field
+one input and one output contract per capability
 effects as a first-class field
+field metadata as a first-class field
+surface membership as normalized data
 ```
 
 `effects.kind` is the user-facing safety and lint axis. It must be one of:
@@ -260,7 +195,7 @@ delete
 exec
 ```
 
-Effects do not imply a resource model. `project delete` and `db migrate` can both be dangerous commands, but only one is naturally CRUD-shaped. The linter should reason over the command contract, not force commands through resource inheritance.
+Effects do not imply a resource model. `project delete` and `db migrate` can both be dangerous capabilities, but only one is naturally CRUD-shaped. The linter should reason over the capability contract, not force commands through resource inheritance.
 
 ## Agent consistency guardrails
 
@@ -268,12 +203,12 @@ The current core is intentionally permissive for handwritten CLIs. That is not s
 
 The rewrite must close these audit gaps:
 
-- command actions are derived from the final command segment; schema-driven operations must reject actions that are not in the contract vocabulary
-- command flags are currently derived from arbitrary Zod option keys; schema-driven control flags must reject names that are not in the contract vocabulary
+- resource actions and generated CLI control flags must be checked against the product vocabulary
+- command input fields are data shape fields, not vocabulary entries
 - `--format` is currently a global runtime option; generated product CLIs must make `--json` the canonical machine-output switch and must not advertise `--format` as the agent contract
 - built-in and generated helper commands must honor `--json` consistently; text such as `wrote ./lili.generated.ts` is not acceptable when JSON was explicitly requested
-- generated JSON output for local or remote operations must identify the locality mode that was applied
-- generated OpenAPI must come from `remote.bind` and operation metadata, not from the current runtime reflection shortcut that emits every command as a `POST`
+- generated JSON output for local, remote HTTP, or hybrid workflow capabilities must identify the execution mode that was applied
+- generated OpenAPI must come from HTTP-capable catalog entries and field metadata, not from the current runtime reflection shortcut that emits every command as a `POST`
 
 Default generated vocabulary:
 
@@ -293,13 +228,13 @@ allowed flags:
   --force
 ```
 
-`vocabulary({...})` is a convenience for extending the default vocabulary. A contract that wants to replace the defaults can pass an explicit `Vocabulary` object instead. The linter treats vocabulary as an allowlist only: if a derived command action or generated control flag is present in the active vocabulary, it is allowed; if it is absent, it fails. There is no separate forbidden-word list.
+`vocabulary({...})` is a convenience for extending the default vocabulary. A product schema that wants to replace the defaults can pass an explicit `Vocabulary` object instead. The linter treats vocabulary as an allowlist only: if a resource action or generated control flag is present in the active vocabulary, it is allowed; if it is absent, it fails. There is no separate forbidden-word list.
 
 `vocabulary.aliases` is command-surface metadata, not an extra allowlist. Alias targets must still resolve to names present in the active vocabulary when they are used by a generated surface.
 
 `--force` is the standard destructive-action bypass flag in the default vocabulary. A product can choose a different control-flag vocabulary by not using the defaults, but generated surfaces must still use only flags present in the active vocabulary.
 
-For current core compatibility, handwritten CLIs may continue to use richer formatting and arbitrary command names. That compatibility layer must not be treated as proof that schema-driven generated surfaces satisfy the closed-vocabulary requirement.
+For current core compatibility, handwritten CLIs may continue to use richer formatting and arbitrary command names. That compatibility layer must not be treated as proof that product-schema generated surfaces satisfy the closed-vocabulary requirement.
 
 ## Remote transport ownership
 
@@ -310,10 +245,10 @@ Outbound HTTP operation transport is core runtime behavior.
 The primitive must own:
 
 - resolving contract-level runtime config such as base URL and auth
-- serializing input into path, query, and body according to the operation mapping
+- serializing input into path, query, and body according to the HTTP binding
 - making the HTTP request
 - parsing the HTTP response
-- validating successful response data through the operation output schema
+- validating successful response data through the capability output schema
 - mapping network failures, timeouts, non-2xx responses, malformed bodies, and output validation failures into the standard core error envelope
 
 The primitive must not throw raw transport errors through generated command handlers.
@@ -330,69 +265,56 @@ Required error classes or codes:
 | malformed success body | structured malformed response error |
 | output schema failure | structured validation error that identifies response shape mismatch |
 
-## Locality semantics
+## Execution semantics
 
-Locality is a runtime behavior, not only docs metadata.
+Execution mode is a runtime behavior, not only docs metadata.
 
 ```txt
-local mode:
-  generated run() imports the configured local module and calls the configured export
-
-remote mode:
+remote-http:
   generated run() calls @lili/core outbound HTTP operation transport
 
-mixed mode:
-  generated run() chooses local or remote by explicit flag/config/default
+local:
+  generated run() imports or resolves the configured handler and executes local process/tool behavior
+
+hybrid-workflow:
+  generated run() calls the configured handler; the handler may perform local work and make API calls
 ```
 
-Generated commands must resolve locality with this precedence:
+The product schema declares a capability's execution mode. Generated CLI flags may select explicit local or remote behavior only for capabilities that actually support both forms. A `local` command such as `dev` must not be made OpenAPI-visible by accident. A `hybrid-workflow` command such as `deploy` must not be flattened into a fake resource mutation.
 
-```txt
-explicit flag:
-  --remote or --local
-
-config:
-  operation-specific locality preference
-
-schema default:
-  operation.locality.default
-```
-
-`--local` and `--remote` are mutually exclusive. Passing both is a parse error before execution.
-
-Machine-readable output must identify what happened. For `--json`, generated local/remote operations must use the standard envelope and include at least:
+Machine-readable output must identify what happened. For `--json`, generated capabilities must use the standard envelope and include at least:
 
 ```json
 {
   "ok": true,
   "data": {},
   "meta": {
-    "locality": {
-      "mode": "remote",
-      "source": "default"
+    "execution": {
+      "mode": "remote-http",
+      "source": "schema-default"
     }
   }
 }
 ```
 
-`source` is one of `flag`, `config`, or `default`. Human output should also include a concise local/remote signal for operations where confusion is possible, especially mixed-mode operations.
+`source` is one of `flag`, `config`, or `schema-default`. Human output should also include a concise execution signal for capabilities where confusion is possible, especially hybrid workflows.
 
-`operation/locality-shape` is a correctness gate:
+`capability/execution-shape` is a correctness gate:
 
-- local and remote execution for one operation share the same input schema
-- local and remote execution for one operation share the same output schema
+- every executable capability has one input schema and one output schema
+- alternate execution paths for one capability share that same input/output contract
 - downstream surfaces assume those contracts are identical
 
-A mixed operation must have a runtime conformance test against a fixture backend that proves local and remote implementations produce identical parsed output for the same valid input.
+A capability with both local and remote behavior must have a runtime conformance test against a fixture backend that proves both implementations produce identical parsed output for the same valid input.
 
 This guarantee has two layers:
 
 ```txt
 local conformance:
-  the generated local path imports owned implementation code and validates its return value with the output schema
+  the generated local path resolves owned handler code and validates its return value with the output schema
 
 remote conformance:
-  a server outside the CLI process is checked against the schema, remote binding, and output schema
+  a server outside the CLI process is checked against the catalog, HTTP binding, and output schema
 ```
 
 The linter can prove schema shape. Only server conformance can prove that a hand-written remote server actually implements the contract.
@@ -406,33 +328,40 @@ Representative generated file:
 ```ts
 // generated by @lili/build
 // schema: ./lili.schema.ts
-// schemaDigest: sha256:<canonical-ir-digest>
+// schemaDigest: sha256:<catalog-digest>
 // generatorVersion: <version>
 // do not edit by hand
 
-import { Cli, callHttpOperation } from "@lili/core";
-import contract from "../lili.contract";
+import { Cli, callHttpOperation, z } from "@lili/core";
 
 export const cli = Cli.create({
-  name: "acme",
+  name: "workers",
   version: "1.0.0",
 });
 
-cli.command("users list", {
-  description: "List users",
-  options: contract.operations["users.list"].input,
-  output: contract.operations["users.list"].output,
+cli.command("workers script list", {
+  description: "List Worker scripts",
+  options: z.object({}),
+  output: z.object({
+    scripts: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+    })),
+  }),
   async run(ctx) {
     return await callHttpOperation(ctx, {
-      baseUrl: contract.remote.baseUrl,
-      auth: contract.remote.auth,
+      baseUrl: { envVar: "WORKERS_API_URL" },
+      auth: { kind: "bearer", envVar: "WORKERS_TOKEN" },
       method: "GET",
-      path: "/users",
-      bind: {
-        query: ["limit"],
-      },
+      path: "/workers/scripts",
+      bind: {},
       input: ctx.options,
-      output: contract.operations["users.list"].output,
+      output: z.object({
+        scripts: z.array(z.object({
+          id: z.string(),
+          name: z.string(),
+        })),
+      }),
     });
   },
 });
@@ -446,22 +375,22 @@ The schema module must be safe to import for linting, docs generation, and code 
 
 Rules:
 
-- `local.module` is a string reference relative to the schema file.
+- command and capability handlers are string references such as `wrangler.deploy` or module/export references relative to the schema file
 - the schema module must not eagerly import local implementation modules
-- implementation modules are imported only by generated runtime code when local execution is selected
-- the build system must lint that the target module exists and the export exists
+- implementation modules are imported only by generated runtime code when local or hybrid execution is selected
+- the build system must lint that the target module exists and the export exists when a module/export handler is declared
 - generated code must fail with a structured error when a local implementation cannot be loaded
 
 Required lint:
 
 ```txt
 schema/no-eager-local-import
-  Fails when the schema module imports a file referenced by local.module.
+  Fails when the schema module imports a file referenced by a local or hybrid handler.
 ```
 
-## Remote binding
+## HTTP binding
 
-`remote.method` and `remote.path` are not sufficient alone. The build system must know where input fields go.
+`http.method` and `http.path` are not sufficient alone. The build system must know where input fields go.
 
 MVP mapping:
 
@@ -496,7 +425,7 @@ remote/bind-coverage
   Fails when one input field is bound to conflicting locations unless explicitly allowed.
 ```
 
-OpenAPI generation must consume `bind`. Path, query, and header fields become parameters; body fields become request body schema.
+OpenAPI generation must consume `bind`. Path, query, and header fields become parameters; body fields become request body schema. Field metadata becomes descriptions and `x-lili-*` extensions.
 
 Conformance must also consume `bind`. A bind bug is not visible in local mode because local mode does not serialize HTTP requests.
 
@@ -504,18 +433,18 @@ Conformance must also consume `bind`. A bind bug is not visible in local mode be
 
 Server conformance is a named MVP capability owned by `@lili/build`.
 
-It verifies that an owned external HTTP deployment implements the schema contract. It is separate from generated-file drift checks.
+It verifies that an owned external HTTP deployment implements the HTTP-backed schema capabilities. It is separate from generated-file drift checks.
 
 The detailed command contract, fixture shape, report schema, and safety rules live in `docs/server-conformance.md`.
 
 ```txt
 generate --check:
   hermetic artifact freshness check
-  compares generated files to canonical IR output
+  compares generated files to canonical catalog output
 
 conform:
   server-vs-schema check
-  sends operation example requests to a live or fixture server
+  sends capability example requests to a live or fixture server
   validates responses against output schemas
 ```
 
@@ -529,19 +458,19 @@ li-build conform ./lili.schema.ts --report .lili/conformance.json
 
 Conformance must assert:
 
-- operation examples parse from `argv` to declared input
-- input serializes into HTTP request according to `remote.bind`
+- capability examples parse from `argv` to declared input
+- input serializes into HTTP request according to HTTP binding metadata
 - configured base URL and auth are applied
 - server accepts the request shape
 - successful response body parses as JSON when JSON is expected
-- successful response data validates against the operation output schema
+- successful response data validates against the capability output schema
 - non-2xx, malformed, and schema-invalid responses are reported as structured conformance failures
 
 Conformance should use declared examples or explicit conformance fixtures. It must not invent unsafe mutating requests against production.
 
 Policy:
 
-| Operation policy | Default conformance behavior |
+| Capability policy | Default conformance behavior |
 |---|---|
 | idempotent/read-only | May run against configured target when examples exist. |
 | destructive | Requires explicit conformance fixture and opt-in target. |
@@ -558,23 +487,23 @@ Policy:
 generated CLI command tree
 generated dispatcher
 generated command manifest / schema --json
-generated OpenAPI for HTTP-compatible operations
+generated OpenAPI for HTTP-compatible capabilities
 generated MCP tools
 generated docs/reference markdown
 generated Agent Skills / llms surface
-generated JSON Schema for config, when configured
+generated JSON Schema for config and bindings, when configured
 generated surface manifest
 ```
 
-OpenAPI is an output, not an input. It is emitted only for operations with HTTP-compatible remote bindings.
+OpenAPI is an output, not an input. It is emitted only for capabilities with HTTP-compatible bindings and normalized `surfaces.openapi === true`.
 
-Local-only and interactive operations remain valid IR operations even when no OpenAPI route is emitted.
+Local-only and interactive commands remain valid catalog capabilities even when no OpenAPI route is emitted.
 
 The generated surface manifest records every emitted surface record from the generated surface graph. It is a build artifact for drift checks and release provenance; it is not the release manifest owned by `@lili/releases`.
 
 ## Command manifest
 
-Schema-driven contracts must expose a compact command manifest surface for agents and automation. It is separate from OpenAPI because it includes command-local concepts such as argv shape, local-only operations, effects, locality, examples, and output envelopes.
+Schema-driven product CLIs must expose a compact command manifest surface for agents and automation. It is separate from OpenAPI because it includes command-local concepts such as argv shape, local-only commands, hybrid workflows, effects, execution mode, examples, and output envelopes.
 
 Required minimum fields per command:
 
@@ -591,21 +520,20 @@ type CommandManifestEntry = {
     idempotent: boolean;
     dangerous: boolean;
   };
-  locality: {
-    modes: Array<"local" | "remote">;
-    default: "local" | "remote";
+  execution: {
+    mode: "remote-http" | "local" | "hybrid-workflow";
   };
   examples: string[];
 };
 ```
 
-The build package may expose this as generated JSON, a built-in generated command such as `schema --json`, or both. In all cases, the manifest is IR-derived and must be covered by generated-surface drift checks.
+The build package may expose this as generated JSON, a built-in generated command such as `schema --json`, or both. In all cases, the manifest is catalog-derived and must be covered by generated-surface drift checks.
 
 ## Vite sanity check only
 
 The framework must not know Vite exists.
 
-A developer who already has backend operations should be able to expose those operations through the existing generic core altitude and get a generated CLI with good local/remote ergonomics.
+A developer who already has backend capabilities should be able to expose those capabilities through the existing generic core runtime and get a generated CLI with good execution-mode ergonomics.
 
 If the design requires any of the following, the design failed:
 
@@ -628,7 +556,7 @@ Core already has runtime reflection surfaces for handwritten CLIs:
 - MCP tools
 - skill markdown/index
 
-Schema-generated artifacts are canonical for schema-driven contracts. The generated CLI may still register enough metadata for core reflection to work, but weaker runtime reflection must not override or silently conflict with IR-generated OpenAPI, MCP, docs, or Agent Skill output.
+Schema-generated artifacts are canonical for product-schema generated CLIs. The generated CLI may still register enough metadata for core reflection to work, but weaker runtime reflection must not override or silently conflict with catalog-generated OpenAPI, MCP, docs, or Agent Skill output.
 
 Required decision:
 
@@ -637,7 +565,7 @@ handwritten CLI:
   core reflection is canonical
 
 schema-driven generated CLI:
-  canonical IR outputs are canonical
+  canonical catalog outputs are canonical
   core reflection is compatibility only
 ```
 
@@ -647,23 +575,23 @@ Schema lints are CI gates, not style suggestions.
 
 | Rule | Fails when |
 |---|---|
-| `vocabulary/verb` | Operation uses a verb outside the allowed vocabulary. |
-| `vocabulary/flag` | Operation or override introduces an unapproved flag. |
-| `operation/output-required` | Public operation has no output schema. |
-| `operation/locality-required` | Operation does not declare local/remote support. |
-| `operation/locality-binding` | Operation declares `local` or `remote` locality without the corresponding execution binding. |
-| `operation/locality-shape` | Local and remote paths do not share one input/output contract. |
-| `operation/effects-required` | Operation does not declare `effects.kind`, idempotence, and danger level. |
-| `operation/effects-policy-consistent` | Effects and execution/conformance policy disagree, such as a dangerous delete treated as non-destructive. |
-| `operation/id-stable` | Operation ID is missing, duplicated, or unstable. |
-| `contract/remote-base-url` | Contract-level remote config exists without a base URL env var or literal. |
-| `operation/http-binding-complete` | Remote operation leaves input fields unbound. |
-| `remote/bind-coverage` | Remote binding omits input fields, references missing fields, or binds fields to conflicting locations. |
-| `operation/example-consistency` | Example argv does not parse to the declared example input. |
-| `operation/output-portable` | Output schema cannot be represented in generated surfaces. |
+| `vocabulary/verb` | Resource action or generated control flag uses a name outside the allowed vocabulary. |
+| `vocabulary/flag` | A generated control flag or override introduces an unapproved flag. |
+| `capability/output-required` | Public capability has no output schema when the selected surfaces require one. |
+| `capability/execution-required` | Command does not declare `remote-http`, `local`, or `hybrid-workflow` execution. |
+| `capability/execution-binding` | Command declares an execution mode without the corresponding handler or HTTP binding. |
+| `capability/execution-shape` | Alternate execution paths do not share one input/output contract. |
+| `capability/effects-required` | Capability does not declare `effects.kind`, idempotence, and danger level when defaults cannot infer them. |
+| `capability/effects-policy-consistent` | Effects and execution/conformance policy disagree, such as a dangerous delete treated as non-destructive. |
+| `capability/id-stable` | Capability ID is missing, duplicated, or unstable. |
+| `catalog/remote-base-url` | Catalog-level remote config exists without a base URL env var or literal. |
+| `capability/http-binding-complete` | HTTP-capable capability leaves input fields unbound. |
+| `http/bind-coverage` | HTTP binding omits input fields, references missing fields, or binds fields to conflicting locations. |
+| `capability/example-consistency` | Example argv does not parse to the declared example input. |
+| `capability/output-portable` | Output schema cannot be represented in generated surfaces. |
 | `schema/portable` | Input/output schema uses unsupported transforms, custom refinements, functions, non-JSON values, or lossy defaults without an explicit escape hatch. |
 | `schema/no-eager-local-import` | Schema eagerly imports a referenced local implementation module. |
-| `openapi/eligibility` | Operation claims OpenAPI output but lacks HTTP-compatible mapping. |
+| `openapi/eligibility` | Capability claims OpenAPI output but lacks HTTP-compatible mapping. |
 | `generated/no-drift` | Generated files differ from current schema output. |
 | `generated/no-manual-edit` | Generated file provenance header is missing or altered. |
 
@@ -680,7 +608,7 @@ It must fail when:
 - generated output differs from current schema output
 - a generated file is hand-edited
 - provenance header is missing or altered
-- schema digest differs from the canonical IR digest used to generate the file
+- schema digest differs from the catalog digest used to generate the file
 
 Drift check does not verify a deployed server. Server conformance is a separate capability because it needs a live or fixture HTTP target.
 
@@ -700,7 +628,7 @@ Pipeline:
 
 ```txt
 1. Load runtime schema module with Bun.
-2. Normalize schema into canonical IR.
+2. Normalize product schema into a canonical catalog.
 3. Run schema lints.
 4. Generate CLI source and byproduct surfaces.
 5. Run drift check if requested.
@@ -726,7 +654,7 @@ bun build --compile \
   --no-compile-autoload-bunfig \
   --no-compile-autoload-dotenv \
   --define INCUR_BUILD_VERSION='"<release.version>"' \
-  --define INCUR_SCHEMA_DIGEST='"<canonical-ir-digest>"' \
+  --define INCUR_SCHEMA_DIGEST='"<catalog-digest>"' \
   --define INCUR_SCHEMA_COMMIT='"<git-sha>"' \
   --define INCUR_GENERATOR_VERSION='"<generator.version>"' \
   --outfile <out>
@@ -780,14 +708,14 @@ For releases, the build pipeline must record:
 - schema name
 - schema version
 - schema commit
-- canonical IR digest
+- catalog digest
 - generator version
 - build target (including baseline/modern/musl variant)
 - exact compile flag set used
 - `--define` values embedded into the binary
 - runtime config expectations, including env vars required for remote base URL and auth
 
-The recorded flag set is what `release/binary-hash` reproducibility checks compare against. A flag drift between two builds of the same canonical IR digest is a release failure.
+The recorded flag set is what `release/binary-hash` reproducibility checks compare against. A flag drift between two builds of the same catalog digest is a release failure.
 
 ## Acceptance criteria
 
@@ -795,17 +723,17 @@ Build system MVP is accepted only when:
 
 - handwritten `@lili/core` CLI still works without `@lili/build`
 - core exposes outbound HTTP operation transport for handwritten and generated CLIs
-- runtime schema IR defines closed vocabulary, locality, effects, input schema, output schema, remote binding, and operation metadata
-- schema linter rejects vocabulary drift, missing output contracts, missing locality, missing or inconsistent effects, incomplete remote bindings, unsupported portable schema shapes, and eager local imports
+- runtime product schema defines resources, commands, bindings, field metadata, closed vocabulary, execution mode, effects, input schema, output schema, HTTP binding, and surface membership
+- schema linter rejects vocabulary drift, missing output contracts, missing execution modes, missing or inconsistent effects, incomplete HTTP bindings, unsupported portable schema shapes, and eager local imports
 - generated command tree registers commands through public `@lili/core` APIs
-- generated remote command calls the core HTTP operation transport
+- generated remote-http capability calls the core HTTP operation transport
 - generated local command imports implementation lazily at runtime
 - generated and equivalent handwritten command behavior converge for the same inputs and expected outputs
-- server conformance verifies an owned external HTTP deployment against schema examples, remote bindings, and output schemas
+- server conformance verifies an owned external HTTP deployment against schema examples, HTTP bindings, and output schemas
 - `generate --check` remains a hermetic artifact freshness check and is separate from server conformance
 - OpenAPI/MCP/docs and command manifest are generated as schema byproducts
 - generated surface manifest records every emitted surface with source digest, generator version, generation options digest, output digest, and artifact list
-- generated fixtures include both CRUD-like operations and workflow commands so no generator or lint assumes every command is a resource or HTTP endpoint
+- generated fixtures include both CRUD-like resource operations and workflow commands so no generator or lint assumes every command is a resource or HTTP endpoint
 - core runtime reflection overlap is explicitly scoped
 - drift check fails on hand-edited generated output
 - compile command produces Bun standalone binaries for configured targets
