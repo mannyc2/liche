@@ -52,3 +52,41 @@ export type { GenerateToDirOptions, GenerateResult, CheckResult } from './genera
 
 export { hashString } from './manifest.js'
 export type { GeneratedSurfaceManifest } from './manifest.js'
+
+export { Field, FieldBuilder } from './field.js'
+export type { FieldMutability, FieldType, NormalizedField } from './field.js'
+
+export { Shape } from './shape.js'
+export type { ListShape, ObjectShape } from './shape.js'
+
+export { Command } from './command.js'
+export type {
+  CommandFamily,
+  CommandSpec,
+  Execution,
+  HttpBind,
+  HttpMethod,
+  HttpSpec,
+  HybridWorkflowExecution,
+  LocalExecution,
+  LocalInit,
+  LocalNeed,
+  RemoteHttpExecution,
+  RemoteHttpInit,
+  SurfaceHints,
+  WorkflowInit,
+  WorkflowStep,
+} from './command.js'
+
+export { Product, ResourceBuilder } from './product.js'
+export type {
+  BindingSpec,
+  ProductCommandEntry,
+  ProductInit,
+  ProductScope,
+  ResourceBuilderFn,
+  ResourceInit,
+  ResourceOperationEntry,
+  ResourceOperationSpec,
+  RuntimeProduct,
+} from './product.js'
