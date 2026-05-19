@@ -14,7 +14,10 @@
   "files": ["src"],
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "echo 'no tests yet'"
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:test",

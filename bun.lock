@@ -44,6 +44,9 @@
     "packages/releases": {
       "name": "@lili/releases",
       "version": "0.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
       "devDependencies": {
         "@types/bun": "catalog:test",
         "typescript": "catalog:",

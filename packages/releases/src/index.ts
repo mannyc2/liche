@@ -1,1 +1,25 @@
-export {}
+export {
+  CliReleaseManifestSchema,
+  parseCliReleaseManifest,
+} from './manifest.js'
+export type {
+  AuthContext,
+  AuthProvider,
+  AuthSection,
+  BinaryTarget,
+  CliReleaseManifest,
+  CliReleaseManifestInput,
+  ConformanceSection,
+  ExecutableMetadata,
+  PackageArtifact,
+  PackageRecord,
+  ParseManifestFailure,
+  ParseManifestResult,
+  ParseManifestSuccess,
+  ProductProvenance,
+  ReleaseEnvelope,
+  ReleaseMetadata,
+  RuntimeConfigKey,
+  RuntimeEnvVar,
+  RuntimeExpectations,
+} from './manifest.js'

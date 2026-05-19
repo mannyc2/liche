@@ -1,0 +1,136 @@
+{
+  "manifestVersion": 1,
+  "metadata": {
+    "description": "Workers CLI for managing Worker scripts and deployments.",
+    "homepage": "https://example.test/workers",
+    "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://example.test/workers.git"
+    },
+    "executable": {
+      "title": "Workers CLI",
+      "publisher": "Example, Inc.",
+      "copyright": "Copyright (c) 2026 Example, Inc.",
+      "windows": {
+        "hideConsole": false,
+        "iconSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  },
+  "product": {
+    "id": "workers",
+    "name": "Workers CLI",
+    "version": "0.1.0",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "catalogDigest": "sha256:b1946ac92492d2347c6235b4d2611184",
+    "surfaceManifest": {
+      "path": "workers.surface-manifest.json",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  },
+  "release": {
+    "version": "0.1.0",
+    "channel": "stable",
+    "createdAt": "2026-05-19T12:00:00Z",
+    "generatorVersion": "0.0.0",
+    "buildId": "build-2026-05-19-abc"
+  },
+  "runtime": {
+    "command": "workers",
+    "env": [
+      { "name": "WORKERS_API_URL", "purpose": "Remote dispatch base URL", "required": true },
+      { "name": "WORKERS_DEFAULT_ACCOUNT", "purpose": "Default account id for remote calls", "required": false }
+    ],
+    "config": [
+      { "key": "transport.timeoutMs", "purpose": "HTTP timeout for remote operations", "required": false }
+    ]
+  },
+  "auth": {
+    "providers": [
+      {
+        "id": "workers-bearer",
+        "kind": "bearer",
+        "credentialTransport": "bearer",
+        "modes": ["env"],
+        "envVars": [
+          { "name": "WORKERS_API_TOKEN", "purpose": "bearer-token" }
+        ],
+        "contexts": [
+          { "id": "account", "envVar": "WORKERS_ACCOUNT", "flag": "account" }
+        ],
+        "requiredRuntimeCapabilities": ["env"]
+      }
+    ]
+  },
+  "conformance": {
+    "required": true,
+    "report": "workers.conformance.json",
+    "reportVersion": 1,
+    "reportSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "checkedAt": "2026-05-19T11:30:00Z",
+    "targetEnv": "staging",
+    "targetBaseUrl": "https://staging.example.test/workers",
+    "catalogDigest": "sha256:b1946ac92492d2347c6235b4d2611184",
+    "destructiveIncluded": false,
+    "summary": { "passed": 120, "failed": 0, "skipped": 4, "total": 124 }
+  },
+  "binaries": [
+    {
+      "id": "workers-darwin-arm64",
+      "target": "bun-darwin-arm64",
+      "platform": "darwin",
+      "arch": "arm64",
+      "filename": "workers-darwin-arm64",
+      "url": "https://example.test/workers/0.1.0/workers-darwin-arm64",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "size": 32500000,
+      "compileFlagsDigest": "sha256:111aaa",
+      "signed": true,
+      "notarized": true
+    },
+    {
+      "id": "workers-linux-x64-glibc-baseline",
+      "target": "bun-linux-x64-baseline",
+      "platform": "linux",
+      "arch": "x64",
+      "libc": "glibc",
+      "cpuVariant": "baseline",
+      "filename": "workers-linux-x64-glibc-baseline",
+      "url": "https://example.test/workers/0.1.0/workers-linux-x64-glibc-baseline",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "size": 33000000,
+      "compileFlagsDigest": "sha256:222aaa",
+      "signed": false,
+      "notarized": false
+    },
+    {
+      "id": "workers-linux-x64-musl",
+      "target": "bun-linux-x64-musl",
+      "platform": "linux",
+      "arch": "x64",
+      "libc": "musl",
+      "filename": "workers-linux-x64-musl",
+      "url": "https://example.test/workers/0.1.0/workers-linux-x64-musl",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "size": 33100000,
+      "compileFlagsDigest": "sha256:333aaa",
+      "signed": false,
+      "notarized": false
+    },
+    {
+      "id": "workers-windows-x64",
+      "target": "bun-windows-x64",
+      "platform": "windows",
+      "arch": "x64",
+      "filename": "workers-windows-x64.exe",
+      "url": "https://example.test/workers/0.1.0/workers-windows-x64.exe",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "size": 34000000,
+      "compileFlagsDigest": "sha256:444aaa",
+      "signed": false,
+      "notarized": false
+    }
+  ],
+  "packages": []
+}
