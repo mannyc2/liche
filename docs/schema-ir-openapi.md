@@ -1,6 +1,6 @@
 # Schema IR and OpenAPI requirements
 
-`@lili/build` normalizes runtime schema values into canonical IR before generation.
+`@lili/build` normalizes runtime contract values into canonical IR before generation.
 
 OpenAPI is owned by `@lili/build`, not `@lili/core`. Core's `cli.fetch` handler exposes command-tree execution and MCP, but does not emit or ingest OpenAPI documents. The previous runtime-reflection emit and ingest in core have been removed; `@lili/build` will produce OpenAPI from canonical IR and `remote.bind` (see below). OpenAPI is a projection of canonical IR for HTTP-compatible operations.
 
@@ -11,10 +11,10 @@ Do not mix runtime handles with digestable IR.
 Use two internal shapes:
 
 ```txt
-RuntimeNormalizedProgram
+RuntimeNormalizedContract
   may hold Zod schema handles for validation and generated TypeScript
 
-CanonicalProgramIR
+CanonicalContractIR
   serializable
   stable
   no functions
@@ -29,13 +29,13 @@ Generation options are separate from canonical IR. A surface may be disabled, ro
 ## Minimum canonical IR
 
 ```ts
-export type ProgramIR = {
-  kind: "lili.program";
+export type ContractIR = {
+  kind: "lili.contract";
   irVersion: 1;
   name: string;
   version: string;
   vocabulary: VocabularyIR;
-  remote?: ProgramRemoteIR;
+  remote?: ContractRemoteIR;
   operations: OperationIR[];
 };
 
@@ -43,18 +43,26 @@ export type VocabularyIR = {
   verbs: string[];
   flags: string[];
   aliases: Record<string, string>;
-  forbiddenVerbs: string[];
-  forbiddenFlags: string[];
 };
 
-export type ProgramRemoteIR = {
+export type ContractRemoteIR = {
   baseUrl: RuntimeValueIR;
   auth: RemoteAuthIR;
   timeoutMs: number;
 };
 
+export type RuntimeValueIR =
+  | { envVar: string; literal?: string }
+  | { envVar?: string; literal: string };
+
+export type RemoteAuthIR =
+  | { kind: "none" }
+  | { kind: "bearer"; envVar?: string }
+  | { kind: "apiKey"; envVar?: string; header?: string };
+
 export type OperationIR = {
   id: string;
+  // Derived from command[command.length - 1], not authored separately.
   verb: string;
   command: string[];
   description?: string;
@@ -179,9 +187,8 @@ The manifest supports drift checks and later release provenance. It must not con
 ## Example operation
 
 ```ts
-operation({
+Contract.create({ name: "acme", version: "1.0.0" }).operation({
   id: "projects.get",
-  verb: "get",
   command: ["projects", "get"],
   description: "Get one project",
 
@@ -232,7 +239,7 @@ operation({
 
 Include:
 
-- program name and version
+- contract name and version
 - vocabulary
 - remote config keys, not secret values
 - operation IDs
@@ -245,7 +252,7 @@ Include:
 - examples
 - policy
 - generation-relevant descriptions
-- source-declared surface metadata when it changes normalized program behavior
+- source-declared surface metadata when it changes normalized contract behavior
 
 Exclude:
 
@@ -276,10 +283,11 @@ Required lints:
 ```txt
 vocabulary/verb
 vocabulary/flag
-vocabulary/forbidden
 operation/id-stable
 operation/output-required
 operation/locality-required
+operation/locality-binding
+contract/remote-base-url
 operation/http-binding-complete
 remote/path-param-template
 remote/bind-coverage
@@ -289,7 +297,6 @@ operation/example-consistency
 operation/output-portable
 schema/portable
 schema/no-eager-local-import
-override/guarded
 openapi/eligibility
 generated/no-drift
 generated/no-manual-edit

@@ -34,13 +34,13 @@ Failures must throw structured core errors that the existing command execution p
 import type { z } from "zod";
 
 export type RuntimeValue =
-  | { env: string; description?: string }
-  | { literal: string; description?: string };
+  | { envVar: string; literal?: string }
+  | { envVar?: string; literal: string };
 
 export type HttpAuth =
-  | { type: "none" }
-  | { type: "bearer"; env: string }
-  | { type: "header"; name: string; env: string };
+  | { kind: "none" }
+  | { kind: "bearer"; envVar: string }
+  | { kind: "apiKey"; envVar: string; header: string };
 
 export type HttpOperationBind<TInput = Record<string, unknown>> = {
   path?: Array<keyof TInput & string>;
@@ -130,7 +130,7 @@ Required failures:
 | base URL invalid | `REMOTE_CONFIG_INVALID_BASE_URL` |
 | auth env missing | `REMOTE_CONFIG_MISSING_AUTH` |
 
-Auth is program-level for MVP. Per-operation auth remains a non-goal until a concrete use case requires it.
+Auth is contract-level for MVP. Per-operation auth remains a non-goal until a concrete use case requires it.
 
 Do not pass secret values through CLI flags such as `--auth-env NAME=VALUE`. Conformance and runtime should read inherited environment or explicit env files/target config with clear handling.
 
@@ -244,8 +244,8 @@ export const cli = Cli.create("acme").command("users list", {
   async run(ctx) {
     return await callHttpOperation({
       id: "users.list",
-      baseUrl: { env: "ACME_API_URL" },
-      auth: { type: "bearer", env: "ACME_TOKEN" },
+      baseUrl: { envVar: "ACME_API_URL" },
+      auth: { kind: "bearer", envVar: "ACME_TOKEN" },
       method: "GET",
       path: "/users",
       bind: { query: ["limit"] },
@@ -267,8 +267,8 @@ cli.command("users list", {
   async run(ctx) {
     return await callHttpOperation({
       id: "users.list",
-      baseUrl: program.remote.baseUrl,
-      auth: program.remote.auth,
+      baseUrl: contract.remote.baseUrl,
+      auth: contract.remote.auth,
       method: "GET",
       path: "/users",
       bind: { query: ["limit"] },

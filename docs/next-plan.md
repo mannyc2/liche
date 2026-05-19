@@ -58,17 +58,17 @@ Verification:
 
 Close the agent-facing gaps found in the consistency audit before expanding generation:
 
-1. Define the default generated vocabulary: verbs `get`, `list`, `create`, `update`, `delete`, `run`; flags `json`, `local`, `remote`, `force`; forbidden verbs `info`; forbidden flags `format` and `skip-confirmations`.
-2. Implement schema lints for vocabulary violations and guarded overrides.
+1. Define the default generated vocabulary: verbs `get`, `list`, `create`, `update`, `delete`, `run`; flags `json`, `local`, `remote`, `force`. Treat vocabulary as an allowlist that contracts can extend with `vocabulary({...})` or replace by passing an explicit vocabulary object.
+2. Implement schema lints for positive vocabulary membership.
 3. Make `--json` the canonical generated CLI machine-output contract. Keep current core `--format` behavior only as handwritten compatibility unless a requirement explicitly promotes it.
 4. Make generated built-ins and helper commands honor `--json`.
 5. Add locality resolution and output signaling for generated operations.
-6. Replace runtime-reflection OpenAPI for schema-driven programs with canonical IR OpenAPI that consumes `remote.bind`.
+6. Replace runtime-reflection OpenAPI for schema-driven contracts with canonical IR OpenAPI that consumes `remote.bind`.
 
 Verification:
 
-- A fixture operation using `projects info` fails `vocabulary/verb` and recommends `projects get`.
-- A fixture option named `skipConfirmations` fails `vocabulary/flag` and recommends `force`.
+- A fixture operation using `projects info` fails `vocabulary/verb` when `info` is absent from the active vocabulary.
+- A fixture operation using a product-specific verb passes when that verb is added to the active vocabulary.
 - A generated command with `--format json` fails or is absent from help; the same command with `--json` succeeds.
 - Generated helper commands emit parseable JSON when `--json` is passed.
 - Mixed local/remote fixtures reject `--local --remote`, honor flag > config > schema default, and include `meta.locality.mode` plus `meta.locality.source`.

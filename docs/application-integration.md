@@ -81,9 +81,9 @@ The command/operation contract remains the primitive. Workflow commands such as 
 ## Example schema
 
 ```ts
-import { defineProgram, operation, vocabulary, z } from "@lili/build";
+import { Contract, vocabulary, z } from "@lili/build";
 
-export default defineProgram({
+export default Contract.create({
   name: "myapp",
   version: "1.0.0",
 
@@ -93,53 +93,48 @@ export default defineProgram({
   }),
 
   remote: {
-    baseUrl: { env: "MYAPP_API_URL" },
-    auth: { type: "bearer", env: "MYAPP_TOKEN" },
+    baseUrl: { envVar: "MYAPP_API_URL" },
+    auth: { kind: "bearer", envVar: "MYAPP_TOKEN" },
+  },
+}).operation({
+  id: "projects.list",
+  command: ["projects", "list"],
+  description: "List projects",
+
+  locality: {
+    modes: ["remote"],
+    default: "remote",
   },
 
-  operations: [
-    operation({
-      id: "projects.list",
-      verb: "list",
-      command: ["projects", "list"],
-      description: "List projects",
+  input: z.object({
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
 
-      locality: {
-        modes: ["remote"],
-        default: "remote",
-      },
-
-      input: z.object({
-        limit: z.number().int().min(1).max(100).default(20),
+  output: z.object({
+    projects: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
       }),
+    ),
+  }),
 
-      output: z.object({
-        projects: z.array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-          }),
-        ),
-      }),
+  remote: {
+    method: "GET",
+    path: "/api/projects",
+    bind: {
+      query: ["limit"],
+    },
+  },
 
-      remote: {
-        method: "GET",
-        path: "/api/projects",
-        bind: {
-          query: ["limit"],
-        },
+  examples: [
+    {
+      argv: ["projects", "list", "--limit", "10", "--json"],
+      input: { limit: 10 },
+      response: {
+        projects: [{ id: "proj_123", name: "Website" }],
       },
-
-      examples: [
-        {
-          argv: ["projects", "list", "--limit", "10", "--json"],
-          input: { limit: 10 },
-          response: {
-            projects: [{ id: "proj_123", name: "Website" }],
-          },
-        },
-      ],
-    }),
+    },
   ],
 });
 ```

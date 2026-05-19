@@ -90,8 +90,8 @@ Owns:
 - middleware
 - parser/config/env validation
 - formatter/output envelope behavior
-- MCP basics
-- skills/docs helpers
+- MCP basics (`--mcp` runtime support remains core; `mcp add` is an opt-in helper built-in)
+- skills/docs helpers (`skills` command helpers are opt-in built-ins; CLIs may provide packaged skill content)
 - outbound HTTP operation transport
 
 Must not depend on `@lili/build` or `@lili/releases`.
@@ -100,7 +100,7 @@ Must not depend on `@lili/build` or `@lili/releases`.
 
 Owns:
 
-- runtime schema API
+- runtime contract authoring API
 - canonical IR normalization
 - schema lints
 - generated CLI source

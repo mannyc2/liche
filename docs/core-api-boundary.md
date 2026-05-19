@@ -2,6 +2,13 @@
 
 This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/build` starts importing `@lili/core`.
 
+## Phase 3 re-freeze (packaged skills)
+
+Deliberate, narrow widening to let tool CLIs ship authored agent guidance without making generated product CLI surfaces depend on core reflection:
+
+- `CreateOptions.skill?: { markdown?: string; index?: string }` lets a CLI provide packaged skill content for `skills add` and `--llms`. If `markdown` is omitted, core keeps the reflection-generated skill body.
+- New public type `SkillDefinition`.
+
 ## Phase 3 re-freeze (Commit 3)
 
 Deliberate, narrow widening to support generated CLIs:
@@ -9,6 +16,7 @@ Deliberate, narrow widening to support generated CLIs:
 - `ResultMeta` widened to `Record<string, unknown> & { cta?: CtaBlock }`. Arbitrary meta keys round-trip through `ctx.ok(data, meta)` to the result envelope.
 - `RunContext.ok` signature now accepts `meta?: ResultMeta` (was `meta?: { cta?: CtaBlock }`).
 - `CreateOptions.generated?: { machineOutput: 'envelope'; disabledGlobals?: readonly DisabledGlobal[] }` opts a CLI into envelope output under `--json` and global-flag rejection.
+- `CreateOptions.builtins?: { completions?: boolean; gen?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `gen`, `mcp`, and `skills` default off.
 - New public type `DisabledGlobal` (currently `'format'`).
 
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
@@ -33,6 +41,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `ParseError` (`packages/core/src/errors/error.ts:70`) — imported through index by `parser-config.test.ts`; public parse failure type.
 - `ValidationError` (`packages/core/src/errors/error.ts:52`) — direct schema/error test coverage; public validation failure type.
 - `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
+- `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `CreateOptions.builtins` exposes it.
 - `CliInstance` (`packages/core/src/types.ts:203`) — imported through index by `helpers.ts`; public return type for `Cli.create()`.
 - `CommandDefinition` (`packages/core/src/types.ts:108`) — public `.command()` input type.
 - `CreateOptions` (`packages/core/src/types.ts:138`) — must be exported because `Cli.create()` signatures expose it.
@@ -46,6 +55,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `OutputPolicy` (`packages/core/src/types.ts:6`) — command definition/output envelope contract.
 - `Result` (`packages/core/src/types.ts:47`) — public execution envelope type after its helper types are exported.
 - `RunContext` (`packages/core/src/types.ts:70`) — public command handler context type.
+- `SkillDefinition` (`packages/core/src/types.ts`) — public because `CreateOptions.skill` exposes it.
 - `Schema` (`packages/core/src/types.ts:7`) — export under this exact type name before freeze; current `ZodSchema` alias does not match public signatures.
 - `ServeOptions` (`packages/core/src/types.ts:194`) — imported through index by `helpers.ts`; public `.serve()` configuration.
 - `Usage` (`packages/core/src/types.ts:106`) — public help metadata.

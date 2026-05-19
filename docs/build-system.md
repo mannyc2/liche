@@ -4,7 +4,7 @@
 
 `li gen` (typegen) ships in the current core runtime because `@lili/build` doesn't exist yet. It loads command metadata via `stateSymbol` and emits a `declare module` augmentation on `Cli.Commands`. When the build package lands, `gen` is a candidate to move there — it's arguably a build-time concern, not a runtime concern. Behavior IDs: `GEN-001`.
 
-`@lili/build` is an opt-in package. It consumes a runtime schema module, normalizes it into canonical IR, generates artifacts, checks drift, and compiles a standalone Bun binary.
+`@lili/build` is an opt-in package. It consumes a runtime contract module, normalizes it into canonical IR, generates artifacts, checks drift, and compiles a standalone Bun binary.
 
 `@lili/build` does not replace `@lili/core`. Generated code must plug into core through public runtime APIs.
 
@@ -16,7 +16,7 @@ Detailed requirements live in:
 
 ## Purpose
 
-The build system exists so a user can define operations once and get:
+The build system exists so a user can define an owned operation contract once and get:
 
 - generated CLI command tree
 - generated dispatcher
@@ -33,7 +33,9 @@ The build system exists so a user can define operations once and get:
 
 Handwritten CLIs remain valid without installing `@lili/build`.
 
-The schema is authoritative for owned operation contracts. `@lili/build` does not generate server routes in MVP, but it does generate the contract and conformance checks that a hand-written server must satisfy.
+The contract is authoritative for owned operation surfaces. `@lili/build` does not generate server routes in MVP, but it does generate the contract and conformance checks that a hand-written server must satisfy.
+
+The `li-build` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored build-package guidance through `CreateOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from canonical IR when the contract opts into those generated surfaces.
 
 ## Generated surface graph
 
@@ -93,14 +95,14 @@ Each generated surface must have a drift check. A stale generated CLI, stale Ope
 
 Do not infer a broad generator framework from this requirement. The first vertical slice still proves one generated command through core APIs before adding broad surface coverage.
 
-## Public API shape
+## Public API Shape
 
 The build API is runtime-value first. TypeScript inference is derived from runtime schema values; erased TypeScript types are not generator input.
 
 ```ts
-import { defineProgram, operation, vocabulary, z } from "@lili/build";
+import { Contract, vocabulary, z } from "@lili/build";
 
-export default defineProgram({
+export default Contract.create({
   name: "acme",
   version: "1.0.0",
 
@@ -108,82 +110,76 @@ export default defineProgram({
     verbs: ["get", "list", "create", "update", "delete", "run"],
     flags: ["json", "local", "remote", "force"],
     aliases: { ls: "list" },
-    forbiddenVerbs: ["info"],
-    forbiddenFlags: ["format", "skip-confirmations", "skipConfirmations"],
   }),
 
   remote: {
     baseUrl: {
-      env: "ACME_API_URL",
-      description: "Base URL for the Acme API",
+      envVar: "ACME_API_URL",
     },
     auth: {
-      type: "bearer",
-      env: "ACME_TOKEN",
+      kind: "bearer",
+      envVar: "ACME_TOKEN",
+    },
+  },
+}).operation({
+  id: "users.list",
+  command: ["users", "list"],
+  description: "List users",
+
+  locality: {
+    modes: ["remote", "local"],
+    default: "remote",
+  },
+
+  input: z.object({
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+
+  output: z.object({
+    users: z.array(
+      z.object({
+        id: z.string(),
+        email: z.string(),
+      }),
+    ),
+  }),
+
+  remote: {
+    method: "GET",
+    path: "/users",
+    bind: {
+      query: ["limit"],
     },
   },
 
-  operations: [
-    operation({
-      id: "users.list",
-      verb: "list",
-      command: ["users", "list"],
-      description: "List users",
+  local: {
+    module: "./operations/users.ts",
+    export: "listUsers",
+  },
 
-      locality: {
-        modes: ["remote", "local"],
-        default: "remote",
-      },
-
-      input: z.object({
-        limit: z.number().int().min(1).max(100).default(20),
-      }),
-
-      output: z.object({
-        users: z.array(
-          z.object({
-            id: z.string(),
-            email: z.string(),
-          }),
-        ),
-      }),
-
-      remote: {
-        method: "GET",
-        path: "/users",
-        bind: {
-          query: ["limit"],
-        },
-      },
-
-      local: {
-        module: "./operations/users.ts",
-        export: "listUsers",
-      },
-
-      examples: [
-        {
-          argv: ["users", "list", "--limit", "10", "--json"],
-          input: { limit: 10 },
-        },
-      ],
-    }),
+  examples: [
+    {
+      argv: ["users", "list", "--limit", "10", "--json"],
+      input: { limit: 10 },
+    },
   ],
 });
 ```
 
-Exact API names can change during implementation, but the semantics above are requirements.
+The public authoring model is contract-shaped, not CLI-program-shaped. `Contract.create(...).operation(...)` is the source API. Generated CLIs still lower into `@lili/core` through `Cli.create().command(...)`.
+
+`Contract.kind === "lili.contract"` is a runtime loading tag. `li-build` uses it when importing an unknown module path before normalizing or generating from that value.
 
 ## Canonical IR
 
 The normalized IR must include at least:
 
 ```ts
-type Program = {
+type Contract = {
   name: string;
   version: string;
   vocabulary: Vocabulary;
-  remote?: ProgramRemote;
+  remote?: ContractRemote;
   operations: Operation[];
 };
 
@@ -191,28 +187,25 @@ type Vocabulary = {
   verbs: string[];
   flags: string[];
   aliases?: Record<string, string>;
-  forbiddenVerbs?: string[];
-  forbiddenFlags?: string[];
 };
 
-type ProgramRemote = {
+type ContractRemote = {
   baseUrl: RuntimeValue;
   auth?: RemoteAuth;
   timeoutMs?: number;
 };
 
 type RuntimeValue =
-  | { env: string; description?: string }
-  | { literal: string; description?: string };
+  | { envVar: string; literal?: string }
+  | { envVar?: string; literal: string };
 
 type RemoteAuth =
-  | { type: "none" }
-  | { type: "bearer"; env: string }
-  | { type: "header"; name: string; env: string };
+  | { kind: "none" }
+  | { kind: "bearer"; envVar: string }
+  | { kind: "apiKey"; envVar: string; header: string };
 
 type Operation = {
   id: string;
-  verb: string;
   command: string[];
   description?: string;
 
@@ -275,8 +268,8 @@ The current core is intentionally permissive for handwritten CLIs. That is not s
 
 The rewrite must close these audit gaps:
 
-- command verbs are currently arbitrary strings; schema-driven operations must reject `info` and other non-vocabulary verbs when the product vocabulary says `get`
-- command flags are currently derived from arbitrary Zod option keys; schema-driven operations must reject forbidden flags such as `skipConfirmations` / `--skip-confirmations`
+- command actions are derived from the final command segment; schema-driven operations must reject actions that are not in the contract vocabulary
+- command flags are currently derived from arbitrary Zod option keys; schema-driven control flags must reject names that are not in the contract vocabulary
 - `--format` is currently a global runtime option; generated product CLIs must make `--json` the canonical machine-output switch and must not advertise `--format` as the agent contract
 - built-in and generated helper commands must honor `--json` consistently; text such as `wrote ./lili.generated.ts` is not acceptable when JSON was explicitly requested
 - generated JSON output for local or remote operations must identify the locality mode that was applied
@@ -293,21 +286,18 @@ allowed verbs:
   delete
   run
 
-forbidden verbs:
-  info
-
 allowed flags:
   --json
   --local
   --remote
   --force
-
-forbidden flags:
-  --format
-  --skip-confirmations
 ```
 
-`--force` is the standard destructive-action bypass flag. Do not introduce aliases such as `--yes`, `--skip-confirmations`, `--no-confirm`, or `--assume-yes` in generated schema-driven commands unless a future requirement explicitly expands the vocabulary and explains the migration path.
+`vocabulary({...})` is a convenience for extending the default vocabulary. A contract that wants to replace the defaults can pass an explicit `Vocabulary` object instead. The linter treats vocabulary as an allowlist only: if a derived command action or generated control flag is present in the active vocabulary, it is allowed; if it is absent, it fails. There is no separate forbidden-word list.
+
+`vocabulary.aliases` is command-surface metadata, not an extra allowlist. Alias targets must still resolve to names present in the active vocabulary when they are used by a generated surface.
+
+`--force` is the standard destructive-action bypass flag in the default vocabulary. A product can choose a different control-flag vocabulary by not using the defaults, but generated surfaces must still use only flags present in the active vocabulary.
 
 For current core compatibility, handwritten CLIs may continue to use richer formatting and arbitrary command names. That compatibility layer must not be treated as proof that schema-driven generated surfaces satisfy the closed-vocabulary requirement.
 
@@ -319,7 +309,7 @@ Outbound HTTP operation transport is core runtime behavior.
 
 The primitive must own:
 
-- resolving program-level runtime config such as base URL and auth
+- resolving contract-level runtime config such as base URL and auth
 - serializing input into path, query, and body according to the operation mapping
 - making the HTTP request
 - parsing the HTTP response
@@ -421,7 +411,7 @@ Representative generated file:
 // do not edit by hand
 
 import { Cli, callHttpOperation } from "@lili/core";
-import program from "../lili.schema";
+import contract from "../lili.contract";
 
 export const cli = Cli.create({
   name: "acme",
@@ -430,19 +420,19 @@ export const cli = Cli.create({
 
 cli.command("users list", {
   description: "List users",
-  options: program.operations["users.list"].input,
-  output: program.operations["users.list"].output,
+  options: contract.operations["users.list"].input,
+  output: contract.operations["users.list"].output,
   async run(ctx) {
     return await callHttpOperation(ctx, {
-      baseUrl: program.remote.baseUrl,
-      auth: program.remote.auth,
+      baseUrl: contract.remote.baseUrl,
+      auth: contract.remote.auth,
       method: "GET",
       path: "/users",
       bind: {
         query: ["limit"],
       },
       input: ctx.options,
-      output: program.operations["users.list"].output,
+      output: contract.operations["users.list"].output,
     });
   },
 });
@@ -584,7 +574,7 @@ The generated surface manifest records every emitted surface record from the gen
 
 ## Command manifest
 
-Schema-driven programs must expose a compact command manifest surface for agents and automation. It is separate from OpenAPI because it includes command-local concepts such as argv shape, local-only operations, effects, locality, examples, and output envelopes.
+Schema-driven contracts must expose a compact command manifest surface for agents and automation. It is separate from OpenAPI because it includes command-local concepts such as argv shape, local-only operations, effects, locality, examples, and output envelopes.
 
 Required minimum fields per command:
 
@@ -638,7 +628,7 @@ Core already has runtime reflection surfaces for handwritten CLIs:
 - MCP tools
 - skill markdown/index
 
-Schema-generated artifacts are canonical for schema-driven programs. The generated CLI may still register enough metadata for core reflection to work, but weaker runtime reflection must not override or silently conflict with IR-generated OpenAPI, MCP, docs, or Agent Skill output.
+Schema-generated artifacts are canonical for schema-driven contracts. The generated CLI may still register enough metadata for core reflection to work, but weaker runtime reflection must not override or silently conflict with IR-generated OpenAPI, MCP, docs, or Agent Skill output.
 
 Required decision:
 
@@ -659,20 +649,20 @@ Schema lints are CI gates, not style suggestions.
 |---|---|
 | `vocabulary/verb` | Operation uses a verb outside the allowed vocabulary. |
 | `vocabulary/flag` | Operation or override introduces an unapproved flag. |
-| `vocabulary/forbidden` | Operation uses explicitly forbidden words. |
 | `operation/output-required` | Public operation has no output schema. |
 | `operation/locality-required` | Operation does not declare local/remote support. |
+| `operation/locality-binding` | Operation declares `local` or `remote` locality without the corresponding execution binding. |
 | `operation/locality-shape` | Local and remote paths do not share one input/output contract. |
 | `operation/effects-required` | Operation does not declare `effects.kind`, idempotence, and danger level. |
 | `operation/effects-policy-consistent` | Effects and execution/conformance policy disagree, such as a dangerous delete treated as non-destructive. |
 | `operation/id-stable` | Operation ID is missing, duplicated, or unstable. |
+| `contract/remote-base-url` | Contract-level remote config exists without a base URL env var or literal. |
 | `operation/http-binding-complete` | Remote operation leaves input fields unbound. |
 | `remote/bind-coverage` | Remote binding omits input fields, references missing fields, or binds fields to conflicting locations. |
 | `operation/example-consistency` | Example argv does not parse to the declared example input. |
 | `operation/output-portable` | Output schema cannot be represented in generated surfaces. |
 | `schema/portable` | Input/output schema uses unsupported transforms, custom refinements, functions, non-JSON values, or lossy defaults without an explicit escape hatch. |
 | `schema/no-eager-local-import` | Schema eagerly imports a referenced local implementation module. |
-| `override/guarded` | Per-product override escapes allowed vocabulary. |
 | `openapi/eligibility` | Operation claims OpenAPI output but lacks HTTP-compatible mapping. |
 | `generated/no-drift` | Generated files differ from current schema output. |
 | `generated/no-manual-edit` | Generated file provenance header is missing or altered. |
@@ -806,7 +796,7 @@ Build system MVP is accepted only when:
 - handwritten `@lili/core` CLI still works without `@lili/build`
 - core exposes outbound HTTP operation transport for handwritten and generated CLIs
 - runtime schema IR defines closed vocabulary, locality, effects, input schema, output schema, remote binding, and operation metadata
-- schema linter rejects vocabulary drift, missing output contracts, missing locality, missing or inconsistent effects, invalid overrides, incomplete remote bindings, unsupported portable schema shapes, and eager local imports
+- schema linter rejects vocabulary drift, missing output contracts, missing locality, missing or inconsistent effects, incomplete remote bindings, unsupported portable schema shapes, and eager local imports
 - generated command tree registers commands through public `@lili/core` APIs
 - generated remote command calls the core HTTP operation transport
 - generated local command imports implementation lazily at runtime

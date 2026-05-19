@@ -142,7 +142,7 @@ A destructive fixture must name the target. No destructive operation runs agains
 export const ConformanceReport = z.object({
   reportVersion: z.literal(1),
 
-  program: z.object({
+  contract: z.object({
     name: z.string(),
     version: z.string(),
     schemaDigest: z.string(),

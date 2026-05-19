@@ -6,3 +6,4 @@ reports/
 .stryker/
 *.log
 .claude/
+.DS_Store
