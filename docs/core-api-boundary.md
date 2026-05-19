@@ -36,6 +36,17 @@ Generated auth-enabled CLIs may also require global generated flags `--profile`,
 
 This re-freeze does not make auth a separate package. The authoritative behavior and MVP staging live in `docs/auth-session.md`.
 
+### Phase 3D-A landed (env-only auth)
+
+The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/build/test/core-consumer-boundary.test.ts`:
+
+- Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential`.
+- Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `ResolvedAuthMeta`.
+
+Deferred to 3D-B / 3D-C / Phase 4: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, `serializeHttpOperationRequest` / `callHttpOperation`.
+
+`LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` envelope gained the matching optional `details` field. `errorToObject` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
+
 Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
 ## Freeze rules

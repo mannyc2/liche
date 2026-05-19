@@ -124,6 +124,24 @@ Before adding rewrite tests:
 | AUTH-011 | Auth global flags are generated only for auth-enabled CLIs. | `docs/auth-session.md` | Compare generated help for auth and no-auth product fixtures. | CLI help snapshot | `--profile`/`--no-session` pollute unauthenticated CLIs. |
 | AUTH-012 | Local scope checks are best-effort and server remains authoritative. | `docs/auth-session.md` | Known missing scope fails locally; unknown scopes call server and map 403. | Scope fixture + HTTP mock | CLI blocks valid tokens or treats local scopes as definitive authorization. |
 
+### Phase 3D-A implementation trace
+
+The env-only slice of `docs/auth-session.md` shipped in Phase 3D-A. Implementation pointers for the rows that are already covered by tests:
+
+| ID | Status | Test file(s) |
+|---|---|---|
+| AUTH-001 | Implemented (env-only) | `packages/build/test/catalog-normalization.test.ts` (Auth/Context/Capability requires describe blocks) |
+| AUTH-002 | Implemented | `packages/core/test/auth/secret.test.ts`, `packages/core/test/auth/errors.test.ts` |
+| AUTH-003 | Implemented (env-only) | `packages/core/test/auth/resolve.test.ts` (CLI vs CI invocation, source order, custom headers) |
+| AUTH-004 | Partially implemented (env+flag; stored-profile path deferred to 3D-B) | `packages/core/test/auth/resolve.test.ts` (resolveContext describe block) |
+| AUTH-006 | Partially implemented (no implicit login because no login command exists yet) | `packages/build/test/generate-cli-auth.test.ts` (missing-env fails with `AUTH_MISSING`, never reaches transport) |
+| AUTH-008 | Deferred to Phase 4 (no transport yet) | — |
+| AUTH-010 | Implemented (env modes/contexts; session/OAuth-device entries land with their slices) | `packages/build/test/catalog-normalization.test.ts` (Surface manifest auth metadata describe block) |
+| AUTH-011 | Implemented (no-auth product emits no auth runtime; conditional imports verified) | `packages/build/test/generate-cli-auth.test.ts` (no-auth assertion at end of source-assertions describe) |
+| AUTH-012 | Implemented locally (`AUTH_SCOPE_MISSING` factory wired into `resolveAuth` when `requiredScopes` are passed and the credential has known scopes); server path deferred to Phase 4 | `packages/core/test/auth/errors.test.ts`, `packages/core/test/auth/resolve.test.ts` |
+
+AUTH-005, AUTH-007, AUTH-009 require sessions / `whoami` / agent surface metadata and stay open for 3D-B and beyond.
+
 ## Distribution coverage
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |

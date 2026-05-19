@@ -615,3 +615,13 @@ No selected profile, selected org/project value, token, refresh token, account e
 - no implicit login from normal operations
 
 Deferred: multi-provider auth, per-capability provider selection, refresh-token rotation, OS keychain integration, hosted policy/session sync, OAuth consent optimization, remote context pickers, and agent-triggered login.
+
+## Implementation status
+
+Slice A landed in Phase 3D-A (next-plan.md). The behavior in this doc is authoritative; the notes below trace the implementation:
+
+- `@lili/core`: `SecretString` + `secret()` (`packages/core/src/auth/secret.ts`); env-only `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential` (`packages/core/src/auth/resolve.ts`); `AUTH_MISSING` / `AUTH_CI_TOKEN_MISSING` / `AUTH_CONTEXT_REQUIRED` / `AUTH_SCOPE_MISSING` / `AUTH_PERMISSION_DENIED` / `AUTH_INVALID` / `AUTH_EXPIRED` factories built on `LiliError` (`packages/core/src/auth/errors.ts`). `LiliError.details` and `CommandError.details` carry structured auth payloads through the envelope.
+- `@lili/build`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.context.env|remote` (`packages/build/src/auth.ts`); `Product.auth(...)` and `Product.context(...)` chain methods (`packages/build/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` requires an explicit `.auth(...)` and validates capability `requires` against declared contexts and auth posture (`packages/build/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/build/src/manifest.ts`).
+- Generated CLI (`packages/build/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `applyAuth` / `resolveAuth` / `resolveContext` from `@lili/core`, emits top-level `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as a required `z.string()` option, and runs a resolve-then-applyAuth preamble before the (still Phase-4) transport stub. Products with `Auth.none()` and no context-requiring capabilities produce byte-equivalent output to Phase 3C.
+
+Out of scope for 3D-A (and so not yet implemented): file-backed `SessionStore`, profile selection, `--profile` / `--non-interactive` / `--no-session`, generated `whoami` / `switch` / `login` / `logout`, OAuth device flow, `Auth.token.session`, identity endpoint resolution, remote-context `list` runtime calls, and the real `callHttpOperation` / `serializeHttpOperationRequest` transport (which is Phase 4).
