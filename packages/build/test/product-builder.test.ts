@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  Auth,
   Command,
   Field,
   FieldBuilder,
@@ -234,5 +235,103 @@ describe('Product builder', () => {
     })
     expect(product.description).toBe('Build and deploy serverless applications.')
     expect(product.scope).toEqual({ kind: 'account', param: 'account_id' })
+  })
+})
+
+describe('Auth authoring API', () => {
+  test('Auth.none returns a plain { kind: "none" } spec', () => {
+    expect(Auth.none()).toEqual({ kind: 'none' })
+  })
+
+  test('Auth.bearer captures id, optional header, and sources', () => {
+    const spec = Auth.bearer({
+      id: 'acme',
+      sources: [Auth.token.env('ACME_TOKEN', { label: 'Bearer token' })],
+    })
+    expect(spec).toEqual({
+      kind: 'bearer',
+      id: 'acme',
+      sources: [{ kind: 'env', envVar: 'ACME_TOKEN', label: 'Bearer token' }],
+    })
+  })
+
+  test('Auth.bearer flows through a custom header when provided', () => {
+    const spec = Auth.bearer({
+      id: 'acme',
+      header: 'X-Bearer',
+      sources: [Auth.token.env('ACME_TOKEN')],
+    })
+    expect(spec.header).toBe('X-Bearer')
+  })
+
+  test('Auth.apiKey requires a header and stores sources', () => {
+    const spec = Auth.apiKey({
+      id: 'acme',
+      header: 'x-api-key',
+      sources: [Auth.token.env('ACME_API_KEY')],
+    })
+    expect(spec).toEqual({
+      kind: 'apiKey',
+      id: 'acme',
+      header: 'x-api-key',
+      sources: [{ kind: 'env', envVar: 'ACME_API_KEY' }],
+    })
+  })
+
+  test('Auth.token.env supports mode: "ci"', () => {
+    const src = Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' })
+    expect(src).toEqual({ kind: 'env', envVar: 'ACME_CI_TOKEN', mode: 'ci' })
+  })
+
+  test('Auth.context.env returns a kind:"env" spec with the select bag', () => {
+    const ctx = Auth.context.env({
+      label: 'Organization',
+      select: { flag: 'org', env: 'ACME_ORG_ID' },
+    })
+    expect(ctx).toEqual({
+      kind: 'env',
+      label: 'Organization',
+      select: { flag: 'org', env: 'ACME_ORG_ID' },
+    })
+  })
+
+  test('Auth.context.remote keeps the list endpoint and id/name fields as metadata', () => {
+    const ctx = Auth.context.remote({
+      label: 'Organization',
+      idField: 'org_id',
+      nameField: 'name',
+      list: { http: { method: 'GET', path: '/v1/orgs' } },
+      select: { flag: 'org', env: 'ACME_ORG_ID' },
+    })
+    expect(ctx).toEqual({
+      kind: 'remote',
+      label: 'Organization',
+      idField: 'org_id',
+      nameField: 'name',
+      list: { http: { method: 'GET', path: '/v1/orgs' } },
+      select: { flag: 'org', env: 'ACME_ORG_ID' },
+    })
+  })
+
+  test('Product.auth() stores the spec and rejects a second call', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' }).auth(Auth.none())
+    expect(product.authSpec).toEqual({ kind: 'none' })
+    expect(() => product.auth(Auth.bearer({ id: 'x', sources: [Auth.token.env('Y')] }))).toThrow(/already declared auth/)
+  })
+
+  test('Product.context() preserves declaration order and rejects duplicate ids', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' })
+      .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+      .context('project', Auth.context.env({ select: { flag: 'project', env: 'ACME_PROJECT_ID' } }))
+    expect(product.contexts.map((c) => c.id)).toEqual(['org', 'project'])
+    expect(() =>
+      product.context('org', Auth.context.env({ select: { flag: 'org', env: 'X' } })),
+    ).toThrow(/already declared context/)
+  })
+
+  test('Product without .auth() leaves authSpec undefined (Commit 3 does not enforce)', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' })
+    expect(product.authSpec).toBeUndefined()
+    expect(product.contexts).toEqual([])
   })
 })

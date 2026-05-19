@@ -1,3 +1,4 @@
+import type { AuthSpec, ContextSpec, ProductContextEntry } from './auth.js'
 import type { CommandSpec, HttpSpec, SurfaceHints } from './command.js'
 import type { FieldBuilder } from './field.js'
 import type { Shape } from './shape.js'
@@ -100,6 +101,8 @@ export class Product {
   #resources: ResourceBuilder[] = []
   #commands: ProductCommandEntry[] = []
   #bindings: BindingSpec[] = []
+  #auth: AuthSpec | undefined
+  #contexts: ProductContextEntry[] = []
 
   private constructor(init: ProductInit) {
     this.id = init.id
@@ -131,6 +134,22 @@ export class Product {
     return this
   }
 
+  auth(spec: AuthSpec): this {
+    if (this.#auth !== undefined) {
+      throw new Error(`Product '${this.id}' already declared auth; only one provider is allowed.`)
+    }
+    this.#auth = spec
+    return this
+  }
+
+  context(id: string, spec: ContextSpec): this {
+    if (this.#contexts.some((c) => c.id === id)) {
+      throw new Error(`Product '${this.id}' already declared context '${id}'.`)
+    }
+    this.#contexts.push({ id, spec })
+    return this
+  }
+
   get resources(): readonly ResourceBuilder[] {
     return this.#resources
   }
@@ -141,6 +160,14 @@ export class Product {
 
   get bindings(): readonly BindingSpec[] {
     return this.#bindings
+  }
+
+  get authSpec(): AuthSpec | undefined {
+    return this.#auth
+  }
+
+  get contexts(): readonly ProductContextEntry[] {
+    return this.#contexts
   }
 }
 

@@ -62,6 +62,23 @@ export type {
   RuntimeProduct,
 } from './product.js'
 
+export { Auth } from './auth.js'
+export type {
+  AuthApiKeySpec,
+  AuthBearerSpec,
+  AuthNoneSpec,
+  AuthSpec,
+  ContextEnvSpec,
+  ContextRemoteSpec,
+  ContextSelectSpec,
+  ContextSpec,
+  EnvTokenSource,
+  ProductContextEntry,
+  RequiresSpec,
+  TokenSource,
+  TokenSourceMode,
+} from './auth.js'
+
 export { DEFAULT_GENERATED_VOCABULARY, vocabulary } from './vocabulary.js'
 export type { Vocabulary, VocabularyOverrides } from './vocabulary.js'
 
