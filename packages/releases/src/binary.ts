@@ -40,31 +40,26 @@ type ParsedTarget = {
   cpuVariant?: 'baseline' | 'modern'
 }
 
-const PLATFORMS = new Set<BinaryTarget['platform']>(['darwin', 'linux', 'windows'])
-const ARCHES = new Set<BinaryTarget['arch']>(['arm64', 'x64'])
+// Closed set of Bun --target values supported by the release verifier.
+// Each row is the canonical platform/arch/libc/cpuVariant the manifest
+// must agree with. Add a row when Bun ships a new target variant.
+// Reference: https://bun.sh/docs/bundler/executables
+const BUN_TARGETS: Record<string, ParsedTarget> = {
+  'bun-linux-x64': { platform: 'linux', arch: 'x64', libc: 'glibc' },
+  'bun-linux-x64-baseline': { platform: 'linux', arch: 'x64', libc: 'glibc', cpuVariant: 'baseline' },
+  'bun-linux-x64-musl': { platform: 'linux', arch: 'x64', libc: 'musl' },
+  'bun-linux-x64-musl-baseline': { platform: 'linux', arch: 'x64', libc: 'musl', cpuVariant: 'baseline' },
+  'bun-linux-arm64': { platform: 'linux', arch: 'arm64', libc: 'glibc' },
+  'bun-linux-arm64-musl': { platform: 'linux', arch: 'arm64', libc: 'musl' },
+  'bun-darwin-x64': { platform: 'darwin', arch: 'x64' },
+  'bun-darwin-x64-baseline': { platform: 'darwin', arch: 'x64', cpuVariant: 'baseline' },
+  'bun-darwin-arm64': { platform: 'darwin', arch: 'arm64' },
+  'bun-windows-x64': { platform: 'windows', arch: 'x64' },
+  'bun-windows-x64-baseline': { platform: 'windows', arch: 'x64', cpuVariant: 'baseline' },
+}
 
 function parseBunTarget(target: string): ParsedTarget | null {
-  if (!target.startsWith('bun-')) return null
-  const parts = target.slice('bun-'.length).split('-')
-  const platform = parts[0] as BinaryTarget['platform'] | undefined
-  const arch = parts[1] as BinaryTarget['arch'] | undefined
-  if (!platform || !PLATFORMS.has(platform)) return null
-  if (!arch || !ARCHES.has(arch)) return null
-  let libc: ParsedTarget['libc']
-  let cpuVariant: ParsedTarget['cpuVariant']
-  for (const segment of parts.slice(2)) {
-    if (segment === 'musl') {
-      if (libc) return null
-      libc = 'musl'
-    } else if (segment === 'baseline' || segment === 'modern') {
-      if (cpuVariant) return null
-      cpuVariant = segment
-    } else {
-      return null
-    }
-  }
-  if (platform === 'linux' && !libc) libc = 'glibc'
-  return { platform, arch, ...(libc ? { libc } : {}), ...(cpuVariant ? { cpuVariant } : {}) }
+  return BUN_TARGETS[target] ?? null
 }
 
 function checkTargetNormalization(binary: BinaryTarget): BinaryVerificationFailure | null {
