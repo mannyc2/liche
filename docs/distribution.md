@@ -104,6 +104,50 @@ export const CliReleaseManifest = z.object({
     ).default([]),
   }),
 
+  auth: z
+    .object({
+      providers: z.array(
+        z.object({
+          id: z.string(),
+          kind: z.enum(["none", "bearer", "apiKey", "oauthDevice"]),
+          credentialTransport: z.enum(["none", "bearer", "apiKey"]).optional(),
+          modes: z.array(z.enum(["env", "session", "oauth-device"])).default([]),
+          envVars: z.array(
+            z.object({
+              name: z.string(),
+              purpose: z.string(),
+            }),
+          ).default([]),
+          commands: z
+            .object({
+              login: z.string().optional(),
+              logout: z.string().optional(),
+              whoami: z.string().optional(),
+              switch: z.string().optional(),
+            })
+            .optional(),
+          contexts: z.array(
+            z.object({
+              id: z.string(),
+              envVar: z.string().optional(),
+              flag: z.string().optional(),
+            }),
+          ).default([]),
+          sessionStorage: z
+            .object({
+              used: z.boolean(),
+              profiles: z.boolean(),
+              storesAccessTokens: z.boolean(),
+              storesRefreshTokens: z.boolean(),
+              keychainRequired: z.boolean(),
+            })
+            .optional(),
+          requiredRuntimeCapabilities: z.array(z.string()).default([]),
+        }),
+      ).default([]),
+    })
+    .optional(),
+
   conformance: z.object({
     required: z.boolean().default(false),
     report: z.string().optional(),
@@ -175,6 +219,8 @@ export const CliReleaseManifest = z.object({
 ```
 
 `runtime.env` and `runtime.config` record runtime expectations, not secret values. For example, a binary that expects `ACME_API_URL` for remote dispatch must declare that env var in the manifest.
+
+`auth` records non-secret auth/session expectations. It may include provider IDs, auth modes, token env var names, generated auth command names, context env/flag names, session-storage posture, and required runtime capabilities. It must not include selected profile, selected org/project values, tokens, refresh tokens, API keys, account email, keychain references, or session file paths.
 
 `metadata` exists so pure package renderers do not need to read `package.json`, git config, product schema source, or build directories.
 
@@ -407,6 +453,7 @@ Required checks:
 | `release/manifest-schema` | Manifest validates against `CliReleaseManifest`. |
 | `release/catalog-provenance` | Manifest contains product id, name, version, commit, and catalog digest. |
 | `release/runtime-contract` | Manifest records env/config expectations for remote transport and other runtime config. |
+| `release/auth-contract` | Manifest records non-secret auth providers, modes, env var names, generated auth commands, context selectors, and session-storage posture. |
 | `release/conformance-provenance` | Manifest records required conformance report metadata when release policy requires server conformance. |
 | `release/target-normalization` | Every binary target string agrees with platform, arch, libc, and cpu variant fields. |
 | `release/binary-hash` | Final signed/notarized binary bytes match manifest sha256. |
@@ -457,6 +504,7 @@ Distribution MVP is accepted only when:
 
 - manifest includes release version, product/catalog provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/cpuVariant/url/sha256/size
 - manifest includes renderer metadata needed by pure package renderers
+- manifest includes non-secret auth/session expectations when auth providers are configured
 - manifest can record conformance report version, hash, target, summary, catalog digest, and destructive-case status when publishing policy requires conformance
 - manifest can record executable metadata needed for Windows resource fields without embedding local icon paths
 - manifest includes stable package identity records and can be joined to verified artifact records by package ID

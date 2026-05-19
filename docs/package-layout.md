@@ -93,6 +93,7 @@ Owns:
 - MCP basics (`--mcp` runtime support remains core; `mcp add` is an opt-in helper built-in)
 - skills/docs helpers (`skills` command helpers are opt-in built-ins; CLIs may provide packaged skill content)
 - outbound HTTP operation transport
+- auth/session runtime primitives (`SecretString`, auth/context resolution, session store, auth header application)
 
 Must not depend on `@lili/build` or `@lili/releases`.
 
@@ -101,9 +102,11 @@ Must not depend on `@lili/build` or `@lili/releases`.
 Owns:
 
 - runtime product schema authoring API
+- auth provider, permission, context, and capability requirement declarations
 - canonical catalog normalization
 - schema lints
 - generated CLI source
+- generated auth capabilities when opted in
 - generated OpenAPI/MCP/docs/Agent Skill/JSON Schema surfaces
 - generated surface manifest and surface drift checks
 - generated provenance headers
@@ -122,6 +125,7 @@ Product-specific surface adapters, such as `wrangler.jsonc` fragments, Workers B
 Owns:
 
 - release manifest schema
+- non-secret auth/session release metadata
 - artifact provenance
 - binary verification
 - renderer interface

@@ -119,6 +119,9 @@ type ProductSchema = {
   version: string;
   description: string;
   scope?: ProductScope;
+  authProviders: AuthProvider[];
+  permissions: Record<string, Permission>;
+  contexts: ProductContext[];
   resources: Resource[];
   commands: Command[];
   bindings: Binding[];
@@ -132,6 +135,8 @@ type Capability =
 `Capability` is the flat unit consumed by generators. A resource operation and a command are both capabilities, but they retain their kind. Generators filter capabilities by predicate instead of assuming every capability belongs on every surface.
 
 Internal implementation may use names such as `Catalog` or `CanonicalCatalog`, but avoid exposing `ProductIR` or `OperationIR` as the user-facing model.
+
+Auth providers, permissions, and contexts are catalog nodes, not runtime session state. They describe what capabilities require and how generated runtime code should resolve credentials/context. Stored sessions, selected profiles, selected org/project values, token material, and account identities are runtime state and must not affect the catalog digest. Detailed requirements live in `docs/auth-session.md`.
 
 ## Resources
 
@@ -163,7 +168,7 @@ type Command = {
   description?: string;
   input?: Shape;
   output?: Shape;
-  permission?: string;
+  requires?: CapabilityRequirements;
   execution: Execution;
   surfaces?: SurfaceHints;
 };
@@ -177,6 +182,49 @@ type Execution =
 `steps` are documentation and progress metadata only. Execution orchestration lives in the handler. Do not add a declarative step runner until a real runtime consumes it.
 
 Commands use their own `Shape.object(...)` input/output. They do not pick fields from a resource unless a helper explicitly expands that into an owned command shape.
+
+## Auth, permissions, and context
+
+Auth is opt-in and catalog-owned:
+
+```ts
+type AuthProvider =
+  | { kind: "none" }
+  | {
+      kind: "bearer" | "apiKey" | "oauthDevice";
+      id: string;
+      sources: TokenSource[];
+      header?: string;
+      identity?: IdentityProbe;
+      commands?: AuthCommandNames;
+    };
+
+type Permission = {
+  id: string;
+  scope?: string;
+  description?: string;
+};
+
+type ProductContext = {
+  id: string;
+  label: string;
+  parent?: string;
+  select: {
+    flag?: string;
+    env?: string;
+  };
+};
+
+type CapabilityRequirements = {
+  auth?: true | { provider: string };
+  contexts?: string[];
+  permissions?: string[];
+};
+```
+
+Capability requirements replace loose `permission?: string` before the product-schema API becomes public. Generated surfaces use requirements to explain missing auth/context, agent visibility, OpenAPI security, and release manifest runtime expectations. Server-side permission checks remain authoritative; local scope checks are best-effort only when a credential exposes scopes.
+
+Generated auth commands such as `login`, `logout`, `whoami`, and `switch` are normal generated capabilities with `family: "auth"`. They are emitted only when the auth provider opts into the needed features. `whoami` may be agent-visible when it is local, read-only, and redacted; `login`, `logout`, and `switch` are not agent-visible by default.
 
 ## Fields and shapes
 
@@ -242,7 +290,7 @@ function cliCapabilities(catalog: Catalog): Capability[] {
 function agentCapabilities(catalog: Catalog): Capability[] {
   return catalog.capabilities.filter((capability) =>
     capability.surfaces.agent === true &&
-    capability.permission !== undefined &&
+    capability.requirements !== undefined &&
     capability.input.portable === true &&
     capability.output.portable === true
   );

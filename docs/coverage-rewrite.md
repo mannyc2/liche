@@ -106,6 +106,23 @@ Before adding rewrite tests:
 | SURFACE-012 | Product-specific surfaces require explicit adapters. | `docs/application-integration.md` | Request `wrangler.jsonc`, Workers Binding RPC, dashboard metadata, or generated server/API output before adapter registration. | Requirement gate | Build silently emits partial product-specific artifacts. |
 | SURFACE-013 | Command manifest is catalog-derived and includes effects/execution. | `docs/build-system.md` | Generate `schema --json` or command manifest output and assert argv, input/output schemas, effects, execution mode, and examples. | Canonical catalog | Agent manifest loses CLI-only semantics or mirrors OpenAPI instead. |
 
+## Auth/session coverage
+
+| ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
+|---|---|---|---|---|---|
+| AUTH-001 | Auth providers and capability requirements normalize into the catalog. | `docs/auth-session.md` | Product fixture declares provider, permissions, contexts, and capability `requires`; inspect catalog. | Canonical catalog | Auth modeled as ad hoc generated CLI behavior. |
+| AUTH-002 | `SecretString` redacts through string and JSON paths. | `docs/auth-session.md` | Wrap token and assert `String(secret)`, JSON, error details, and metadata redact. | Redaction type | Token leaks through logs or envelopes. |
+| AUTH-003 | Env bearer/API key resolution is deterministic. | `docs/auth-session.md` | Resolve auth with env present/missing across CLI, CI, and agent invocations. | Resolution table | Agent or CI falls back to interactive/session behavior unexpectedly. |
+| AUTH-004 | Context resolution follows flag > env > allowed stored profile context. | `docs/auth-session.md` | Fixture covers explicit flag, context env, stored profile, env credential plus explicit profile. | Resolution table | Wrong org/project selected silently. |
+| AUTH-005 | Generated auth commands are catalog capabilities. | `docs/auth-session.md` | Provider fixture emits `whoami`/`switch` and later `login`/`logout` with auth effects and surfaces. | Catalog snapshot | Auth commands become hard-coded built-ins or agent-visible mutators. |
+| AUTH-006 | Normal operations never trigger login implicitly. | `docs/auth-session.md` | Auth-required command without credential fails; generated `login` is the only device-flow path. | CLI behavior | Agent or CI command opens browser/device flow. |
+| AUTH-007 | Session store handles permissions, locking, and corruption. | `docs/auth-session.md` | Temporary store asserts mode, atomic write, lock timeout, corrupt rename. | Filesystem fixture | Corrupt sessions silently reset or concurrent writes corrupt state. |
+| AUTH-008 | 401/403 map through auth-aware error rules. | `docs/http-operation-transport.md` | Mock 401/403 with/without auth requirement and known scopes. | Error envelope | Every 401 is called expired or every 403 becomes generic HTTP. |
+| AUTH-009 | Agent/MCP auth metadata is useful and secret-free. | `docs/auth-session.md` | Generated MCP/tool metadata includes requirements/status and excludes tokens, env values, paths, user codes. | Metadata snapshot | Agent gets secrets or cannot explain missing auth. |
+| AUTH-010 | Release manifest records non-secret auth expectations. | `docs/distribution.md` | Manifest fixture includes auth providers, env names, commands, contexts, session posture, no secrets. | Manifest schema | Release artifact hides auth requirements or leaks runtime state. |
+| AUTH-011 | Auth global flags are generated only for auth-enabled CLIs. | `docs/auth-session.md` | Compare generated help for auth and no-auth product fixtures. | CLI help snapshot | `--profile`/`--no-session` pollute unauthenticated CLIs. |
+| AUTH-012 | Local scope checks are best-effort and server remains authoritative. | `docs/auth-session.md` | Known missing scope fails locally; unknown scopes call server and map 403. | Scope fixture + HTTP mock | CLI blocks valid tokens or treats local scopes as definitive authorization. |
+
 ## Distribution coverage
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |

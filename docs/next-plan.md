@@ -184,13 +184,74 @@ Verification:
 - The generated surface manifest records separate `cli` and `openapi` surface entries with independent output digests.
 - Hand-editing `openapi.json` makes `generate --check` fail with the `openapi` surface id.
 
+## Phase 3D: auth/session catalog and runtime foundation
+
+Implement auth/session in staged slices from `docs/auth-session.md`. Keep the API opt-in and do not create `@lili/auth`.
+
+### Phase 3D-A: env auth and capability requirements
+
+Add catalog support for:
+
+- one auth provider per product
+- `Auth.none`, `Auth.apiKey`, and `Auth.bearer`
+- token env sources
+- product permissions and capability `requires`
+- context declarations with explicit flags and env vars
+- `SecretString`, `resolveAuth`, `resolveContext`, and `applyAuth` in `@lili/core`
+- structured `AUTH_*` errors
+- release manifest auth metadata
+
+Verification:
+
+- Env bearer/API key credentials resolve through `SecretString` and never serialize raw values.
+- Missing human auth, missing CI token, missing context, and known missing scope produce structured auth envelopes.
+- Generated commands add declared context flags and pass resolved credentials into core transport without raw token strings.
+- Agent/MCP metadata includes auth requirements/status but no secrets.
+
+### Phase 3D-B: file sessions and context
+
+Add the file-backed `SessionStore` and profile behavior:
+
+- `createFileSessionStore`
+- profile selection order
+- stored selected context
+- generated `whoami` and `switch`
+- `--profile`, `--non-interactive`, and `--no-session`
+- lock-file writes, atomic rename, corrupt-file handling
+
+Verification:
+
+- Stored profile context is used only when allowed by the resolution rules.
+- Env credentials can combine with stored context only when `--profile` is explicit, and status metadata reports both sources.
+- Corrupted session JSON is renamed and reported as `AUTH_SESSION_CORRUPT`.
+- Concurrent write lock timeout reports `AUTH_SESSION_LOCKED`.
+
+### Phase 3D-C: OAuth device login
+
+Add generated OAuth device flow only after env auth and sessions are stable:
+
+- generated `login` and `logout`
+- human-only verification URI and user code output
+- access-token file storage
+- no refresh tokens
+- no OS keychain dependency
+- no implicit login from normal operations
+
+Verification:
+
+- `login` works only in an interactive CLI invocation.
+- `--non-interactive`, CI, agent, and MCP invocations never print device user codes or open login.
+- Normal auth-required commands fail instead of starting login.
+
 ## Phase 4: remote and conformance slice
 
 Prove that generated remote commands and handwritten remote commands share the same core transport:
 
 - generated remote wiring calls `serializeHttpOperationRequest` and `callHttpOperation`
+- generated auth-aware remote wiring calls `resolveAuth`/`resolveContext` before `callHttpOperation`
 - output schema validation treats HTTP responses as untrusted
 - non-2xx, malformed JSON, unsupported content types, timeout, missing base URL, and missing auth become structured core errors
+- 401/403 responses map to auth errors when an auth requirement is present and to remote HTTP errors otherwise
 - `li-build conform` verifies an owned fixture server separately from `generate --check`
 
 Verification:

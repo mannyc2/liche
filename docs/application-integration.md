@@ -93,7 +93,7 @@ Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`,
 ## Example schema
 
 ```ts
-import { Command, Field, Product, Shape } from "@lili/build";
+import { Auth, Command, Field, Product, Shape } from "@lili/build";
 
 export default Product.create({
   id: "myapp",
@@ -101,6 +101,14 @@ export default Product.create({
   version: "1.0.0",
   description: "Project deployment and operations.",
 })
+  .auth(Auth.bearer({
+    id: "myapp",
+    sources: [Auth.token.env("MYAPP_TOKEN")],
+  }))
+  .permissions({
+    "projects:read": Auth.permission.scope("projects.read"),
+    "projects:deploy": Auth.permission.scope("projects.deploy"),
+  })
   .resource("project", {
     label: "Project",
     path: "/api/projects",
@@ -114,7 +122,7 @@ export default Product.create({
         summary: "List projects",
         http: { method: "GET", path: "" },
         output: Shape.list("project"),
-        permission: "projects:read",
+        requires: { auth: true, permissions: ["projects:read"] },
         surfaces: {
           cli: { command: "projects list" },
           docs: true,
@@ -132,7 +140,7 @@ export default Product.create({
       deploymentId: Field.string("Deployment ID").required(),
     }),
     handler: "myapp.deploy",
-    permission: "projects:deploy",
+    requires: { auth: true, permissions: ["projects:deploy"] },
     surfaces: {
       cli: { command: "deploy <projectId>" },
       docs: true,

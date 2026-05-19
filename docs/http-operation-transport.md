@@ -40,7 +40,8 @@ export type RuntimeValue =
 export type HttpAuth =
   | { kind: "none" }
   | { kind: "bearer"; envVar: string }
-  | { kind: "apiKey"; envVar: string; header: string };
+  | { kind: "apiKey"; envVar: string; header: string }
+  | { kind: "resolved"; credential: AuthCredential };
 
 export type HttpOperationBind<TInput = Record<string, unknown>> = {
   path?: Array<keyof TInput & string>;
@@ -77,6 +78,8 @@ export type HttpOperationCall<TInput, TOutput> =
 ```
 
 MVP intentionally excludes config-backed runtime values. Start with `env` and `literal`; add config-backed values after core has a clean config access story for command handlers.
+
+Env-backed `bearer` and `apiKey` auth remain supported for handwritten CLIs and the first generated auth slice. Auth/session-aware generated CLIs should resolve credentials before transport and pass `{ kind: "resolved", credential }` so `callHttpOperation` only applies headers and reports HTTP failures. See `docs/auth-session.md`.
 
 Retry policy is also not part of the first transport slice. The default is no retry. The API should not preclude retries later, but initial behavior should prove serialization, fetch, timeout, parsing, validation, and structured errors first.
 
@@ -130,9 +133,13 @@ Required failures:
 | base URL invalid | `REMOTE_CONFIG_INVALID_BASE_URL` |
 | auth env missing | `REMOTE_CONFIG_MISSING_AUTH` |
 
-Auth is contract-level for MVP. Per-operation auth remains a non-goal until a concrete use case requires it.
+For env-backed transport auth, missing env remains a remote config error. For auth/session-aware generated CLIs, `resolveAuth` should fail before transport with an `AUTH_*` structured error such as `AUTH_MISSING` or `AUTH_CI_TOKEN_MISSING`.
+
+Auth is product-level for MVP. Per-capability provider selection remains a non-goal until a concrete use case requires it.
 
 Do not pass secret values through CLI flags such as `--auth-env NAME=VALUE`. Conformance and runtime should read inherited environment or explicit env files/target config with clear handling.
+
+When a resolved credential is present, `applyAuth` mutates headers. Generated code must not pass raw token strings to transport.
 
 ## Timeout
 
@@ -192,6 +199,14 @@ REMOTE_RESPONSE_UNSUPPORTED_CONTENT_TYPE
 REMOTE_RESPONSE_MALFORMED
 REMOTE_RESPONSE_SCHEMA
 ```
+
+HTTP status handling with auth:
+
+| Status | Mapping |
+|---|---|
+| 401 with auth present | `AUTH_INVALID` or `AUTH_EXPIRED` when expiry is known; do not assume all 401s are expiry. |
+| 403 with auth present | `AUTH_PERMISSION_DENIED` when the capability declared permissions; otherwise `REMOTE_HTTP_STATUS`. |
+| 401/403 without auth requirement | `REMOTE_HTTP_STATUS`. |
 
 Future retry support may add:
 
@@ -280,6 +295,8 @@ cli.command("users list", {
 });
 ```
 
+Auth/session-aware generated CLIs resolve credentials before this call, as shown in `docs/auth-session.md`. The example above is the env-backed transport path.
+
 ## Tests
 
 Required tests:
@@ -289,7 +306,7 @@ Required tests:
 - arrays repeat query params
 - missing base URL becomes `REMOTE_CONFIG_MISSING_BASE_URL`
 - invalid base URL becomes `REMOTE_CONFIG_INVALID_BASE_URL`
-- missing auth becomes `REMOTE_CONFIG_MISSING_AUTH`
+- missing env-backed transport auth becomes `REMOTE_CONFIG_MISSING_AUTH`; auth/session-aware generated CLIs fail earlier with `AUTH_*`
 - missing/unknown/conflicting bind fields fail before network
 - network failure becomes `REMOTE_NETWORK`
 - timeout becomes `REMOTE_TIMEOUT`

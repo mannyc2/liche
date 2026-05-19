@@ -21,6 +21,21 @@ Deliberate, narrow widening to support generated CLIs:
 
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
 
+## Auth/session re-freeze target
+
+When the auth/session slice lands, `@lili/core` deliberately widens again to support generated and handwritten remote-operation CLIs. The planned top-level public additions are:
+
+- `secret(value)` and `SecretString` — redaction boundary for token material. Stringification and JSON serialization must redact; only transport/session code may reveal.
+- `resolveAuth(input)` — async credential resolution over env and, in later slices, stored sessions.
+- `resolveContext(input)` — async context resolution over explicit flags/input, env, and allowed stored profile context.
+- `SessionStore` and `createFileSessionStore(options?)` — public session/profile storage interface and default file-backed implementation.
+- `applyAuth(headers, credential)` — transport-facing helper that mutates headers from a resolved credential.
+- Auth runtime types: `TokenSourceSpec`, `AuthProviderRuntime`, `AuthCredential`, `InvocationKind`, `ContextRuntime`, and `StoredProfile`.
+
+Generated auth-enabled CLIs may also require global generated flags `--profile`, `--non-interactive`, and `--no-session`. Those flags are generated CLI behavior, not handwritten core defaults.
+
+This re-freeze does not make auth a separate package. The authoritative behavior and MVP staging live in `docs/auth-session.md`.
+
 Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
 ## Freeze rules
@@ -62,6 +77,8 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `UsageObject` (`packages/core/src/types.ts:100`) — public help metadata.
 
 Also export `CommandError` (`packages/core/src/types.ts:33`), `FieldError` (`packages/core/src/types.ts:24`), `InferSchema` (`packages/core/src/types.ts:8`), and `ResultMeta` (`packages/core/src/types.ts:43`) because public types otherwise reference unexported helpers.
+
+The auth/session additions above join this keep-public list only when their implementation and API snapshot tests land. Until then they are planned public surface, not current exports.
 
 ## Mark internal
 

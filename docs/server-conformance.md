@@ -145,7 +145,7 @@ export const ConformanceReport = z.object({
   catalog: z.object({
     name: z.string(),
     version: z.string(),
-    schemaDigest: z.string(),
+    catalogDigest: z.string(),
   }),
 
   target: z.object({

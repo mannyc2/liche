@@ -18,7 +18,7 @@ Only two opt-in features are being added:
 
 Everything else remains current core runtime behavior unless a requirement document says otherwise.
 
-The canonical catalog is a product capability contract. It models resources, commands, bindings, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is still not a database model or a license to generate every possible product surface in MVP; product-specific surfaces remain adapter-gated.
+The canonical catalog is a product capability contract. It models resources, commands, bindings, auth providers, permissions, contexts, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is still not a database model or a license to generate every possible product surface in MVP; product-specific surfaces remain adapter-gated.
 
 Generated surfaces must be treated as a graph, not as unrelated emitters. Each generated surface declares its source (`catalog` or `openapi`), generator version, generation options, input digest, output digest, drift check, and owner package. A surface that cannot name those facts is not accepted as part of the build system.
 
@@ -92,7 +92,7 @@ no testkit package
 no bun-native rules package
 no release-extra package
 no package without an opt-in sentence
-no per-operation auth scheme unless a concrete use case requires it
+no per-capability auth provider selection unless a concrete use case requires it
 no generated server/API implementation unless an explicit adapter requirement exists
 no assumption that every command is CRUD, HTTP-backed, table-shaped, or resource-derived
 ```

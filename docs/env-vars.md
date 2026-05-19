@@ -71,3 +71,14 @@ Standalone executables produced by `bun build --compile` behave differently from
 - `BUN_BE_BUN=1` makes the binary impersonate the `bun` CLI itself. This is an upstream Bun feature; document it as a known runtime behavior. Schema-driven code does not execute in this mode.
 
 Schema-declared env vars (via `optionEnv` or `env`) are read directly from the process environment and are unaffected by autoload toggles.
+
+## Auth/session env vars
+
+Auth/session generated CLIs add a stricter env contract:
+
+- token env vars such as `ACME_TOKEN` and `ACME_API_KEY` are read by `resolveAuth`, wrapped in `SecretString`, and never exposed in command output, logs, MCP metadata, conformance reports, or release manifests
+- context env vars such as `ACME_ORG_ID` and `ACME_PROJECT_ID` are non-secret scoping values and may appear in redacted status metadata when useful
+- profile selection may use `<PRODUCT_ENV_PREFIX>_PROFILE`
+- raw secret CLI flags such as `--token`, `--api-key`, or `--auth-env NAME=VALUE` are not the primary generated path and must not be emitted by default
+
+Credential resolution order and generated flags are defined in `docs/auth-session.md`.

@@ -40,6 +40,9 @@ export type Catalog = {
   description: string;
   vocabulary: Vocabulary;
   scope?: ProductScope;
+  authProviders: AuthProviderCatalog[];
+  permissions: PermissionCatalog[];
+  contexts: ContextCatalog[];
   resources: Resource[];
   commands: Command[];
   bindings: Binding[];
@@ -61,6 +64,42 @@ export type RemoteAuth =
   | { kind: "bearer"; envVar?: string }
   | { kind: "apiKey"; envVar?: string; header?: string };
 
+export type AuthProviderCatalog =
+  | { kind: "none" }
+  | {
+      id: string;
+      kind: "bearer" | "apiKey" | "oauthDevice";
+      tokenSources: Array<
+        | { kind: "env"; envVar: string; mode: "any" | "ci"; label?: string }
+        | { kind: "session"; refresh: boolean }
+      >;
+      header?: string;
+      identity?: { http: HttpSpec; subject: string; label?: string };
+      generatedCommands: Partial<Record<"login" | "logout" | "whoami" | "switch", string>>;
+    };
+
+export type PermissionCatalog = {
+  id: string;
+  scope?: string;
+  description?: string;
+};
+
+export type ContextCatalog = {
+  id: string;
+  label: string;
+  parent?: string;
+  select: {
+    flag?: string;
+    env?: string;
+  };
+};
+
+export type CapabilityRequirements = {
+  auth?: true | { provider: string };
+  contexts: string[];
+  permissions: string[];
+};
+
 export type Capability = ResourceCapability | CommandCapability;
 
 export type ResourceCapability = {
@@ -72,7 +111,7 @@ export type ResourceCapability = {
   input: ShapeProjection;
   output: ShapeProjection;
   http?: HttpSpec;
-  permission?: string;
+  requirements: CapabilityRequirements;
   effects: CapabilityEffects;
   surfaces: NormalizedSurfaces;
   examples: CapabilityExample[];
@@ -88,7 +127,7 @@ export type CommandCapability = {
   input: ShapeProjection;
   output: ShapeProjection;
   execution: Execution;
-  permission?: string;
+  requirements: CapabilityRequirements;
   effects: CapabilityEffects;
   surfaces: NormalizedSurfaces;
   examples: CapabilityExample[];
@@ -132,6 +171,17 @@ export type HttpBind = {
 ```
 
 `effects` describes what the capability does for linting, help, docs, agent manifests, and default safety behavior. `policy` describes execution and conformance guard rails. They must agree: for example, `effects.kind: "delete"` or `effects.dangerous: true` cannot silently become a non-destructive conformance policy.
+
+Auth/session generated commands use first-class auth effects:
+
+```txt
+auth-session-read
+auth-session-write
+auth-session-delete
+auth-context-write
+```
+
+Do not encode auth commands as generic `write` or `exec`; generated surfaces and agents need to distinguish credential/session mutation from product data mutation.
 
 ## OpenAPI projection
 
