@@ -37,6 +37,8 @@ export type {
   VocabularyIR,
 } from './ir.js'
 
+export type { JsonSchemaNode, LocalityIR, RemoteAuthIR } from './types.js'
+
 export { canonicalDigest, canonicalize } from './digest.js'
 
 export { lintContract } from './lints.js'

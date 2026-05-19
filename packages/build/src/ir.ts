@@ -13,6 +13,9 @@ import type {
   RuntimeValue,
   Vocabulary,
 } from './schema.js'
+import type { LocalityIR, RemoteAuthIR } from './types.js'
+
+export type { LocalityIR, RemoteAuthIR } from './types.js'
 
 export type VocabularyIR = {
   verbs: string[]
@@ -74,7 +77,7 @@ export type OperationIR = {
   verb: string
   command: string[]
   description?: string
-  locality: { modes: Array<'local' | 'remote'>; default: 'local' | 'remote' }
+  locality: LocalityIR
   input: SchemaProjectionIR
   output: SchemaProjectionIR
   remote?: RemoteOperationIR
@@ -86,7 +89,7 @@ export type OperationIR = {
 
 export type ContractRemoteIR = {
   baseUrl: RuntimeValue
-  auth: { kind: 'none' | 'bearer' | 'apiKey'; envVar?: string; header?: string }
+  auth: RemoteAuthIR
   timeoutMs: number
 }
 
@@ -160,7 +163,7 @@ function deriveVerb(op: Operation): string {
   return verb
 }
 
-function normalizeLocality(locality: Locality): OperationIR['locality'] {
+function normalizeLocality(locality: Locality): LocalityIR {
   return { modes: [...locality.modes], default: locality.default }
 }
 

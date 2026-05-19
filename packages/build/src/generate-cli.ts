@@ -1,4 +1,5 @@
 import type { ContractIR, OperationIR } from './ir.js'
+import type { JsonSchemaNode } from './types.js'
 
 export type GenerateOptions = {
   generatorVersion: string
@@ -56,13 +57,11 @@ function rewriteToJs(module: string): string {
 
 function renderCli(ir: ContractIR): string[] {
   const groups = groupByFirstSegment(ir.operations)
-  const subCliVars: string[] = []
   const lines: string[] = []
 
   for (const [groupKey, ops] of groups) {
     if (ops.length === 1 && ops[0]!.command.length === 1) continue
     const varName = sanitizeIdent(groupKey)
-    subCliVars.push(varName)
     lines.push(`const ${varName} = Cli.create(${q(groupKey)})`)
     for (const op of ops) {
       const sub = op.command[op.command.length - 1]!
@@ -88,7 +87,6 @@ function renderCli(ir: ContractIR): string[] {
   lines.push(...chain)
   lines.push('')
   lines.push(`export default cli`)
-  void subCliVars
   return lines
 }
 
@@ -104,41 +102,49 @@ function groupByFirstSegment(operations: OperationIR[]): Map<string, OperationIR
 }
 
 function renderCommandCall(indent: string, name: string, op: OperationIR): string[] {
-  const lines: string[] = []
+  if (!op.local) {
+    throw new Error(`Operation '${op.id}' has no local implementation; remote-only generation is Phase 4`)
+  }
   const multimode = op.locality.modes.length > 1
   const inputSchema = multimode ? withLocalityFlags(op.input.jsonSchema) : op.input.jsonSchema
+  const lines: string[] = []
   lines.push(`${indent}.command(${q(name)}, {`)
   if (op.description) lines.push(`${indent}  description: ${q(op.description)},`)
   lines.push(`${indent}  options: ${renderSchema(inputSchema, `${indent}  `)},`)
   lines.push(`${indent}  output: ${renderSchema(op.output.jsonSchema, `${indent}  `)},`)
   lines.push(`${indent}  async run(ctx) {`)
-  if (!op.local) {
-    throw new Error(`Operation '${op.id}' has no local implementation; remote-only generation is Phase 4`)
-  }
-  if (multimode) {
-    lines.push(`${indent}    if (ctx.options.local === true && ctx.options.remote === true) {`)
-    lines.push(`${indent}      return ctx.error({ code: 'LOCALITY_CONFLICT', message: '--local and --remote are mutually exclusive' })`)
-    lines.push(`${indent}    }`)
-    lines.push(`${indent}    let mode = ${q(op.locality.default)}`)
-    lines.push(`${indent}    let source = 'schema-default'`)
-    lines.push(`${indent}    if (ctx.options.local === true) { mode = 'local'; source = 'flag' }`)
-    lines.push(`${indent}    else if (ctx.options.remote === true) {`)
-    if (op.remote) {
-      lines.push(`${indent}      mode = 'remote'; source = 'flag'`)
-      lines.push(`${indent}      return ctx.error({ code: 'REMOTE_NOT_IMPLEMENTED', message: 'Remote transport is not implemented yet (Phase 4)' })`)
-    } else {
-      lines.push(`${indent}      return ctx.error({ code: 'REMOTE_NOT_IMPLEMENTED', message: 'Remote transport is not implemented yet (Phase 4)' })`)
-    }
-    lines.push(`${indent}    }`)
-    lines.push(`${indent}    const { local: _local, remote: _remote, ...input } = ctx.options`)
-    lines.push(`${indent}    const data = await ${op.local.export}(input)`)
-    lines.push(`${indent}    return ctx.ok(data, { locality: { mode, source } })`)
-  } else {
-    lines.push(`${indent}    const data = await ${op.local.export}(ctx.options)`)
-    lines.push(`${indent}    return ctx.ok(data, { locality: { mode: ${q(op.locality.default)}, source: 'schema-default' } })`)
-  }
+  lines.push(...(multimode ? renderMultiModeRun(indent, op) : renderSingleModeRun(indent, op)))
   lines.push(`${indent}  },`)
   lines.push(`${indent}})`)
+  return lines
+}
+
+function renderSingleModeRun(indent: string, op: OperationIR): string[] {
+  return [
+    `${indent}    const data = await ${op.local!.export}(ctx.options)`,
+    `${indent}    return ctx.ok(data, { locality: { mode: ${q(op.locality.default)}, source: 'schema-default' } })`,
+  ]
+}
+
+function renderMultiModeRun(indent: string, op: OperationIR): string[] {
+  const lines: string[] = []
+  lines.push(`${indent}    if (ctx.options.local === true && ctx.options.remote === true) {`)
+  lines.push(`${indent}      return ctx.error({ code: 'LOCALITY_CONFLICT', message: '--local and --remote are mutually exclusive' })`)
+  lines.push(`${indent}    }`)
+  lines.push(`${indent}    let mode = ${q(op.locality.default)}`)
+  lines.push(`${indent}    let source = 'schema-default'`)
+  lines.push(`${indent}    if (ctx.options.local === true) { mode = 'local'; source = 'flag' }`)
+  lines.push(`${indent}    else if (ctx.options.remote === true) {`)
+  if (op.remote) {
+    lines.push(`${indent}      mode = 'remote'; source = 'flag'`)
+    lines.push(`${indent}      return ctx.error({ code: 'REMOTE_NOT_IMPLEMENTED', message: 'Remote transport is not implemented yet (Phase 4)' })`)
+  } else {
+    lines.push(`${indent}      return ctx.error({ code: 'REMOTE_NOT_IMPLEMENTED', message: 'Remote transport is not implemented yet (Phase 4)' })`)
+  }
+  lines.push(`${indent}    }`)
+  lines.push(`${indent}    const { local: _local, remote: _remote, ...input } = ctx.options`)
+  lines.push(`${indent}    const data = await ${op.local!.export}(input)`)
+  lines.push(`${indent}    return ctx.ok(data, { locality: { mode, source } })`)
   return lines
 }
 
@@ -164,15 +170,18 @@ function renderSchema(jsonSchema: unknown, indent: string): string {
   return renderSchemaNode(jsonSchema as JsonSchemaNode, indent)
 }
 
-type JsonSchemaNode = {
-  $schema?: string
-  type?: string
-  properties?: Record<string, JsonSchemaNode>
-  required?: string[]
-  items?: JsonSchemaNode
-  enum?: unknown[]
-  default?: unknown
-  additionalProperties?: boolean
+type SchemaRenderer = (node: JsonSchemaNode, indent: string) => string
+
+const TYPE_RENDERERS: Record<string, SchemaRenderer> = {
+  string: () => 'z.string()',
+  number: () => 'z.number()',
+  integer: () => 'z.number()',
+  boolean: () => 'z.boolean()',
+  array: (node, indent) => {
+    if (!node.items) throw new Error('Array schema missing items')
+    return `z.array(${renderSchemaNode(node.items, indent)})`
+  },
+  object: (node, indent) => renderObjectSchema(node, indent),
 }
 
 function renderSchemaNode(node: JsonSchemaNode, indent: string): string {
@@ -180,39 +189,31 @@ function renderSchemaNode(node: JsonSchemaNode, indent: string): string {
     const literals = node.enum.map((v) => JSON.stringify(v)).join(', ')
     return `z.enum([${literals}])`
   }
-  switch (node.type) {
-    case 'string':
-      return 'z.string()'
-    case 'number':
-    case 'integer':
-      return 'z.number()'
-    case 'boolean':
-      return 'z.boolean()'
-    case 'array':
-      if (!node.items) throw new Error('Array schema missing items')
-      return `z.array(${renderSchemaNode(node.items, indent)})`
-    case 'object': {
-      const props = node.properties ?? {}
-      const required = new Set(node.required ?? [])
-      const keys = Object.keys(props).sort()
-      if (keys.length === 0) return 'z.object({})'
-      const inner = keys.map((key) => {
-        const child = props[key]!
-        let expr = renderSchemaNode(child, `${indent}  `)
-        if (child.default !== undefined) {
-          expr += `.default(${JSON.stringify(child.default)})`
-        } else if (!required.has(key)) {
-          expr += '.optional()'
-        }
-        return `${indent}  ${q(key)}: ${expr},`
-      })
-      return `z.object({\n${inner.join('\n')}\n${indent}})`
-    }
-    default:
-      throw new Error(
-        `Unsupported JSON Schema for Phase 3 generator (type=${node.type}): ${JSON.stringify(node).slice(0, 200)}`,
-      )
+  const renderer = node.type ? TYPE_RENDERERS[node.type] : undefined
+  if (!renderer) {
+    throw new Error(
+      `Unsupported JSON Schema type for current generator (type=${node.type}): ${JSON.stringify(node).slice(0, 200)}`,
+    )
   }
+  return renderer(node, indent)
+}
+
+function renderObjectSchema(node: JsonSchemaNode, indent: string): string {
+  const props = node.properties ?? {}
+  const required = new Set(node.required ?? [])
+  const keys = Object.keys(props).sort()
+  if (keys.length === 0) return 'z.object({})'
+  const inner = keys.map((key) => {
+    const child = props[key]!
+    let expr = renderSchemaNode(child, `${indent}  `)
+    if (child.default !== undefined) {
+      expr += `.default(${JSON.stringify(child.default)})`
+    } else if (!required.has(key)) {
+      expr += '.optional()'
+    }
+    return `${indent}  ${q(key)}: ${expr},`
+  })
+  return `z.object({\n${inner.join('\n')}\n${indent}})`
 }
 
 function q(s: string): string {

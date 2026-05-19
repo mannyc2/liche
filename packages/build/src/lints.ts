@@ -1,3 +1,4 @@
+import type { z } from 'zod'
 import type { Contract } from './schema.js'
 
 export type LintIssue = {
@@ -65,13 +66,12 @@ function lintOperation(
 
   // operation/output-required — output is required by the TS type, but catch
   // explicitly-empty outputs (void/never/undefined) that produce no useful surface.
-  const outputDef = (op.output as { _def?: { type?: string } })?._def
-  const outputType = outputDef?.type
-  if (outputType === 'void' || outputType === 'never' || outputType === 'undefined') {
+  const emptyOutputKind = emptyOutputSchemaKind(op.output)
+  if (emptyOutputKind) {
     issues.push({
       code: 'operation/output-required',
       path: `${base}.output`,
-      message: `Operation '${op.id}' must declare a non-empty output schema (got z.${outputType}())`,
+      message: `Operation '${op.id}' must declare a non-empty output schema (got z.${emptyOutputKind}())`,
     })
   }
 
@@ -110,4 +110,12 @@ function lintOperation(
 
 function hasText(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0
+}
+
+// Single place where Zod internals are inspected. Returns the empty-output type
+// name (void/never/undefined) if the schema is empty, else null.
+function emptyOutputSchemaKind(schema: z.ZodType): 'void' | 'never' | 'undefined' | null {
+  const type = (schema as { _def?: { type?: string } })?._def?.type
+  if (type === 'void' || type === 'never' || type === 'undefined') return type
+  return null
 }

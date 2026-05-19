@@ -20,10 +20,17 @@ export type GenerateResult = {
   generatedSource: string
 }
 
-export async function generateToDir(
-  contract: Contract,
-  options: GenerateToDirOptions,
-): Promise<GenerateResult> {
+export type CheckResult = { ok: true } | { ok: false; drift: string[] }
+
+type Prepared = {
+  surfaceId: string
+  source: string
+  manifest: GeneratedSurfaceManifest
+  generatedPath: string
+  manifestPath: string
+}
+
+function prepareGeneration(contract: Contract, options: GenerateToDirOptions): Prepared {
   const surfaceId = options.surfaceId ?? 'cli'
   const generatedFileName = options.generatedFileName ?? 'lili.generated.ts'
   const manifestFileName = options.manifestFileName ?? 'lili.generated.manifest.json'
@@ -59,55 +66,31 @@ export async function generateToDir(
     ],
   }
 
-  const generatedPath = join(options.outDir, generatedFileName)
-  const manifestPath = join(options.outDir, manifestFileName)
-  await Bun.write(generatedPath, source)
-  await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-
-  return { manifest, generatedPath, manifestPath, generatedSource: source }
+  return {
+    surfaceId,
+    source,
+    manifest,
+    generatedPath: join(options.outDir, generatedFileName),
+    manifestPath: join(options.outDir, manifestFileName),
+  }
 }
 
-export type CheckResult = { ok: true } | { ok: false; drift: string[] }
+export async function generateToDir(
+  contract: Contract,
+  options: GenerateToDirOptions,
+): Promise<GenerateResult> {
+  const { source, manifest, generatedPath, manifestPath } = prepareGeneration(contract, options)
+  await Bun.write(generatedPath, source)
+  await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+  return { manifest, generatedPath, manifestPath, generatedSource: source }
+}
 
 export async function checkAgainstDir(
   contract: Contract,
   options: GenerateToDirOptions,
 ): Promise<CheckResult> {
-  const surfaceId = options.surfaceId ?? 'cli'
-  const generatedFileName = options.generatedFileName ?? 'lili.generated.ts'
-  const manifestFileName = options.manifestFileName ?? 'lili.generated.manifest.json'
-
-  const ir = normalizeContract(contract)
-  const inputDigest = canonicalDigest(ir)
-  const generationOptionsDigest = canonicalDigest({
-    surfaceId,
-    generatedFileName,
-    manifestFileName,
-  })
-  const expectedSource = generateCli(ir, {
-    generatorVersion: options.generatorVersion,
-    canonicalIrDigest: inputDigest,
-    generationOptionsDigest,
-    surfaceId,
-  })
-  const expectedManifest: GeneratedSurfaceManifest = {
-    manifestVersion: 1,
-    schema: { name: ir.name, version: ir.version, digest: inputDigest },
-    generatorVersion: options.generatorVersion,
-    surfaces: [
-      {
-        id: surfaceId,
-        source: 'canonical-ir',
-        inputDigest,
-        generationOptionsDigest,
-        outputDigest: hashString(expectedSource),
-        artifacts: [generatedFileName],
-      },
-    ],
-  }
-
-  const generatedPath = join(options.outDir, generatedFileName)
-  const manifestPath = join(options.outDir, manifestFileName)
+  const { surfaceId, source: expectedSource, manifest: expectedManifest, generatedPath, manifestPath } =
+    prepareGeneration(contract, options)
   const drift: string[] = []
 
   const generatedFile = Bun.file(generatedPath)
