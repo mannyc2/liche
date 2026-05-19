@@ -23,3 +23,11 @@ export type {
   RuntimeEnvVar,
   RuntimeExpectations,
 } from './manifest.js'
+export { verifyReleaseBinaries } from './binary.js'
+export type {
+  BinaryVerificationFailure,
+  BinaryVerificationFailureCode,
+  VerifiedBinary,
+  VerifyBinaryInput,
+  VerifyBinaryResult,
+} from './binary.js'
