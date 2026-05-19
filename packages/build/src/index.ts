@@ -90,3 +90,23 @@ export type {
   ResourceOperationSpec,
   RuntimeProduct,
 } from './product.js'
+
+export { fieldToJsonSchema, normalizeProduct, resolveListShape } from './catalog.js'
+export type {
+  Capability,
+  Catalog,
+  CommandCapability,
+  NormalizedBinding,
+  NormalizedExecution,
+  NormalizedHttpBind,
+  NormalizedHttpSpec,
+  NormalizedListShape,
+  NormalizedObjectShape,
+  NormalizedProductScope,
+  NormalizedResource,
+  NormalizedShape,
+  NormalizedSurfaces,
+  NormalizedWorkflowStep,
+  ResolvedListShape,
+  ResourceOperationCapability,
+} from './catalog.js'
