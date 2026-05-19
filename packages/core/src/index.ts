@@ -8,6 +8,7 @@ export { BaseError, LiliError, ParseError, ValidationError } from './errors/erro
 
 export type {
   Awaitable,
+  BuiltinsConfig,
   CliInstance,
   CommandDefinition,
   CommandError,
@@ -28,6 +29,7 @@ export type {
   RunContext,
   Schema,
   ServeOptions,
+  SkillDefinition,
   Usage,
   UsageObject,
 } from './types.js'

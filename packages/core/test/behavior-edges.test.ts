@@ -275,15 +275,20 @@ describe('command registry and guards behavior', () => {
 })
 
 describe('builtin metadata and skill sync behavior', () => {
-  test('builtin metadata drives help and nested completion suggestions', () => {
-    expect(builtinSuggestions([''])).toEqual(['completions', 'gen', 'mcp', 'skills'])
-    expect(builtinSuggestions(['m'])).toEqual(['mcp'])
-    expect(builtinSuggestions(['skills', ''])).toEqual(['add', 'list'])
-    expect(builtinSuggestions(['mcp', 'a'])).toEqual(['add'])
-    expect(builtinSuggestions(['mcp', 'add', ''])).toEqual([])
+  test('builtin metadata drives opt-in help and nested completion suggestions', () => {
+    expect(builtinSuggestions([''])).toEqual(['completions'])
+    const allBuiltins = { gen: true, mcp: true, skills: true }
+    expect(builtinSuggestions([''], allBuiltins)).toEqual(['completions', 'gen', 'mcp', 'skills'])
+    expect(builtinSuggestions(['m'], allBuiltins)).toEqual(['mcp'])
+    expect(builtinSuggestions(['skills', ''], allBuiltins)).toEqual(['add', 'list'])
+    expect(builtinSuggestions(['mcp', 'a'], allBuiltins)).toEqual(['add'])
+    expect(builtinSuggestions(['mcp', 'add', ''], allBuiltins)).toEqual([])
     expect(builtinSuggestions(['run', ''])).toEqual([])
 
     expect(builtinHelpLines()).toEqual([
+      '  completions  Generate shell completion script',
+    ])
+    expect(builtinHelpLines(allBuiltins)).toEqual([
       '  completions  Generate shell completion script',
       '  gen          Generate typed Cli.Commands declarations',
       '  mcp add      Register MCP server config',
@@ -320,7 +325,7 @@ describe('builtin metadata and skill sync behavior', () => {
     Bun.env['HOME'] = root
 
     try {
-      const cli = Cli.create('ship', { description: 'release helper', mcp: { command: 'ship-cli' } }).command('publish', {
+      const cli = Cli.create('ship', { builtins: { mcp: true, skills: true }, description: 'release helper', mcp: { command: 'ship-cli' } }).command('publish', {
         description: 'publish a release',
         run: () => ({ ok: true }),
       })

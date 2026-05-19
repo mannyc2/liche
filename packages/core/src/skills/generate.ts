@@ -2,6 +2,8 @@ import type { CliState, CommandManifestEntry } from '../types.js'
 import { collectCommands, manifest } from '../command/registry.js'
 
 export function skillMarkdown(name: string, state: CliState): string {
+  if (state.def.skill?.markdown) return state.def.skill.markdown
+
   const data = manifest(name, state)
   const lines = [
     '---',
@@ -54,6 +56,8 @@ function kebab(input: string): string {
 }
 
 export function skillIndex(name: string, state: CliState): string {
+  if (state.def.skill?.index) return state.def.skill.index
+
   const commands = collectCommands(state.commands, state.root)
   return [`# ${name}`, state.def.description ?? '', '', ...commands.map((command) => `- ${command.name}: ${command.description ?? ''}`)].join('\n')
 }

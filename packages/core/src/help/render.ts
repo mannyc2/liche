@@ -25,10 +25,10 @@ export function renderHelp(name: string, state: CliState, selected?: SelectedCom
   if (definition?.examples?.length) lines.push('', 'Examples:', ...exampleLines(scopedName, definition.examples))
   if (definition?.hint) lines.push('', definition.hint)
 
+  const builtins = builtinHelpLines(state.def.builtins)
+  if (builtins.length) lines.push('', 'Built-in Commands:', ...builtins)
+
   lines.push(
-    '',
-    'Built-in Commands:',
-    ...builtinHelpLines(),
     '',
     'Global Options:',
     '  --format <toon|json|yaml|md|jsonl>',

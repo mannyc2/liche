@@ -24,10 +24,6 @@ Options:
 
 Built-in Commands:
   completions  Generate shell completion script
-  gen          Generate typed Cli.Commands declarations
-  mcp add      Register MCP server config
-  skills add   Sync skill file
-  skills list  List available skills
 
 Global Options:
   --format <toon|json|yaml|md|jsonl>
@@ -68,10 +64,6 @@ Commands:
 
 Built-in Commands:
   completions  Generate shell completion script
-  gen          Generate typed Cli.Commands declarations
-  mcp add      Register MCP server config
-  skills add   Sync skill file
-  skills list  List available skills
 
 Global Options:
   --format <toon|json|yaml|md|jsonl>
@@ -99,10 +91,6 @@ Commands:
 
 Built-in Commands:
   completions  Generate shell completion script
-  gen          Generate typed Cli.Commands declarations
-  mcp add      Register MCP server config
-  skills add   Sync skill file
-  skills list  List available skills
 
 Global Options:
   --format <toon|json|yaml|md|jsonl>

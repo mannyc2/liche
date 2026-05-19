@@ -4,7 +4,7 @@ import { completionScript, shells } from '../completions/shells.js'
 import { format } from '../format/index.js'
 import { writeMcp, writeSkill } from '../skills/sync.js'
 import { renderTypegen } from '../command/typegen.js'
-import { builtinCommands } from './builtin-metadata.js'
+import { builtinCommands, builtinEnabled } from './builtin-metadata.js'
 
 export type BuiltinIo = { out(s: string): void; err(s: string): void }
 
@@ -17,6 +17,8 @@ export async function runBuiltin(
   env: Record<string, string | undefined> = {},
 ): Promise<boolean> {
   const [command, subcommand, ...rest] = flags.rest
+
+  if (!builtinEnabled(command ?? '', state.def.builtins)) return false
 
   if (command === 'completions') {
     const shell = subcommand ?? 'bash'

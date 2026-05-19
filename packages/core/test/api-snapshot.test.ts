@@ -5,6 +5,7 @@ import * as Api from '../src/index.js'
 // Keep this list in sync with the value snapshot below and with docs/core-api-boundary.md.
 import type {
   Awaitable,
+  BuiltinsConfig,
   CliInstance,
   CommandDefinition,
   CommandError,
@@ -25,12 +26,14 @@ import type {
   RunContext,
   Schema,
   ServeOptions,
+  SkillDefinition,
   Usage,
   UsageObject,
 } from '../src/index.js'
 
 export type _PublicTypeBag = [
   Awaitable<unknown>,
+  BuiltinsConfig,
   CliInstance,
   CommandDefinition,
   CommandError,
@@ -51,6 +54,7 @@ export type _PublicTypeBag = [
   RunContext,
   Schema,
   ServeOptions,
+  SkillDefinition,
   Usage,
   UsageObject,
 ]

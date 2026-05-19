@@ -118,6 +118,18 @@ export type UsageObject = {
 }
 export type Usage = string | UsageObject
 
+export type BuiltinsConfig = {
+  completions?: boolean | undefined
+  gen?: boolean | undefined
+  mcp?: boolean | undefined
+  skills?: boolean | undefined
+}
+
+export type SkillDefinition = {
+  index?: string | undefined
+  markdown?: string | undefined
+}
+
 export type CommandDefinition<
   A extends Schema<any> | undefined = Schema<any> | undefined,
   E extends Schema<any> | undefined = Schema<any> | undefined,
@@ -154,6 +166,7 @@ export type CreateOptions<
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = CommandDefinition<A, E, O, Out> & {
+  builtins?: BuiltinsConfig | undefined
   config?:
     | {
         files?: string[] | undefined
@@ -169,6 +182,7 @@ export type CreateOptions<
       }
     | undefined
   mcp?: { agents?: string[] | undefined; command?: string | undefined } | undefined
+  skill?: SkillDefinition | undefined
   name?: string | undefined
   sync?:
     | {

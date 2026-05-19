@@ -8,6 +8,16 @@ function stateOf(cli: any) {
 }
 
 describe('skillMarkdown — exact output shape', () => {
+  test('uses packaged skill markdown when the CLI provides one', () => {
+    const cli = Cli.create('tool', {
+      skill: {
+        index: '# tool\npackaged index',
+        markdown: '---\nname: tool\ndescription: packaged skill\n---\n\n# Packaged',
+      },
+    }).command('run', { run: () => ({}) })
+    expect(Skill.skillMarkdown('tool', stateOf(cli))).toBe('---\nname: tool\ndescription: packaged skill\n---\n\n# Packaged')
+  })
+
   test('frontmatter falls back to "<name> CLI" when no description set', () => {
     const cli = Cli.create('tool').command('run', { run: () => ({}) })
     const md = Skill.skillMarkdown('tool', stateOf(cli))
@@ -132,6 +142,16 @@ describe('skillMarkdown — exact output shape', () => {
 })
 
 describe('skillIndex — exact output shape', () => {
+  test('uses packaged skill index when the CLI provides one', () => {
+    const cli = Cli.create('tool', {
+      skill: {
+        index: '# tool\npackaged index',
+        markdown: '# full skill',
+      },
+    }).command('run', { run: () => ({}) })
+    expect(Skill.skillIndex('tool', stateOf(cli))).toBe('# tool\npackaged index')
+  })
+
   test('renders header, blank, then one bullet per command', () => {
     const cli = Cli.create('ship', { description: 'release helper', run: () => ({ ok: true }) }).command('publish', {
       description: 'publish a release',

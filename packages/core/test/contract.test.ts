@@ -353,11 +353,13 @@ describe('contract: mcp, completions, and token behavior', () => {
     const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
 
     const result = await runCli(cli, ['--'], { env: { COMPLETE: 'bash' } })
-    expect(result.stdout.trim().split('\n')).toEqual(['run', 'completions', 'gen', 'mcp', 'skills'])
+    expect(result.stdout.trim().split('\n')).toEqual(['run', 'completions'])
   })
 
-  test('builtin commands are available through public CLI behavior', async () => {
-    const cli = Cli.create('app').command('list', { run: () => ({ command: 'list' }) }).command('add', { run: () => ({ command: 'add' }) })
+  test('agent helper builtins are opt-in through public CLI behavior', async () => {
+    const cli = Cli.create('app', { builtins: { gen: true, mcp: true, skills: true } })
+      .command('list', { run: () => ({ command: 'list' }) })
+      .command('add', { run: () => ({ command: 'add' }) })
 
     const list = await runCli(cli, ['skills', 'list', '--json'])
     expect(parseJsonOutput(list.stdout)).toEqual({ skills: [{ installed: false, name: 'app' }] })
@@ -383,6 +385,14 @@ describe('contract: mcp, completions, and token behavior', () => {
 
     const mcpHelp = await runCli(cli, ['mcp'])
     expect(mcpHelp.stdout).toBe('  app mcp add  Register MCP server config\n')
+  })
+
+  test('agent helper builtins are not available unless enabled', async () => {
+    const cli = Cli.create('app').command('list', { run: () => ({ command: 'list' }) })
+
+    const skills = await runCli(cli, ['skills', 'list', '--json'])
+    expect(skills.stdout).toContain('Usage: app <command>')
+    expect(skills.stdout).not.toContain('skills list')
   })
 
   test('serve handles version, full output, filters, token limits, and CTA metadata', async () => {

@@ -100,7 +100,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('mcp add --agent claude-code writes ~/.claude.json by default', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code'], { env: { HOME: home } })
     expect(result.stdout.trim()).toBe(`wrote ${home}/.claude.json`)
@@ -109,7 +109,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('mcp add --agent claude-code --no-global writes ./.mcp.json', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--no-global'], { env: { HOME: home } })
     expect(result.stdout.trim()).toBe(`wrote ${cwd}/.mcp.json`)
@@ -118,7 +118,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('mcp add --command override is used as the spawn command', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
     process.chdir(cwd)
     await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '-c', 'bunx app-binary'], { env: { HOME: home } })
     const config = await Bun.file(`${home}/.claude.json`).json()
@@ -126,7 +126,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('skills add --agent cursor writes under ~/.cursor/skills', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = Cli.create('app', { builtins: { skills: true } }).command('run', { run: () => ({ ok: true }) })
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor'], { env: { HOME: home } })
     expect(result.stdout.trim()).toBe(`wrote ${home}/.cursor/skills/app/SKILL.md`)
@@ -134,14 +134,14 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('skills add --json emits an envelope instead of plain text', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = Cli.create('app', { builtins: { skills: true } }).command('run', { run: () => ({ ok: true }) })
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor', '--json'], { env: { HOME: home } })
     expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.cursor/skills/app/SKILL.md` } })
   })
 
   test('mcp add --json emits an envelope instead of plain text', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: home } })
     expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.claude.json` } })
@@ -154,7 +154,7 @@ describe('parity: gen typegen built-in', () => {
     const originalCwd = process.cwd()
     process.chdir(cwd)
     try {
-      const cli = Cli.create('app')
+      const cli = Cli.create('app', { builtins: { gen: true } })
         .command('build', { args: z.object({ name: z.string() }), run: () => ({ ok: true }) })
         .command('publish', { run: () => ({ ok: true }) })
 
@@ -175,7 +175,7 @@ describe('parity: gen typegen built-in', () => {
     const originalCwd = process.cwd()
     process.chdir(cwd)
     try {
-      const cli = Cli.create('app').command('build', { run: () => ({ ok: true }) })
+      const cli = Cli.create('app', { builtins: { gen: true } }).command('build', { run: () => ({ ok: true }) })
       const result = await runCli(cli, ['gen', '--json'])
       expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: './lili.generated.ts' } })
     } finally {
@@ -381,4 +381,3 @@ describe('parity: config loader defaults', () => {
     expect(parseJsonOutput(result.stdout)).toEqual({ mode: 'default' })
   })
 })
-
