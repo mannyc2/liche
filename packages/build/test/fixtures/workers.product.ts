@@ -1,15 +1,16 @@
-import { Command, Field, Product, Shape } from '../../src/index.js'
+import { Auth, Command, Field, Product, Shape } from '../../src/index.js'
 
 // Canonical Phase 3B fixture: a Workers-shaped product with one resource
 // operation, one hybrid-workflow command, one local command, and one binding.
-// Matches the spec example in docs/product-schema.md (deploy's `dry_run` flag
-// is omitted to keep the deploy handler trivial for runtime parity tests).
+// Phase 3D-A widens it with an explicit auth posture (Auth.none for now)
+// and the `requires` slot that replaced the old `permission?: string`.
 export default Product.create({
   id: 'workers',
   name: 'Workers',
   version: '1.0.0',
   description: 'Build and deploy serverless applications.',
 })
+  .auth(Auth.none())
   .resource(
     'script',
     { label: 'Worker script', path: '/workers/scripts', scope: 'account' },
@@ -22,7 +23,7 @@ export default Product.create({
           summary: 'List Worker scripts',
           http: { method: 'GET', path: '' },
           output: Shape.list('script'),
-          permission: 'workers:read',
+          requires: { permissions: ['workers:read'] },
         }),
   )
   .command(
@@ -42,7 +43,7 @@ export default Product.create({
         { id: 'bundle', label: 'Bundle local source', uses: 'local' },
         { id: 'upload', label: 'Upload assets', uses: 'api' },
       ],
-      permission: 'workers:edit',
+      requires: { permissions: ['workers:edit'] },
     }),
   )
   .command(

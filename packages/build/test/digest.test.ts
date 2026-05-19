@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  Auth,
   canonicalDigest,
   canonicalize,
   Command,
@@ -11,6 +12,7 @@ import {
 
 function buildA() {
   return Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+    .auth(Auth.none())
     .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (r) =>
       r
         .field('id', Field.string('Script ID').identifier().immutable())
@@ -21,6 +23,7 @@ function buildA() {
 
 function buildBReordered() {
   return Product.create({ version: '1.0.0', id: 'workers', name: 'Workers' })
+    .auth(Auth.none())
     .resource('script', { path: '/workers/scripts', label: 'Worker script' }, (r) =>
       r
         .field('id', Field.string('Script ID').identifier().immutable())
@@ -42,7 +45,7 @@ describe('canonicalDigest', () => {
   })
 
   test('reordered Shape.object properties do not change the digest', () => {
-    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -53,7 +56,7 @@ describe('canonicalDigest', () => {
         }),
       }),
     )
-    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -68,7 +71,7 @@ describe('canonicalDigest', () => {
   })
 
   test('changing a field name in input changes the digest', () => {
-    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -76,7 +79,7 @@ describe('canonicalDigest', () => {
         input: Shape.object({ a: Field.string('a') }),
       }),
     )
-    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',

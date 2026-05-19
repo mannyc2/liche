@@ -1,4 +1,4 @@
-import type { AuthSpec, ContextSpec, ProductContextEntry } from './auth.js'
+import type { AuthSpec, ContextSpec, ProductContextEntry, RequiresSpec } from './auth.js'
 import type { CommandSpec, HttpSpec, SurfaceHints } from './command.js'
 import type { FieldBuilder } from './field.js'
 import type { Shape } from './shape.js'
@@ -31,7 +31,7 @@ export type ResourceOperationSpec = {
   http?: HttpSpec
   input?: Shape
   output: Shape
-  permission?: string
+  requires?: RequiresSpec
   surfaces?: SurfaceHints
 }
 

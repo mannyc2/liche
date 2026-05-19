@@ -1,4 +1,19 @@
 import { createHash } from 'node:crypto'
+import type { Catalog, NormalizedAuth, NormalizedContext } from './catalog.js'
+
+export type AuthManifestEntry = {
+  id: string
+  kind: 'none' | 'bearer' | 'apiKey'
+  credentialTransport?: 'bearer' | 'apiKey'
+  modes: Array<'env'>
+  envVars: Array<{ name: string; purpose: 'bearer-token' | 'api-key'; mode: 'any' | 'ci' }>
+  contexts: Array<{ id: string; envVar?: string; flag?: string; source: 'env' | 'remote' }>
+  requiredRuntimeCapabilities: Array<'env'>
+}
+
+export type ManifestAuth = {
+  providers: AuthManifestEntry[]
+}
 
 export type GeneratedSurfaceManifest = {
   manifestVersion: 1
@@ -8,6 +23,7 @@ export type GeneratedSurfaceManifest = {
     digest: string
   }
   generatorVersion: string
+  auth: ManifestAuth
   surfaces: Array<{
     id: string
     source: 'catalog' | 'openapi'
@@ -20,6 +36,39 @@ export type GeneratedSurfaceManifest = {
 
 export function hashString(text: string): string {
   return `sha256:${createHash('sha256').update(text).digest('hex')}`
+}
+
+export function buildAuthManifest(catalog: Catalog): ManifestAuth {
+  return { providers: [buildAuthEntry(catalog.auth, catalog.contexts)] }
+}
+
+function buildAuthEntry(auth: NormalizedAuth, contexts: NormalizedContext[]): AuthManifestEntry {
+  const contextEntries = contexts.map((c) => {
+    const out: AuthManifestEntry['contexts'][number] = { id: c.id, source: c.source }
+    if (c.select.flag !== undefined) out.flag = c.select.flag
+    if (c.select.env !== undefined) out.envVar = c.select.env
+    return out
+  })
+  if (auth.kind === 'none') {
+    return {
+      id: 'none',
+      kind: 'none',
+      modes: [],
+      envVars: [],
+      contexts: contextEntries,
+      requiredRuntimeCapabilities: [],
+    }
+  }
+  const purpose: 'bearer-token' | 'api-key' = auth.kind === 'apiKey' ? 'api-key' : 'bearer-token'
+  return {
+    id: auth.id,
+    kind: auth.kind,
+    credentialTransport: auth.kind,
+    modes: ['env'],
+    envVars: auth.tokenSources.map((s) => ({ name: s.envVar, purpose, mode: s.mode })),
+    contexts: contextEntries,
+    requiredRuntimeCapabilities: ['env'],
+  }
 }
 
 export function manifestEqualForSurface(

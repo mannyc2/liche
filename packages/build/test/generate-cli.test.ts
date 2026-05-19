@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  Auth,
   Command,
   Field,
   Product,
@@ -16,6 +17,7 @@ function workersCatalog(): Catalog {
     name: 'Workers',
     version: '1.0.0',
   })
+    .auth(Auth.none())
     .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (r) =>
       r
         .field('id', Field.string('Script ID').identifier().immutable())
@@ -92,6 +94,7 @@ describe('generateCli — imports', () => {
   test('two distinct handler modules emit two grouped import lines in module-sorted order', () => {
     const cat = normalizeProduct(
       Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
         .command('login', Command.local({ summary: 'login', handler: 'auth.login' }))
         .command('dev', Command.local({ summary: 'dev', handler: 'wrangler.dev' })),
     )
@@ -104,7 +107,7 @@ describe('generateCli — imports', () => {
   })
 
   test('handler strings must be of the form module.export; bare strings fail loudly', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'dev',
       Command.local({ summary: 'dev', handler: 'broken' }),
     )
@@ -166,7 +169,7 @@ describe('generateCli — run bodies by execution mode', () => {
 
   test('remote-http command run body is a Phase 4 not-implemented stub', () => {
     const cat = normalizeProduct(
-      Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+      Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
         'purge',
         Command.remoteHttp({ summary: 'Purge', http: { method: 'POST', path: '/purge' } }),
       ),
@@ -180,6 +183,7 @@ describe('generateCli — run bodies by execution mode', () => {
   test('local handlers from the same module deduplicate to one import per export', () => {
     const cat = normalizeProduct(
       Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
         .command('a', Command.local({ summary: 'a', handler: 'm.run' }))
         .command('b', Command.local({ summary: 'b', handler: 'm.run' })),
     )
@@ -199,7 +203,7 @@ describe('generateCli — list output resolution', () => {
   })
 
   test('broken list-shape resource reference is reported by the generator, not silently emitted', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'orphan',
       { label: 'o', path: '/o' },
       (r) =>

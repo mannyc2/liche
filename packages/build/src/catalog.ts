@@ -1,4 +1,11 @@
 import type {
+  AuthSpec,
+  ContextSpec,
+  ProductContextEntry,
+  RequiresSpec,
+  TokenSource,
+} from './auth.js'
+import type {
   CommandSpec,
   Execution,
   HttpBind,
@@ -90,6 +97,12 @@ export type NormalizedBinding = {
   fields: NormalizedObjectShape
 }
 
+export type NormalizedRequires = {
+  auth: boolean
+  contexts: string[]
+  permissions: string[]
+}
+
 export type ResourceOperationCapability = {
   kind: 'resource-operation'
   id: string
@@ -101,7 +114,7 @@ export type ResourceOperationCapability = {
   http?: NormalizedHttpSpec
   input?: NormalizedShape
   output: NormalizedShape
-  permission?: string
+  requires: NormalizedRequires
   surfaces: NormalizedSurfaces
 }
 
@@ -115,7 +128,7 @@ export type CommandCapability = {
   execution: NormalizedExecution
   input?: NormalizedShape
   output?: NormalizedShape
-  permission?: string
+  requires: NormalizedRequires
   surfaces: NormalizedSurfaces
 }
 
@@ -132,6 +145,37 @@ export type NormalizedVocabulary = {
   aliases: Record<string, string>
 }
 
+export type NormalizedTokenSource = {
+  kind: 'env'
+  envVar: string
+  mode: 'any' | 'ci'
+  label?: string
+}
+
+export type NormalizedAuth =
+  | { kind: 'none' }
+  | {
+      kind: 'bearer' | 'apiKey'
+      id: string
+      header?: string
+      tokenSources: NormalizedTokenSource[]
+    }
+
+export type NormalizedContextSelect = {
+  flag?: string
+  env?: string
+}
+
+export type NormalizedContext = {
+  id: string
+  source: 'env' | 'remote'
+  label?: string
+  select: NormalizedContextSelect
+  idField?: string
+  nameField?: string
+  list?: NormalizedHttpSpec
+}
+
 export type Catalog = {
   kind: 'lili.catalog'
   catalogVersion: 1
@@ -143,27 +187,112 @@ export type Catalog = {
     scope?: NormalizedProductScope
   }
   vocabulary: NormalizedVocabulary
+  auth: NormalizedAuth
+  contexts: NormalizedContext[]
   resources: NormalizedResource[]
   bindings: NormalizedBinding[]
   capabilities: Capability[]
 }
 
 export function normalizeProduct(product: Product): Catalog {
+  if (product.authSpec === undefined) {
+    throw new Error(
+      `Product '${product.id}' must declare an auth posture via .auth(Auth.none()|Auth.bearer(...)|Auth.apiKey(...)) before normalization.`,
+    )
+  }
+  const auth = normalizeAuth(product.authSpec)
+  const contexts = product.contexts.map(normalizeContext)
+  const contextIds = new Set(contexts.map((c) => c.id))
   const resources = product.resources.map(normalizeResource)
   const resourceCapabilities = product.resources.flatMap((r) =>
-    r.operations.map(({ verb, spec }) => normalizeResourceOperation(r.id, verb, spec)),
+    r.operations.map(({ verb, spec }) =>
+      normalizeResourceOperation(r.id, verb, spec, auth.kind !== 'none', contextIds),
+    ),
   )
-  const commandCapabilities = product.commands.map(({ id, spec }) => normalizeCommand(id, spec))
+  const commandCapabilities = product.commands.map(({ id, spec }) =>
+    normalizeCommand(id, spec, auth.kind !== 'none', contextIds),
+  )
   const bindings = product.bindings.map(normalizeBinding)
   return {
     kind: 'lili.catalog',
     catalogVersion: 1,
     product: normalizeProductHeader(product),
     vocabulary: normalizeVocabulary(product.vocabulary),
+    auth,
+    contexts,
     resources,
     bindings,
     capabilities: [...resourceCapabilities, ...commandCapabilities],
   }
+}
+
+function normalizeAuth(spec: AuthSpec): NormalizedAuth {
+  if (spec.kind === 'none') return { kind: 'none' }
+  const tokenSources = spec.sources.map(normalizeTokenSource)
+  const out: NormalizedAuth = {
+    kind: spec.kind,
+    id: spec.id,
+    tokenSources,
+  }
+  if (spec.header) out.header = spec.header
+  return out
+}
+
+function normalizeTokenSource(source: TokenSource): NormalizedTokenSource {
+  const out: NormalizedTokenSource = {
+    kind: 'env',
+    envVar: source.envVar,
+    mode: source.mode ?? 'any',
+  }
+  if (source.label) out.label = source.label
+  return out
+}
+
+function normalizeContext(entry: ProductContextEntry): NormalizedContext {
+  const { id, spec } = entry
+  const out: NormalizedContext = {
+    id,
+    source: spec.kind,
+    select: normalizeContextSelect(spec),
+  }
+  if (spec.label) out.label = spec.label
+  if (spec.kind === 'remote') {
+    if (spec.idField) out.idField = spec.idField
+    if (spec.nameField) out.nameField = spec.nameField
+    if (spec.list) out.list = normalizeHttpSpec(spec.list.http)
+  }
+  return out
+}
+
+function normalizeContextSelect(spec: ContextSpec): NormalizedContextSelect {
+  const out: NormalizedContextSelect = {}
+  if (spec.select.flag) out.flag = spec.select.flag
+  if (spec.select.env) out.env = spec.select.env
+  return out
+}
+
+function normalizeRequires(
+  spec: RequiresSpec | undefined,
+  authEnabled: boolean,
+  contextIds: Set<string>,
+  capabilityId: string,
+): NormalizedRequires {
+  const out: NormalizedRequires = {
+    auth: spec?.auth === true,
+    contexts: spec?.contexts ? [...spec.contexts] : [],
+    permissions: spec?.permissions ? [...spec.permissions] : [],
+  }
+  if (out.auth && !authEnabled) {
+    throw new Error(
+      `Capability '${capabilityId}' requires auth but product declared Auth.none().`,
+    )
+  }
+  for (const ctx of out.contexts) {
+    if (!contextIds.has(ctx)) {
+      throw new Error(`Capability '${capabilityId}' requires undeclared context '${ctx}'.`)
+    }
+  }
+  return out
 }
 
 function normalizeVocabulary(vocab: Vocabulary): NormalizedVocabulary {
@@ -215,26 +344,34 @@ function normalizeResourceOperation(
   resourceId: string,
   verb: string,
   spec: ResourceOperationSpec,
+  authEnabled: boolean,
+  contextIds: Set<string>,
 ): ResourceOperationCapability {
   const http = spec.http ? normalizeHttpSpec(spec.http) : undefined
+  const id = `${resourceId}.${verb}`
   const cap: ResourceOperationCapability = {
     kind: 'resource-operation',
-    id: `${resourceId}.${verb}`,
+    id,
     resourceId,
     verb,
     command: [resourceId, verb],
     summary: spec.summary,
     output: normalizeShape(spec.output),
+    requires: normalizeRequires(spec.requires, authEnabled, contextIds, id),
     surfaces: normalizeSurfacesForResourceOperation(spec.surfaces, http !== undefined),
   }
   if (spec.description) cap.description = spec.description
   if (http) cap.http = http
   if (spec.input) cap.input = normalizeShape(spec.input)
-  if (spec.permission) cap.permission = spec.permission
   return cap
 }
 
-function normalizeCommand(id: string, spec: CommandSpec): CommandCapability {
+function normalizeCommand(
+  id: string,
+  spec: CommandSpec,
+  authEnabled: boolean,
+  contextIds: Set<string>,
+): CommandCapability {
   const execution = normalizeExecution(spec.execution)
   const cap: CommandCapability = {
     kind: 'command',
@@ -243,12 +380,12 @@ function normalizeCommand(id: string, spec: CommandSpec): CommandCapability {
     command: [id],
     summary: spec.summary,
     execution,
+    requires: normalizeRequires(spec.requires, authEnabled, contextIds, id),
     surfaces: normalizeSurfacesForCommand(spec.surfaces, execution),
   }
   if (spec.description) cap.description = spec.description
   if (spec.input) cap.input = normalizeShape(spec.input)
   if (spec.output) cap.output = normalizeShape(spec.output)
-  if (spec.permission) cap.permission = spec.permission
   return cap
 }
 

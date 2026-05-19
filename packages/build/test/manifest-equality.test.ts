@@ -12,6 +12,18 @@ function baseManifest(): GeneratedSurfaceManifest {
       digest: 'sha256:aaaa',
     },
     generatorVersion: '0.0.0',
+    auth: {
+      providers: [
+        {
+          id: 'none',
+          kind: 'none',
+          modes: [],
+          envVars: [],
+          contexts: [],
+          requiredRuntimeCapabilities: [],
+        },
+      ],
+    },
     surfaces: [
       {
         id: 'cli',

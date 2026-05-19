@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  Auth,
   Command,
   DEFAULT_GENERATED_VOCABULARY,
   Field,
@@ -11,6 +12,9 @@ import {
 } from '../src/index.js'
 
 function lintProductInput(product: Product) {
+  // Lints are auth-agnostic. Default to Auth.none() so each test stays focused
+  // on its lint rule rather than the unrelated Phase 3D-A auth posture.
+  if (product.authSpec === undefined) product.auth(Auth.none())
   return lintCatalog(normalizeProduct(product))
 }
 

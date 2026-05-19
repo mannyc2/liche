@@ -1,3 +1,4 @@
+import type { RequiresSpec } from './auth.js'
 import type { Shape } from './shape.js'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -60,7 +61,7 @@ export type CommandSpec = {
   description?: string
   input?: Shape
   output?: Shape
-  permission?: string
+  requires?: RequiresSpec
   surfaces?: SurfaceHints
   execution: Execution
 }
@@ -70,7 +71,7 @@ type CommandShared = {
   description?: string
   input?: Shape
   output?: Shape
-  permission?: string
+  requires?: RequiresSpec
   surfaces?: SurfaceHints
 }
 
@@ -117,7 +118,7 @@ function buildCommandSpec(shared: CommandShared, family: CommandFamily, executio
   if (shared.description) spec.description = shared.description
   if (shared.input) spec.input = shared.input
   if (shared.output) spec.output = shared.output
-  if (shared.permission) spec.permission = shared.permission
+  if (shared.requires) spec.requires = shared.requires
   if (shared.surfaces) spec.surfaces = shared.surfaces
   return spec
 }

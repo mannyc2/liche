@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  Auth,
   Command,
   Field,
   Product,
@@ -52,7 +53,7 @@ describe('generateOpenapi — document shape', () => {
   })
 
   test('omits info.description when the product has none', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>
@@ -82,7 +83,7 @@ describe('generateOpenapi — capability filter', () => {
   })
 
   test('hybrid-workflow command with an HTTP trigger is still excluded in this phase', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -97,7 +98,7 @@ describe('generateOpenapi — capability filter', () => {
   })
 
   test('resource operations with surfaces.openapi=false do not appear in paths', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>
@@ -137,7 +138,7 @@ describe('generateOpenapi — list output schemas', () => {
   })
 
   test('list shape pointing at an undeclared resource throws loudly', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>
@@ -157,7 +158,7 @@ describe('generateOpenapi — list output schemas', () => {
 
 describe('generateOpenapi — path, query, header, body binding', () => {
   test('path params become parameters with required:true and schema from input', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'script',
       { label: 's', path: '/workers/scripts' },
       (r) =>
@@ -183,7 +184,7 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('query and header params project with their respective `in` values; headers carry const schemas', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>
@@ -214,7 +215,7 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('body=true projects all non-path/query input fields under application/json', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>
@@ -239,7 +240,7 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('body=string[] picks an explicit subset and excludes the rest', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>
@@ -261,7 +262,7 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('body=string[] does not duplicate fields already consumed by path or query bindings', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'thing',
       { label: 't', path: '/things' },
       (r) =>

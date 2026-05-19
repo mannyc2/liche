@@ -21,8 +21,8 @@ export type {
   GenerateToDirOptions,
 } from './generate.js'
 
-export { hashString } from './manifest.js'
-export type { GeneratedSurfaceManifest } from './manifest.js'
+export { hashString, buildAuthManifest } from './manifest.js'
+export type { AuthManifestEntry, GeneratedSurfaceManifest, ManifestAuth } from './manifest.js'
 
 export { Field, FieldBuilder } from './field.js'
 export type { FieldMutability, FieldType, NormalizedField } from './field.js'
@@ -87,16 +87,21 @@ export type {
   Capability,
   Catalog,
   CommandCapability,
+  NormalizedAuth,
   NormalizedBinding,
+  NormalizedContext,
+  NormalizedContextSelect,
   NormalizedExecution,
   NormalizedHttpBind,
   NormalizedHttpSpec,
   NormalizedListShape,
   NormalizedObjectShape,
   NormalizedProductScope,
+  NormalizedRequires,
   NormalizedResource,
   NormalizedShape,
   NormalizedSurfaces,
+  NormalizedTokenSource,
   NormalizedVocabulary,
   NormalizedWorkflowStep,
   ResolvedListShape,

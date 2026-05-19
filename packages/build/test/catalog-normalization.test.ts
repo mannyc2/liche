@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  Auth,
   Command,
   Field,
   Product,
   Shape,
+  buildAuthManifest,
   canonicalDigest,
   fieldToJsonSchema,
   normalizeProduct,
@@ -19,6 +21,7 @@ function workersProduct() {
     description: 'Build and deploy serverless applications.',
     scope: { kind: 'account', param: 'account_id' },
   })
+    .auth(Auth.none())
     .resource(
       'script',
       { label: 'Worker script', path: '/workers/scripts', scope: 'account' },
@@ -31,7 +34,7 @@ function workersProduct() {
             summary: 'List Worker scripts',
             http: { method: 'GET', path: '' },
             output: Shape.list('script'),
-            permission: 'workers:read',
+            requires: { permissions: ['workers:read'] },
             surfaces: { cli: { command: 'workers script list' } },
           }),
     )
@@ -53,7 +56,7 @@ function workersProduct() {
           { id: 'bundle', label: 'Bundle local source', uses: 'local' },
           { id: 'upload', label: 'Upload assets', uses: 'api' },
         ],
-        permission: 'workers:edit',
+        requires: { permissions: ['workers:edit'] },
         surfaces: { agent: true, dashboard: { view: 'action', placement: 'page' } },
       }),
     )
@@ -92,7 +95,7 @@ describe('Catalog header', () => {
 
   test('omits undeclared product fields rather than emitting undefined', () => {
     const catalog = normalizeProduct(
-      Product.create({ id: 'minimal', name: 'Minimal', version: '0.0.1' }),
+      Product.create({ id: 'minimal', name: 'Minimal', version: '0.0.1' }).auth(Auth.none()),
     )
     expect('description' in catalog.product).toBe(false)
     expect('scope' in catalog.product).toBe(false)
@@ -170,7 +173,7 @@ describe('Capability flattening', () => {
   })
 
   test('local command `needs` is normalized to a sorted array even if authored unsorted', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'dev',
       Command.local({ summary: 'x', handler: 'h.run', needs: ['runtime', 'filesystem'] }),
     )
@@ -219,7 +222,7 @@ describe('Surface defaults', () => {
   })
 
   test('hybrid-workflow openapi flips on only when explicitly true AND http exists', () => {
-    const withHttp = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const withHttp = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -228,7 +231,7 @@ describe('Surface defaults', () => {
         surfaces: { openapi: true },
       }),
     )
-    const noHttp = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const noHttp = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({ summary: 'Deploy', handler: 'h.deploy', surfaces: { openapi: true } }),
     )
@@ -237,11 +240,11 @@ describe('Surface defaults', () => {
   })
 
   test('remote-http command openapi is included by default; explicit false excludes', () => {
-    const onByDefault = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const onByDefault = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'purge',
       Command.remoteHttp({ summary: 'Purge', http: { method: 'POST', path: '/purge' } }),
     )
-    const offExplicit = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const offExplicit = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'purge',
       Command.remoteHttp({
         summary: 'Purge',
@@ -254,7 +257,7 @@ describe('Surface defaults', () => {
   })
 
   test('resource HTTP op openapi flips off when surfaces.openapi=false', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'script',
       { label: 'Script', path: '/scripts' },
       (r) =>
@@ -283,7 +286,7 @@ describe('Bindings', () => {
   })
 
   test('Shape.list as binding fields is rejected', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).binding({
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).binding({
       key: 'bad',
       fields: Shape.list('script'),
     })
@@ -362,6 +365,224 @@ describe('JSON Schema projection', () => {
   })
 })
 
+describe('Auth normalization', () => {
+  test('Auth.none() flows through as { kind: "none" } and produces an empty contexts list', () => {
+    const catalog = normalizeProduct(workersProduct())
+    expect(catalog.auth).toEqual({ kind: 'none' })
+    expect(catalog.contexts).toEqual([])
+  })
+
+  test('Auth.bearer normalizes id, header, and token sources (default mode = "any")', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(
+        Auth.bearer({
+          id: 'acme',
+          header: 'X-Bearer',
+          sources: [
+            Auth.token.env('ACME_TOKEN', { label: 'Bearer token' }),
+            Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' }),
+          ],
+        }),
+      )
+    expect(normalizeProduct(product).auth).toEqual({
+      kind: 'bearer',
+      id: 'acme',
+      header: 'X-Bearer',
+      tokenSources: [
+        { kind: 'env', envVar: 'ACME_TOKEN', mode: 'any', label: 'Bearer token' },
+        { kind: 'env', envVar: 'ACME_CI_TOKEN', mode: 'ci' },
+      ],
+    })
+  })
+
+  test('Auth.apiKey requires a header and normalizes its sources', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(
+      Auth.apiKey({ id: 'acme', header: 'x-api-key', sources: [Auth.token.env('ACME_API_KEY')] }),
+    )
+    expect(normalizeProduct(product).auth).toEqual({
+      kind: 'apiKey',
+      id: 'acme',
+      header: 'x-api-key',
+      tokenSources: [{ kind: 'env', envVar: 'ACME_API_KEY', mode: 'any' }],
+    })
+  })
+
+  test('product without an auth declaration is rejected by normalizeProduct', () => {
+    const product = Product.create({ id: 'leaky', name: 'L', version: '0.1.0' })
+    expect(() => normalizeProduct(product)).toThrow(/Auth\.none/)
+  })
+})
+
+describe('Context normalization', () => {
+  test('Auth.context.env contexts preserve declaration order and surface { flag, env }', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .context('org', Auth.context.env({ label: 'Organization', select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+      .context('project', Auth.context.env({ select: { flag: 'project', env: 'ACME_PROJECT_ID' } }))
+
+    expect(normalizeProduct(product).contexts).toEqual([
+      {
+        id: 'org',
+        source: 'env',
+        label: 'Organization',
+        select: { flag: 'org', env: 'ACME_ORG_ID' },
+      },
+      {
+        id: 'project',
+        source: 'env',
+        select: { flag: 'project', env: 'ACME_PROJECT_ID' },
+      },
+    ])
+  })
+
+  test('Auth.context.remote preserves list endpoint and id/name fields as metadata', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .context(
+        'org',
+        Auth.context.remote({
+          label: 'Organization',
+          idField: 'org_id',
+          nameField: 'name',
+          list: { http: { method: 'GET', path: '/v1/orgs' } },
+          select: { flag: 'org', env: 'ACME_ORG_ID' },
+        }),
+      )
+    const ctx = normalizeProduct(product).contexts[0]!
+    expect(ctx.source).toBe('remote')
+    expect(ctx.idField).toBe('org_id')
+    expect(ctx.nameField).toBe('name')
+    expect(ctx.list).toEqual({
+      method: 'GET',
+      path: '/v1/orgs',
+      bind: { path: [], query: [], headers: {}, body: false },
+    })
+  })
+})
+
+describe('Capability requires', () => {
+  test('legacy "permission" string has been replaced by structured requires.permissions[]', () => {
+    const catalog = normalizeProduct(workersProduct())
+    const list = catalog.capabilities.find((c) => c.id === 'script.list')!
+    const deploy = catalog.capabilities.find((c) => c.id === 'deploy')!
+    expect((list as { permission?: string }).permission).toBeUndefined()
+    expect(list.requires).toEqual({ auth: false, contexts: [], permissions: ['workers:read'] })
+    expect(deploy.requires).toEqual({ auth: false, contexts: [], permissions: ['workers:edit'] })
+  })
+
+  test('requires defaults to {auth:false, contexts:[], permissions:[]} when omitted', () => {
+    const catalog = normalizeProduct(workersProduct())
+    const dev = catalog.capabilities.find((c) => c.id === 'dev')!
+    expect(dev.requires).toEqual({ auth: false, contexts: [], permissions: [] })
+  })
+
+  test('requires.auth=true on a capability when product has Auth.none() throws', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .command(
+        'deploy',
+        Command.workflow({
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          requires: { auth: true },
+        }),
+      )
+    expect(() => normalizeProduct(product)).toThrow(/requires auth but product declared Auth\.none/)
+  })
+
+  test('requires.contexts referencing an undeclared context throws', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .command(
+        'deploy',
+        Command.workflow({
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          requires: { contexts: ['org'] },
+        }),
+      )
+    expect(() => normalizeProduct(product)).toThrow(/undeclared context 'org'/)
+  })
+
+  test('requires.contexts referencing a declared context is accepted', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+      .command(
+        'deploy',
+        Command.workflow({
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          requires: { contexts: ['org'], permissions: ['workers:edit'] },
+        }),
+      )
+    const deploy = normalizeProduct(product).capabilities[0]!
+    expect(deploy.requires).toEqual({ auth: false, contexts: ['org'], permissions: ['workers:edit'] })
+  })
+})
+
+describe('Digest sensitivity to auth and requires', () => {
+  test('switching Auth.none() to Auth.bearer changes the catalog digest', () => {
+    const noneProduct = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none())
+    const bearerProduct = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(
+      Auth.bearer({ id: 'p', sources: [Auth.token.env('P_TOKEN')] }),
+    )
+    expect(canonicalDigest(normalizeProduct(noneProduct))).not.toBe(
+      canonicalDigest(normalizeProduct(bearerProduct)),
+    )
+  })
+
+  test('adding a permission to a capability changes the catalog digest', () => {
+    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .command('deploy', Command.workflow({ summary: 'd', handler: 'h.d' }))
+    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .command(
+        'deploy',
+        Command.workflow({ summary: 'd', handler: 'h.d', requires: { permissions: ['w'] } }),
+      )
+    expect(canonicalDigest(normalizeProduct(a))).not.toBe(canonicalDigest(normalizeProduct(b)))
+  })
+})
+
+describe('Surface manifest auth metadata', () => {
+  test('Auth.none() yields a single "none" provider with no env vars or runtime capabilities', () => {
+    const catalog = normalizeProduct(workersProduct())
+    const auth = buildAuthManifest(catalog)
+    expect(auth.providers).toHaveLength(1)
+    const provider = auth.providers[0]!
+    expect(provider.kind).toBe('none')
+    expect(provider.modes).toEqual([])
+    expect(provider.envVars).toEqual([])
+    expect(provider.requiredRuntimeCapabilities).toEqual([])
+  })
+
+  test('Auth.bearer records env vars (with mode), credentialTransport, and contexts', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(
+        Auth.bearer({
+          id: 'acme',
+          sources: [Auth.token.env('ACME_TOKEN'), Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' })],
+        }),
+      )
+      .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+    const auth = buildAuthManifest(normalizeProduct(product))
+    expect(auth.providers[0]).toEqual({
+      id: 'acme',
+      kind: 'bearer',
+      credentialTransport: 'bearer',
+      modes: ['env'],
+      envVars: [
+        { name: 'ACME_TOKEN', purpose: 'bearer-token', mode: 'any' },
+        { name: 'ACME_CI_TOKEN', purpose: 'bearer-token', mode: 'ci' },
+      ],
+      contexts: [{ id: 'org', source: 'env', flag: 'org', envVar: 'ACME_ORG_ID' }],
+      requiredRuntimeCapabilities: ['env'],
+    })
+  })
+})
+
 describe('resolveListShape', () => {
   test('returns an array JSON Schema with the referenced resource fields as items', () => {
     const catalog = normalizeProduct(workersProduct())
@@ -396,7 +617,7 @@ describe('Catalog digest stability', () => {
     // canonicalDigest sorts object keys at every level. Property order within
     // Shape.object should not change the digest, but capability declaration
     // order WILL (arrays preserve order, intentionally).
-    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const a = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -407,7 +628,7 @@ describe('Catalog digest stability', () => {
         }),
       }),
     )
-    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).command(
+    const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
       'deploy',
       Command.workflow({
         summary: 'Deploy',
@@ -422,12 +643,12 @@ describe('Catalog digest stability', () => {
   })
 
   test('digest changes when field metadata changes (e.g., adding .secret() to a field)', () => {
-    const before = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const before = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'script',
       { label: 'S', path: '/s' },
       (r) => r.field('token', Field.string('API token')),
     )
-    const after = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+    const after = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
       'script',
       { label: 'S', path: '/s' },
       (r) => r.field('token', Field.string('API token').secret()),
@@ -440,7 +661,7 @@ describe('Catalog digest stability', () => {
   test('digest is unchanged when product is rebuilt with the same shapes (no class-instance identity in IR)', () => {
     const build = () => {
       const reusedField = Field.string('Script name').humanLabel()
-      return Product.create({ id: 'p', name: 'P', version: '0.1.0' }).resource(
+      return Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
         'script',
         { label: 'S', path: '/s' },
         (r) => r.field('name', reusedField),

@@ -3,7 +3,12 @@ import { normalizeProduct, type Catalog } from './catalog.js'
 import { canonicalDigest } from './digest.js'
 import { generateCli } from './generate-cli.js'
 import { generateOpenapi } from './generate-openapi.js'
-import { type GeneratedSurfaceManifest, hashString, manifestEqualForSurface } from './manifest.js'
+import {
+  buildAuthManifest,
+  type GeneratedSurfaceManifest,
+  hashString,
+  manifestEqualForSurface,
+} from './manifest.js'
 import type { Product } from './product.js'
 
 export type GenerateToDirOptions = {
@@ -107,6 +112,7 @@ function prepareGeneration(product: Product, options: GenerateToDirOptions): Pre
     manifestVersion: 1,
     schema: { name: catalog.product.id, version: catalog.product.version, digest: inputDigest },
     generatorVersion,
+    auth: buildAuthManifest(catalog),
     surfaces: surfaces.map((s) => ({
       id: s.id,
       source: s.source,
