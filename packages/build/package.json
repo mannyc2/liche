@@ -11,6 +11,9 @@
       "default": "./src/index.ts"
     }
   },
+  "bin": {
+    "li-build": "./src/cli.ts"
+  },
   "files": ["src"],
   "scripts": {
     "check": "tsc --noEmit",
