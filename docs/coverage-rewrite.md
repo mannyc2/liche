@@ -92,7 +92,7 @@ Before adding rewrite tests:
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
-| SURFACE-001 | OpenAPI emits only HTTP-compatible capabilities. | `docs/build-system.md` | Mixed product schema with resource HTTP ops, remote commands, hybrid commands, and local commands. | Requirement fixture | Local-only or opted-out hybrid command appears as HTTP route. |
+| SURFACE-001 | Phase 3C OpenAPI emits only HTTP resource operations. | `docs/build-system.md` | Mixed product schema with resource HTTP ops, remote commands, hybrid commands, and local commands. | Requirement fixture | Command capability appears as an OpenAPI route before command projection is specified. |
 | SURFACE-002 | OpenAPI is generated from the normalized catalog. | `docs/build-system.md` | Compare OpenAPI output from equivalent product schemas. | Canonical catalog | OpenAPI generated from raw source or runtime reflection. |
 | SURFACE-003 | MCP tools are generated from the catalog for schema-driven CLIs. | `docs/build-system.md` | Compare generated MCP tool definitions to catalog capabilities. | Canonical catalog | Core reflection silently wins for generated CLI. |
 | SURFACE-004 | Docs/reference markdown uses command vocabulary and examples. | `docs/build-system.md` | Golden generated docs fixture. | Requirement fixture | Docs drift from schema examples. |

@@ -1,0 +1,86 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Workers",
+    "version": "1.0.0",
+    "description": "Build and deploy serverless applications.",
+    "x-lili-generator-version": "0.0.0",
+    "x-lili-catalog-digest": "sha256:4c3de18563a9548ded0458467806c34b5f99013efdb6e1b3c60915f9bf125f83",
+    "x-lili-generation-options-digest": "sha256:a6dacd68d2c4378548c2d103b512edd2bf5db82a433a5e65f5fffb84ad5b353b",
+    "x-lili-surface-id": "openapi"
+  },
+  "paths": {
+    "/workers/scripts": {
+      "get": {
+        "operationId": "script.list",
+        "summary": "List Worker scripts",
+        "tags": [
+          "script"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/script"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "script": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation time",
+            "x-lili-mutability": "immutable"
+          },
+          "id": {
+            "type": "string",
+            "description": "Script ID",
+            "x-lili-identifier": true,
+            "x-lili-mutability": "immutable"
+          },
+          "name": {
+            "type": "string",
+            "description": "Script name",
+            "x-lili-human-label": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      }
+    }
+  }
+}

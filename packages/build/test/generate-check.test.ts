@@ -11,6 +11,7 @@ import {
 import product from './fixtures/workers.product.js'
 
 const GEN_FILE = 'lili.generated.ts'
+const OPENAPI_FILE = 'lili.generated.openapi.json'
 const MANIFEST_FILE = 'lili.generated.manifest.json'
 
 describe('generate --check drift detection', () => {
@@ -28,6 +29,9 @@ describe('generate --check drift detection', () => {
     expect(result.manifest.manifestVersion).toBe(1)
     expect(result.manifest.surfaces[0]!.id).toBe('cli')
     expect(result.manifest.surfaces[0]!.artifacts).toEqual([GEN_FILE])
+    expect(result.manifest.surfaces[1]!.id).toBe('openapi')
+    expect(result.manifest.surfaces[1]!.source).toBe('openapi')
+    expect(result.manifest.surfaces[1]!.artifacts).toEqual([OPENAPI_FILE])
 
     const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     expect(check.ok).toBe(true)
@@ -45,6 +49,18 @@ describe('generate --check drift detection', () => {
     expect(check.drift.some((d) => d.includes("surface 'cli' output digest mismatch"))).toBe(true)
   })
 
+  test('hand-edit to openapi file fails check with openapi surface mismatch', async () => {
+    await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    const path = join(dir, OPENAPI_FILE)
+    const before = await Bun.file(path).text()
+    await Bun.write(path, before.replace('"Workers"', '"Workers-edited"'))
+
+    const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    expect(check.ok).toBe(false)
+    if (check.ok) throw new Error('expected drift')
+    expect(check.drift.some((d) => d.includes("surface 'openapi' output digest mismatch"))).toBe(true)
+  })
+
   test('hand-edit to manifest fails check', async () => {
     await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     const path = join(dir, MANIFEST_FILE)
@@ -54,6 +70,21 @@ describe('generate --check drift detection', () => {
 
     const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     expect(check.ok).toBe(false)
+  })
+
+  test('hand-edit to openapi surface manifest metadata fails check', async () => {
+    await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    const path = join(dir, MANIFEST_FILE)
+    const manifest = JSON.parse(await Bun.file(path).text())
+    manifest.surfaces[1].source = 'catalog'
+    manifest.surfaces[1].artifacts = ['renamed.openapi.json']
+    await Bun.write(path, JSON.stringify(manifest, null, 2))
+
+    const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    expect(check.ok).toBe(false)
+    if (check.ok) throw new Error('expected drift')
+    expect(check.drift).toContain("surface 'openapi' source changed")
+    expect(check.drift).toContain("surface 'openapi' artifacts changed")
   })
 
   test('missing files fail check with clear messages', async () => {
@@ -78,7 +109,29 @@ describe('generate --check drift detection', () => {
     }
   })
 
-  test('manifest shape records the product header and source=catalog', async () => {
+  test('duplicate surface ids are rejected before writing artifacts', async () => {
+    await expect(
+      generateToDir(product, {
+        outDir: dir,
+        generatorVersion: '0.0.0',
+        surfaceId: 'same',
+        openapiSurfaceId: 'same',
+      }),
+    ).rejects.toThrow(/surface ids must be unique/)
+  })
+
+  test('duplicate surface artifact filenames are rejected before writing artifacts', async () => {
+    await expect(
+      generateToDir(product, {
+        outDir: dir,
+        generatorVersion: '0.0.0',
+        generatedFileName: 'same.out',
+        openapiFileName: 'same.out',
+      }),
+    ).rejects.toThrow(/artifact filenames must be unique/)
+  })
+
+  test('manifest shape records the product header and both surfaces', async () => {
     const result = await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     const m = result.manifest
     expect(m.manifestVersion).toBe(1)
@@ -86,13 +139,25 @@ describe('generate --check drift detection', () => {
     expect(m.schema.version).toBe('1.0.0')
     expect(m.schema.digest).toMatch(/^sha256:[0-9a-f]{64}$/)
     expect(m.generatorVersion).toBe('0.0.0')
-    expect(m.surfaces).toHaveLength(1)
-    const s = m.surfaces[0]!
-    expect(s.id).toBe('cli')
-    expect(s.source).toBe('catalog')
-    expect(s.inputDigest).toBe(canonicalDigest(normalizeProduct(product)))
-    expect(s.outputDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
-    expect(s.generationOptionsDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
-    expect(s.artifacts).toEqual([GEN_FILE])
+    expect(m.surfaces).toHaveLength(2)
+
+    const expectedInputDigest = canonicalDigest(normalizeProduct(product))
+
+    const cli = m.surfaces[0]!
+    expect(cli.id).toBe('cli')
+    expect(cli.source).toBe('catalog')
+    expect(cli.inputDigest).toBe(expectedInputDigest)
+    expect(cli.outputDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(cli.generationOptionsDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(cli.artifacts).toEqual([GEN_FILE])
+
+    const openapi = m.surfaces[1]!
+    expect(openapi.id).toBe('openapi')
+    expect(openapi.source).toBe('openapi')
+    expect(openapi.inputDigest).toBe(expectedInputDigest)
+    expect(openapi.outputDigest).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(openapi.outputDigest).not.toBe(cli.outputDigest)
+    expect(openapi.generationOptionsDigest).not.toBe(cli.generationOptionsDigest)
+    expect(openapi.artifacts).toEqual([OPENAPI_FILE])
   })
 })

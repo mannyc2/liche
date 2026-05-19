@@ -10,8 +10,16 @@ export type { LintIssue } from './lints.js'
 export { generateCli } from './generate-cli.js'
 export type { GenerateOptions } from './generate-cli.js'
 
+export { generateOpenapi } from './generate-openapi.js'
+export type { GenerateOpenapiOptions } from './generate-openapi.js'
+
 export { generateToDir, checkAgainstDir } from './generate.js'
-export type { GenerateToDirOptions, GenerateResult, CheckResult } from './generate.js'
+export type {
+  CheckResult,
+  GenerateArtifact,
+  GenerateResult,
+  GenerateToDirOptions,
+} from './generate.js'
 
 export { hashString } from './manifest.js'
 export type { GeneratedSurfaceManifest } from './manifest.js'

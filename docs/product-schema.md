@@ -265,9 +265,9 @@ Defaults:
 | `dashboard` | excluded unless configured |
 | `agent` | excluded unless `true` |
 | `openapi` for resource operation with HTTP | included unless `false` |
-| `openapi` for `remote-http` command | included unless `false` |
+| `openapi` for `remote-http` command | normalized but not emitted in Phase 3C |
 | `openapi` for `local` command | excluded |
-| `openapi` for `hybrid-workflow` command | excluded unless explicitly `true` and an HTTP trigger exists |
+| `openapi` for `hybrid-workflow` command | normalized but not emitted in Phase 3C |
 
 Agent exposure remains explicit and conservative. A capability is agent-visible only when `surfaces.agent === true`, it has stable typed input/output, and any required permission or safety policy is declared.
 
@@ -278,6 +278,7 @@ Generators filter the catalog:
 ```ts
 function openApiCapabilities(catalog: Catalog): Capability[] {
   return catalog.capabilities.filter((capability) =>
+    capability.kind === "resource-operation" &&
     capability.surfaces.openapi === true &&
     capability.http !== undefined
   );
@@ -334,6 +335,6 @@ Verification:
 
 - A workers fixture with one resource, `deploy`, `dev`, and one binding normalizes to a stable catalog.
 - CLI generation includes both resource operations and top-level commands.
-- OpenAPI generation includes HTTP resource operations and `remote-http` commands, excludes `dev`, and respects explicit `openapi: false` on `deploy`.
+- OpenAPI generation includes HTTP resource operations, excludes command capabilities, and respects explicit `openapi: false` on resource operations.
 - Field metadata appears in CLI help/command manifest and OpenAPI schema extensions.
 - Surface manifest records separate `cli` and `openapi` surface entries with independent output digests.

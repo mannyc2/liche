@@ -2,7 +2,7 @@
 
 `@lili/build` normalizes runtime product schema values into a canonical catalog before generation. Public docs and APIs should use product names such as `Product`, `Resource`, `Command`, `Binding`, `Shape`, `Field`, `Catalog`, and `Capability`; avoid exposing `ProductIR` or `OperationIR` as the author-facing model.
 
-OpenAPI is owned by `@lili/build`, not `@lili/core`. Core's `cli.fetch` handler exposes command-tree execution and MCP, but does not emit or ingest OpenAPI documents. The previous runtime-reflection emit and ingest in core have been removed; `@lili/build` will produce OpenAPI from the normalized catalog, HTTP bindings, and field metadata. OpenAPI is a projection of HTTP-compatible capabilities, not the source of truth and not a mirror of every CLI command.
+OpenAPI is owned by `@lili/build`, not `@lili/core`. Core's `cli.fetch` handler exposes command-tree execution and MCP, but does not emit or ingest OpenAPI documents. The previous runtime-reflection emit and ingest in core have been removed; `@lili/build` will produce OpenAPI from the normalized catalog, HTTP bindings, and field metadata. In Phase 3C, OpenAPI is a projection of HTTP resource operations, not the source of truth and not a mirror of every CLI command.
 
 ## Runtime and canonical catalog split
 
@@ -196,9 +196,9 @@ Mapping:
 | `bind.headers` | header parameters, except auth/media headers handled by security/content |
 | `bind.body` | `requestBody.content["application/json"]` |
 
-OpenAPI is emitted only for capabilities with HTTP-compatible bindings and normalized `surfaces.openapi === true`.
+Phase 3C emits OpenAPI only for `resource-operation` capabilities with an HTTP binding and normalized `surfaces.openapi === true`.
 
-Local-only commands remain valid catalog capabilities but do not emit HTTP routes. Hybrid workflow commands are excluded by default even when they have an HTTP trigger; they appear in OpenAPI only when they explicitly opt in.
+Local-only, `remote-http`, and hybrid workflow commands remain valid catalog capabilities but do not emit OpenAPI routes in this phase. Command projection can be added later once command execution maps to stable HTTP paths without flattening workflow semantics into fake resource operations.
 
 OpenAPI is the handoff point for downstream HTTP ecosystem surfaces such as SDKs, Terraform providers, and a future Code Mode MCP server. Those downstream surfaces must consume the generated OpenAPI document and its digest, not the raw schema source or generated CLI code.
 

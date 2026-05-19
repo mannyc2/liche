@@ -22,7 +22,7 @@ The build system exists so a user can define an owned product capability catalog
 - generated dispatcher
 - generated outbound remote HTTP wiring
 - generated local implementation wiring
-- generated OpenAPI for HTTP-compatible capabilities
+- generated OpenAPI for HTTP resource operations
 - generated MCP tools
 - generated docs/reference markdown
 - generated Agent Skill/LLM surfaces
@@ -65,7 +65,7 @@ Initial catalog-derived surfaces:
 | CLI command tree | catalog | required |
 | dispatcher and local/remote/hybrid wiring | catalog | required |
 | command manifest / `schema --json` | catalog | required |
-| OpenAPI projection | catalog | required for HTTP-compatible capabilities |
+| OpenAPI projection | catalog | required for HTTP resource operations in Phase 3C |
 | MCP command tools | catalog | required |
 | Agent Skill/LLM surfaces | catalog | required |
 | docs/reference markdown | catalog | required |
@@ -496,7 +496,7 @@ Policy:
 generated CLI command tree
 generated dispatcher
 generated command manifest / schema --json
-generated OpenAPI for HTTP-compatible capabilities
+generated OpenAPI for HTTP resource operations
 generated MCP tools
 generated docs/reference markdown
 generated Agent Skills / llms surface
@@ -504,9 +504,9 @@ generated JSON Schema for config and bindings, when configured
 generated surface manifest
 ```
 
-OpenAPI is an output, not an input. It is emitted only for capabilities with HTTP-compatible bindings and normalized `surfaces.openapi === true`.
+OpenAPI is an output, not an input. In Phase 3C it is emitted only for `resource-operation` capabilities with HTTP bindings and normalized `surfaces.openapi === true`.
 
-Local-only and interactive commands remain valid catalog capabilities even when no OpenAPI route is emitted.
+Local-only, interactive, `remote-http`, and hybrid workflow commands remain valid catalog capabilities even when no OpenAPI route is emitted.
 
 The generated surface manifest records every emitted surface record from the generated surface graph. It is a build artifact for drift checks and release provenance; it is not the release manifest owned by `@lili/releases`.
 
