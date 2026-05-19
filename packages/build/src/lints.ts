@@ -1,4 +1,4 @@
-import type { RuntimeNormalizedProgram } from './schema.js'
+import type { Contract } from './schema.js'
 
 export type LintIssue = {
   code: string
@@ -7,56 +7,36 @@ export type LintIssue = {
   recommendation?: string
 }
 
-const FORBIDDEN_RECOMMENDATIONS: Record<string, string> = {
-  info: 'get',
-  format: 'json',
-  'skip-confirmations': 'force',
-  skipConfirmations: 'force',
-}
-
 const ID_PATTERN = /^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*)*$/
 
-export function lintProgram(runtime: RuntimeNormalizedProgram): LintIssue[] {
+export function lintContract(contract: Contract): LintIssue[] {
   const issues: LintIssue[] = []
-  lintVocabulary(runtime, issues)
-  runtime.operations.forEach((op, index) => lintOperation(op, index, runtime, issues))
+  lintContractRemote(contract, issues)
+  contract.operations.forEach((op, index) => lintOperation(op, index, contract, issues))
   return issues
 }
 
-function lintVocabulary(runtime: RuntimeNormalizedProgram, issues: LintIssue[]): void {
-  const vocab = runtime.vocabulary
-
-  for (const flag of vocab.flags) {
-    if (vocab.forbiddenFlags.includes(flag)) {
-      issues.push(buildIssue('vocabulary/forbidden', `vocabulary.flags['${flag}']`, `Control flag '${flag}' is in the forbidden list`, flag))
-    }
-  }
-
-  for (const verb of vocab.verbs) {
-    if (vocab.forbiddenVerbs.includes(verb)) {
-      issues.push(buildIssue('vocabulary/forbidden', `vocabulary.verbs['${verb}']`, `Verb '${verb}' is in the forbidden list`, verb))
-    }
-  }
-
-  // override/guarded: if a program adds a name that exactly matches a default-forbidden item
-  // without an explicit guard, fail. Phase 3 has no guard syntax; presence of the name in the
-  // active list is the violation.
-  for (const flag of vocab.flags) {
-    const defaultForbidden = ['format', 'skip-confirmations', 'skipConfirmations']
-    if (defaultForbidden.includes(flag) && !vocab.forbiddenFlags.includes(flag)) {
-      issues.push(buildIssue('override/guarded', `vocabulary.flags['${flag}']`, `Flag '${flag}' overrides a default-forbidden control flag without an explicit guard`, flag))
-    }
+function lintContractRemote(contract: Contract, issues: LintIssue[]): void {
+  if (!contract.remote) return
+  const baseUrl = contract.remote.baseUrl as { envVar?: string; literal?: string }
+  if (!hasText(baseUrl.envVar) && !hasText(baseUrl.literal)) {
+    issues.push({
+      code: 'contract/remote-base-url',
+      path: 'remote.baseUrl',
+      message: `Contract '${contract.name}' remote.baseUrl must declare envVar or literal`,
+      recommendation: `set remote.baseUrl.envVar to the environment variable that provides the API base URL, or set remote.baseUrl.literal for a fixed base URL`,
+    })
   }
 }
 
 function lintOperation(
-  op: RuntimeNormalizedProgram['operations'][number],
+  op: Contract['operations'][number],
   index: number,
-  runtime: RuntimeNormalizedProgram,
+  contract: Contract,
   issues: LintIssue[],
 ): void {
   const base = `operations[${index}]`
-  const vocab = runtime.vocabulary
+  const vocab = contract.vocabulary
 
   // operation/id-stable
   if (!ID_PATTERN.test(op.id)) {
@@ -67,15 +47,19 @@ function lintOperation(
     })
   }
 
-  // vocabulary/verb
-  if (vocab.forbiddenVerbs.includes(op.verb)) {
-    issues.push(buildIssue('vocabulary/verb', `${base}.verb`, `Verb '${op.verb}' is forbidden`, op.verb))
-  } else if (!vocab.verbs.includes(op.verb)) {
+  const verb = op.command.at(-1)
+  if (!verb) {
+    issues.push({
+      code: 'operation/command-required',
+      path: `${base}.command`,
+      message: `Operation '${op.id}' must declare at least one command segment`,
+    })
+  } else if (!vocab.verbs.includes(verb)) {
     issues.push({
       code: 'vocabulary/verb',
-      path: `${base}.verb`,
-      message: `Verb '${op.verb}' is not in the program vocabulary`,
-      recommendation: `add '${op.verb}' to vocabulary({ verbs: [...] }) or use one of: ${vocab.verbs.join(', ')}`,
+      path: `${base}.command`,
+      message: `Command action '${verb}' is not in the contract vocabulary`,
+      recommendation: `add '${verb}' to vocabulary({ verbs: [...] }) or use one of: ${vocab.verbs.join(', ')}`,
     })
   }
 
@@ -105,12 +89,25 @@ function lintOperation(
       message: `Operation '${op.id}' locality.default '${op.locality.default}' is not in modes [${op.locality.modes.join(', ')}]`,
     })
   }
+
+  if (op.locality.modes.includes('local') && !op.local) {
+    issues.push({
+      code: 'operation/locality-binding',
+      path: `${base}.local`,
+      message: `Operation '${op.id}' declares local locality but has no local binding`,
+      recommendation: `add local: { module, export } or remove 'local' from locality.modes`,
+    })
+  }
+  if (op.locality.modes.includes('remote') && !op.remote) {
+    issues.push({
+      code: 'operation/locality-binding',
+      path: `${base}.remote`,
+      message: `Operation '${op.id}' declares remote locality but has no remote binding`,
+      recommendation: `add remote: { method, path, bind } or remove 'remote' from locality.modes`,
+    })
+  }
 }
 
-function buildIssue(code: string, path: string, message: string, name: string): LintIssue {
-  const replacement = FORBIDDEN_RECOMMENDATIONS[name]
-  if (replacement) {
-    return { code, path, message, recommendation: `use '${replacement}' instead of '${name}'` }
-  }
-  return { code, path, message }
+function hasText(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
 }

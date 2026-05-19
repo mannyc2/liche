@@ -1,10 +1,12 @@
 export {
+  Contract,
   DEFAULT_GENERATED_VOCABULARY,
-  defineProgram,
-  operation,
   vocabulary,
 } from './schema.js'
+export { z } from 'zod'
 export type {
+  ContractInit,
+  ContractRemote,
   Effects,
   Locality,
   LocalityModes,
@@ -12,24 +14,23 @@ export type {
   Operation,
   OperationExample,
   OperationPolicy,
-  Program,
-  ProgramRemote,
   RemoteBind,
   RemoteOperation,
-  RuntimeNormalizedProgram,
+  RuntimeContract,
+  RuntimeValue,
   Vocabulary,
   VocabularyOverrides,
 } from './schema.js'
 
-export { normalizeProgram } from './ir.js'
+export { normalizeContract } from './ir.js'
 export type {
+  ContractIR,
+  ContractRemoteIR,
   LocalOperationIR,
   OperationEffectsIR,
   OperationExampleIR,
   OperationIR,
   OperationPolicyIR,
-  ProgramIR,
-  ProgramRemoteIR,
   RemoteBindIR,
   RemoteOperationIR,
   SchemaProjectionIR,
@@ -38,7 +39,7 @@ export type {
 
 export { canonicalDigest, canonicalize } from './digest.js'
 
-export { lintProgram } from './lints.js'
+export { lintContract } from './lints.js'
 export type { LintIssue } from './lints.js'
 
 export { generateCli } from './generate-cli.js'

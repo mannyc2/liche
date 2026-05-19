@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import program from './fixtures/acme.program.js'
-import { canonicalDigest, generateCli, normalizeProgram } from '../src/index.js'
+import contract from './fixtures/acme.contract.js'
+import { canonicalDigest, generateCli, normalizeContract } from '../src/index.js'
 import acmeGenerated from './fixtures/acme.generated.js'
 import acmeHandwritten from './fixtures/acme.handwritten.js'
 
@@ -23,7 +23,7 @@ async function runCli(cli: typeof acmeGenerated, argv: string[]): Promise<{ stdo
 
 describe('generated CLI — source matches golden', () => {
   test('generator output equals checked-in fixtures/acme.generated.ts', () => {
-    const ir = normalizeProgram(program)
+    const ir = normalizeContract(contract)
     const canonicalIrDigest = canonicalDigest(ir)
     const generationOptionsDigest = canonicalDigest({ surfaceId: 'cli' })
     const source = generateCli(ir, {
@@ -84,11 +84,17 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(out.exitCode).toBe(1)
     expect(out.stderr).toContain('--format is disabled')
   })
+
+  test('agent helper builtins stay disabled on generated product CLIs', async () => {
+    const out = await runCli(acmeGenerated, ['skills', 'list', '--json'])
+    expect(out.stdout).toContain('Usage: acme <command>')
+    expect(out.stdout).not.toContain('skills list')
+  })
 })
 
 describe('generated CLI — workflow command is not forced into CRUD or HTTP', () => {
   test('IR for projects.deploy has no remote.bind', () => {
-    const ir = normalizeProgram(program)
+    const ir = normalizeContract(contract)
     const deploy = ir.operations.find((op) => op.id === 'projects.deploy')!
     expect(deploy.remote).toBeUndefined()
     expect(deploy.effects.kind).toBe('exec')

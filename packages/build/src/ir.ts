@@ -1,15 +1,16 @@
 import { z } from 'zod'
 import type {
   Effects,
+  Contract,
+  ContractRemote,
   LocalOperation,
   Locality,
   Operation,
   OperationExample,
   OperationPolicy,
-  ProgramRemote,
   RemoteBind,
   RemoteOperation,
-  RuntimeNormalizedProgram,
+  RuntimeValue,
   Vocabulary,
 } from './schema.js'
 
@@ -17,8 +18,6 @@ export type VocabularyIR = {
   verbs: string[]
   flags: string[]
   aliases: Record<string, string>
-  forbiddenVerbs: string[]
-  forbiddenFlags: string[]
 }
 
 export type SchemaProjectionIR = {
@@ -85,31 +84,31 @@ export type OperationIR = {
   policy: OperationPolicyIR
 }
 
-export type ProgramRemoteIR = {
-  baseUrl: { envVar?: string; literal?: string }
+export type ContractRemoteIR = {
+  baseUrl: RuntimeValue
   auth: { kind: 'none' | 'bearer' | 'apiKey'; envVar?: string; header?: string }
   timeoutMs: number
 }
 
-export type ProgramIR = {
-  kind: 'lili.program'
+export type ContractIR = {
+  kind: 'lili.contract'
   irVersion: 1
   name: string
   version: string
   vocabulary: VocabularyIR
-  remote?: ProgramRemoteIR
+  remote?: ContractRemoteIR
   operations: OperationIR[]
 }
 
-export function normalizeProgram(runtime: RuntimeNormalizedProgram): ProgramIR {
+export function normalizeContract(contract: Contract): ContractIR {
   return {
-    kind: 'lili.program',
+    kind: 'lili.contract',
     irVersion: 1,
-    name: runtime.name,
-    version: runtime.version,
-    vocabulary: normalizeVocabulary(runtime.vocabulary),
-    ...(runtime.remote ? { remote: normalizeProgramRemote(runtime.remote) } : {}),
-    operations: runtime.operations.map(normalizeOperation),
+    name: contract.name,
+    version: contract.version,
+    vocabulary: normalizeVocabulary(contract.vocabulary),
+    ...(contract.remote ? { remote: normalizeContractRemote(contract.remote) } : {}),
+    operations: contract.operations.map(normalizeOperation),
   }
 }
 
@@ -118,24 +117,30 @@ function normalizeVocabulary(vocab: Vocabulary): VocabularyIR {
     verbs: [...vocab.verbs],
     flags: [...vocab.flags],
     aliases: { ...vocab.aliases },
-    forbiddenVerbs: [...vocab.forbiddenVerbs],
-    forbiddenFlags: [...vocab.forbiddenFlags],
   }
 }
 
-function normalizeProgramRemote(remote: ProgramRemote): ProgramRemoteIR {
+function normalizeContractRemote(remote: ContractRemote): ContractRemoteIR {
   return {
-    baseUrl: { ...remote.baseUrl },
+    baseUrl: normalizeRuntimeValue(remote.baseUrl),
     auth: remote.auth ?? { kind: 'none' },
     timeoutMs: remote.timeoutMs ?? 30_000,
   }
+}
+
+function normalizeRuntimeValue(value: RuntimeValue): RuntimeValue {
+  const envVar = 'envVar' in value ? value.envVar : undefined
+  const literal = 'literal' in value ? value.literal : undefined
+  if (envVar !== undefined) return literal !== undefined ? { envVar, literal } : { envVar }
+  if (literal !== undefined) return { literal }
+  throw new Error('RuntimeValue must include envVar or literal')
 }
 
 function normalizeOperation(op: Operation): OperationIR {
   const effects = normalizeEffects(op.effects)
   return {
     id: op.id,
-    verb: op.verb,
+    verb: deriveVerb(op),
     command: [...op.command],
     ...(op.description ? { description: op.description } : {}),
     locality: normalizeLocality(op.locality),
@@ -147,6 +152,12 @@ function normalizeOperation(op: Operation): OperationIR {
     examples: (op.examples ?? []).map(normalizeExample),
     policy: normalizePolicy(op.policy, effects),
   }
+}
+
+function deriveVerb(op: Operation): string {
+  const verb = op.command.at(-1)
+  if (!verb) throw new Error(`Operation '${op.id}' must declare at least one command segment`)
+  return verb
 }
 
 function normalizeLocality(locality: Locality): OperationIR['locality'] {

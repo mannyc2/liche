@@ -4,24 +4,18 @@ export type Vocabulary = {
   verbs: readonly string[]
   flags: readonly string[]
   aliases: Readonly<Record<string, string>>
-  forbiddenVerbs: readonly string[]
-  forbiddenFlags: readonly string[]
 }
 
 export const DEFAULT_GENERATED_VOCABULARY: Vocabulary = Object.freeze({
   verbs: Object.freeze(['get', 'list', 'create', 'update', 'delete', 'run']),
   flags: Object.freeze(['json', 'local', 'remote', 'force']),
   aliases: Object.freeze({}),
-  forbiddenVerbs: Object.freeze(['info']),
-  forbiddenFlags: Object.freeze(['format', 'skip-confirmations', 'skipConfirmations']),
 }) as Vocabulary
 
 export type VocabularyOverrides = {
   verbs?: readonly string[]
   flags?: readonly string[]
   aliases?: Readonly<Record<string, string>>
-  forbiddenVerbs?: readonly string[]
-  forbiddenFlags?: readonly string[]
 }
 
 export function vocabulary(overrides: VocabularyOverrides = {}): Vocabulary {
@@ -29,8 +23,6 @@ export function vocabulary(overrides: VocabularyOverrides = {}): Vocabulary {
     verbs: mergeUnique(DEFAULT_GENERATED_VOCABULARY.verbs, overrides.verbs),
     flags: mergeUnique(DEFAULT_GENERATED_VOCABULARY.flags, overrides.flags),
     aliases: { ...DEFAULT_GENERATED_VOCABULARY.aliases, ...(overrides.aliases ?? {}) },
-    forbiddenVerbs: mergeUnique(DEFAULT_GENERATED_VOCABULARY.forbiddenVerbs, overrides.forbiddenVerbs),
-    forbiddenFlags: mergeUnique(DEFAULT_GENERATED_VOCABULARY.forbiddenFlags, overrides.forbiddenFlags),
   }
 }
 
@@ -94,7 +86,6 @@ export type OperationExample = {
 
 export type Operation = {
   id: string
-  verb: string
   command: readonly string[]
   description?: string
   locality: Locality
@@ -107,40 +98,52 @@ export type Operation = {
   local?: LocalOperation
 }
 
-export function operation(spec: Operation): Operation {
-  return spec
-}
+export type RuntimeValue =
+  | { envVar: string; literal?: string }
+  | { envVar?: string; literal: string }
 
-export type ProgramRemote = {
-  baseUrl: { envVar?: string; literal?: string }
+export type ContractRemote = {
+  baseUrl: RuntimeValue
   auth?: { kind: 'none' | 'bearer' | 'apiKey'; envVar?: string; header?: string }
   timeoutMs?: number
 }
 
-export type Program = {
+export type ContractInit = {
   name: string
   version: string
   vocabulary?: Vocabulary
-  remote?: ProgramRemote
-  operations: readonly Operation[]
+  remote?: ContractRemote
 }
 
-export type RuntimeNormalizedProgram = {
-  kind: 'lili.runtime-program'
-  name: string
-  version: string
-  vocabulary: Vocabulary
-  remote?: ProgramRemote
-  operations: readonly Operation[]
-}
+export class Contract {
+  // Runtime-loaded contract modules use this tag for narrow validation before generation.
+  readonly kind = 'lili.contract' as const
+  readonly name: string
+  readonly version: string
+  readonly vocabulary: Vocabulary
+  readonly remote?: ContractRemote
+  readonly #operations: Operation[]
 
-export function defineProgram(spec: Program): RuntimeNormalizedProgram {
-  return {
-    kind: 'lili.runtime-program',
-    name: spec.name,
-    version: spec.version,
-    vocabulary: spec.vocabulary ?? DEFAULT_GENERATED_VOCABULARY,
-    ...(spec.remote ? { remote: spec.remote } : {}),
-    operations: spec.operations,
+  private constructor(spec: ContractInit) {
+    this.name = spec.name
+    this.version = spec.version
+    this.vocabulary = spec.vocabulary ?? DEFAULT_GENERATED_VOCABULARY
+    if (spec.remote) this.remote = spec.remote
+    this.#operations = []
+  }
+
+  static create(spec: ContractInit): Contract {
+    return new Contract(spec)
+  }
+
+  operation(spec: Operation): this {
+    this.#operations.push(spec)
+    return this
+  }
+
+  get operations(): readonly Operation[] {
+    return this.#operations
   }
 }
+
+export type RuntimeContract = Contract

@@ -1,9 +1,9 @@
 import { join, relative } from 'node:path'
 import { canonicalDigest } from './digest.js'
 import { generateCli } from './generate-cli.js'
-import { normalizeProgram } from './ir.js'
+import { normalizeContract } from './ir.js'
 import { type GeneratedSurfaceManifest, hashString, manifestEqualForSurface } from './manifest.js'
-import type { RuntimeNormalizedProgram } from './schema.js'
+import type { Contract } from './schema.js'
 
 export type GenerateToDirOptions = {
   outDir: string
@@ -21,14 +21,14 @@ export type GenerateResult = {
 }
 
 export async function generateToDir(
-  runtime: RuntimeNormalizedProgram,
+  contract: Contract,
   options: GenerateToDirOptions,
 ): Promise<GenerateResult> {
   const surfaceId = options.surfaceId ?? 'cli'
   const generatedFileName = options.generatedFileName ?? 'lili.generated.ts'
   const manifestFileName = options.manifestFileName ?? 'lili.generated.manifest.json'
 
-  const ir = normalizeProgram(runtime)
+  const ir = normalizeContract(contract)
   const inputDigest = canonicalDigest(ir)
   const generationOptionsDigest = canonicalDigest({
     surfaceId,
@@ -70,14 +70,14 @@ export async function generateToDir(
 export type CheckResult = { ok: true } | { ok: false; drift: string[] }
 
 export async function checkAgainstDir(
-  runtime: RuntimeNormalizedProgram,
+  contract: Contract,
   options: GenerateToDirOptions,
 ): Promise<CheckResult> {
   const surfaceId = options.surfaceId ?? 'cli'
   const generatedFileName = options.generatedFileName ?? 'lili.generated.ts'
   const manifestFileName = options.manifestFileName ?? 'lili.generated.manifest.json'
 
-  const ir = normalizeProgram(runtime)
+  const ir = normalizeContract(contract)
   const inputDigest = canonicalDigest(ir)
   const generationOptionsDigest = canonicalDigest({
     surfaceId,
