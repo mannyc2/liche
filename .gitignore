@@ -4,6 +4,7 @@ coverage/
 reports/
 .stryker-tmp/
 .stryker/
+.tmp/
 *.log
 .claude/
 .DS_Store

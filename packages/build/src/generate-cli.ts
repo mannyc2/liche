@@ -3,10 +3,29 @@ import type {
   Capability,
   Catalog,
   CommandCapability,
+  NormalizedAuth,
+  NormalizedContext,
   NormalizedShape,
   ResourceOperationCapability,
 } from './catalog.js'
 import type { JsonSchemaNode } from './types.js'
+
+function needsAuthResolution(cap: Capability): boolean {
+  return cap.requires.auth === true
+}
+
+function neededContexts(cap: Capability): string[] {
+  return [...cap.requires.contexts]
+}
+
+function authRuntimeUsed(catalog: Catalog): boolean {
+  if (catalog.auth.kind === 'none') return false
+  return catalog.capabilities.some(needsAuthResolution)
+}
+
+function contextRuntimeUsed(catalog: Catalog): boolean {
+  return catalog.capabilities.some((c) => c.requires.contexts.length > 0)
+}
 
 export type GenerateOptions = {
   generatorVersion: string
@@ -20,10 +39,50 @@ export function generateCli(catalog: Catalog, options: GenerateOptions): string 
   lines.push(...renderHeader(catalog, options))
   lines.push('')
   lines.push(...renderImports(catalog))
+  if (authRuntimeUsed(catalog) || contextRuntimeUsed(catalog)) {
+    lines.push('')
+    lines.push(...renderAuthConstants(catalog))
+  }
   lines.push('')
   lines.push(...renderCli(catalog))
   lines.push('')
   return lines.join('\n')
+}
+
+function renderAuthConstants(catalog: Catalog): string[] {
+  const lines: string[] = []
+  if (authRuntimeUsed(catalog) && catalog.auth.kind !== 'none') {
+    lines.push(`const AUTH_PROVIDER = ${renderAuth(catalog.auth)} as const`)
+  }
+  if (contextRuntimeUsed(catalog) && catalog.contexts.length > 0) {
+    lines.push(`const CONTEXTS = ${renderContexts(catalog.contexts)} as const`)
+  }
+  return lines
+}
+
+function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
+  const sources = auth.tokenSources
+    .map((s) => {
+      const fields = [`kind: 'env'`, `envVar: ${q(s.envVar)}`, `mode: ${q(s.mode)}`]
+      if (s.label) fields.push(`label: ${q(s.label)}`)
+      return `{ ${fields.join(', ')} }`
+    })
+    .join(', ')
+  const parts = [`id: ${q(auth.id)}`, `kind: ${q(auth.kind)}`]
+  if (auth.header) parts.push(`header: ${q(auth.header)}`)
+  parts.push(`tokenSources: [${sources}]`)
+  return `{ ${parts.join(', ')} }`
+}
+
+function renderContexts(contexts: NormalizedContext[]): string {
+  const entries = contexts.map((c) => {
+    const parts = [`id: ${q(c.id)}`]
+    if (c.label) parts.push(`label: ${q(c.label)}`)
+    if (c.select.flag) parts.push(`flag: ${q(c.select.flag)}`)
+    if (c.select.env) parts.push(`envVar: ${q(c.select.env)}`)
+    return `{ ${parts.join(', ')} }`
+  })
+  return `[${entries.join(', ')}]`
 }
 
 function renderHeader(catalog: Catalog, options: GenerateOptions): string[] {
@@ -67,7 +126,15 @@ function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
 }
 
 function renderImports(catalog: Catalog): string[] {
-  const out: string[] = [`import { Cli, z } from '@lili/core'`]
+  const coreNames = new Set(['Cli', 'z'])
+  if (authRuntimeUsed(catalog)) {
+    coreNames.add('applyAuth')
+    coreNames.add('resolveAuth')
+  }
+  if (contextRuntimeUsed(catalog)) {
+    coreNames.add('resolveContext')
+  }
+  const out: string[] = [`import { ${[...coreNames].sort().join(', ')} } from '@lili/core'`]
   const byModule = new Map<string, Set<string>>()
   for (const h of collectLocalHandlers(catalog)) {
     const exports = byModule.get(h.module) ?? new Set<string>()
@@ -133,15 +200,35 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   lines.push(`${indent}  options: ${renderSchema(inputSchema, `${indent}  `)},`)
   lines.push(`${indent}  output: ${renderSchema(outputSchema, `${indent}  `)},`)
   lines.push(`${indent}  async run(ctx) {`)
-  lines.push(...renderCapabilityRun(`${indent}    `, cap))
+  lines.push(...renderCapabilityRun(`${indent}    `, catalog, cap))
   lines.push(`${indent}  },`)
   lines.push(`${indent}})`)
   return lines
 }
 
 function capabilityInputSchema(catalog: Catalog, cap: Capability): JsonSchemaNode {
-  if (cap.input) return shapeToJsonSchema(catalog, cap.input)
-  return { type: 'object', properties: {} }
+  const base = cap.input
+    ? shapeToJsonSchema(catalog, cap.input)
+    : ({ type: 'object', properties: {} } as JsonSchemaNode)
+  if (cap.requires.contexts.length === 0) return base
+  // Inject declared context flags as required string options so generated
+  // help surfaces them and resolveContext can read ctx.options[flag] verbatim.
+  const properties: Record<string, JsonSchemaNode> = { ...(base.properties ?? {}) }
+  const required = new Set(base.required ?? [])
+  for (const ctxId of cap.requires.contexts) {
+    const ctx = catalog.contexts.find((c) => c.id === ctxId)
+    if (!ctx) continue
+    const flag = ctx.select.flag
+    if (!flag) continue
+    if (properties[flag]) continue
+    const node: JsonSchemaNode = { type: 'string' }
+    if (ctx.label) node.description = ctx.label
+    properties[flag] = node
+    required.add(flag)
+  }
+  const out: JsonSchemaNode = { type: 'object', properties }
+  if (required.size > 0) out.required = [...required].sort()
+  return out
 }
 
 function capabilityOutputSchema(catalog: Catalog, cap: Capability): JsonSchemaNode {
@@ -161,9 +248,11 @@ function shapeToJsonSchema(catalog: Catalog, shape: NormalizedShape): JsonSchema
   return resolved.jsonSchema
 }
 
-function renderCapabilityRun(indent: string, cap: Capability): string[] {
+function renderCapabilityRun(indent: string, _catalog: Catalog, cap: Capability): string[] {
+  const preamble = renderAuthPreamble(indent, cap)
   if (cap.kind === 'resource-operation') {
     return [
+      ...preamble,
       `${indent}return ctx.error({`,
       `${indent}  code: 'REMOTE_NOT_IMPLEMENTED',`,
       `${indent}  message: 'Remote transport for resource operations is not implemented yet (Phase 4)',`,
@@ -173,6 +262,7 @@ function renderCapabilityRun(indent: string, cap: Capability): string[] {
   const mode = cap.execution.mode
   if (mode === 'remote-http') {
     return [
+      ...preamble,
       `${indent}return ctx.error({`,
       `${indent}  code: 'REMOTE_NOT_IMPLEMENTED',`,
       `${indent}  message: 'Remote transport for remote-http commands is not implemented yet (Phase 4)',`,
@@ -181,9 +271,42 @@ function renderCapabilityRun(indent: string, cap: Capability): string[] {
   }
   const parsed = parseHandler(cap.execution.handler)
   return [
+    ...preamble,
     `${indent}const data = await ${parsed.export}(ctx.options)`,
     `${indent}return ctx.ok(data, { execution: { mode: ${q(mode)}, source: 'schema-default' } })`,
   ]
+}
+
+function renderAuthPreamble(indent: string, cap: Capability): string[] {
+  const lines: string[] = []
+  if (needsAuthResolution(cap)) {
+    lines.push(`${indent}const credential = await resolveAuth({`)
+    lines.push(`${indent}  provider: AUTH_PROVIDER,`)
+    lines.push(`${indent}  required: true,`)
+    lines.push(`${indent}  invocation: 'cli',`)
+    lines.push(`${indent}  env: process.env,`)
+    lines.push(`${indent}})`)
+  }
+  if (neededContexts(cap).length > 0) {
+    const required = neededContexts(cap).map((c) => q(c)).join(', ')
+    lines.push(`${indent}const context = await resolveContext({`)
+    lines.push(`${indent}  contexts: CONTEXTS,`)
+    lines.push(`${indent}  required: [${required}],`)
+    lines.push(`${indent}  explicit: ctx.options as Record<string, string | undefined>,`)
+    lines.push(`${indent}  env: process.env,`)
+    if (needsAuthResolution(cap)) {
+      lines.push(`${indent}  providerId: AUTH_PROVIDER.id,`)
+    }
+    lines.push(`${indent}})`)
+  }
+  if (needsAuthResolution(cap)) {
+    lines.push(`${indent}const headers = new Headers()`)
+    lines.push(`${indent}if (credential) applyAuth(headers, credential)`)
+  }
+  // Mark intentionally-unused locals so the stub doesn't blow up under noUnusedLocals.
+  if (needsAuthResolution(cap)) lines.push(`${indent}void headers`)
+  if (neededContexts(cap).length > 0) lines.push(`${indent}void context`)
+  return lines
 }
 
 function renderSchema(jsonSchema: unknown, indent: string): string {
