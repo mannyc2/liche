@@ -1,7 +1,5 @@
 import { z } from 'zod'
 
-const Sha256 = z.string().regex(/^[a-f0-9]{64}$/)
-
 const RepositoryMetadata = z.object({
   type: z.string(),
   url: z.string(),
@@ -9,7 +7,7 @@ const RepositoryMetadata = z.object({
 
 const WindowsExecutableMetadata = z.object({
   hideConsole: z.boolean().default(false),
-  iconSha256: Sha256.optional(),
+  iconSha256: z.hash('sha256').optional(),
 })
 
 const ExecutableMetadata = z.object({
@@ -21,7 +19,7 @@ const ExecutableMetadata = z.object({
 
 const ReleaseMetadata = z.object({
   description: z.string(),
-  homepage: z.url().optional(),
+  homepage: z.httpUrl().optional(),
   license: z.string().optional(),
   repository: RepositoryMetadata.optional(),
   executable: ExecutableMetadata.optional(),
@@ -29,7 +27,7 @@ const ReleaseMetadata = z.object({
 
 const SurfaceManifestReference = z.object({
   path: z.string(),
-  sha256: Sha256,
+  sha256: z.hash('sha256'),
 })
 
 const ProductProvenance = z.object({
@@ -110,20 +108,20 @@ const AuthSection = z.object({
 })
 
 const ConformanceSummary = z.object({
-  passed: z.number().int().nonnegative(),
-  failed: z.number().int().nonnegative(),
-  skipped: z.number().int().nonnegative(),
-  total: z.number().int().nonnegative(),
+  passed: z.int().nonnegative(),
+  failed: z.int().nonnegative(),
+  skipped: z.int().nonnegative(),
+  total: z.int().nonnegative(),
 })
 
 const ConformanceSection = z.object({
   required: z.boolean().default(false),
   report: z.string().optional(),
-  reportVersion: z.number().int().positive().optional(),
-  reportSha256: Sha256.optional(),
+  reportVersion: z.int().positive().optional(),
+  reportSha256: z.hash('sha256').optional(),
   checkedAt: z.string().optional(),
   targetEnv: z.string().optional(),
-  targetBaseUrl: z.url().optional(),
+  targetBaseUrl: z.httpUrl().optional(),
   catalogDigest: z.string().optional(),
   destructiveIncluded: z.boolean().default(false),
   summary: ConformanceSummary.optional(),
@@ -137,9 +135,9 @@ const BinaryTarget = z.object({
   libc: z.enum(['glibc', 'musl']).optional(),
   cpuVariant: z.enum(['baseline', 'modern']).optional(),
   filename: z.string(),
-  url: z.url(),
-  sha256: Sha256,
-  size: z.number().int().positive(),
+  url: z.httpUrl(),
+  sha256: z.hash('sha256'),
+  size: z.int().positive(),
   compileFlagsDigest: z.string().optional(),
   signed: z.boolean().default(false),
   notarized: z.boolean().default(false),
@@ -147,9 +145,9 @@ const BinaryTarget = z.object({
 
 const PackageArtifact = z.object({
   fileName: z.string(),
-  url: z.url().optional(),
-  sha256: Sha256,
-  size: z.number().int().positive(),
+  url: z.httpUrl().optional(),
+  sha256: z.hash('sha256'),
+  size: z.int().positive(),
 })
 
 const PackagePublishLocation = z.object({
