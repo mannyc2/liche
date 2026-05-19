@@ -12,6 +12,7 @@ const FROZEN_PUBLIC_VALUES = [
   'ParseError',
   'ValidationError',
   'middleware',
+  'secret',
   'z',
 ].sort()
 

@@ -33,6 +33,7 @@ export type FieldError = {
 
 export type CommandError = {
   code: string
+  details?: Record<string, unknown> | undefined
   exitCode?: number | undefined
   fieldErrors?: FieldError[] | undefined
   hint?: string | undefined

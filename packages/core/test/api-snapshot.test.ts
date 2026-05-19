@@ -25,6 +25,7 @@ import type {
   ResultMeta,
   RunContext,
   Schema,
+  SecretString,
   ServeOptions,
   SkillDefinition,
   Usage,
@@ -53,6 +54,7 @@ export type _PublicTypeBag = [
   ResultMeta,
   RunContext,
   Schema,
+  SecretString,
   ServeOptions,
   SkillDefinition,
   Usage,
@@ -67,6 +69,7 @@ const FROZEN_PUBLIC_VALUES = [
   'ParseError',
   'ValidationError',
   'middleware',
+  'secret',
   'z',
 ].sort()
 

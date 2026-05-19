@@ -3,7 +3,7 @@ import type { CommandError, FieldError } from '../types.js'
 export class BaseError extends Error {
   override name = 'Lili.BaseError'
   shortMessage: string
-  details: string | undefined
+  details: string | Record<string, unknown> | undefined
 
   constructor(shortMessage: string, options: BaseError.Options = {}) {
     const details = options.cause instanceof Error ? options.cause.message : undefined
@@ -25,6 +25,7 @@ export declare namespace BaseError {
 export class LiliError extends BaseError {
   override name = 'Lili.LiliError'
   code: string
+  override details: Record<string, unknown> | undefined
   hint: string | undefined
   retryable: boolean
   exitCode: number | undefined
@@ -32,6 +33,7 @@ export class LiliError extends BaseError {
   constructor(options: LiliError.Options) {
     super(options.message, { cause: options.cause })
     this.code = options.code
+    this.details = options.details
     this.hint = options.hint
     this.retryable = options.retryable ?? false
     this.exitCode = options.exitCode
@@ -42,6 +44,7 @@ export declare namespace LiliError {
   type Options = {
     code: string
     message: string
+    details?: Record<string, unknown> | undefined
     hint?: string | undefined
     retryable?: boolean | undefined
     exitCode?: number | undefined
@@ -103,6 +106,7 @@ export function errorToObject(error: unknown): CommandError {
   if (error instanceof LiliError) {
     return {
       code: error.code,
+      details: error.details,
       exitCode: error.exitCode ?? 1,
       hint: error.hint,
       message: error.shortMessage,

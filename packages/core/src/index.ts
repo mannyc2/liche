@@ -6,6 +6,9 @@ export * as Formatter from './format/index.js'
 
 export { BaseError, LiliError, ParseError, ValidationError } from './errors/error.js'
 
+export { secret } from './auth/secret.js'
+export type { SecretString } from './auth/secret.js'
+
 export type {
   Awaitable,
   BuiltinsConfig,
