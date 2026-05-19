@@ -538,6 +538,31 @@ type CommandManifestEntry = {
 
 The build package may expose this as generated JSON, a built-in generated command such as `schema --json`, or both. In all cases, the manifest is catalog-derived and must be covered by generated-surface drift checks.
 
+## Mutation testing
+
+`@lili/build` must have package-local mutation testing wired the same way as `@lili/core`: a `mutate` script that runs Stryker through the Bun runner, a package-local `stryker.conf.mjs`, TypeScript checking enabled, and the root workspace catalog dependencies reused instead of adding one-off versions.
+
+The initial mutation scope should target implementation modules where surviving mutants expose real generator or catalog risk:
+
+```txt
+packages/build/src/catalog.ts
+packages/build/src/command.ts
+packages/build/src/digest.ts
+packages/build/src/field.ts
+packages/build/src/generate.ts
+packages/build/src/generate-cli.ts
+packages/build/src/generate-openapi.ts
+packages/build/src/lints.ts
+packages/build/src/manifest.ts
+packages/build/src/product.ts
+packages/build/src/shape.ts
+packages/build/src/vocabulary.ts
+```
+
+Exclude public barrels, the `li-build` CLI wrapper, packaged skill text, generated fixtures, and tests from mutation input. The first threshold should match core (`high: 90`, `low: 85`, `break: 80`) unless a measured baseline proves that too strict for the first landed config.
+
+The goal is not to chase 100% mutation score in the first slice. The goal is to make build-package regressions visible in the same local workflow as core and to turn meaningful surviving mutants into focused tests.
+
 ## Vite sanity check only
 
 The framework must not know Vite exists.

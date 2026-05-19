@@ -8,11 +8,17 @@
     "packages/build": {
       "name": "@lili/build",
       "version": "0.0.0",
+      "bin": {
+        "li-build": "./src/cli.ts",
+      },
       "dependencies": {
         "@lili/core": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@hughescr/stryker-bun-runner": "catalog:test",
+        "@stryker-mutator/core": "catalog:test",
+        "@stryker-mutator/typescript-checker": "catalog:test",
         "@types/bun": "catalog:test",
         "typescript": "catalog:",
       },

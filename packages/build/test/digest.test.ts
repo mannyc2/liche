@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import { canonicalDigest, Command, Field, normalizeProduct, Product, Shape } from '../src/index.js'
+import {
+  canonicalDigest,
+  canonicalize,
+  Command,
+  Field,
+  normalizeProduct,
+  Product,
+  Shape,
+} from '../src/index.js'
 
 function buildA() {
   return Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
@@ -81,5 +89,35 @@ describe('canonicalDigest', () => {
 
   test('throws when value contains a function (functions are not digestable)', () => {
     expect(() => canonicalDigest({ run: () => 1 })).toThrow(/functions are not digestable/)
+  })
+})
+
+describe('canonicalize — nullish and missing-property handling', () => {
+  test('null input is normalized to null', () => {
+    expect(canonicalize(null)).toBe(null)
+  })
+
+  test('undefined input is normalized to null (not undefined)', () => {
+    expect(canonicalize(undefined)).toBe(null)
+  })
+
+  test('object property with undefined value is dropped from the canonical form', () => {
+    const out = canonicalize({ a: 1, b: undefined, c: 2 }) as Record<string, unknown>
+    expect(Object.keys(out).sort()).toEqual(['a', 'c'])
+    expect('b' in out).toBe(false)
+  })
+
+  test('object property with explicit null value is preserved as null', () => {
+    const out = canonicalize({ a: 1, b: null }) as Record<string, unknown>
+    expect(Object.keys(out).sort()).toEqual(['a', 'b'])
+    expect(out.b).toBe(null)
+  })
+
+  test('digest of { a: 1, b: undefined } equals digest of { a: 1 }', () => {
+    expect(canonicalDigest({ a: 1, b: undefined })).toBe(canonicalDigest({ a: 1 }))
+  })
+
+  test('digest of { a: 1, b: null } differs from digest of { a: 1 }', () => {
+    expect(canonicalDigest({ a: 1, b: null })).not.toBe(canonicalDigest({ a: 1 }))
   })
 })

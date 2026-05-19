@@ -105,6 +105,7 @@ Before adding rewrite tests:
 | SURFACE-011 | Command MCP tools and Code Mode MCP are separate surfaces. | `docs/schema-ir-openapi.md` | Fixture with local-only command appears in command MCP manifest but not in OpenAPI-derived downstream manifest. | Canonical catalog + OpenAPI eligibility | HTTP-only downstream MCP overwrites command MCP semantics. |
 | SURFACE-012 | Product-specific surfaces require explicit adapters. | `docs/application-integration.md` | Request `wrangler.jsonc`, Workers Binding RPC, dashboard metadata, or generated server/API output before adapter registration. | Requirement gate | Build silently emits partial product-specific artifacts. |
 | SURFACE-013 | Command manifest is catalog-derived and includes effects/execution. | `docs/build-system.md` | Generate `schema --json` or command manifest output and assert argv, input/output schemas, effects, execution mode, and examples. | Canonical catalog | Agent manifest loses CLI-only semantics or mirrors OpenAPI instead. |
+| BUILD-031 | `@lili/build` has package-local mutation testing. | `docs/build-system.md` | Add `packages/build/stryker.conf.mjs`, `mutate` script, root-catalog Stryker dev deps, and config typecheck inclusion; run the package-local mutate command for an initial report. | Stryker + Bun runner | Build package silently lacks the mutation-testing workflow already available in core. |
 
 ## Auth/session coverage
 

@@ -12,7 +12,8 @@ Authoritative sources: `docs/product-schema.md`, `docs/build-system.md`, `docs/c
 6. Server conformance against owned HTTP deployments.
 7. Generated surface manifest and drift checks.
 8. Generated surfaces.
-9. Compile command.
+9. Build package mutation testing.
+10. Compile command.
 
 ## First vertical slice
 
@@ -80,3 +81,13 @@ The conformance slice should prove:
 - read-only examples run against a fixture server
 - destructive capabilities are skipped unless explicitly fixture-backed
 - schema-invalid successful responses fail conformance
+
+## Mutation testing slice
+
+The mutation testing slice should prove:
+
+- `@lili/build` has the same package-local `mutate` workflow shape as `@lili/core`
+- Stryker uses the Bun runner and TypeScript checker from the root workspace catalog
+- mutation input is limited to implementation modules, not public barrels, CLI wrappers, skill text, generated fixtures, or tests
+- `bun run --filter @lili/build check` typechecks the Stryker config
+- `bun run --filter @lili/build mutate` completes an initial report and does not commit mutation output artifacts

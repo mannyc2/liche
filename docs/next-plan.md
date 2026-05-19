@@ -184,6 +184,27 @@ Verification:
 - The generated surface manifest records separate `cli` and `openapi` surface entries with independent output digests.
 - Hand-editing `openapi.json` makes `generate --check` fail with the `openapi` surface id.
 
+## Phase 3C-QA: build mutation testing
+
+Set up mutation testing for `@lili/build` using the same local workflow as `@lili/core`.
+
+Implementation requirements:
+
+- add `packages/build/stryker.conf.mjs`
+- add `mutate: "stryker run"` to `packages/build/package.json`
+- add Stryker/Bun-runner dev dependencies through the existing root workspace catalog
+- include `stryker.conf.mjs` in the build package TypeScript config
+- mutate implementation modules for catalog normalization, digesting, lints, generators, manifest checks, and product-schema builders
+- exclude public barrels, `li-build` CLI wrapper code, packaged skill text, generated fixtures, and tests from mutation input
+- start with the same thresholds as core unless the first measured baseline proves a narrower first gate is needed
+
+Verification:
+
+- `bun run --filter @lili/build check` passes with the config included in TypeScript checking.
+- `bun run --filter @lili/build mutate` starts Stryker with the Bun test runner and completes an initial report.
+- The initial report names surviving mutants that should become focused follow-up tests rather than broad snapshot updates.
+- The root workspace remains clean: no duplicate Stryker versions, no package-local lockfile, and no mutation artifacts committed.
+
 ## Phase 3D: auth/session catalog and runtime foundation
 
 Implement auth/session in staged slices from `docs/auth-session.md`. Keep the API opt-in and do not create `@lili/auth`.

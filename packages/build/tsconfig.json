@@ -19,5 +19,5 @@
     "types": ["bun"],
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "stryker.conf.mjs"]
 }
