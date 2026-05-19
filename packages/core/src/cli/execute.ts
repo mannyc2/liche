@@ -1,4 +1,4 @@
-import type { Dict, Format, MiddlewareContext, MiddlewareHandler, Result, SelectedCommand } from '../types.js'
+import type { Dict, Format, InvocationKind, MiddlewareContext, MiddlewareHandler, Result, SelectedCommand } from '../types.js'
 import { LiliError, errorToObject } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
 import { commandConfig } from '../parser/config.js'
@@ -15,6 +15,7 @@ export type ExecuteInput = {
   env: Dict
   format: Format
   formatExplicit: boolean
+  invocation: InvocationKind
   middlewares: MiddlewareHandler[]
   onChunk?: ((chunk: unknown) => void | Promise<void>) | undefined
   onDeprecation?: ((flag: string, option: string) => void) | undefined
@@ -61,6 +62,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       },
       format: input.format,
       formatExplicit: input.formatExplicit,
+      invocation: input.invocation,
       name: binaryName,
       ok(data, meta) {
         throw new Done({ ok: true, data, ...(meta && Object.keys(meta).length > 0 ? { meta } : {}) })

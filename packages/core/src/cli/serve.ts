@@ -92,6 +92,7 @@ export async function serveCli(
     env,
     format: outputFormat,
     formatExplicit,
+    invocation: isCiEnv(env) ? 'ci' : 'cli',
     middlewares: state.middlewares.concat(selected.middlewares),
     onDeprecation: (flag) => {
       if (isTty) io.err(`warning: ${flag} is deprecated\n`)
@@ -126,4 +127,15 @@ export async function serveCli(
   }
 
   if (exitCode) (options.exit ?? process.exit)(exitCode)
+}
+
+function isCiEnv(env: Dict<string | undefined>): boolean {
+  const value = env['CI']
+  if (value !== undefined && value !== '' && value !== '0' && value.toLowerCase() !== 'false') {
+    return true
+  }
+  return ['GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'].some((key) => {
+    const v = env[key]
+    return v !== undefined && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
+  })
 }

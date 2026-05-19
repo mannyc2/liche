@@ -22,6 +22,10 @@ function workersProduct() {
     scope: { kind: 'account', param: 'account_id' },
   })
     .auth(Auth.none())
+    .permissions({
+      'workers:read': Auth.permission.scope('workers.read'),
+      'workers:edit': Auth.permission.scope('workers.edit'),
+    })
     .resource(
       'script',
       { label: 'Worker script', path: '/workers/scripts', scope: 'account' },
@@ -413,6 +417,30 @@ describe('Auth normalization', () => {
   })
 })
 
+describe('Permission normalization', () => {
+  test('Product.permissions() normalizes product permission metadata as catalog nodes', () => {
+    const catalog = normalizeProduct(workersProduct())
+    expect(catalog.permissions).toEqual([
+      { id: 'workers:edit', scope: 'workers.edit' },
+      { id: 'workers:read', scope: 'workers.read' },
+    ])
+  })
+
+  test('requires.permissions referencing an undeclared product permission throws', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.none())
+      .command(
+        'deploy',
+        Command.workflow({
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          requires: { permissions: ['workers:edit'] },
+        }),
+      )
+    expect(() => normalizeProduct(product)).toThrow(/requires undeclared permission 'workers:edit'/)
+  })
+})
+
 describe('Context normalization', () => {
   test('Auth.context.env contexts preserve declaration order and surface { flag, env }', () => {
     const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
@@ -507,6 +535,7 @@ describe('Capability requires', () => {
   test('requires.contexts referencing a declared context is accepted', () => {
     const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
       .auth(Auth.none())
+      .permissions({ 'workers:edit': Auth.permission.scope('workers.edit') })
       .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
       .command(
         'deploy',
@@ -538,6 +567,7 @@ describe('Digest sensitivity to auth and requires', () => {
       .command('deploy', Command.workflow({ summary: 'd', handler: 'h.d' }))
     const b = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
       .auth(Auth.none())
+      .permissions({ w: Auth.permission.scope('w.scope') })
       .command(
         'deploy',
         Command.workflow({ summary: 'd', handler: 'h.d', requires: { permissions: ['w'] } }),

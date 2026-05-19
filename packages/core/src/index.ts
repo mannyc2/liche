@@ -20,8 +20,9 @@ export type {
 
 export type {
   Awaitable,
-  BuiltinsConfig,
-  CliInstance,
+	  BuiltinsConfig,
+	  CommandAuthMetadata,
+	  CliInstance,
   CommandDefinition,
   CommandError,
   CreateOptions,

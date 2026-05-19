@@ -7,6 +7,7 @@ export type EnvTokenSource = {
   envVar: string
   mode?: TokenSourceMode
   label?: string
+  scopes?: readonly string[]
 }
 
 export type TokenSource = EnvTokenSource
@@ -56,6 +57,14 @@ export type ProductContextEntry = {
   spec: ContextSpec
 }
 
+export type PermissionScopeSpec = {
+  kind: 'scope'
+  scope: string
+  description?: string
+}
+
+export type PermissionSpec = PermissionScopeSpec
+
 export const Auth = {
   none(): AuthNoneSpec {
     return { kind: 'none' }
@@ -69,10 +78,18 @@ export const Auth = {
     return out
   },
   token: {
-    env(envVar: string, opts?: { mode?: TokenSourceMode; label?: string }): EnvTokenSource {
+    env(envVar: string, opts?: { mode?: TokenSourceMode; label?: string; scopes?: readonly string[] }): EnvTokenSource {
       const out: EnvTokenSource = { kind: 'env', envVar }
       if (opts?.mode) out.mode = opts.mode
       if (opts?.label) out.label = opts.label
+      if (opts?.scopes) out.scopes = [...opts.scopes]
+      return out
+    },
+  },
+  permission: {
+    scope(scope: string, opts?: { description?: string }): PermissionScopeSpec {
+      const out: PermissionScopeSpec = { kind: 'scope', scope }
+      if (opts?.description) out.description = opts.description
       return out
     },
   },

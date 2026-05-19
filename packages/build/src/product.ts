@@ -1,4 +1,4 @@
-import type { AuthSpec, ContextSpec, ProductContextEntry, RequiresSpec } from './auth.js'
+import type { AuthSpec, ContextSpec, PermissionSpec, ProductContextEntry, RequiresSpec } from './auth.js'
 import type { CommandSpec, HttpSpec, SurfaceHints } from './command.js'
 import type { FieldBuilder } from './field.js'
 import type { Shape } from './shape.js'
@@ -103,6 +103,7 @@ export class Product {
   #bindings: BindingSpec[] = []
   #auth: AuthSpec | undefined
   #contexts: ProductContextEntry[] = []
+  #permissions: Record<string, PermissionSpec> = {}
 
   private constructor(init: ProductInit) {
     this.id = init.id
@@ -150,6 +151,16 @@ export class Product {
     return this
   }
 
+  permissions(specs: Record<string, PermissionSpec>): this {
+    for (const [id, spec] of Object.entries(specs)) {
+      if (this.#permissions[id] !== undefined) {
+        throw new Error(`Product '${this.id}' already declared permission '${id}'.`)
+      }
+      this.#permissions[id] = spec
+    }
+    return this
+  }
+
   get resources(): readonly ResourceBuilder[] {
     return this.#resources
   }
@@ -168,6 +179,10 @@ export class Product {
 
   get contexts(): readonly ProductContextEntry[] {
     return this.#contexts
+  }
+
+  get permissionSpecs(): Readonly<Record<string, PermissionSpec>> {
+    return this.#permissions
   }
 }
 

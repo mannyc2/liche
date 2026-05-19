@@ -96,6 +96,9 @@ export function manifestEqualForSurface(
       `generatorVersion changed (was ${actual.generatorVersion}, now ${expected.generatorVersion})`,
     )
   }
+  if (JSON.stringify(expected.auth) !== JSON.stringify(actual.auth)) {
+    reasons.push('manifest auth metadata changed')
+  }
   const expectedSurface = expected.surfaces.find((s) => s.id === surfaceId)
   const actualSurface = actual.surfaces.find((s) => s.id === surfaceId)
   if (!expectedSurface || !actualSurface) {

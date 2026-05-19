@@ -41,9 +41,11 @@ This re-freeze does not make auth a separate package. The authoritative behavior
 The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/build/test/core-consumer-boundary.test.ts`:
 
 - Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential`.
-- Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `ResolvedAuthMeta`.
+- Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `ResolvedAuthMeta`, `CommandAuthMetadata`.
 
-Deferred to 3D-B / 3D-C / Phase 4: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, `serializeHttpOperationRequest` / `callHttpOperation`.
+Deferred to 3D-B / 3D-C / Phase 4: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, resolved account/session status metadata, `serializeHttpOperationRequest` / `callHttpOperation`.
+
+`RunContext` gained `invocation: 'cli' | 'ci' | 'agent' | 'mcp'` so generated command code can pass the real invocation posture into `resolveAuth`. Plain CLI invocations infer `ci` from common CI env vars; MCP and fetch-backed agent calls pass `mcp` / `agent` explicitly.
 
 `LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` envelope gained the matching optional `details` field. `errorToObject` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
 

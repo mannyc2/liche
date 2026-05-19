@@ -30,10 +30,11 @@ export async function fetchCli(name: string, state: CliState, request: Request):
           agent: true,
           argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
           displayName: name,
-          env: Bun.env as Dict<string | undefined>,
-          format: 'jsonl',
-          formatExplicit: true,
-          middlewares: state.middlewares.concat(selected.middlewares),
+	          env: Bun.env as Dict<string | undefined>,
+	          format: 'jsonl',
+	          formatExplicit: true,
+	          invocation: 'agent',
+	          middlewares: state.middlewares.concat(selected.middlewares),
           onChunk: (chunk) => {
             controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'chunk', data: chunk })}\n`))
           },
@@ -49,10 +50,11 @@ export async function fetchCli(name: string, state: CliState, request: Request):
     agent: true,
     argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
     displayName: name,
-    env: Bun.env as Dict<string | undefined>,
-    format: 'json',
-    formatExplicit: true,
-    middlewares: state.middlewares.concat(selected.middlewares),
+	    env: Bun.env as Dict<string | undefined>,
+	    format: 'json',
+	    formatExplicit: true,
+	    invocation: 'agent',
+	    middlewares: state.middlewares.concat(selected.middlewares),
   })
 
   return Response.json(result, { status: result.ok ? 200 : Number(result.error.status ?? 400) })

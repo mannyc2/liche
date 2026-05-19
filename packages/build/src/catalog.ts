@@ -1,6 +1,7 @@
 import type {
   AuthSpec,
   ContextSpec,
+  PermissionSpec,
   ProductContextEntry,
   RequiresSpec,
   TokenSource,
@@ -150,6 +151,7 @@ export type NormalizedTokenSource = {
   envVar: string
   mode: 'any' | 'ci'
   label?: string
+  scopes?: string[]
 }
 
 export type NormalizedAuth =
@@ -176,6 +178,12 @@ export type NormalizedContext = {
   list?: NormalizedHttpSpec
 }
 
+export type NormalizedPermission = {
+  id: string
+  scope?: string
+  description?: string
+}
+
 export type Catalog = {
   kind: 'lili.catalog'
   catalogVersion: 1
@@ -188,6 +196,7 @@ export type Catalog = {
   }
   vocabulary: NormalizedVocabulary
   auth: NormalizedAuth
+  permissions: NormalizedPermission[]
   contexts: NormalizedContext[]
   resources: NormalizedResource[]
   bindings: NormalizedBinding[]
@@ -201,16 +210,18 @@ export function normalizeProduct(product: Product): Catalog {
     )
   }
   const auth = normalizeAuth(product.authSpec)
+  const permissions = normalizePermissions(product.permissionSpecs)
+  const permissionIds = new Set(permissions.map((p) => p.id))
   const contexts = product.contexts.map(normalizeContext)
   const contextIds = new Set(contexts.map((c) => c.id))
   const resources = product.resources.map(normalizeResource)
   const resourceCapabilities = product.resources.flatMap((r) =>
     r.operations.map(({ verb, spec }) =>
-      normalizeResourceOperation(r.id, verb, spec, auth.kind !== 'none', contextIds),
+      normalizeResourceOperation(r.id, verb, spec, auth.kind !== 'none', contextIds, permissionIds),
     ),
   )
   const commandCapabilities = product.commands.map(({ id, spec }) =>
-    normalizeCommand(id, spec, auth.kind !== 'none', contextIds),
+    normalizeCommand(id, spec, auth.kind !== 'none', contextIds, permissionIds),
   )
   const bindings = product.bindings.map(normalizeBinding)
   return {
@@ -219,6 +230,7 @@ export function normalizeProduct(product: Product): Catalog {
     product: normalizeProductHeader(product),
     vocabulary: normalizeVocabulary(product.vocabulary),
     auth,
+    permissions,
     contexts,
     resources,
     bindings,
@@ -245,7 +257,18 @@ function normalizeTokenSource(source: TokenSource): NormalizedTokenSource {
     mode: source.mode ?? 'any',
   }
   if (source.label) out.label = source.label
+  if (source.scopes) out.scopes = [...source.scopes]
   return out
+}
+
+function normalizePermissions(specs: Readonly<Record<string, PermissionSpec>>): NormalizedPermission[] {
+  return Object.keys(specs).sort().map((id) => {
+    const spec = specs[id]!
+    const out: NormalizedPermission = { id }
+    if (spec.kind === 'scope') out.scope = spec.scope
+    if (spec.description) out.description = spec.description
+    return out
+  })
 }
 
 function normalizeContext(entry: ProductContextEntry): NormalizedContext {
@@ -275,6 +298,7 @@ function normalizeRequires(
   spec: RequiresSpec | undefined,
   authEnabled: boolean,
   contextIds: Set<string>,
+  permissionIds: Set<string>,
   capabilityId: string,
 ): NormalizedRequires {
   const out: NormalizedRequires = {
@@ -290,6 +314,11 @@ function normalizeRequires(
   for (const ctx of out.contexts) {
     if (!contextIds.has(ctx)) {
       throw new Error(`Capability '${capabilityId}' requires undeclared context '${ctx}'.`)
+    }
+  }
+  for (const permission of out.permissions) {
+    if (!permissionIds.has(permission)) {
+      throw new Error(`Capability '${capabilityId}' requires undeclared permission '${permission}'.`)
     }
   }
   return out
@@ -346,6 +375,7 @@ function normalizeResourceOperation(
   spec: ResourceOperationSpec,
   authEnabled: boolean,
   contextIds: Set<string>,
+  permissionIds: Set<string>,
 ): ResourceOperationCapability {
   const http = spec.http ? normalizeHttpSpec(spec.http) : undefined
   const id = `${resourceId}.${verb}`
@@ -357,7 +387,7 @@ function normalizeResourceOperation(
     command: [resourceId, verb],
     summary: spec.summary,
     output: normalizeShape(spec.output),
-    requires: normalizeRequires(spec.requires, authEnabled, contextIds, id),
+    requires: normalizeRequires(spec.requires, authEnabled, contextIds, permissionIds, id),
     surfaces: normalizeSurfacesForResourceOperation(spec.surfaces, http !== undefined),
   }
   if (spec.description) cap.description = spec.description
@@ -371,6 +401,7 @@ function normalizeCommand(
   spec: CommandSpec,
   authEnabled: boolean,
   contextIds: Set<string>,
+  permissionIds: Set<string>,
 ): CommandCapability {
   const execution = normalizeExecution(spec.execution)
   const cap: CommandCapability = {
@@ -380,7 +411,7 @@ function normalizeCommand(
     command: [id],
     summary: spec.summary,
     execution,
-    requires: normalizeRequires(spec.requires, authEnabled, contextIds, id),
+    requires: normalizeRequires(spec.requires, authEnabled, contextIds, permissionIds, id),
     surfaces: normalizeSurfacesForCommand(spec.surfaces, execution),
   }
   if (spec.description) cap.description = spec.description

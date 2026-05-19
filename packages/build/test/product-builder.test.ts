@@ -283,6 +283,15 @@ describe('Auth authoring API', () => {
     expect(src).toEqual({ kind: 'env', envVar: 'ACME_CI_TOKEN', mode: 'ci' })
   })
 
+  test('Auth.token.env can carry known scopes for best-effort local scope checks', () => {
+    const src = Auth.token.env('ACME_TOKEN', { scopes: ['cache.read'] })
+    expect(src).toEqual({ kind: 'env', envVar: 'ACME_TOKEN', scopes: ['cache.read'] })
+  })
+
+  test('Auth.permission.scope returns a product permission backed by an OAuth scope', () => {
+    expect(Auth.permission.scope('workers.read')).toEqual({ kind: 'scope', scope: 'workers.read' })
+  })
+
   test('Auth.context.env returns a kind:"env" spec with the select bag', () => {
     const ctx = Auth.context.env({
       label: 'Organization',
@@ -329,9 +338,18 @@ describe('Auth authoring API', () => {
     ).toThrow(/already declared context/)
   })
 
+  test('Product.permissions() stores product permissions and rejects duplicate ids', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' }).permissions({
+      read: Auth.permission.scope('read.scope'),
+    })
+    expect(product.permissionSpecs).toEqual({ read: { kind: 'scope', scope: 'read.scope' } })
+    expect(() => product.permissions({ read: Auth.permission.scope('read.again') })).toThrow(/already declared permission/)
+  })
+
   test('Product without .auth() leaves authSpec undefined (Commit 3 does not enforce)', () => {
     const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' })
     expect(product.authSpec).toBeUndefined()
     expect(product.contexts).toEqual([])
+    expect(product.permissionSpecs).toEqual({})
   })
 })

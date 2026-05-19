@@ -5,6 +5,7 @@ export type Awaitable<T> = T | Promise<T>
 export type Format = 'toon' | 'json' | 'yaml' | 'md' | 'jsonl'
 export type DisabledGlobal = 'format'
 export type OutputPolicy = 'all' | 'agent-only'
+export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
 export type Schema<T = unknown> = z.ZodType<T>
 export type InferSchema<T> = T extends z.ZodType<infer O> ? O : unknown
 
@@ -52,6 +53,7 @@ export type Result =
 
 export type CommandManifestEntry = {
   aliases?: readonly string[] | undefined
+  auth?: CommandAuthMetadata | undefined
   description?: string | undefined
   entry?: Entry | undefined
   examples?: readonly Example[] | undefined
@@ -60,6 +62,16 @@ export type CommandManifestEntry = {
   outputPolicy?: OutputPolicy | undefined
   schema?: unknown
   usage?: readonly Usage[] | undefined
+}
+
+export type CommandAuthMetadata = {
+  required: boolean
+  status: 'not-required' | 'requires-runtime-resolution'
+  providerId?: string | undefined
+  envVars?: readonly string[] | undefined
+  contexts?: readonly { id: string; envVar?: string | undefined; flag?: string | undefined }[] | undefined
+  requiredPermissions?: readonly string[] | undefined
+  requiredScopes?: readonly string[] | undefined
 }
 
 export type CommandManifest = {
@@ -89,6 +101,7 @@ export type RunContext<
   }): never
   format: Format
   formatExplicit: boolean
+  invocation: InvocationKind
   name: string
   ok(data?: unknown, meta?: ResultMeta): never
   options: O
@@ -140,6 +153,7 @@ export type CommandDefinition<
   alias?: Record<string, string> | undefined
   aliases?: string[] | undefined
   args?: A | undefined
+  auth?: CommandAuthMetadata | undefined
   basePath?: string | undefined
   description?: string | undefined
   env?: E | undefined

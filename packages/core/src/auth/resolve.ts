@@ -6,6 +6,7 @@ export type ResolveAuthInput = {
   provider: AuthProviderRuntime
   required: boolean
   requiredScopes?: string[]
+  requiredPermissions?: string[]
   profile?: string
   invocation: InvocationKind
   nonInteractive?: boolean
@@ -14,7 +15,7 @@ export type ResolveAuthInput = {
 }
 
 export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredential | undefined> {
-  const { provider, required, requiredScopes, invocation, env = {} } = input
+  const { provider, required, requiredScopes, requiredPermissions, invocation, env = {} } = input
 
   if (provider.kind === 'none') return undefined
 
@@ -26,14 +27,14 @@ export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredenti
     envVarsTried.push(source.envVar)
     const value = env[source.envVar]
     if (value && value.length > 0) {
-      const credential = buildCredential(provider, value)
+      const credential = buildCredential(provider, value, source.scopes)
       if (requiredScopes && requiredScopes.length > 0 && credential.scopes) {
         const missing = requiredScopes.filter((s) => !credential.scopes!.includes(s))
         if (missing.length > 0) {
           throw authScopeMissing({
             providerId: provider.id,
             missingScopes: missing,
-            requiredPermissions: requiredScopes,
+            ...(requiredPermissions ? { requiredPermissions } : undefined),
           })
         }
       }
@@ -46,12 +47,16 @@ export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredenti
   if (invocation === 'ci') {
     throw authCiTokenMissing({ providerId: provider.id, envVars: envVarsTried })
   }
-  throw authMissing({ providerId: provider.id, envVars: envVarsTried })
+  throw authMissing({
+    providerId: provider.id,
+    envVars: envVarsTried,
+    ...(requiredPermissions ? { requiredPermissions } : undefined),
+  })
 }
 
-function buildCredential(provider: AuthProviderRuntime, raw: string): AuthCredential {
+function buildCredential(provider: AuthProviderRuntime, raw: string, scopes: string[] | undefined): AuthCredential {
   const kind: 'bearer' | 'apiKey' = provider.kind === 'apiKey' ? 'apiKey' : 'bearer'
-  return {
+  const credential: AuthCredential = {
     providerId: provider.id,
     source: 'env',
     kind,
@@ -59,6 +64,8 @@ function buildCredential(provider: AuthProviderRuntime, raw: string): AuthCreden
     header: provider.header,
     refreshAvailable: false,
   }
+  if (scopes) credential.scopes = [...scopes]
+  return credential
 }
 
 export type ResolveContextInput = {

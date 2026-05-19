@@ -22,6 +22,9 @@ export default Product.create({
       ],
     }),
   )
+  .permissions({
+    'cache:write': Auth.permission.scope('cache.write'),
+  })
   .context(
     'org',
     Auth.context.env({

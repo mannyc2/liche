@@ -5,6 +5,7 @@ import type {
   CommandCapability,
   NormalizedAuth,
   NormalizedContext,
+  NormalizedPermission,
   NormalizedShape,
   ResourceOperationCapability,
 } from './catalog.js'
@@ -25,6 +26,10 @@ function authRuntimeUsed(catalog: Catalog): boolean {
 
 function contextRuntimeUsed(catalog: Catalog): boolean {
   return catalog.capabilities.some((c) => c.requires.contexts.length > 0)
+}
+
+function capabilityHasAuthMetadata(cap: Capability): boolean {
+  return cap.requires.auth || cap.requires.contexts.length > 0 || cap.requires.permissions.length > 0
 }
 
 export type GenerateOptions = {
@@ -65,6 +70,7 @@ function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
     .map((s) => {
       const fields = [`kind: 'env'`, `envVar: ${q(s.envVar)}`, `mode: ${q(s.mode)}`]
       if (s.label) fields.push(`label: ${q(s.label)}`)
+      if (s.scopes) fields.push(`scopes: ${renderStringArray(s.scopes)}`)
       return `{ ${fields.join(', ')} }`
     })
     .join(', ')
@@ -197,6 +203,10 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   if (cap.description) lines.push(`${indent}  description: ${q(cap.description)},`)
   const inputSchema = capabilityInputSchema(catalog, cap)
   const outputSchema = capabilityOutputSchema(catalog, cap)
+  const envSchema = capabilityEnvSchema(catalog, cap)
+  const authMetadata = renderCommandAuthMetadata(catalog, cap)
+  if (authMetadata) lines.push(`${indent}  auth: ${authMetadata},`)
+  if (envSchema) lines.push(`${indent}  env: ${renderSchema(envSchema, `${indent}  `)},`)
   lines.push(`${indent}  options: ${renderSchema(inputSchema, `${indent}  `)},`)
   lines.push(`${indent}  output: ${renderSchema(outputSchema, `${indent}  `)},`)
   lines.push(`${indent}  async run(ctx) {`)
@@ -211,8 +221,8 @@ function capabilityInputSchema(catalog: Catalog, cap: Capability): JsonSchemaNod
     ? shapeToJsonSchema(catalog, cap.input)
     : ({ type: 'object', properties: {} } as JsonSchemaNode)
   if (cap.requires.contexts.length === 0) return base
-  // Inject declared context flags as required string options so generated
-  // help surfaces them and resolveContext can read ctx.options[flag] verbatim.
+  // Inject declared context flags as optional string options so env fallback
+  // can still resolve the context inside resolveContext.
   const properties: Record<string, JsonSchemaNode> = { ...(base.properties ?? {}) }
   const required = new Set(base.required ?? [])
   for (const ctxId of cap.requires.contexts) {
@@ -224,11 +234,25 @@ function capabilityInputSchema(catalog: Catalog, cap: Capability): JsonSchemaNod
     const node: JsonSchemaNode = { type: 'string' }
     if (ctx.label) node.description = ctx.label
     properties[flag] = node
-    required.add(flag)
   }
   const out: JsonSchemaNode = { type: 'object', properties }
   if (required.size > 0) out.required = [...required].sort()
   return out
+}
+
+function capabilityEnvSchema(catalog: Catalog, cap: Capability): JsonSchemaNode | undefined {
+  const envVars = new Set<string>()
+  if (needsAuthResolution(cap) && catalog.auth.kind !== 'none') {
+    for (const source of catalog.auth.tokenSources) envVars.add(source.envVar)
+  }
+  for (const ctxId of cap.requires.contexts) {
+    const ctx = catalog.contexts.find((c) => c.id === ctxId)
+    if (ctx?.select.env) envVars.add(ctx.select.env)
+  }
+  if (envVars.size === 0) return undefined
+  const properties: Record<string, JsonSchemaNode> = {}
+  for (const envVar of [...envVars].sort()) properties[envVar] = { type: 'string' }
+  return { type: 'object', properties }
 }
 
 function capabilityOutputSchema(catalog: Catalog, cap: Capability): JsonSchemaNode {
@@ -248,8 +272,8 @@ function shapeToJsonSchema(catalog: Catalog, shape: NormalizedShape): JsonSchema
   return resolved.jsonSchema
 }
 
-function renderCapabilityRun(indent: string, _catalog: Catalog, cap: Capability): string[] {
-  const preamble = renderAuthPreamble(indent, cap)
+function renderCapabilityRun(indent: string, catalog: Catalog, cap: Capability): string[] {
+  const preamble = renderAuthPreamble(indent, catalog, cap)
   if (cap.kind === 'resource-operation') {
     return [
       ...preamble,
@@ -277,14 +301,21 @@ function renderCapabilityRun(indent: string, _catalog: Catalog, cap: Capability)
   ]
 }
 
-function renderAuthPreamble(indent: string, cap: Capability): string[] {
+function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): string[] {
   const lines: string[] = []
   if (needsAuthResolution(cap)) {
     lines.push(`${indent}const credential = await resolveAuth({`)
     lines.push(`${indent}  provider: AUTH_PROVIDER,`)
     lines.push(`${indent}  required: true,`)
-    lines.push(`${indent}  invocation: 'cli',`)
-    lines.push(`${indent}  env: process.env,`)
+    if (cap.requires.permissions.length > 0) {
+      lines.push(`${indent}  requiredPermissions: ${renderStringArray(cap.requires.permissions)},`)
+    }
+    const requiredScopes = requiredScopesFor(catalog.permissions, cap)
+    if (requiredScopes.length > 0) {
+      lines.push(`${indent}  requiredScopes: ${renderStringArray(requiredScopes)},`)
+    }
+    lines.push(`${indent}  invocation: ctx.invocation,`)
+    lines.push(`${indent}  env: ctx.env as Record<string, string | undefined>,`)
     lines.push(`${indent}})`)
   }
   if (neededContexts(cap).length > 0) {
@@ -293,7 +324,7 @@ function renderAuthPreamble(indent: string, cap: Capability): string[] {
     lines.push(`${indent}  contexts: CONTEXTS,`)
     lines.push(`${indent}  required: [${required}],`)
     lines.push(`${indent}  explicit: ctx.options as Record<string, string | undefined>,`)
-    lines.push(`${indent}  env: process.env,`)
+    lines.push(`${indent}  env: ctx.env as Record<string, string | undefined>,`)
     if (needsAuthResolution(cap)) {
       lines.push(`${indent}  providerId: AUTH_PROVIDER.id,`)
     }
@@ -309,8 +340,50 @@ function renderAuthPreamble(indent: string, cap: Capability): string[] {
   return lines
 }
 
+function requiredScopesFor(permissions: NormalizedPermission[], cap: Capability): string[] {
+  const byId = new Map(permissions.map((permission) => [permission.id, permission]))
+  return cap.requires.permissions.flatMap((id) => {
+    const scope = byId.get(id)?.scope
+    return scope ? [scope] : []
+  })
+}
+
+function renderCommandAuthMetadata(catalog: Catalog, cap: Capability): string | undefined {
+  if (!capabilityHasAuthMetadata(cap)) return undefined
+  const status =
+    cap.requires.auth || cap.requires.contexts.length > 0
+      ? 'requires-runtime-resolution'
+      : 'not-required'
+  const fields = [
+    `required: ${cap.requires.auth ? 'true' : 'false'}`,
+    `status: ${q(status)}`,
+  ]
+  if (cap.requires.auth && catalog.auth.kind !== 'none') {
+    fields.push(`providerId: ${q(catalog.auth.id)}`)
+    fields.push(`envVars: ${renderStringArray(catalog.auth.tokenSources.map((s) => s.envVar))}`)
+  }
+  const contexts = cap.requires.contexts.map((ctxId) => {
+    const ctx = catalog.contexts.find((c) => c.id === ctxId)
+    const parts = [`id: ${q(ctxId)}`]
+    if (ctx?.select.flag) parts.push(`flag: ${q(ctx.select.flag)}`)
+    if (ctx?.select.env) parts.push(`envVar: ${q(ctx.select.env)}`)
+    return `{ ${parts.join(', ')} }`
+  })
+  if (contexts.length > 0) fields.push(`contexts: [${contexts.join(', ')}]`)
+  if (cap.requires.permissions.length > 0) {
+    fields.push(`requiredPermissions: ${renderStringArray(cap.requires.permissions)}`)
+  }
+  const requiredScopes = requiredScopesFor(catalog.permissions, cap)
+  if (requiredScopes.length > 0) fields.push(`requiredScopes: ${renderStringArray(requiredScopes)}`)
+  return `{ ${fields.join(', ')} }`
+}
+
 function renderSchema(jsonSchema: unknown, indent: string): string {
   return renderSchemaNode(jsonSchema as JsonSchemaNode, indent)
+}
+
+function renderStringArray(values: readonly string[]): string {
+  return `[${values.map(q).join(', ')}]`
 }
 
 type SchemaRenderer = (node: JsonSchemaNode, indent: string) => string

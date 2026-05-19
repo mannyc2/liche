@@ -178,9 +178,10 @@ function enrichEntry(
   const usage = def.usage
   const hint = def.hint
   const outputPolicyValue = def.outputPolicy
-  return {
-    ...(aliases.length ? { aliases } : undefined),
-    description: def.description,
+	  return {
+	    ...(aliases.length ? { aliases } : undefined),
+	    ...(def.auth ? { auth: def.auth } : undefined),
+	    description: def.description,
     name: fullName,
     schema: commandSchema(entry),
     ...(examples ? { examples } : undefined),

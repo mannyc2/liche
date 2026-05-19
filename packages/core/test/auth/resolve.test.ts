@@ -142,6 +142,50 @@ describe('resolveAuth (env-only, 3D-A)', () => {
     })
     expect(cred?.secret.reveal()).toBe('first-value')
   })
+
+  test('known env source scopes fail locally with AUTH_SCOPE_MISSING before transport', async () => {
+    const provider: AuthProviderRuntime = {
+      id: 'acme',
+      kind: 'bearer',
+      tokenSources: [{ kind: 'env', envVar: 'ACME_TOKEN', scopes: ['cache.read'] }],
+    }
+    let caught: unknown
+    try {
+      await resolveAuth({
+        provider,
+        required: true,
+        invocation: 'cli',
+        env: { ACME_TOKEN: 'tok-1' },
+        requiredScopes: ['cache.write'],
+        requiredPermissions: ['cache:write'],
+      })
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(LiliError)
+    expect((caught as LiliError).code).toBe('AUTH_SCOPE_MISSING')
+    expect((caught as LiliError).details).toMatchObject({
+      missingScopes: ['cache.write'],
+      requiredPermissions: ['cache:write'],
+    })
+  })
+
+  test('missing env credential includes required product permissions in AUTH_MISSING details', async () => {
+    let caught: unknown
+    try {
+      await resolveAuth({
+        provider: bearerProvider,
+        required: true,
+        invocation: 'cli',
+        env: {},
+        requiredPermissions: ['cache:write'],
+      })
+    } catch (e) {
+      caught = e
+    }
+    expect((caught as LiliError).code).toBe('AUTH_MISSING')
+    expect((caught as LiliError).details).toMatchObject({ requiredPermissions: ['cache:write'] })
+  })
 })
 
 describe('resolveContext (env+flag, 3D-A)', () => {

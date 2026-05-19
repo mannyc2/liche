@@ -7,6 +7,7 @@ export type TokenSourceSpec = {
   envVar: string
   mode?: 'any' | 'ci' | undefined
   label?: string | undefined
+  scopes?: string[] | undefined
 }
 
 export type AuthProviderRuntime = {

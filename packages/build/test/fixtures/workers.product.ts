@@ -11,6 +11,10 @@ export default Product.create({
   description: 'Build and deploy serverless applications.',
 })
   .auth(Auth.none())
+  .permissions({
+    'workers:read': Auth.permission.scope('workers.read'),
+    'workers:edit': Auth.permission.scope('workers.edit'),
+  })
   .resource(
     'script',
     { label: 'Worker script', path: '/workers/scripts', scope: 'account' },

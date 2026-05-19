@@ -23,6 +23,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       id,
       result: {
         tools: collectCommands(state.commands, state.root).map((command: any) => ({
+          ...(command.auth ? { auth: command.auth } : undefined),
           description: command.description,
           inputSchema: { properties: { args: command.schema?.args, options: command.schema?.options }, type: 'object' },
           name: mcpToolName(command.name),
@@ -45,6 +46,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
           env: Bun.env as Dict<string | undefined>,
           format: 'json',
           formatExplicit: true,
+          invocation: 'mcp',
           middlewares: state.middlewares.concat(selected.middlewares),
         })
       : { ok: false, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }

@@ -72,6 +72,19 @@ describe('generate --check drift detection', () => {
     expect(check.ok).toBe(false)
   })
 
+  test('hand-edit to manifest auth metadata fails check', async () => {
+    await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    const path = join(dir, MANIFEST_FILE)
+    const manifest = JSON.parse(await Bun.file(path).text())
+    manifest.auth.providers[0].id = 'edited-auth'
+    await Bun.write(path, JSON.stringify(manifest, null, 2))
+
+    const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    expect(check.ok).toBe(false)
+    if (check.ok) throw new Error('expected drift')
+    expect(check.drift).toContain('manifest auth metadata changed')
+  })
+
   test('hand-edit to openapi surface manifest metadata fails check', async () => {
     await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     const path = join(dir, MANIFEST_FILE)

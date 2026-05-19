@@ -48,18 +48,25 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).toContain(`envVar: 'ACME_ORG_ID'`)
   })
 
-  test('declared context flag is injected as a required string option on the command', () => {
+  test('declared context flag is injected as an optional string option so env fallback can resolve it', () => {
     const source = generate(workersAuthProduct)
-    expect(source).toMatch(/\.command\('purge', \{[\s\S]*?options: z\.object\(\{[\s\S]*?'org': z\.string\(\)/)
+    expect(source).toMatch(/\.command\('purge', \{[\s\S]*?options: z\.object\(\{[\s\S]*?'org': z\.string\(\)\.optional\(\)/)
+  })
+
+  test('command env schema includes only the auth and context env vars needed by the capability', () => {
+    const source = generate(workersAuthProduct)
+    expect(source).toMatch(/env: z\.object\(\{[\s\S]*?'ACME_TOKEN': z\.string\(\)\.optional\(\)/)
+    expect(source).toMatch(/env: z\.object\(\{[\s\S]*?'ACME_CI_TOKEN': z\.string\(\)\.optional\(\)/)
+    expect(source).toMatch(/env: z\.object\(\{[\s\S]*?'ACME_ORG_ID': z\.string\(\)\.optional\(\)/)
   })
 
   test('run body resolves auth and context before the (Phase 4) stub return', () => {
     const source = generate(workersAuthProduct)
     expect(source).toMatch(
-      /const credential = await resolveAuth\(\{[\s\S]*?provider: AUTH_PROVIDER,[\s\S]*?required: true,[\s\S]*?invocation: 'cli',[\s\S]*?env: process\.env,[\s\S]*?\}\)/,
+      /const credential = await resolveAuth\(\{[\s\S]*?provider: AUTH_PROVIDER,[\s\S]*?required: true,[\s\S]*?requiredPermissions: \['cache:write'\],[\s\S]*?requiredScopes: \['cache\.write'\],[\s\S]*?invocation: ctx\.invocation,[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?\}\)/,
     )
     expect(source).toMatch(
-      /const context = await resolveContext\(\{[\s\S]*?contexts: CONTEXTS,[\s\S]*?required: \['org'\],[\s\S]*?explicit: ctx\.options[\s\S]*?env: process\.env,[\s\S]*?providerId: AUTH_PROVIDER\.id,[\s\S]*?\}\)/,
+      /const context = await resolveContext\(\{[\s\S]*?contexts: CONTEXTS,[\s\S]*?required: \['org'\],[\s\S]*?explicit: ctx\.options[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?providerId: AUTH_PROVIDER\.id,[\s\S]*?\}\)/,
     )
     expect(source).toContain('const headers = new Headers()')
     expect(source).toContain('if (credential) applyAuth(headers, credential)')
@@ -71,6 +78,15 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('.reveal(')
     expect(source).not.toMatch(/Bearer \$\{[^}]*\}/)
     expect(source).not.toContain('process.env.ACME_TOKEN')
+  })
+
+  test('generated command metadata exposes auth requirements without secrets for agent/MCP surfaces', () => {
+    const source = generate(workersAuthProduct)
+    expect(source).toContain(`auth: { required: true, status: 'requires-runtime-resolution', providerId: 'acme'`)
+    expect(source).toContain(`envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN']`)
+    expect(source).toContain(`requiredPermissions: ['cache:write']`)
+    expect(source).toContain(`requiredScopes: ['cache.write']`)
+    expect(source).not.toContain('tok-runtime')
   })
 
   test('no-auth product (workers fixture) does not emit AUTH_PROVIDER, CONTEXTS, or auth-runtime imports', () => {
@@ -107,10 +123,12 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       ACME_TOKEN: process.env.ACME_TOKEN,
       ACME_CI_TOKEN: process.env.ACME_CI_TOKEN,
       ACME_ORG_ID: process.env.ACME_ORG_ID,
+      CI: process.env.CI,
     }
     delete process.env.ACME_TOKEN
     delete process.env.ACME_CI_TOKEN
     delete process.env.ACME_ORG_ID
+    delete process.env.CI
   })
 
   afterEach(() => {
@@ -121,7 +139,17 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     }
   })
 
-  async function runGenerated(argv: string[]): Promise<{ stdout: string; exitCode: number }> {
+  function asyncIter(values: string[]): AsyncIterable<string> {
+    return (async function* () {
+      for (const value of values) yield value
+    })()
+  }
+
+  async function runGenerated(
+    argv: string[],
+    env: Record<string, string | undefined> = {},
+    stdin?: AsyncIterable<string>,
+  ): Promise<{ stdout: string; exitCode: number }> {
     const mod = (await import(modulePath)) as {
       default: {
         serve: (
@@ -131,13 +159,22 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
             stderr: (s: string) => void
             exit: (code: number) => void
             isTty: boolean
+            env?: Record<string, string | undefined>
+            stdin?: AsyncIterable<string>
           },
         ) => Promise<void>
       }
     }
     let stdout = ''
     let exitCode = 0
-    await mod.default.serve(argv, {
+    const opts: {
+      stdout: (s: string) => void
+      stderr: (s: string) => void
+      exit: (code: number) => void
+      isTty: boolean
+      env?: Record<string, string | undefined>
+      stdin?: AsyncIterable<string>
+    } = {
       stdout: (s) => {
         stdout += s
       },
@@ -146,7 +183,10 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
         exitCode = code
       },
       isTty: false,
-    })
+      env,
+    }
+    if (stdin) opts.stdin = stdin
+    await mod.default.serve(argv, opts)
     return { stdout, exitCode }
   }
 
@@ -157,12 +197,87 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     expect(stdout).not.toContain('REMOTE_NOT_IMPLEMENTED')
   })
 
-  test('with ACME_TOKEN set, the resolution path succeeds and the transport stub fires (REMOTE_NOT_IMPLEMENTED)', async () => {
-    process.env.ACME_TOKEN = 'tok-runtime'
-    const { stdout, exitCode } = await runGenerated(['purge', '--org', 'acme-corp', '--json'])
+  test('with ACME_TOKEN injected through ServeOptions.env, the resolution path succeeds without reading process.env', async () => {
+    const { stdout, exitCode } = await runGenerated(['purge', '--org', 'acme-corp', '--json'], {
+      ACME_TOKEN: 'tok-runtime',
+    })
     expect(exitCode).toBe(1)
     expect(stdout).toContain('REMOTE_NOT_IMPLEMENTED')
     expect(stdout).not.toContain('AUTH_MISSING')
     expect(stdout).not.toContain('tok-runtime')
+  })
+
+  test('context env fallback reaches resolveContext when --org is omitted', async () => {
+    const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
+      ACME_TOKEN: 'tok-runtime',
+      ACME_ORG_ID: 'env-org',
+    })
+    expect(exitCode).toBe(1)
+    expect(stdout).toContain('REMOTE_NOT_IMPLEMENTED')
+    expect(stdout).not.toContain('VALIDATION_ERROR')
+    expect(stdout).not.toContain('AUTH_CONTEXT_REQUIRED')
+  })
+
+  test('missing context produces AUTH_CONTEXT_REQUIRED instead of option validation', async () => {
+    const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
+      ACME_TOKEN: 'tok-runtime',
+    })
+    expect(exitCode).toBe(1)
+    expect(stdout).toContain('AUTH_CONTEXT_REQUIRED')
+    expect(stdout).not.toContain('VALIDATION_ERROR')
+  })
+
+  test('CI invocation can use a ci-mode token source from ServeOptions.env', async () => {
+    const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
+      CI: 'true',
+      ACME_CI_TOKEN: 'ci-token',
+      ACME_ORG_ID: 'env-org',
+    })
+    expect(exitCode).toBe(1)
+    expect(stdout).toContain('REMOTE_NOT_IMPLEMENTED')
+    expect(stdout).not.toContain('AUTH_MISSING')
+    expect(stdout).not.toContain('ci-token')
+  })
+
+  test('CI invocation without a token source fails with AUTH_CI_TOKEN_MISSING', async () => {
+    const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
+      CI: 'true',
+      ACME_ORG_ID: 'env-org',
+    })
+    expect(exitCode).toBe(1)
+    expect(stdout).toContain('AUTH_CI_TOKEN_MISSING')
+  })
+
+  test('--llms --json command manifest includes non-secret auth requirements for agent planning', async () => {
+    const { stdout, exitCode } = await runGenerated(['--llms', '--json'])
+    expect(exitCode).toBe(0)
+    const manifest = JSON.parse(stdout)
+    const purge = manifest.commands.find((c: { name: string }) => c.name === 'purge')
+    expect(purge.auth).toMatchObject({
+      required: true,
+      status: 'requires-runtime-resolution',
+      providerId: 'acme',
+      envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN'],
+      requiredPermissions: ['cache:write'],
+      requiredScopes: ['cache.write'],
+    })
+    expect(JSON.stringify(purge.auth)).not.toContain('tok-runtime')
+  })
+
+  test('MCP tools/list includes the same non-secret auth requirements', async () => {
+    const request = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+    const { stdout, exitCode } = await runGenerated(['--mcp'], {}, asyncIter([`${request}\n`]))
+    expect(exitCode).toBe(0)
+    const response = JSON.parse(stdout.trim())
+    const purge = response.result.tools.find((tool: { name: string }) => tool.name === 'purge')
+    expect(purge.auth).toMatchObject({
+      required: true,
+      status: 'requires-runtime-resolution',
+      providerId: 'acme',
+      envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN'],
+      requiredPermissions: ['cache:write'],
+      requiredScopes: ['cache.write'],
+    })
+    expect(JSON.stringify(purge.auth)).not.toContain('tok-runtime')
   })
 })
