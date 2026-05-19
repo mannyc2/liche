@@ -62,7 +62,7 @@ export function authCiTokenMissing(input: { providerId: string; envVars: string[
 
 export function authContextRequired(input: {
   providerId: string
-  contexts: { id: string; envVar?: string; flag?: string }[]
+  contexts: { id: string; envVar?: string | undefined; flag?: string | undefined }[]
 }): LiliError {
   const ids = input.contexts.map((c) => c.id).join(', ')
   const message = `Required context missing: ${ids}.`

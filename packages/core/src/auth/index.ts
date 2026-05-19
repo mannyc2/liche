@@ -11,3 +11,13 @@ export {
   authExpired,
 } from './errors.js'
 export type { AuthErrorCode, AuthErrorDetails } from './errors.js'
+export { resolveAuth, resolveContext, applyAuth, authMetaFromCredential } from './resolve.js'
+export type { ResolveAuthInput, ResolveContextInput } from './resolve.js'
+export type {
+  AuthCredential,
+  AuthProviderRuntime,
+  ContextRuntime,
+  InvocationKind,
+  ResolvedAuthMeta,
+  TokenSourceSpec,
+} from './types.js'

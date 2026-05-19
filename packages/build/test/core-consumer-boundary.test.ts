@@ -11,7 +11,11 @@ const FROZEN_PUBLIC_VALUES = [
   'LiliError',
   'ParseError',
   'ValidationError',
+  'applyAuth',
+  'authMetaFromCredential',
   'middleware',
+  'resolveAuth',
+  'resolveContext',
   'secret',
   'z',
 ].sort()
