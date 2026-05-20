@@ -411,4 +411,39 @@ describe('executeReleasePublish', () => {
       expect(receipt.metadata).toEqual({ ok: true })
     }
   })
+
+  test('OIDC credentials reach npm and pypi executors without transformation', async () => {
+    const seen: { npm?: unknown; pypi?: unknown } = {}
+    const npmOidc = { kind: 'oidc', provider: 'github-actions' } as const
+    const pypiOidc = { kind: 'oidc', provider: 'github-actions', audience: 'pypi' } as const
+    const homebrewToken = { kind: 'token', githubToken: 'github-token' } as const
+    const scoopToken = { kind: 'token', githubToken: 'github-token' } as const
+
+    const executors: PublisherExecutorRegistry = {
+      npm: (input) => {
+        seen.npm = input.credentials
+        return { ok: true }
+      },
+      pypi: (input) => {
+        seen.pypi = input.credentials
+        return { ok: true }
+      },
+      homebrew: () => ({ ok: true }),
+      scoop: () => ({ ok: true }),
+    }
+
+    const result = await executeReleasePublish({
+      plan: baseFixture.plan,
+      credentials: {
+        npm: npmOidc,
+        pypi: pypiOidc,
+        homebrew: homebrewToken,
+        scoop: scoopToken,
+      },
+      executors,
+    })
+    expect(result.ok).toBe(true)
+    expect(seen.npm).toBe(npmOidc)
+    expect(seen.pypi).toBe(pypiOidc)
+  })
 })
