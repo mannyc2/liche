@@ -9,7 +9,10 @@ type PackageJson = {
   exports?: Record<string, unknown>
 }
 
-const FORBIDDEN_RUNTIME_DEPS = ['@lili/core', '@lili/build', '@lili/product'] as const
+// @lili/releases depends on @lili/core for the shared CLI framework (Cli.create)
+// used by li-release. It must still stay clear of @lili/build and @lili/product
+// so it can be consumed standalone as a library by anyone authoring releases.
+const FORBIDDEN_RUNTIME_DEPS = ['@lili/build', '@lili/product'] as const
 const RUNTIME_DEP_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const
 
 function packageJson(): PackageJson {

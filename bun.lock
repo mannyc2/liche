@@ -63,7 +63,11 @@
     "packages/releases": {
       "name": "@lili/releases",
       "version": "0.0.0",
+      "bin": {
+        "li-release": "./src/cli.ts",
+      },
       "dependencies": {
+        "@lili/core": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {

@@ -59,12 +59,16 @@
       "default": "./src/publishers/index.ts"
     }
   },
+  "bin": {
+    "li-release": "./src/cli.ts"
+  },
   "files": ["src"],
   "scripts": {
     "check": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
+    "@lili/core": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

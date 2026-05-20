@@ -1,3 +1,21 @@
+export { BuildRecordSchema, parseBuildRecord } from './build-record.js'
+export type {
+  BuildRecord,
+  ParseBuildRecordFailure,
+  ParseBuildRecordResult,
+  ParseBuildRecordSuccess,
+  RecordedBinary,
+} from './build-record.js'
+
+export { manifestFromBuildRecord } from './manifest-from-build-record.js'
+export type {
+  ReleaseDistConfig,
+  ReleaseEnvelope as ReleaseEnvelopeConfig,
+  ReleaseHost,
+  ReleaseMetadata as ReleaseMetadataConfig,
+  ReleaseSubject as ReleaseSubjectConfig,
+} from './manifest-from-build-record.js'
+
 export {
   CliReleaseManifestSchema,
   parseCliReleaseManifest,
