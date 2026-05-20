@@ -29,6 +29,23 @@ export type ReleasePublisher = {
 
 export type PublisherRegistry = Partial<Record<PackageEcosystem, ReleasePublisher>>
 
+export { executeReleasePublish } from './executor.js'
+export type {
+  ExecuteFailure,
+  ExecuteFailureCode,
+  ExecuteReleasePublishInput,
+  ExecuteReleasePublishResult,
+  ExecutorFailure,
+  ExecutorReceipt,
+  HomebrewStepExecutor,
+  NpmStepExecutor,
+  PublisherExecutorRegistry,
+  PypiStepExecutor,
+  ScoopStepExecutor,
+  StepExecutorInput,
+  StepExecutorResult,
+} from './executor.js'
+
 export { preflightReleasePublish } from './preflight.js'
 export type {
   HomebrewCredentials,

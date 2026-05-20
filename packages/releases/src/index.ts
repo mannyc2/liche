@@ -73,15 +73,27 @@ export type {
   ReleaseYankPlan,
   YankPackagePlan,
 } from './yank.js'
-export { planReleasePublish, preflightReleasePublish } from './publishers/index.js'
+export {
+  executeReleasePublish,
+  planReleasePublish,
+  preflightReleasePublish,
+} from './publishers/index.js'
 export type {
+  ExecuteFailure,
+  ExecuteFailureCode,
+  ExecuteReleasePublishInput,
+  ExecuteReleasePublishResult,
+  ExecutorFailure,
+  ExecutorReceipt,
   GitRepoTarget,
   HomebrewCredentials,
   HomebrewPublishStep,
   HomebrewPublisherConfig,
+  HomebrewStepExecutor,
   NpmCredentials,
   NpmPublishStep,
   NpmPublisherConfig,
+  NpmStepExecutor,
   PlanReleasePublishInput,
   PlanReleasePublishResult,
   PreflightFailure,
@@ -90,6 +102,7 @@ export type {
   PreflightReleasePublishResult,
   PublisherConfigMap,
   PublisherCredentials,
+  PublisherExecutorRegistry,
   PublisherRegistry,
   PublishPackageInput,
   PublishPackageResult,
@@ -100,6 +113,7 @@ export type {
   PypiCredentials,
   PypiPublishStep,
   PypiPublisherConfig,
+  PypiStepExecutor,
   ReleasePublisher,
   ReleasePublisherValidationInput,
   ReleasePublishPlan,
@@ -107,4 +121,7 @@ export type {
   ScoopCredentials,
   ScoopPublishStep,
   ScoopPublisherConfig,
+  ScoopStepExecutor,
+  StepExecutorInput,
+  StepExecutorResult,
 } from './publishers/index.js'
