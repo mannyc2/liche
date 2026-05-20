@@ -28,3 +28,24 @@ export type ReleasePublisher = {
 }
 
 export type PublisherRegistry = Partial<Record<PackageEcosystem, ReleasePublisher>>
+
+export { planReleasePublish } from './plan.js'
+export type {
+  GitRepoTarget,
+  HomebrewPublishStep,
+  HomebrewPublisherConfig,
+  NpmPublishStep,
+  NpmPublisherConfig,
+  PlanReleasePublishInput,
+  PlanReleasePublishResult,
+  PublishPlanFailure,
+  PublishPlanFailureCode,
+  PublishStep,
+  PublisherConfigMap,
+  PypiPublishStep,
+  PypiPublisherConfig,
+  ReleasePublishPlan,
+  ResolvedGitRepoTarget,
+  ScoopPublishStep,
+  ScoopPublisherConfig,
+} from './plan.js'
