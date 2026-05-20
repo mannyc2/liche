@@ -52,17 +52,23 @@ export type {
   StepExecutorResult,
 } from './executor.js'
 
-export { preflightReleasePublish } from './preflight.js'
+export { OIDC_PROVIDERS, preflightReleasePublish } from './preflight.js'
 export type {
   HomebrewCredentials,
+  HomebrewTokenCredential,
   NpmCredentials,
+  NpmTokenCredential,
+  OidcCredential,
+  OidcProvider,
   PreflightFailure,
   PreflightFailureCode,
   PreflightReleasePublishInput,
   PreflightReleasePublishResult,
   PublisherCredentials,
   PypiCredentials,
+  PypiTokenCredential,
   ScoopCredentials,
+  ScoopTokenCredential,
 } from './preflight.js'
 
 export { planReleasePublish } from './plan.js'

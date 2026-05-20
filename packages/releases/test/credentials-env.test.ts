@@ -64,10 +64,10 @@ describe('loadPublisherCredentialsFromEnv', () => {
       SCOOP_GITHUB_TOKEN: 'scoop-value',
     })
     expect(credentials).toEqual({
-      npm: { token: 'npm-value' },
-      pypi: { token: 'pypi-value' },
-      homebrew: { githubToken: 'homebrew-value' },
-      scoop: { githubToken: 'scoop-value' },
+      npm: { kind: 'token', token: 'npm-value' },
+      pypi: { kind: 'token', token: 'pypi-value' },
+      homebrew: { kind: 'token', githubToken: 'homebrew-value' },
+      scoop: { kind: 'token', githubToken: 'scoop-value' },
     })
   })
 
@@ -77,8 +77,8 @@ describe('loadPublisherCredentialsFromEnv', () => {
       HOMEBREW_GITHUB_TOKEN: 'homebrew-value',
     })
     expect(credentials).toEqual({
-      npm: { token: 'npm-value' },
-      homebrew: { githubToken: 'homebrew-value' },
+      npm: { kind: 'token', token: 'npm-value' },
+      homebrew: { kind: 'token', githubToken: 'homebrew-value' },
     })
   })
 
@@ -89,7 +89,7 @@ describe('loadPublisherCredentialsFromEnv', () => {
       HOMEBREW_GITHUB_TOKEN: '',
       SCOOP_GITHUB_TOKEN: undefined,
     })
-    expect(credentials).toEqual({ pypi: { token: 'pypi-value' } })
+    expect(credentials).toEqual({ pypi: { kind: 'token', token: 'pypi-value' } })
   })
 
   test('returns an empty PublisherCredentials when no relevant env vars are present', () => {

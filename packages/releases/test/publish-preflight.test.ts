@@ -1,15 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import {
   CliReleaseManifestSchema,
+  OIDC_PROVIDERS,
   planReleasePublish,
   preflightReleasePublish,
 } from '../src/index.js'
 import type {
   CliReleaseManifest,
   CliReleaseManifestInput,
+  HomebrewCredentials,
+  NpmCredentials,
   PackageRecord,
   PublisherConfigMap,
   PublisherCredentials,
+  ScoopCredentials,
   ReleasePublishPlan,
   VerifiedPackageArtifact,
 } from '../src/index.js'
@@ -109,10 +113,10 @@ function buildFullPlan(): ReleasePublishPlan {
 
 function fullCredentials(): PublisherCredentials {
   return {
-    npm: { token: 'npm-token-value' },
-    pypi: { token: 'pypi-token-value' },
-    homebrew: { githubToken: 'github-token-value' },
-    scoop: { githubToken: 'github-token-value' },
+    npm: { kind: 'token', token: 'npm-token-value' },
+    pypi: { kind: 'token', token: 'pypi-token-value' },
+    homebrew: { kind: 'token', githubToken: 'github-token-value' },
+    scoop: { kind: 'token', githubToken: 'github-token-value' },
   }
 }
 
@@ -180,10 +184,10 @@ describe('preflightReleasePublish', () => {
     const result = preflightReleasePublish({
       plan,
       credentials: {
-        npm: { token: '' },
-        pypi: { token: 'pypi-token-value' },
-        homebrew: { githubToken: '' },
-        scoop: { githubToken: 'github-token-value' },
+        npm: { kind: 'token', token: '' },
+        pypi: { kind: 'token', token: 'pypi-token-value' },
+        homebrew: { kind: 'token', githubToken: '' },
+        scoop: { kind: 'token', githubToken: 'github-token-value' },
       },
     })
     expect(result.ok).toBe(false)
@@ -209,10 +213,10 @@ describe('preflightReleasePublish', () => {
     const result = preflightReleasePublish({
       plan,
       credentials: {
-        npm: { token: '' },
-        pypi: { token: 'pypi-token-value' },
-        homebrew: { githubToken: '' },
-        scoop: { githubToken: '' },
+        npm: { kind: 'token', token: '' },
+        pypi: { kind: 'token', token: 'pypi-token-value' },
+        homebrew: { kind: 'token', githubToken: '' },
+        scoop: { kind: 'token', githubToken: '' },
       },
     })
     expect(result.ok).toBe(true)
@@ -232,10 +236,135 @@ describe('preflightReleasePublish', () => {
     const plan = singleEcosystemPlan('homebrew')
     const result = preflightReleasePublish({
       plan,
-      credentials: { homebrew: { githubToken: 'github-token-value' } },
+      credentials: { homebrew: { kind: 'token', githubToken: 'github-token-value' } },
     })
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.cleared).toEqual(['homebrew'])
+  })
+
+  test('exposes the canonical OIDC provider list', () => {
+    expect(OIDC_PROVIDERS).toEqual(['github-actions', 'gitlab-ci'])
+  })
+
+  test('passes when npm and pypi use OIDC credentials with a supported provider', () => {
+    const plan = buildFullPlan()
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        npm: { kind: 'oidc', provider: 'github-actions' },
+        pypi: { kind: 'oidc', provider: 'github-actions', audience: 'pypi' },
+        homebrew: { kind: 'token', githubToken: 'github-token-value' },
+        scoop: { kind: 'token', githubToken: 'github-token-value' },
+      },
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.cleared).toEqual(['npm', 'pypi', 'homebrew', 'scoop'])
+  })
+
+  test('rejects OIDC credentials on homebrew', () => {
+    const plan = singleEcosystemPlan('homebrew')
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        homebrew: { kind: 'oidc', provider: 'github-actions' } as unknown as HomebrewCredentials,
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures).toEqual([
+      {
+        publisher: 'homebrew',
+        code: 'CREDENTIAL_OIDC_UNSUPPORTED',
+        message: `publisher 'homebrew' does not support OIDC credentials`,
+      },
+    ])
+  })
+
+  test('rejects OIDC credentials on scoop', () => {
+    const plan = singleEcosystemPlan('scoop')
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        scoop: { kind: 'oidc', provider: 'github-actions' } as unknown as ScoopCredentials,
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures[0]?.code).toBe('CREDENTIAL_OIDC_UNSUPPORTED')
+  })
+
+  test('rejects an unsupported OIDC provider on npm', () => {
+    const plan = singleEcosystemPlan('npm')
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        npm: { kind: 'oidc', provider: 'circle-ci' as 'github-actions' },
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures).toEqual([
+      {
+        publisher: 'npm',
+        code: 'CREDENTIAL_OIDC_PROVIDER_INVALID',
+        message: `publisher 'npm' OIDC provider 'circle-ci' is not supported`,
+        details: { provider: 'circle-ci', supportedProviders: ['github-actions', 'gitlab-ci'] },
+      },
+    ])
+  })
+
+  test('rejects an empty-string OIDC audience', () => {
+    const plan = singleEcosystemPlan('pypi')
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        pypi: { kind: 'oidc', provider: 'github-actions', audience: '' },
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures).toEqual([
+      {
+        publisher: 'pypi',
+        code: 'CREDENTIAL_OIDC_AUDIENCE_INVALID',
+        message: `publisher 'pypi' OIDC audience must be a non-empty string when provided`,
+        details: { audience: '' },
+      },
+    ])
+  })
+
+  test('rejects an unknown credential kind', () => {
+    const plan = singleEcosystemPlan('npm')
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        npm: { kind: 'sigstore', token: 'x' } as unknown as NpmCredentials,
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures).toEqual([
+      {
+        publisher: 'npm',
+        code: 'CREDENTIAL_KIND_UNKNOWN',
+        message: `publisher 'npm' credential kind 'sigstore' is not recognized`,
+        details: { kind: 'sigstore', supportedKinds: ['token', 'oidc'] },
+      },
+    ])
+  })
+
+  test('legacy tokenless shape (no kind field) is rejected as unknown kind', () => {
+    const plan = singleEcosystemPlan('npm')
+    const result = preflightReleasePublish({
+      plan,
+      credentials: {
+        npm: { token: 'npm-token-value' } as unknown as NpmCredentials,
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures[0]?.code).toBe('CREDENTIAL_KIND_UNKNOWN')
   })
 })

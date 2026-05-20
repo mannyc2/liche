@@ -74,6 +74,7 @@ export type {
   YankPackagePlan,
 } from './yank.js'
 export {
+  OIDC_PROVIDERS,
   PUBLISHER_ENV_NAMES,
   executeReleasePublish,
   loadPublisherCredentialsFromEnv,
@@ -93,10 +94,14 @@ export type {
   HomebrewPublishStep,
   HomebrewPublisherConfig,
   HomebrewStepExecutor,
+  HomebrewTokenCredential,
   NpmCredentials,
   NpmPublishStep,
   NpmPublisherConfig,
   NpmStepExecutor,
+  NpmTokenCredential,
+  OidcCredential,
+  OidcProvider,
   PlanReleasePublishInput,
   PlanReleasePublishResult,
   PreflightFailure,
@@ -118,6 +123,7 @@ export type {
   PypiPublishStep,
   PypiPublisherConfig,
   PypiStepExecutor,
+  PypiTokenCredential,
   ReleasePublisher,
   ReleasePublisherValidationInput,
   ReleasePublishPlan,
@@ -126,6 +132,7 @@ export type {
   ScoopPublishStep,
   ScoopPublisherConfig,
   ScoopStepExecutor,
+  ScoopTokenCredential,
   StepExecutorInput,
   StepExecutorResult,
 } from './publishers/index.js'

@@ -168,10 +168,10 @@ function buildFixture(): Fixture {
 
 function fullCredentials(): PublisherCredentials {
   return {
-    npm: { token: 'npm-token' },
-    pypi: { token: 'pypi-token' },
-    homebrew: { githubToken: 'github-token' },
-    scoop: { githubToken: 'github-token' },
+    npm: { kind: 'token', token: 'npm-token' },
+    pypi: { kind: 'token', token: 'pypi-token' },
+    homebrew: { kind: 'token', githubToken: 'github-token' },
+    scoop: { kind: 'token', githubToken: 'github-token' },
   }
 }
 
@@ -307,9 +307,9 @@ describe('executeReleasePublish', () => {
 
   test('CREDENTIAL_MISSING when an active publisher has no credentials', async () => {
     const credentials: PublisherCredentials = {
-      npm: { token: 'npm-token' },
-      pypi: { token: 'pypi-token' },
-      homebrew: { githubToken: 'github-token' },
+      npm: { kind: 'token', token: 'npm-token' },
+      pypi: { kind: 'token', token: 'pypi-token' },
+      homebrew: { kind: 'token', githubToken: 'github-token' },
     }
     const result = await executeReleasePublish({
       plan: baseFixture.plan,

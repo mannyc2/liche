@@ -22,19 +22,19 @@ const LOADERS: {
 } = {
   npm: (env) => {
     const token = readNonEmpty(env, PUBLISHER_ENV_NAMES.npm.token)
-    return token ? { token } : undefined
+    return token ? { kind: 'token', token } : undefined
   },
   pypi: (env) => {
     const token = readNonEmpty(env, PUBLISHER_ENV_NAMES.pypi.token)
-    return token ? { token } : undefined
+    return token ? { kind: 'token', token } : undefined
   },
   homebrew: (env) => {
     const githubToken = readNonEmpty(env, PUBLISHER_ENV_NAMES.homebrew.githubToken)
-    return githubToken ? { githubToken } : undefined
+    return githubToken ? { kind: 'token', githubToken } : undefined
   },
   scoop: (env) => {
     const githubToken = readNonEmpty(env, PUBLISHER_ENV_NAMES.scoop.githubToken)
-    return githubToken ? { githubToken } : undefined
+    return githubToken ? { kind: 'token', githubToken } : undefined
   },
 }
 
