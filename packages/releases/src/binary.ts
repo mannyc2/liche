@@ -40,6 +40,9 @@ type ParsedTarget = {
   cpuVariant?: 'baseline' | 'modern'
 }
 
+type TargetField = 'platform' | 'arch' | 'libc' | 'cpuVariant'
+type TargetMismatches = Partial<Record<TargetField, { manifest: unknown; target: unknown }>>
+
 // Closed set of Bun --target values supported by the release verifier.
 // Each row is the canonical platform/arch/libc/cpuVariant the manifest
 // must agree with. Add a row when Bun ships a new target variant.
@@ -62,6 +65,18 @@ function parseBunTarget(target: string): ParsedTarget | null {
   return BUN_TARGETS[target] ?? null
 }
 
+const TARGET_FIELDS = ['platform', 'arch', 'libc', 'cpuVariant'] as const
+
+function targetMismatches(binary: BinaryTarget, parsed: ParsedTarget): TargetMismatches {
+  const mismatches: TargetMismatches = {}
+  for (const field of TARGET_FIELDS) {
+    if (binary[field] !== parsed[field]) {
+      mismatches[field] = { manifest: binary[field], target: parsed[field] }
+    }
+  }
+  return mismatches
+}
+
 function checkTargetNormalization(binary: BinaryTarget): BinaryVerificationFailure | null {
   const parsed = parseBunTarget(binary.target)
   if (!parsed) {
@@ -72,23 +87,7 @@ function checkTargetNormalization(binary: BinaryTarget): BinaryVerificationFailu
       details: { target: binary.target },
     }
   }
-  const mismatches: Record<string, { manifest: unknown; target: unknown }> = {}
-  if (parsed.platform !== binary.platform) {
-    mismatches['platform'] = { manifest: binary.platform, target: parsed.platform }
-  }
-  if (parsed.arch !== binary.arch) {
-    mismatches['arch'] = { manifest: binary.arch, target: parsed.arch }
-  }
-  const manifestLibc = binary.libc
-  const parsedLibc = parsed.libc
-  if (manifestLibc !== parsedLibc) {
-    mismatches['libc'] = { manifest: manifestLibc, target: parsedLibc }
-  }
-  const manifestVariant = binary.cpuVariant
-  const parsedVariant = parsed.cpuVariant
-  if (manifestVariant !== parsedVariant) {
-    mismatches['cpuVariant'] = { manifest: manifestVariant, target: parsedVariant }
-  }
+  const mismatches = targetMismatches(binary, parsed)
   if (Object.keys(mismatches).length === 0) return null
   return {
     binaryId: binary.id,
@@ -96,6 +95,23 @@ function checkTargetNormalization(binary: BinaryTarget): BinaryVerificationFailu
     message: `binary '${binary.id}' target '${binary.target}' does not agree with platform/arch/libc/cpuVariant`,
     details: { target: binary.target, mismatches },
   }
+}
+
+function unknownBinaryPathFailures(input: VerifyBinaryInput): BinaryVerificationFailure[] {
+  const manifestIds = new Set(input.manifest.binaries.map((binary) => binary.id))
+  return Object.keys(input.binaryPaths)
+    .filter((providedId) => !manifestIds.has(providedId))
+    .map((providedId) => ({
+      binaryId: providedId,
+      code: 'BINARY_PATH_UNKNOWN',
+      message: `binary path provided for '${providedId}' but no manifest entry exists`,
+    }))
+}
+
+function targetNormalizationFailures(manifest: CliReleaseManifest): BinaryVerificationFailure[] {
+  return manifest.binaries
+    .map(checkTargetNormalization)
+    .filter((failure): failure is BinaryVerificationFailure => failure !== null)
 }
 
 async function readBytes(path: string): Promise<Uint8Array | null> {
@@ -116,33 +132,14 @@ function sha256Hex(bytes: Uint8Array): string {
 export async function verifyReleaseBinaries(
   input: VerifyBinaryInput,
 ): Promise<VerifyBinaryResult> {
+  const preflightFailures = [
+    ...unknownBinaryPathFailures(input),
+    ...targetNormalizationFailures(input.manifest),
+  ]
+  if (preflightFailures.length > 0) return { ok: false, failures: preflightFailures }
+
   const failures: BinaryVerificationFailure[] = []
   const verified: VerifiedBinary[] = []
-  const manifestIds = new Set(input.manifest.binaries.map((b) => b.id))
-
-  for (const providedId of Object.keys(input.binaryPaths)) {
-    if (!manifestIds.has(providedId)) {
-      failures.push({
-        binaryId: providedId,
-        code: 'BINARY_PATH_UNKNOWN',
-        message: `binary path provided for '${providedId}' but no manifest entry exists`,
-      })
-    }
-  }
-
-  const targetFailures: BinaryVerificationFailure[] = []
-  for (const binary of input.manifest.binaries) {
-    const targetFailure = checkTargetNormalization(binary)
-    if (targetFailure) targetFailures.push(targetFailure)
-  }
-  if (targetFailures.length > 0) {
-    return { ok: false, failures: [...failures, ...targetFailures] }
-  }
-
-  if (failures.length > 0) {
-    return { ok: false, failures }
-  }
-
   for (const binary of input.manifest.binaries) {
     const path = input.binaryPaths[binary.id]
     if (!path) {

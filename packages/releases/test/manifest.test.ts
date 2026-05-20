@@ -37,13 +37,18 @@ describe('fixture manifest', () => {
     expect(manifest.metadata.executable?.windows?.iconSha256).toMatch(/^[a-f0-9]{64}$/)
   })
 
-  test('records product/catalog provenance', () => {
+  test('records release subject and contract provenance', () => {
     const manifest = parseFixture()
-    expect(manifest.product.id).toBe('workers')
-    expect(manifest.product.name).toBe('Workers CLI')
-    expect(manifest.product.version).toBe('0.1.0')
-    expect(manifest.product.commit.length).toBeGreaterThan(0)
-    expect(manifest.product.catalogDigest).toMatch(/^sha256:/)
+    expect(manifest.subject.id).toBe('workers')
+    expect(manifest.subject.name).toBe('Workers CLI')
+    expect(manifest.subject.version).toBe('0.1.0')
+    expect(manifest.subject.commit.length).toBeGreaterThan(0)
+    expect(manifest.subject.contract).toEqual(
+      expect.objectContaining({
+        kind: 'product-catalog',
+        digest: expect.stringMatching(/^sha256:/),
+      }),
+    )
   })
 
   test('records runtime env and config expectations', () => {
@@ -92,9 +97,16 @@ describe('schema rejection', () => {
     expect(result.ok).toBe(false)
   })
 
-  test('rejects malformed product.catalogDigest type', () => {
-    const m = loadFixture() as { product: { catalogDigest: unknown } }
-    m.product.catalogDigest = 42
+  test('rejects malformed subject contract digest type', () => {
+    const m = loadFixture() as { subject: { contract: { digest: unknown } } }
+    m.subject.contract.digest = 42
+    const result = parseCliReleaseManifest(m)
+    expect(result.ok).toBe(false)
+  })
+
+  test('rejects unknown subject contract kind', () => {
+    const m = loadFixture() as { subject: { contract: { kind: string } } }
+    m.subject.contract.kind = 'unknown-contract'
     const result = parseCliReleaseManifest(m)
     expect(result.ok).toBe(false)
   })

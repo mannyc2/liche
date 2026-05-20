@@ -18,15 +18,18 @@
       }
     }
   },
-  "product": {
+  "subject": {
     "id": "workers",
     "name": "Workers CLI",
     "version": "0.1.0",
     "commit": "0123456789abcdef0123456789abcdef01234567",
-    "catalogDigest": "sha256:b1946ac92492d2347c6235b4d2611184",
-    "surfaceManifest": {
-      "path": "workers.surface-manifest.json",
-      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    "contract": {
+      "kind": "product-catalog",
+      "digest": "sha256:b1946ac92492d2347c6235b4d2611184",
+      "surfaceManifest": {
+        "path": "workers.surface-manifest.json",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
     }
   },
   "release": {
@@ -71,7 +74,7 @@
     "checkedAt": "2026-05-19T11:30:00Z",
     "targetEnv": "staging",
     "targetBaseUrl": "https://staging.example.test/workers",
-    "catalogDigest": "sha256:b1946ac92492d2347c6235b4d2611184",
+    "contractDigest": "sha256:b1946ac92492d2347c6235b4d2611184",
     "destructiveIncluded": false,
     "summary": { "passed": 120, "failed": 0, "skipped": 4, "total": 124 }
   },

@@ -1,89 +1,118 @@
 import { z } from 'zod'
 
-const RepositoryMetadata = z.object({
+const Sha256 = z.hash('sha256')
+const HttpUrl = z.httpUrl()
+const DefaultFalse = z.boolean().default(false)
+const ReleaseChannel = z.enum(['stable', 'next', 'canary'])
+const AuthProviderKind = z.enum(['none', 'bearer', 'apiKey', 'oauthDevice'])
+const CredentialTransport = z.enum(['none', 'bearer', 'apiKey'])
+const AuthMode = z.enum(['env', 'session', 'oauth-device'])
+const BinaryPlatform = z.enum(['darwin', 'linux', 'windows'])
+const BinaryArch = z.enum(['arm64', 'x64'])
+const LinuxLibc = z.enum(['glibc', 'musl'])
+const CpuVariant = z.enum(['baseline', 'modern'])
+const PackageEcosystem = z.enum(['npm', 'pypi', 'homebrew', 'scoop'])
+
+const RepositoryMetadataSchema = z.object({
   type: z.string(),
   url: z.string(),
 })
 
-const WindowsExecutableMetadata = z.object({
-  hideConsole: z.boolean().default(false),
-  iconSha256: z.hash('sha256').optional(),
+const WindowsExecutableMetadataSchema = z.object({
+  hideConsole: DefaultFalse,
+  iconSha256: Sha256.optional(),
 })
 
-const ExecutableMetadata = z.object({
+const ExecutableMetadataSchema = z.object({
   title: z.string().optional(),
   publisher: z.string().optional(),
   copyright: z.string().optional(),
-  windows: WindowsExecutableMetadata.optional(),
+  windows: WindowsExecutableMetadataSchema.optional(),
 })
 
-const ReleaseMetadata = z.object({
+const ReleaseMetadataSchema = z.object({
   description: z.string(),
-  homepage: z.httpUrl().optional(),
+  homepage: HttpUrl.optional(),
   license: z.string().optional(),
-  repository: RepositoryMetadata.optional(),
-  executable: ExecutableMetadata.optional(),
+  repository: RepositoryMetadataSchema.optional(),
+  executable: ExecutableMetadataSchema.optional(),
 })
 
-const SurfaceManifestReference = z.object({
+const SurfaceManifestReferenceSchema = z.object({
   path: z.string(),
-  sha256: z.hash('sha256'),
+  sha256: Sha256,
 })
 
-const ProductProvenance = z.object({
+const ProductContractProvenanceSchema = z.object({
+  kind: z.literal('product-catalog'),
+  digest: z.string(),
+  surfaceManifest: SurfaceManifestReferenceSchema.optional(),
+})
+
+const CoreContractProvenanceSchema = z.object({
+  kind: z.literal('core-command-manifest'),
+  digest: z.string(),
+  commandManifest: SurfaceManifestReferenceSchema.optional(),
+})
+
+const ContractProvenanceSchema = z.discriminatedUnion('kind', [
+  ProductContractProvenanceSchema,
+  CoreContractProvenanceSchema,
+])
+
+const ReleaseSubjectSchema = z.object({
   id: z.string(),
   name: z.string(),
   version: z.string(),
   commit: z.string(),
-  catalogDigest: z.string(),
-  surfaceManifest: SurfaceManifestReference.optional(),
+  contract: ContractProvenanceSchema,
 })
 
-const ReleaseEnvelope = z.object({
+const ReleaseEnvelopeSchema = z.object({
   version: z.string(),
-  channel: z.enum(['stable', 'next', 'canary']).default('stable'),
+  channel: ReleaseChannel.default('stable'),
   createdAt: z.string(),
   generatorVersion: z.string(),
   buildId: z.string().optional(),
 })
 
-const RuntimeEnvVar = z.object({
+const RuntimeEnvVarSchema = z.object({
   name: z.string(),
   purpose: z.string(),
-  required: z.boolean().default(false),
+  required: DefaultFalse,
 })
 
-const RuntimeConfigKey = z.object({
+const RuntimeConfigKeySchema = z.object({
   key: z.string(),
   purpose: z.string(),
-  required: z.boolean().default(false),
+  required: DefaultFalse,
 })
 
-const RuntimeExpectations = z.object({
+const RuntimeExpectationsSchema = z.object({
   command: z.string(),
-  env: z.array(RuntimeEnvVar).default([]),
-  config: z.array(RuntimeConfigKey).default([]),
+  env: z.array(RuntimeEnvVarSchema).default([]),
+  config: z.array(RuntimeConfigKeySchema).default([]),
 })
 
-const AuthEnvVar = z.object({
+const AuthEnvVarSchema = z.object({
   name: z.string(),
   purpose: z.string(),
 })
 
-const AuthGeneratedCommands = z.object({
+const AuthGeneratedCommandsSchema = z.object({
   login: z.string().optional(),
   logout: z.string().optional(),
   whoami: z.string().optional(),
   switch: z.string().optional(),
 })
 
-const AuthContext = z.object({
+const AuthContextSchema = z.object({
   id: z.string(),
   envVar: z.string().optional(),
   flag: z.string().optional(),
 })
 
-const AuthSessionStorage = z.object({
+const AuthSessionStorageSchema = z.object({
   used: z.boolean(),
   profiles: z.boolean(),
   storesAccessTokens: z.boolean(),
@@ -91,112 +120,114 @@ const AuthSessionStorage = z.object({
   keychainRequired: z.boolean(),
 })
 
-const AuthProvider = z.object({
+const AuthProviderSchema = z.object({
   id: z.string(),
-  kind: z.enum(['none', 'bearer', 'apiKey', 'oauthDevice']),
-  credentialTransport: z.enum(['none', 'bearer', 'apiKey']).optional(),
-  modes: z.array(z.enum(['env', 'session', 'oauth-device'])).default([]),
-  envVars: z.array(AuthEnvVar).default([]),
-  commands: AuthGeneratedCommands.optional(),
-  contexts: z.array(AuthContext).default([]),
-  sessionStorage: AuthSessionStorage.optional(),
+  kind: AuthProviderKind,
+  credentialTransport: CredentialTransport.optional(),
+  modes: z.array(AuthMode).default([]),
+  envVars: z.array(AuthEnvVarSchema).default([]),
+  commands: AuthGeneratedCommandsSchema.optional(),
+  contexts: z.array(AuthContextSchema).default([]),
+  sessionStorage: AuthSessionStorageSchema.optional(),
   requiredRuntimeCapabilities: z.array(z.string()).default([]),
 })
 
-const AuthSection = z.object({
-  providers: z.array(AuthProvider).default([]),
+const AuthSectionSchema = z.object({
+  providers: z.array(AuthProviderSchema).default([]),
 })
 
-const ConformanceSummary = z.object({
+const ConformanceSummarySchema = z.object({
   passed: z.int().nonnegative(),
   failed: z.int().nonnegative(),
   skipped: z.int().nonnegative(),
   total: z.int().nonnegative(),
 })
 
-const ConformanceSection = z.object({
-  required: z.boolean().default(false),
+const ConformanceSectionSchema = z.object({
+  required: DefaultFalse,
   report: z.string().optional(),
   reportVersion: z.int().positive().optional(),
-  reportSha256: z.hash('sha256').optional(),
+  reportSha256: Sha256.optional(),
   checkedAt: z.string().optional(),
   targetEnv: z.string().optional(),
-  targetBaseUrl: z.httpUrl().optional(),
-  catalogDigest: z.string().optional(),
-  destructiveIncluded: z.boolean().default(false),
-  summary: ConformanceSummary.optional(),
+  targetBaseUrl: HttpUrl.optional(),
+  contractDigest: z.string().optional(),
+  destructiveIncluded: DefaultFalse,
+  summary: ConformanceSummarySchema.optional(),
 })
 
-const BinaryTarget = z.object({
+const BinaryTargetSchema = z.object({
   id: z.string(),
   target: z.string(),
-  platform: z.enum(['darwin', 'linux', 'windows']),
-  arch: z.enum(['arm64', 'x64']),
-  libc: z.enum(['glibc', 'musl']).optional(),
-  cpuVariant: z.enum(['baseline', 'modern']).optional(),
+  platform: BinaryPlatform,
+  arch: BinaryArch,
+  libc: LinuxLibc.optional(),
+  cpuVariant: CpuVariant.optional(),
   filename: z.string(),
-  url: z.httpUrl(),
-  sha256: z.hash('sha256'),
+  url: HttpUrl,
+  sha256: Sha256,
   size: z.int().positive(),
   compileFlagsDigest: z.string().optional(),
-  signed: z.boolean().default(false),
-  notarized: z.boolean().default(false),
+  signed: DefaultFalse,
+  notarized: DefaultFalse,
 })
 
-const PackageArtifact = z.object({
+const PackageArtifactSchema = z.object({
   fileName: z.string(),
-  url: z.httpUrl().optional(),
-  sha256: z.hash('sha256'),
+  url: HttpUrl.optional(),
+  sha256: Sha256,
   size: z.int().positive(),
 })
 
-const PackagePublishLocation = z.object({
+const PackagePublishLocationSchema = z.object({
   registry: z.string().optional(),
   repository: z.string().optional(),
   channel: z.string().optional(),
 })
 
-const PackageRecord = z.object({
+const PackageRecordSchema = z.object({
   id: z.string(),
-  renderer: z.enum(['npm', 'pypi', 'homebrew', 'scoop']),
-  ecosystem: z.enum(['npm', 'pypi', 'homebrew', 'scoop']),
+  renderer: PackageEcosystem,
+  ecosystem: PackageEcosystem,
   kind: z.string(),
   name: z.string(),
   version: z.string(),
   targetBinaryId: z.string().optional(),
-  artifact: PackageArtifact.optional(),
-  publish: PackagePublishLocation.optional(),
+  artifact: PackageArtifactSchema.optional(),
+  publish: PackagePublishLocationSchema.optional(),
 })
 
 export const CliReleaseManifestSchema = z.object({
   manifestVersion: z.literal(1),
-  metadata: ReleaseMetadata,
-  product: ProductProvenance,
-  release: ReleaseEnvelope,
-  runtime: RuntimeExpectations,
-  auth: AuthSection.optional(),
-  conformance: ConformanceSection.optional(),
-  binaries: z.array(BinaryTarget),
-  packages: z.array(PackageRecord).default([]),
+  metadata: ReleaseMetadataSchema,
+  subject: ReleaseSubjectSchema,
+  release: ReleaseEnvelopeSchema,
+  runtime: RuntimeExpectationsSchema,
+  auth: AuthSectionSchema.optional(),
+  conformance: ConformanceSectionSchema.optional(),
+  binaries: z.array(BinaryTargetSchema),
+  packages: z.array(PackageRecordSchema).default([]),
 })
 
 export type CliReleaseManifest = z.infer<typeof CliReleaseManifestSchema>
 export type CliReleaseManifestInput = z.input<typeof CliReleaseManifestSchema>
 
-export type ReleaseMetadata = z.infer<typeof ReleaseMetadata>
-export type ExecutableMetadata = z.infer<typeof ExecutableMetadata>
-export type ProductProvenance = z.infer<typeof ProductProvenance>
-export type ReleaseEnvelope = z.infer<typeof ReleaseEnvelope>
-export type RuntimeExpectations = z.infer<typeof RuntimeExpectations>
-export type RuntimeEnvVar = z.infer<typeof RuntimeEnvVar>
-export type RuntimeConfigKey = z.infer<typeof RuntimeConfigKey>
-export type AuthSection = z.infer<typeof AuthSection>
-export type AuthProvider = z.infer<typeof AuthProvider>
-export type AuthContext = z.infer<typeof AuthContext>
-export type ConformanceSection = z.infer<typeof ConformanceSection>
-export type BinaryTarget = z.infer<typeof BinaryTarget>
-export type PackageRecord = z.infer<typeof PackageRecord>
-export type PackageArtifact = z.infer<typeof PackageArtifact>
+export type ReleaseMetadata = z.infer<typeof ReleaseMetadataSchema>
+export type ExecutableMetadata = z.infer<typeof ExecutableMetadataSchema>
+export type ContractProvenance = z.infer<typeof ContractProvenanceSchema>
+export type ReleaseSubject = z.infer<typeof ReleaseSubjectSchema>
+export type ReleaseEnvelope = z.infer<typeof ReleaseEnvelopeSchema>
+export type RuntimeExpectations = z.infer<typeof RuntimeExpectationsSchema>
+export type RuntimeEnvVar = z.infer<typeof RuntimeEnvVarSchema>
+export type RuntimeConfigKey = z.infer<typeof RuntimeConfigKeySchema>
+export type AuthSection = z.infer<typeof AuthSectionSchema>
+export type AuthProvider = z.infer<typeof AuthProviderSchema>
+export type AuthContext = z.infer<typeof AuthContextSchema>
+export type ConformanceSection = z.infer<typeof ConformanceSectionSchema>
+export type BinaryTarget = z.infer<typeof BinaryTargetSchema>
+export type PackageEcosystem = z.infer<typeof PackageEcosystem>
+export type PackageRecord = z.infer<typeof PackageRecordSchema>
+export type PackageArtifact = z.infer<typeof PackageArtifactSchema>
 
 export type ParseManifestSuccess = { ok: true; manifest: CliReleaseManifest }
 export type ParseManifestFailure = { ok: false; error: z.ZodError<CliReleaseManifest> }

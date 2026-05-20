@@ -22,12 +22,15 @@ function baseManifestInput(): CliReleaseManifestInput {
   return {
     manifestVersion: 1,
     metadata: { description: 'binary verifier test fixture' },
-    product: {
+    subject: {
       id: 'workers',
       name: 'Workers CLI',
       version: '0.1.0',
       commit: '0123456789abcdef0123456789abcdef01234567',
-      catalogDigest: 'sha256:fake-catalog',
+      contract: {
+        kind: 'product-catalog',
+        digest: 'sha256:fake-catalog',
+      },
     },
     release: {
       version: '0.1.0',
@@ -155,7 +158,7 @@ describe('verifyReleaseBinaries', () => {
     ])
   })
 
-  test('rejects corrupted bytes with BINARY_HASH_MISMATCH when size still matches manifest', async () => {
+  test('rejects corrupted bytes with BINARY_SIZE_MISMATCH when file size changes', async () => {
     const manifest = parseManifest({
       ...baseManifestInput(),
       binaries: [
@@ -179,9 +182,8 @@ describe('verifyReleaseBinaries', () => {
 
     expect(result.ok).toBe(false)
     if (result.ok) return
-    // The manifest records the pre-corruption size, so the verifier should
-    // fail at the size step (we still want to confirm hash failure is
-    // reachable, so we add a separate "drift" scenario below).
+    // The manifest records the pre-corruption size, so this should fail at the
+    // size step. The separate "drift" scenario below keeps the hash-only path covered.
     expect(result.failures).toEqual([
       expect.objectContaining({
         binaryId: 'workers-linux-x64',
