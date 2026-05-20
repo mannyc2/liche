@@ -74,7 +74,9 @@ export type {
   YankPackagePlan,
 } from './yank.js'
 export {
+  PUBLISHER_ENV_NAMES,
   executeReleasePublish,
+  loadPublisherCredentialsFromEnv,
   planReleasePublish,
   preflightReleasePublish,
 } from './publishers/index.js'
@@ -83,6 +85,7 @@ export type {
   ExecuteFailureCode,
   ExecuteReleasePublishInput,
   ExecuteReleasePublishResult,
+  EnvRecord,
   ExecutorFailure,
   ExecutorReceipt,
   GitRepoTarget,
@@ -102,6 +105,7 @@ export type {
   PreflightReleasePublishResult,
   PublisherConfigMap,
   PublisherCredentials,
+  PublisherEnvNames,
   PublisherExecutorRegistry,
   PublisherRegistry,
   PublishPackageInput,

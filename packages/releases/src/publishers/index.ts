@@ -29,6 +29,12 @@ export type ReleasePublisher = {
 
 export type PublisherRegistry = Partial<Record<PackageEcosystem, ReleasePublisher>>
 
+export {
+  PUBLISHER_ENV_NAMES,
+  loadPublisherCredentialsFromEnv,
+} from './credentials-env.js'
+export type { EnvRecord, PublisherEnvNames } from './credentials-env.js'
+
 export { executeReleasePublish } from './executor.js'
 export type {
   ExecuteFailure,
