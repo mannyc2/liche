@@ -363,6 +363,52 @@ describe('planReleasePublish', () => {
     ])
   })
 
+  test('homebrew without tap config fails', () => {
+    const manifest = parseManifest()
+    const packages: PackageRecord[] = [pkg('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers')]
+    const artifacts: VerifiedPackageArtifact[] = [
+      artifact('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers', 'workers.rb', 512),
+    ]
+    const result = planReleasePublish({
+      manifest,
+      packages,
+      artifacts,
+      selection: ['homebrew'],
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures).toEqual([
+      {
+        publisher: 'homebrew',
+        code: 'PUBLISHER_CONFIG_MISSING',
+        message: `publisher 'homebrew' requires a tap config (owner/repo)`,
+      },
+    ])
+  })
+
+  test('scoop without bucket config fails', () => {
+    const manifest = parseManifest()
+    const packages: PackageRecord[] = [pkg('scoop:workers', 'scoop', 'scoop-manifest', 'workers')]
+    const artifacts: VerifiedPackageArtifact[] = [
+      artifact('scoop:workers', 'scoop', 'scoop-manifest', 'workers', 'workers.json', 256),
+    ]
+    const result = planReleasePublish({
+      manifest,
+      packages,
+      artifacts,
+      selection: ['scoop'],
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.failures).toEqual([
+      {
+        publisher: 'scoop',
+        code: 'PUBLISHER_CONFIG_MISSING',
+        message: `publisher 'scoop' requires a bucket config (owner/repo)`,
+      },
+    ])
+  })
+
   test('npm package with unknown kind fails', () => {
     const manifest = parseManifest()
     const packages: PackageRecord[] = [pkg('npm:weird', 'npm', 'npm-something-new', 'weird')]
