@@ -23,9 +23,10 @@ A developer with a Vite/TanStack app should:
 1. Identify product capabilities: resources, commands, and bindings.
 2. Define those capabilities in `lili.schema.ts`.
 3. Implement matching API routes and local handlers in the app's server/runtime layer.
-4. Generate CLI/OpenAPI/MCP/docs/Agent Skill/config surfaces with `@lili/build`.
+4. Generate CLI/OpenAPI/MCP/docs/Agent Skill/config surfaces with `@lili/product`.
 5. Run server conformance against the local dev server and, when appropriate, deployed environments.
-6. Compile and package the CLI with `@lili/build` and `@lili/releases`.
+6. Compile the generated or handwritten CLI with `@lili/build`.
+7. Package the final binaries with `@lili/releases`.
 
 Example capabilities:
 
@@ -82,7 +83,7 @@ Do not treat those surfaces as generic MVP behavior. Each product-specific surfa
 - how conformance is proven against the owned API or platform runtime
 - who owns publication and rollback
 
-Generating the product API itself is a separate server-adapter track. Until that adapter exists, the app implements API routes manually and `li-build conform` proves the implementation matches the schema.
+Generating the product API itself is a separate server-adapter track. Until that adapter exists, the app implements API routes manually and `li-product conform` proves the implementation matches the schema.
 
 ## Resources and commands
 
@@ -93,7 +94,7 @@ Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`,
 ## Example schema
 
 ```ts
-import { Auth, Command, Field, Product, Shape } from "@lili/build";
+import { Auth, Command, Field, Product, Shape } from "@lili/product";
 
 export default Product.create({
   id: "myapp",
@@ -165,7 +166,7 @@ In an app integration, core owns:
 - outbound HTTP operation transport
 - response parsing and output validation
 
-### `@lili/build`
+### `@lili/product`
 
 Use to generate CLI and machine-readable surfaces from `lili.schema.ts`.
 
@@ -180,6 +181,18 @@ It generates:
 - config JSON Schema when configured
 - generated surface manifest for drift and provenance
 - conformance plans from capability examples and HTTP bindings
+
+### `@lili/build`
+
+Use to compile a generated or handwritten CLI entrypoint into standalone Bun executables.
+
+It owns:
+
+- `Bun.build()` compile orchestration
+- target-specific compile options
+- deterministic compile flag profiles
+- build-time constants for release version, contract digest, source commit, and build-tool version
+- path-independent compile provenance consumed by release manifests
 
 ### `@lili/releases`
 

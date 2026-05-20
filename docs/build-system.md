@@ -2,11 +2,15 @@
 
 ## `gen` placement
 
-`li gen` (typegen) ships in the current core runtime because `@lili/build` doesn't exist yet. It loads command metadata via `stateSymbol` and emits a `declare module` augmentation on `Cli.Commands`. When the build package lands, `gen` is a candidate to move there — it's arguably a build-time concern, not a runtime concern. Behavior IDs: `GEN-001`.
+`li gen` (typegen) ships in the current core runtime because the reusable build package was not present in the original core implementation. It loads command metadata via `stateSymbol` and emits a `declare module` augmentation on `Cli.Commands`. `gen` is a candidate for `@lili/build` because it is a build-time concern, not runtime command execution. Behavior IDs: `GEN-001`.
 
-`@lili/build` is an opt-in package. It consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, and compiles a standalone Bun binary.
+`@lili/build` is an opt-in package for reusable Bun build/compile behavior. It owns the programmatic `Bun.build()` wrapper, compile flag profile, build-time constants, compile entrypoint rendering, and path-independent `compileFlagsDigest`.
 
-`@lili/build` does not replace `@lili/core`. Generated code must plug into core through public runtime APIs.
+This is a deliberately narrow boundary, not a major product abstraction. Its value is only shared compile/provenance behavior for generated and handwritten CLI entrypoints. If that shared use case disappears, the code can be folded into `@lili/product` or `@lili/releases` without changing the release manifest contract.
+
+`@lili/product` is the opt-in package for Product schema generation. It consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, runs server conformance, and delegates standalone executable compilation to `@lili/build`.
+
+Neither package replaces `@lili/core`. Generated code must plug into core through public runtime APIs.
 
 Detailed requirements live in:
 
@@ -16,7 +20,7 @@ Detailed requirements live in:
 
 ## Purpose
 
-The build system exists so a user can define an owned product capability catalog once and get:
+The Product system exists so a user can define an owned product capability catalog once and get:
 
 - generated CLI command tree
 - generated dispatcher
@@ -29,13 +33,21 @@ The build system exists so a user can define an owned product capability catalog
 - generated JSON Schema for config, when configured
 - deterministic drift checks
 - server conformance checks against owned HTTP deployments
+
+The build system exists so a user with any CLI entrypoint can get:
+
 - Bun standalone binary compilation
+- deterministic compile flag profiles
+- build-time constants for release version, contract digest, source commit, and build-tool version
+- path-independent compile provenance for release manifests
 
 Handwritten CLIs remain valid without installing `@lili/build`.
 
-The product schema is authoritative for owned product capabilities. `@lili/build` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
+Handwritten CLIs that only want a standalone binary can use `@lili/build` without installing `@lili/product`.
 
-The `li-build` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored build-package guidance through `CreateOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
+The product schema is authoritative for owned product capabilities. `@lili/product` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
+
+The `li-build` developer CLI is intentionally small: it exposes compile-entry behavior over the generic compile spine. The `li-product` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through `CreateOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
 
 ## Generated surface graph
 
@@ -47,7 +59,7 @@ Required surface record:
 type GeneratedSurfaceRecord = {
   id: string;
   source: "catalog" | "openapi";
-  owner: "@lili/build" | "@lili/releases" | "adapter";
+  owner: "@lili/product" | "@lili/build" | "@lili/releases" | "adapter";
   generatorVersion: string;
   generationOptionsDigest: string;
   inputDigest: string;
@@ -97,7 +109,7 @@ Do not infer a broad generator framework from this requirement. The first vertic
 
 ## Public product schema API
 
-The build API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
+The Product API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
 
 The public authoring model is product-shaped, not CLI-program-shaped. `Product.create(...).resource(...).command(...).binding(...)` is the source API. Generated CLIs still lower into `@lili/core` through `Cli.create().command(...)`.
 
@@ -113,7 +125,7 @@ Shape
 Field
 ```
 
-The class API is authoring sugar only. `li-build` loads a product schema module, checks its runtime tag, and normalizes it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
+The class API is authoring sugar only. `li-product` loads a product schema module, checks its runtime tag, and normalizes it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
 ## Canonical catalog
 
@@ -249,7 +261,7 @@ For current core compatibility, handwritten CLIs may continue to use richer form
 
 Outbound HTTP operation transport is core runtime behavior.
 
-`@lili/core` must export a documented primitive, tentatively named `callHttpOperation`, that can be used by handwritten CLIs and generated CLIs. `@lili/build` generates wiring that calls the primitive.
+`@lili/core` must export a documented primitive, tentatively named `callHttpOperation`, that can be used by handwritten CLIs and generated CLIs. `@lili/product` generates wiring that calls the primitive.
 
 The primitive must own:
 
@@ -335,9 +347,9 @@ Generated command code must be plain TypeScript that imports `@lili/core` and re
 Representative generated file:
 
 ```ts
-// generated by @lili/build
+// generated by @lili/product
 // schema: ./lili.schema.ts
-// catalogDigest: sha256:<catalog-digest>
+// contractDigest: sha256:<catalog-digest>
 // generatorVersion: <version>
 // do not edit by hand
 
@@ -440,7 +452,7 @@ Conformance must also consume `bind`. A bind bug is not visible in local mode be
 
 ## Server conformance
 
-Server conformance is a named MVP capability owned by `@lili/build`.
+Server conformance is a named MVP capability owned by `@lili/product`.
 
 It verifies that an owned external HTTP deployment implements the HTTP-backed schema capabilities. It is separate from generated-file drift checks.
 
@@ -460,9 +472,9 @@ conform:
 Proposed CLI:
 
 ```sh
-li-build conform ./lili.schema.ts --base-url http://localhost:5173
-li-build conform ./lili.schema.ts --env staging
-li-build conform ./lili.schema.ts --report .lili/conformance.json
+li-product conform ./lili.schema.ts --base-url http://localhost:5173
+li-product conform ./lili.schema.ts --env staging
+li-product conform ./lili.schema.ts --report .lili/conformance.json
 ```
 
 Conformance must assert:
@@ -486,11 +498,11 @@ Policy:
 | requires confirmation | Requires explicit conformance fixture and opt-in target. |
 | no examples or fixture | Report skipped with reason; do not silently pass. |
 
-`@lili/releases` may require or attach a conformance report before publishing, but `@lili/build` owns the conformance logic because it is schema-contract verification.
+`@lili/releases` may require or attach a conformance report before publishing, but `@lili/product` owns the conformance logic because it is schema-contract verification.
 
 ## Generated surfaces
 
-`@lili/build` generates:
+`@lili/product` generates:
 
 ```txt
 generated CLI command tree
@@ -540,26 +552,26 @@ The build package may expose this as generated JSON, a built-in generated comman
 
 ## Mutation testing
 
-`@lili/build` must have package-local mutation testing wired the same way as `@lili/core`: a `mutate` script that runs Stryker through the Bun runner, a package-local `stryker.conf.mjs`, TypeScript checking enabled, and the root workspace catalog dependencies reused instead of adding one-off versions.
+`@lili/product` must have package-local mutation testing wired the same way as `@lili/core`: a `mutate` script that runs Stryker through the Bun runner, a package-local `stryker.conf.mjs`, TypeScript checking enabled, and the root workspace catalog dependencies reused instead of adding one-off versions. `@lili/build` keeps its own focused mutation scope for generic compile primitives.
 
 The initial mutation scope should target implementation modules where surviving mutants expose real generator or catalog risk:
 
 ```txt
-packages/build/src/catalog.ts
-packages/build/src/command.ts
-packages/build/src/digest.ts
-packages/build/src/field.ts
-packages/build/src/generate.ts
-packages/build/src/generate-cli.ts
-packages/build/src/generate-openapi.ts
-packages/build/src/lints.ts
-packages/build/src/manifest.ts
-packages/build/src/product.ts
-packages/build/src/shape.ts
-packages/build/src/vocabulary.ts
+packages/product/src/catalog.ts
+packages/product/src/command.ts
+packages/product/src/digest.ts
+packages/product/src/field.ts
+packages/product/src/generate.ts
+packages/product/src/generate-cli.ts
+packages/product/src/generate-openapi.ts
+packages/product/src/lints.ts
+packages/product/src/manifest.ts
+packages/product/src/product.ts
+packages/product/src/shape.ts
+packages/product/src/vocabulary.ts
 ```
 
-Exclude public barrels, the `li-build` CLI wrapper, packaged skill text, generated fixtures, and tests from mutation input. The first threshold should match core (`high: 90`, `low: 85`, `break: 80`) unless a measured baseline proves that too strict for the first landed config.
+Exclude public barrels, the `li-product` CLI wrapper, packaged skill text, generated fixtures, and tests from mutation input. The first threshold should match core (`high: 90`, `low: 85`, `break: 80`) unless a measured baseline proves that too strict for the first landed config.
 
 The goal is not to chase 100% mutation score in the first slice. The goal is to make build-package regressions visible in the same local workflow as core and to turn meaningful surviving mutants into focused tests.
 
@@ -638,7 +650,7 @@ Schema lints are CI gates, not style suggestions.
 Drift check compares generated outputs to checked-in files:
 
 ```sh
-li-build generate ./lili.schema.ts --check
+li-product generate ./lili.schema.ts --check
 ```
 
 It must fail when:
@@ -652,14 +664,14 @@ Drift check does not verify a deployed server. Server conformance is a separate 
 
 ## Build CLI
 
-`@lili/build` exposes a small CLI only for users who install it:
+`@lili/product` exposes Product authoring and generation commands only for users who install it:
 
 ```sh
-li-build lint ./lili.schema.ts
-li-build generate ./lili.schema.ts --out .lili/generated
-li-build generate ./lili.schema.ts --check
-li-build conform ./lili.schema.ts --base-url http://localhost:5173
-li-build compile ./lili.schema.ts --target bun-linux-x64
+li-product lint ./lili.schema.ts
+li-product generate ./lili.schema.ts --out .lili/generated
+li-product generate ./lili.schema.ts --check
+li-product conform ./lili.schema.ts --base-url http://localhost:5173
+li-product compile ./lili.schema.ts --target bun-linux-x64
 ```
 
 Pipeline:
@@ -671,17 +683,21 @@ Pipeline:
 4. Generate CLI source and byproduct surfaces.
 5. Run drift check if requested.
 6. Run server conformance if requested.
-7. Compile generated CLI entry with bun build --compile.
+7. Compile generated CLI entry by delegating to `@lili/build`.
 8. Emit binary artifacts and internal build record.
 ```
 
 ## Compile determinism
 
-The compile command must choose deterministic settings deliberately. Bun's `--compile` exposes flags that change runtime behavior of the resulting binary; the build pipeline must pin them explicitly rather than inherit defaults.
+The compile command must choose deterministic settings deliberately. Bun's `compile` option exposes settings that change runtime behavior of the resulting binary; the build pipeline must pin them explicitly rather than inherit defaults.
+
+`@lili/build` owns all `Bun.build()` calls. `@lili/releases` must not call `Bun.build()`, rebuild binaries, read generated source, or infer compile settings from a workspace. Releases receive final binary paths, final binary hashes/sizes, and the build record produced here.
+
+Generated CLI files remain importable test fixtures. The compile path writes a small internal entrypoint next to the generated CLI that imports the generated default export and calls `cli.serve(process.argv.slice(2))`. That compile entrypoint is internal build-record data, not a generated surface artifact and not release-manifest data.
 
 ### Required compile flags
 
-For release builds, `@lili/build compile` must invoke `bun build --compile` with at minimum:
+For release builds, `@lili/build compile-entry` must invoke `Bun.build()` with a profile equivalent to:
 
 ```sh
 bun build --compile \
@@ -691,12 +707,14 @@ bun build --compile \
   --bytecode \
   --no-compile-autoload-bunfig \
   --no-compile-autoload-dotenv \
-  --define INCUR_BUILD_VERSION='"<release.version>"' \
-  --define INCUR_SCHEMA_DIGEST='"<catalog-digest>"' \
-  --define INCUR_SCHEMA_COMMIT='"<git-sha>"' \
-  --define INCUR_GENERATOR_VERSION='"<generator.version>"' \
+  --define LILI_BUILD_VERSION='"<release.version>"' \
+  --define LILI_CONTRACT_DIGEST='"<contract-digest>"' \
+  --define LILI_SOURCE_COMMIT='"<git-sha>"' \
+  --define LILI_BUILD_TOOL_VERSION='"<build-tool.version>"' \
   --outfile <out>
 ```
+
+The implementation should construct one plain `CompileFlagProfile` and derive both the `Bun.build()` options and `compileFlagsDigest` from it. Local paths such as generated entrypoint path, output path, temp directories, metafile paths, and local logs belong in the internal build record and must not affect `compileFlagsDigest`.
 
 Rationale:
 
@@ -704,12 +722,13 @@ Rationale:
 |---|---|
 | `--target` | Cross-compile matrix is fixed by the release manifest, not the host. Defaults to host triple if omitted, which silently produces wrong artifacts in CI. |
 | `--minify` | Reduces binary size; required for reproducible bytes alongside `--bytecode`. |
-| `--sourcemap` | Linked, zstd-compressed sourcemap embedded in the binary. Required so structured errors thrown by core point at schema-authored locations, not transpiled offsets. |
+| `--sourcemap` | Preserves useful source locations for structured errors and crash reports. The exact sourcemap storage behavior is a Bun build detail; the chosen setting must still be recorded in the compile flag profile. |
 | `--bytecode` | Moves JS parse cost from runtime to build time. Required because CLI startup is the dominant user-visible latency for short-lived invocations. |
 | `--no-compile-autoload-bunfig` | A compiled CLI must not pick up the invoking user's `bunfig.toml`. Deterministic execution requires the binary behave the same regardless of working directory. |
 | `--no-compile-autoload-dotenv` | Env vars are a documented input channel (`docs/env-vars.md`), not an ambient one. `.env` loading at runtime would let an unrelated project's `.env` mutate CLI behavior. Schema-declared env vars are read from the process environment directly. |
 | `--compile-autoload-tsconfig`, `--compile-autoload-package-json` | Must remain off (the Bun default). The bundler already consumed these at build time. |
 | `--define` | Build-time constants for version, schema digest, schema commit, and generator version. Embedded into the binary so `--version` and crash reports can identify the build without filesystem lookups. |
+| `metafile` | Should be available in the internal build record for dependency/size analysis. It is audit data, not a release-manifest field. |
 
 ### Forbidden flags
 
@@ -743,11 +762,11 @@ The compiled binary inherits two Bun behaviors that the docs must surface:
 
 For releases, the build pipeline must record:
 
-- schema name
-- schema version
-- schema commit
-- catalog digest
-- generator version
+- release subject id/name when available from the caller
+- release subject version
+- source commit
+- contract digest
+- build-tool version
 - build target (including baseline/modern/musl variant)
 - exact compile flag set used
 - `--define` values embedded into the binary
@@ -759,7 +778,7 @@ The recorded flag set is what `release/binary-hash` reproducibility checks compa
 
 Build system MVP is accepted only when:
 
-- handwritten `@lili/core` CLI still works without `@lili/build`
+- handwritten `@lili/core` CLI still works without `@lili/product` or `@lili/build`
 - core exposes outbound HTTP operation transport for handwritten and generated CLIs
 - runtime product schema defines resources, commands, bindings, auth providers, permissions, contexts, field metadata, closed vocabulary, execution mode, effects, input schema, output schema, HTTP binding, and surface membership
 - schema linter rejects vocabulary drift, missing output contracts, missing execution modes, missing or inconsistent effects, incomplete HTTP bindings, invalid auth/context/permission requirements, unsupported portable schema shapes, and eager local imports

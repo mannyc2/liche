@@ -34,6 +34,7 @@ lili/
   packages/
     core/
     build/
+    product/
     releases/
 
   examples/
@@ -95,9 +96,26 @@ Owns:
 - outbound HTTP operation transport
 - auth/session runtime primitives (`SecretString`, auth/context resolution, session store, auth header application)
 
-Must not depend on `@lili/build` or `@lili/releases`.
+Must not depend on `@lili/build`, `@lili/product`, or `@lili/releases`.
 
 ### `packages/build`
+
+This package is intentionally narrow. It is useful only while generic Bun compile/provenance behavior is shared by Product-generated CLIs and handwritten CLIs; it should not grow into a second Product builder.
+
+Owns:
+
+- reusable Bun `Bun.build()` orchestration
+- standalone executable compile flag profiles
+- build-time constants for release version, contract digest, source commit, and build-tool version
+- path-independent `compileFlagsDigest`
+- internal compile entrypoint rendering for CLIs
+- build metadata useful to release manifests
+
+May depend on `@lili/core` for its developer CLI.
+
+Does not own product schemas, generated surfaces, server conformance, release manifests, or package-manager renderers.
+
+### `packages/product`
 
 Owns:
 
@@ -111,10 +129,10 @@ Owns:
 - generated surface manifest and surface drift checks
 - generated provenance headers
 - drift checks
-- compile orchestration
+- product-to-compile wrapper that delegates to `@lili/build`
 - server conformance against owned HTTP deployments
 
-May depend on `@lili/core`.
+May depend on `@lili/core` and `@lili/build`.
 
 Does not own outbound HTTP operation transport.
 
@@ -148,7 +166,7 @@ Examples must prove the package boundaries:
 | Example | Purpose |
 |---|---|
 | `examples/handwritten-cli` | Uses only `@lili/core`. |
-| `examples/generated-cli` | Uses `@lili/build` to generate a CLI from schema. |
+| `examples/generated-cli` | Uses `@lili/product` to generate a CLI from schema. |
 | `examples/fetch-backed-cli` | Demonstrates existing inbound/in-process fetch behavior without outbound remote transport confusion. |
 | `examples/remote-backed-cli` | Demonstrates core-owned outbound HTTP operation transport, with and without generated wiring. |
 | `examples/vite-tanstack-app` | Demonstrates capability-first integration for a web app: product schema, API routes, local handlers, generated CLI, conformance against dev server. |

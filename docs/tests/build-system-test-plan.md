@@ -5,21 +5,21 @@ Authoritative sources: `docs/product-schema.md`, `docs/build-system.md`, `docs/c
 ## Priority order
 
 1. Core package boundary.
-2. Product schema normalization and canonical catalog digest.
+2. Product package schema normalization and canonical catalog digest.
 3. Schema lints.
 4. Generated command tree through public core APIs.
 5. Core-owned remote transport.
 6. Server conformance against owned HTTP deployments.
 7. Generated surface manifest and drift checks.
 8. Generated surfaces.
-9. Build package mutation testing.
-10. Compile command.
+9. Product package mutation testing.
+10. Generic build compile command.
 
 ## First vertical slice
 
 The first useful slice should prove:
 
-- a handwritten core CLI still works without build
+- a handwritten core CLI still works without product/build packages
 - a schema normalizes into a deterministic catalog
 - one generated command registers through `Cli.create().command()`
 - generated and handwritten command outputs match for the same input
@@ -29,7 +29,7 @@ Do not start with OpenAPI, package rendering, or a broad generator framework.
 
 ## Product schema refactor slice
 
-Before implementing OpenAPI, refactor `@lili/build` around product-schema authoring:
+Before implementing OpenAPI, refactor `@lili/product` around product-schema authoring:
 
 - `Product.create()` with sibling resources, commands, and bindings
 - static class helpers for `Field`, `Shape`, and `Command`
@@ -84,10 +84,21 @@ The conformance slice should prove:
 
 ## Mutation testing slice
 
-The mutation testing slice should prove:
+The Product mutation testing slice should prove:
 
-- `@lili/build` has the same package-local `mutate` workflow shape as `@lili/core`
+- `@lili/product` has the same package-local `mutate` workflow shape as `@lili/core`
 - Stryker uses the Bun runner and TypeScript checker from the root workspace catalog
 - mutation input is limited to implementation modules, not public barrels, CLI wrappers, skill text, generated fixtures, or tests
-- `bun run --filter @lili/build check` typechecks the Stryker config
-- `bun run --filter @lili/build mutate` completes an initial report and does not commit mutation output artifacts
+- `bun run --filter @lili/product check` typechecks the Stryker config
+- `bun run --filter @lili/product mutate` completes an initial report and does not commit mutation output artifacts
+
+## Compile slice
+
+The compile slice should prove:
+
+- `@lili/build` constructs a plain compile flag profile, then derives both `Bun.build()` options and `compileFlagsDigest` from that profile
+- `@lili/build` has no dependency on `@lili/product` or `@lili/releases`
+- local paths, temp directories, output paths, metafile paths, and build logs do not affect `compileFlagsDigest`
+- compile writes an internal entrypoint that imports the generated CLI and calls `cli.serve(process.argv.slice(2))`
+- `Bun.build()` is injected in tests so profile construction and error handling are verified without compiling a real binary on every unit-test run
+- `@lili/releases` remains outside this path and consumes only final binary facts plus the compile flag digest

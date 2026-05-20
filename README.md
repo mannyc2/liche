@@ -26,7 +26,8 @@ See `docs/AGENTS.md` for doc rules and update workflow.
 Key planning decisions:
 
 - `@lili/core` owns the runtime CLI framework and outbound HTTP operation transport.
-- `@lili/build` owns schema IR, lints, generators, drift checks, and compile orchestration.
+- `@lili/product` owns Product schema authoring, catalog normalization, lints, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance.
+- `@lili/build` owns reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance.
 - `@lili/releases` owns the release manifest, renderer interface, selectable renderers, and final-artifact verification.
 - There is no `release-extra` package; npm, PyPI, Homebrew, and Scoop are renderer choices inside `@lili/releases`.
 - OpenAPI is generated output, not MVP input.

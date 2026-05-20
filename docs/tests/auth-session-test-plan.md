@@ -18,26 +18,26 @@ Authoritative sources: `docs/auth-session.md`, `docs/product-schema.md`, `docs/c
 
 | Test file | Requirement IDs | Must prove | Known-bad implementation caught |
 |---|---|---|---|
-| `packages/build/test/auth-catalog.test.ts` | `AUTH-001` | Product schema auth providers, permissions, contexts, and `requires` normalize into plain catalog data. | Auth is generated as hidden CLI behavior instead of catalog metadata. |
+| `packages/product/test/auth-catalog.test.ts` | `AUTH-001` | Product schema auth providers, permissions, contexts, and `requires` normalize into plain catalog data. | Auth is generated as hidden CLI behavior instead of catalog metadata. |
 | `packages/core/test/secret-string.test.ts` | `AUTH-002` | `SecretString` redacts through string, JSON, error, and metadata paths; only explicit reveal returns raw value. | Token leaks through logging or envelopes. |
 | `packages/core/test/resolve-auth-env.test.ts` | `AUTH-003` | Env bearer/API key resolution works across CLI/CI/agent modes and missing env returns structured errors. | CI/agent silently use sessions or raw env errors leak. |
 | `packages/core/test/resolve-context.test.ts` | `AUTH-004` | Context flags beat env, env beats stored context, and stored context is used only when allowed. | Wrong org/project selected silently. |
-| `packages/build/test/generated-auth-flags.test.ts` | `AUTH-011` | Auth-enabled generated CLIs get `--profile`, `--non-interactive`, and `--no-session`; no-auth CLIs do not. | Auth globals pollute public unauthenticated CLIs. |
-| `packages/build/test/generated-auth-runtime.test.ts` | `AUTH-003`, `AUTH-004`, `AUTH-006` | Generated command resolves auth/context before transport and never starts login implicitly. | Generated code passes raw tokens or starts device flow from normal commands. |
+| `packages/product/test/generated-auth-flags.test.ts` | `AUTH-011` | Auth-enabled generated CLIs get `--profile`, `--non-interactive`, and `--no-session`; no-auth CLIs do not. | Auth globals pollute public unauthenticated CLIs. |
+| `packages/product/test/generated-auth-runtime.test.ts` | `AUTH-003`, `AUTH-004`, `AUTH-006` | Generated command resolves auth/context before transport and never starts login implicitly. | Generated code passes raw tokens or starts device flow from normal commands. |
 
 ## Slice B: sessions and auth commands
 
 | Test file | Requirement IDs | Must prove | Known-bad implementation caught |
 |---|---|---|---|
-| `packages/build/test/auth-command-capabilities.test.ts` | `AUTH-005` | `whoami` and `switch` emit normal catalog capabilities with auth effects, policies, and surfaces. | Auth commands are hard-coded built-ins or agent-visible mutators. |
+| `packages/product/test/auth-command-capabilities.test.ts` | `AUTH-005` | `whoami` and `switch` emit normal catalog capabilities with auth effects, policies, and surfaces. | Auth commands are hard-coded built-ins or agent-visible mutators. |
 | `packages/core/test/session-store.test.ts` | `AUTH-007` | File store uses restricted permissions, lock file, atomic write/rename, corrupt-file rename, and profile naming validation. | Corrupt sessions reset silently or concurrent writes corrupt state. |
-| `packages/build/test/auth-agent-metadata.test.ts` | `AUTH-009` | Agent/MCP metadata includes auth requirements/status and excludes tokens, env values, paths, and device codes. | Agent cannot recover from auth failure or receives secrets. |
+| `packages/product/test/auth-agent-metadata.test.ts` | `AUTH-009` | Agent/MCP metadata includes auth requirements/status and excludes tokens, env values, paths, and device codes. | Agent cannot recover from auth failure or receives secrets. |
 
 ## Slice C: OAuth device login
 
 | Test file | Requirement IDs | Must prove | Known-bad implementation caught |
 |---|---|---|---|
-| `packages/build/test/oauth-device-commands.test.ts` | `AUTH-005`, `AUTH-006` | `login`/`logout` are generated capabilities only when OAuth/session source is configured. | OAuth commands appear for env-only products or as hidden built-ins. |
+| `packages/product/test/oauth-device-commands.test.ts` | `AUTH-005`, `AUTH-006` | `login`/`logout` are generated capabilities only when OAuth/session source is configured. | OAuth commands appear for env-only products or as hidden built-ins. |
 | `packages/core/test/oauth-device-flow.test.ts` | `AUTH-006` | Device user code appears only for interactive login; noninteractive, CI, agent, and MCP fail with `AUTH_INTERACTIVE_REQUIRED`. | Agent/CI receives device code or browser flow starts unexpectedly. |
 
 ## Transport and release

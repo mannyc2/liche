@@ -6,7 +6,8 @@ This plan starts after the current Bun-native core builder work. It assumes a ha
 
 - Root repo is a Bun workspace monorepo.
 - Current core behavior lives in `packages/core` with no build or releases dependency.
-- `packages/build` owns product schema authoring, canonical catalog normalization, generation, drift checks, compile orchestration, and server conformance.
+- `packages/product` owns product schema authoring, canonical catalog normalization, generation, drift checks, Product compile orchestration, and server conformance.
+- `packages/build` owns reusable Bun build/compile primitives for generated and handwritten CLI entrypoints.
 - `packages/releases` owns release manifests, final binary verification, renderer selection, package-manager artifact rendering, and yank planning.
 - There is no `release-extra` package. Users choose zero to all release renderers through release configuration.
 - Generated surfaces are tracked through a surface manifest with source digests, generator versions, generation options digests, output digests, and artifact lists.
@@ -19,6 +20,7 @@ Move the current package into the target workspace shape:
 ```txt
 packages/core
 packages/build
+packages/product
 packages/releases
 examples/
 docs/
@@ -48,9 +50,9 @@ The concrete public/exported surface decision lives in `docs/core-api-boundary.m
 
 Verification:
 
-- Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@lili/build` when that package's IR-driven generator lands.
-- A dependency boundary test proves `@lili/core` does not import `@lili/build` or `@lili/releases`.
-- A package-consumer boundary test in `@lili/build` imports `@lili/core` by package name and asserts the resolved value exports equal the approved frozen surface from `docs/core-api-boundary.md`.
+- Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@lili/product` when that package's catalog-driven generator lands.
+- A dependency boundary test proves `@lili/core` does not import `@lili/build`, `@lili/product`, or `@lili/releases`.
+- A package-consumer boundary test in `@lili/product` imports `@lili/core` by package name and asserts the resolved value exports equal the approved frozen surface from `docs/core-api-boundary.md`.
 - A source-level API snapshot test in `@lili/core` locks both value and type exports against `docs/core-api-boundary.md`.
 - A generated-command fixture can request `--json` and receive a structured envelope, not ad hoc text. (Deferred until Phase 3 produces the first generated fixture.)
 
@@ -74,9 +76,9 @@ Verification:
 - Mixed execution fixtures reject conflicting flags where both local and remote are supported, honor flag > config > schema default, and include `meta.execution.mode` plus `meta.execution.source`.
 - Generated OpenAPI for a `GET` resource operation emits path/query/header/body placement from HTTP binding metadata and excludes local-only commands.
 
-## Phase 3: build vertical slice
+## Phase 3: product vertical slice
 
-Implement the smallest build package slice that proves the architecture:
+Implement the smallest product package slice that proves the architecture:
 
 1. Define runtime schema API and canonical catalog normalization.
 2. Generate one command tree through `@lili/core` public APIs.
@@ -110,7 +112,7 @@ Verification:
 
 ## Phase 3B: product schema refactor
 
-Hard-cut `@lili/build` from operation-contract authoring to product-schema authoring before adding OpenAPI.
+Hard-cut `@lili/product` from operation-contract authoring to product-schema authoring before adding OpenAPI.
 
 Public API:
 
@@ -153,7 +155,7 @@ Verification:
 - The generated CLI includes the resource operation plus top-level `deploy` and `dev` commands.
 - `dev` is not treated as HTTP-capable; `deploy` remains a hybrid workflow, not a fake resource mutation.
 - Field metadata changes affect the catalog digest; source formatting and class instance identity do not.
-- `bun run --filter @lili/build check` and `bun run --filter @lili/build test` pass after removing the old operation-contract fixture.
+- `bun run --filter @lili/product check` and `bun run --filter @lili/product test` pass after removing the old operation-contract fixture.
 
 ## Phase 3C: OpenAPI projection
 
@@ -184,24 +186,24 @@ Verification:
 - The generated surface manifest records separate `cli` and `openapi` surface entries with independent output digests.
 - Hand-editing `openapi.json` makes `generate --check` fail with the `openapi` surface id.
 
-## Phase 3C-QA: build mutation testing
+## Phase 3C-QA: product mutation testing
 
-Set up mutation testing for `@lili/build` using the same local workflow as `@lili/core`.
+Set up mutation testing for `@lili/product` using the same local workflow as `@lili/core`.
 
 Implementation requirements:
 
-- add `packages/build/stryker.conf.mjs`
-- add `mutate: "stryker run"` to `packages/build/package.json`
+- add `packages/product/stryker.conf.mjs`
+- add `mutate: "stryker run"` to `packages/product/package.json`
 - add Stryker/Bun-runner dev dependencies through the existing root workspace catalog
-- include `stryker.conf.mjs` in the build package TypeScript config
+- include `stryker.conf.mjs` in the product package TypeScript config
 - mutate implementation modules for catalog normalization, digesting, lints, generators, manifest checks, and product-schema builders
-- exclude public barrels, `li-build` CLI wrapper code, packaged skill text, generated fixtures, and tests from mutation input
+- exclude public barrels, `li-product` CLI wrapper code, packaged skill text, generated fixtures, and tests from mutation input
 - start with the same thresholds as core unless the first measured baseline proves a narrower first gate is needed
 
 Verification:
 
-- `bun run --filter @lili/build check` passes with the config included in TypeScript checking.
-- `bun run --filter @lili/build mutate` starts Stryker with the Bun test runner and completes an initial report.
+- `bun run --filter @lili/product check` passes with the config included in TypeScript checking.
+- `bun run --filter @lili/product mutate` starts Stryker with the Bun test runner and completes an initial report.
 - The initial report names surviving mutants that should become focused follow-up tests rather than broad snapshot updates.
 - The root workspace remains clean: no duplicate Stryker versions, no package-local lockfile, and no mutation artifacts committed.
 
@@ -273,7 +275,7 @@ Prove that generated remote commands and handwritten remote commands share the s
 - output schema validation treats HTTP responses as untrusted
 - non-2xx, malformed JSON, unsupported content types, timeout, missing base URL, and missing auth become structured core errors
 - 401/403 responses map to auth errors when an auth requirement is present and to remote HTTP errors otherwise
-- `li-build conform` verifies an owned fixture server separately from `generate --check`
+- `li-product conform` verifies an owned fixture server separately from `generate --check`
 
 Verification:
 
@@ -284,7 +286,7 @@ Verification:
 
 ## Phase 5: releases spine
 
-Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This is the next `@lili/releases` package slice; do not implement npm packaging here except through a test fixture renderer that proves the shared release loop.
+Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This `@lili/releases` package slice is implemented through Phase 5F, and Phase 6 has baseline npm/PyPI/Homebrew/Scoop renderer implementations. Phase 7 publishing is the next release slice.
 
 ### Phase 5A: manifest schema and fixture
 
@@ -298,7 +300,7 @@ Add `zod` to `packages/releases`, then add `packages/releases/src/manifest.ts` w
 Verification:
 
 - `packages/releases/test/manifest.test.ts` rejects malformed manifests.
-- The fixture manifest records metadata, executable metadata, product/catalog provenance, runtime env/config expectations, one conformance-metadata case, at least one glibc and one musl binary, and at least one baseline x64 target.
+- The fixture manifest records metadata, executable metadata, subject/contract provenance, runtime env/config expectations, one conformance-metadata case, at least one glibc and one musl binary, and at least one baseline x64 target.
 - `bun run --filter @lili/releases check` proves the exported types compile.
 
 ### Phase 5B: final binary byte verification
@@ -325,6 +327,7 @@ Verification:
 
 - `packages/releases/test/renderer-selection.test.ts` covers empty, one, many, all, unsupported, duplicate, underconfigured renderer selections, and the absence of publisher credential checks.
 - The test registry uses tiny fake renderers; it must not pull npm packaging into Phase 5.
+- Implemented in `packages/releases/src/renderers/index.ts`.
 
 ### Phase 5D: release package orchestration
 
@@ -333,17 +336,19 @@ Add the orchestration function that validates the manifest, verifies final binar
 Verification:
 
 - `packages/releases/test/release-package.test.ts` proves `renderers: []` still validates the manifest and verifies final binary bytes.
-- A fixture renderer receives only the parsed manifest and renderer output context, not product schema files, package workspaces, generated source, or build directories.
+- A fixture renderer receives only the parsed manifest, verified final binary records, and renderer output context, not product schema files, package workspaces, generated source, or build directories.
 - Selecting an invalid renderer fails before any staging directory is created.
+- Implemented in `packages/releases/src/package.ts` as `packageRelease(...)`.
 
 ### Phase 5E: final artifact verification
 
-Final verification must inspect packed artifacts, not staging directories.
+Final verification must inspect final artifact files, not staging directories. Phase 5 verifies final package artifact bytes against package records; Phase 6 ecosystem renderers add ecosystem-specific unpack/inspect checks such as npm `.tgz` binary hashing and PyPI `RECORD` validation.
 
 Verification:
 
-- The fixture renderer packs an artifact, records a package artifact record with renderer/ecosystem/kind/sha256/size, the verifier unpacks or reads the packed artifact, and a corrupted packed artifact fails even if the staging directory still looks valid.
+- The fixture renderer packs an artifact, records a package artifact record with renderer/ecosystem/kind/sha256/size, the verifier reads the final artifact, and a corrupted packed artifact fails even if the staging directory still looks valid.
 - No test should accept "directory contains expected files" as the final proof.
+- Implemented in `packages/releases/src/artifacts.ts`.
 
 ### Phase 5F: manifest-based yank dry run
 
@@ -353,6 +358,7 @@ Verification:
 
 - `packages/releases/test/yank.test.ts` reports every affected package artifact from the manifest.
 - The dry run must not require package names or versions that are not derivable from the manifest.
+- Implemented in `packages/releases/src/yank.ts` as `planReleaseYank(...)`.
 
 Phase 5 exits only when `bun run --filter @lili/releases check`, `bun run --filter @lili/releases test`, and root `bun run check` pass with no `release-extra` package and no npm-specific renderer implementation.
 
@@ -366,12 +372,24 @@ Add ecosystem renderers inside `@lili/releases`. This phase renders and verifies
 - Scoop JSON manifest
 - WinGet helper flow only when its asynchronous repository workflow is explicitly in scope
 
+Status: npm, PyPI, Homebrew, and Scoop baseline renderers are implemented. WinGet remains out of scope.
+
+Renderer package structure:
+
+- `packages/releases/src/index.ts` exports the release spine but no concrete renderer implementations.
+- `packages/releases/src/renderers/index.ts` exports shared renderer types and selection.
+- `packages/releases/src/renderers/{npm,pypi,homebrew,scoop}.ts` export one renderer each.
+- `packages/releases/src/renderers/all.ts` is the opt-in convenience module that imports all renderers.
+- `packages/releases/src/publishers/index.ts` reserves publisher types; concrete publisher adapters belong in Phase 7 subpaths.
+
 Verification:
 
 - Each selected renderer can be tested independently from the same manifest fixture.
 - Selecting multiple renderers produces traceable artifacts for the same release version and binary hashes.
 - PyPI, Homebrew, and Scoop renderer tests cover ecosystem-specific metadata and final artifact checks, not just generic file emission.
 - Yank dry run reports every affected artifact from one manifest reference.
+- `packages/releases/test/ecosystem-renderers.test.ts` renders all four implemented ecosystems from one core-command-manifest fixture.
+- `packages/releases/test/package-boundary.test.ts` proves concrete renderers stay behind subpath exports without metafile-level bundle assertions.
 
 ## Phase 7: distribution automation
 

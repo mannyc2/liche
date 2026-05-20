@@ -1,13 +1,13 @@
 # Server conformance requirements
 
-`@lili/build` owns server conformance.
+`@lili/product` owns server conformance.
 
 Conformance verifies that an owned external HTTP deployment implements HTTP-backed product schema capabilities. It is separate from generated-file drift checks.
 
 ## Command contract
 
 ```sh
-li-build conform ./lili.schema.ts \
+li-product conform ./lili.schema.ts \
   --base-url http://localhost:5173 \
   --report .lili/conformance.json
 ```
@@ -33,11 +33,11 @@ Do not add an option that passes secret values directly on the command line. Use
 ## Separation from drift check
 
 ```txt
-li-build generate --check
+li-product generate --check
   Hermetic generated-file freshness and provenance check.
   Does not need a server.
 
-li-build conform
+li-product conform
   Live or fixture server-vs-schema verification.
   Needs a base URL or target.
 ```
@@ -88,7 +88,7 @@ export type ConformanceCase = {
 Fixture example:
 
 ```ts
-import type { ConformanceCase } from "@lili/build";
+import type { ConformanceCase } from "@lili/product";
 
 export default [
   {
@@ -145,7 +145,7 @@ export const ConformanceReport = z.object({
   catalog: z.object({
     name: z.string(),
     version: z.string(),
-    catalogDigest: z.string(),
+    contractDigest: z.string(),
   }),
 
   target: z.object({
@@ -210,7 +210,7 @@ Reports must not include raw secret values.
 
 ```sh
 bun run dev-server
-li-build conform ./lili.schema.ts \
+li-product conform ./lili.schema.ts \
   --base-url http://localhost:5173 \
   --capability "projects.*" \
   --report .lili/conformance.local.json

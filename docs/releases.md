@@ -21,6 +21,8 @@ renderers: "all"
 
 Renderer selection never checks registry credentials. Publishing automation has a separate publisher selection and preflight step after artifacts are rendered and verified.
 
+The current implementation provides the shared registry and selection API in `packages/releases/src/renderers/index.ts`. Concrete renderers live behind subpaths: `packages/releases/src/renderers/npm.ts`, `pypi.ts`, `homebrew.ts`, and `scoop.ts`. `packages/releases/src/renderers/all.ts` imports all four only for callers that ask for the all-renderer registry. Tests render all four ecosystems from one manifest without privileging npm.
+
 ## Package boundary
 
 `@lili/releases` owns:
@@ -38,9 +40,11 @@ Renderer selection never checks registry credentials. Publishing automation has 
 - future WinGet helper flow when explicitly in scope
 - manifest-based yank and rollback planning
 
-Renderer dependencies must stay out of `@lili/core` and `@lili/build`. If an ecosystem needs heavyweight tooling, load or invoke it only when that renderer is selected; do not create another first-party release package to hide the dependency problem.
+Renderer dependencies must stay out of `@lili/core`, `@lili/build`, and `@lili/product`. If an ecosystem needs heavyweight tooling, load or invoke it only when that renderer is selected; do not create another first-party release package to hide the dependency problem.
 
-Publisher adapters also live in `@lili/releases`, but they are not renderers. A publisher consumes one release manifest plus verified package artifact records and then mutates npm, PyPI, tap, bucket, or other registry state. Publisher dependencies and credential handling must stay behind publisher selection.
+Renderer implementations must stay behind renderer subpath exports so users who only need the manifest/package spine do not import every ecosystem renderer. Publisher adapters also live in `@lili/releases`, but they are not renderers. A publisher consumes one release manifest plus verified package artifact records and then mutates npm, PyPI, tap, bucket, or other registry state. Publisher dependencies and credential handling must stay behind publisher subpaths and publisher selection.
+
+The implemented package orchestration API is `packageRelease(...)`. It consumes manifest input plus explicit final binary paths, invokes selected renderers with only `{ manifest, binaries, outDir, config? }`, and verifies final package artifact bytes through package records. It does not rebuild binaries, reread Product/build source, or publish to registries.
 
 ## Renderer purity
 

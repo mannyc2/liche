@@ -1,6 +1,6 @@
 # Core API boundary freeze
 
-This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/build` starts importing `@lili/core`.
+This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/product` starts importing `@lili/core`.
 
 ## Phase 3 re-freeze (packaged skills)
 
@@ -38,7 +38,7 @@ This re-freeze does not make auth a separate package. The authoritative behavior
 
 ### Phase 3D-A landed (env-only auth)
 
-The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/build/test/core-consumer-boundary.test.ts`:
+The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
 - Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential`.
 - Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `ResolvedAuthMeta`, `CommandAuthMetadata`.
@@ -55,7 +55,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 
 - Generated CLI code registers through `Cli.create().command()` and uses core runtime behavior through documented top-level APIs only.
 - Generated code must not import `stateSymbol`, `InternalCli`, `CliState`, parser helpers, command registry helpers, command guards, help renderers, or schema-adapter internals.
-- Runtime reflection in core remains a handwritten-CLI compatibility surface. Schema-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces belong to `@lili/build`.
+- Runtime reflection in core remains a handwritten-CLI compatibility surface. Schema-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces belong to `@lili/product`.
 - Remove or reshape current index exports before freezing. Do not keep duplicate or state-shaped exports just because tests currently reach them.
 
 ## Keep public

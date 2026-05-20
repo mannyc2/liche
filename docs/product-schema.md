@@ -1,6 +1,6 @@
 # Product schema requirements
 
-`@lili/build` is a product-schema compiler, not a wrapper around `@lili/core`.
+`@lili/product` is a product-schema compiler, not a wrapper around `@lili/core`.
 
 The public authoring model is a catalog of product capabilities. Some capabilities are resources, some are workflow commands, and some are config bindings. Generated CLIs are one projection of that catalog. OpenAPI, command manifests, docs, Agent Skills, dashboard metadata, and config surfaces are other projections.
 
@@ -22,7 +22,7 @@ Do not force every meaningful product action into a CRUD resource operation. `de
 The public API should follow the existing static-class style used by `Cli.create()`:
 
 ```ts
-import { Command, Field, Product, Shape } from "@lili/build";
+import { Command, Field, Product, Shape } from "@lili/product";
 
 export default Product.create({
   id: "workers",
@@ -106,7 +106,7 @@ export default Product.create({
   });
 ```
 
-The class API is authoring sugar. `@lili/build` must normalize it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
+The class API is authoring sugar. `@lili/product` must normalize it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
 ## Catalog model
 
@@ -304,7 +304,7 @@ OpenAPI is a projection of HTTP-backed capabilities. CLI is a projection of user
 
 The product schema must be enforceable against real implementation code, but server runtime belongs behind an adapter boundary.
 
-MVP `@lili/build` owns:
+MVP `@lili/product` owns:
 
 - product schema authoring API
 - normalization into canonical catalog
@@ -313,13 +313,13 @@ MVP `@lili/build` owns:
 - drift checks
 - server conformance against owned HTTP deployments
 
-MVP `@lili/build` does not own:
+MVP `@lili/product` does not own:
 
 - generated server routes
 - a generic product API runtime
 - workflow step execution
 
-A future server adapter may consume the same catalog and provide `implement(...)`, `boot()`, `request(...)`, or framework-specific route mounting. Until that adapter exists, apps implement handlers manually and `li-build conform` proves the implementation matches the schema.
+A future server adapter may consume the same catalog and provide `implement(...)`, `boot()`, `request(...)`, or framework-specific route mounting. Until that adapter exists, apps implement handlers manually and `li-product conform` proves the implementation matches the schema.
 
 ## Refactor path
 

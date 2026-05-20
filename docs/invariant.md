@@ -11,10 +11,11 @@ the binary is the product
 the manifest is the distribution contract
 ```
 
-Only two opt-in features are being added:
+Only three opt-in features are being added:
 
-1. Build system: a runtime product schema that normalizes into a canonical capability catalog and generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema/config surfaces, and compile artifacts.
-2. Distribution: one release manifest, pure package-manager renderers, and final-artifact guard rails.
+1. Product system: a runtime product schema that normalizes into a canonical capability catalog and generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema/config surfaces, drift checks, and server conformance.
+2. Build system: reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance. This is useful for Product-generated CLIs and handwritten CLIs.
+3. Distribution: one release manifest, pure package-manager renderers, and final-artifact guard rails.
 
 Everything else remains current core runtime behavior unless a requirement document says otherwise.
 
@@ -46,7 +47,8 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
 | `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, parser, formatter, MCP basics, skills basics, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs and the shared remote HTTP transport. |
-| `@lili/build` | yes | Opt-in product schema, catalog linting, drift checks, generators, and `bun build --compile` orchestration. | They give up generated command trees, OpenAPI/MCP/docs generation, schema linting, drift checks, and compile orchestration. Handwritten CLIs still work. |
+| `@lili/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
+| `@lili/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up lili's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
 | `@lili/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
 
 Do not create MVP packages for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice belongs inside `@lili/releases` configuration, not in separate first-party packages.
@@ -61,7 +63,7 @@ The current core has multiple execution directions. The rewrite must name them s
 | inbound HTTP handler | `@lili/core` | `.fetch(request)` receives HTTP requests and dispatches them to registered commands. It also exposes core reflection endpoints such as MCP and schema/manifest surfaces for handwritten CLIs. |
 | in-process fetch-backed command | `@lili/core` | A command can delegate to a provided `FetchHandler`. This is an in-process Request/Response bridge, not a hosted backend client. |
 | outbound HTTP operation transport | `@lili/core` | A command can call a configured remote HTTP API, parse the response, validate it against the output schema, and map failures into the standard error envelope. |
-| generated command wiring | `@lili/build` | Generated code wires resource operations and commands into core runtime primitives. It does not own transport semantics. |
+| generated command wiring | `@lili/product` | Generated code wires resource operations and commands into core runtime primitives. It does not own transport semantics. |
 
 The word `remote` in the schema means outbound HTTP operation transport. It is not a synonym for `.fetch()`.
 
@@ -132,7 +134,7 @@ Build, signing, hashing, manifest creation, package rendering, and verification 
 ```txt
 normalize product schema catalog
 generate artifacts
-compile binary
+compile binary through @lili/build, or compile a handwritten CLI entrypoint directly through @lili/build
 sign final binary, when configured
 notarize final binary, when configured
 verify signature

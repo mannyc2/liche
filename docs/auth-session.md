@@ -16,16 +16,16 @@ This document defines the public API direction and the runtime contract. It does
 
 | Responsibility | Owner |
 |---|---|
-| Auth provider declarations | `@lili/build` product schema API; normalized into catalog |
-| Permission declarations | `@lili/build`; product permissions/scopes are catalog metadata |
-| Context declarations | `@lili/build`; resolved by generated code through core primitives |
-| Generated `login`, `logout`, `whoami`, `switch` | `@lili/build` emits catalog capabilities; generated code implements them through `@lili/core` |
+| Auth provider declarations | `@lili/product` product schema API; normalized into catalog |
+| Permission declarations | `@lili/product`; product permissions/scopes are catalog metadata |
+| Context declarations | `@lili/product`; resolved by generated code through core primitives |
+| Generated `login`, `logout`, `whoami`, `switch` | `@lili/product` emits catalog capabilities; generated code implements them through `@lili/core` |
 | Token resolution | `@lili/core` |
 | Session/profile storage | `@lili/core` default store plus public `SessionStore` interface |
 | Refresh token handling | `@lili/core` later; deferred from MVP |
 | Applying auth headers | `@lili/core` HTTP operation transport |
 | Structured auth errors | `@lili/core` |
-| Agent/MCP auth metadata | Catalog metadata from `@lili/build`; runtime status from generated code/core |
+| Agent/MCP auth metadata | Catalog metadata from `@lili/product`; runtime status from generated code/core |
 | Release manifest auth metadata | `@lili/releases`; non-secret expectations only |
 | Hosted policy/session sync | Future hosted platform only |
 
@@ -36,7 +36,7 @@ Do not add `@lili/auth` for MVP. Auth is too central to remote-operation CLIs to
 Auth is opt-in. Public products with no auth must declare that explicitly:
 
 ```ts
-import { Auth, Command, Field, Product, Runtime, Shape } from "@lili/build";
+import { Auth, Command, Field, Product, Runtime, Shape } from "@lili/product";
 
 export default Product.create({
   id: "notes",
@@ -621,7 +621,7 @@ Deferred: multi-provider auth, per-capability provider selection, refresh-token 
 Slice A landed in Phase 3D-A (next-plan.md). The behavior in this doc is authoritative; the notes below trace the implementation:
 
 - `@lili/core`: `SecretString` + `secret()` (`packages/core/src/auth/secret.ts`); env-only `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential` (`packages/core/src/auth/resolve.ts`); `AUTH_MISSING` / `AUTH_CI_TOKEN_MISSING` / `AUTH_CONTEXT_REQUIRED` / `AUTH_SCOPE_MISSING` / `AUTH_PERMISSION_DENIED` / `AUTH_INVALID` / `AUTH_EXPIRED` factories built on `LiliError` (`packages/core/src/auth/errors.ts`). `LiliError.details` and `CommandError.details` carry structured auth payloads through the envelope. `RunContext.invocation` carries `cli` / `ci` / `agent` / `mcp` into generated code so CI-mode token sources are reachable without process-global env mutation.
-- `@lili/build`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.permission.scope`, `Auth.context.env|remote` (`packages/build/src/auth.ts`); `Product.auth(...)`, `Product.permissions(...)`, and `Product.context(...)` chain methods (`packages/build/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` requires an explicit `.auth(...)` and validates capability `requires` against declared contexts, declared product permissions, and auth posture (`packages/build/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/build/src/manifest.ts`).
-- Generated CLI (`packages/build/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `applyAuth` / `resolveAuth` / `resolveContext` from `@lili/core`, emits top-level `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and runs a resolve-then-applyAuth preamble before the (still Phase-4) transport stub. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements still avoid auth-runtime imports.
+- `@lili/product`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.permission.scope`, `Auth.context.env|remote` (`packages/product/src/auth.ts`); `Product.auth(...)`, `Product.permissions(...)`, and `Product.context(...)` chain methods (`packages/product/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` requires an explicit `.auth(...)` and validates capability `requires` against declared contexts, declared product permissions, and auth posture (`packages/product/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/product/src/manifest.ts`).
+- Generated CLI (`packages/product/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `applyAuth` / `resolveAuth` / `resolveContext` from `@lili/core`, emits top-level `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and runs a resolve-then-applyAuth preamble before the (still Phase-4) transport stub. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements still avoid auth-runtime imports.
 
 Out of scope for 3D-A (and so not yet implemented): file-backed `SessionStore`, profile selection, `--profile` / `--non-interactive` / `--no-session`, generated `whoami` / `switch` / `login` / `logout`, OAuth device flow, `Auth.token.session`, identity endpoint resolution, remote-context `list` runtime calls, and the real `callHttpOperation` / `serializeHttpOperationRequest` transport (which is Phase 4).

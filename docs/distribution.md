@@ -11,10 +11,10 @@ The release manifest is the only contract between binary production and package-
 Renderers must be pure functions:
 
 ```txt
-release manifest -> staged package artifact
+release manifest + verified binary records -> staged package artifact
 ```
 
-Renderers must not read product schema files, generated source, package workspaces, or build output directories except through manifest references.
+Renderers must not read product schema files, generated source, package workspaces, or build output directories except through manifest references and explicit verified binary paths.
 
 Renderers and publishers are separate concerns:
 
@@ -28,6 +28,18 @@ Renderer preflight checks manifest metadata and selected-renderer configuration 
 Renderer selection and non-npm renderer requirements live in `docs/releases.md`.
 
 Detailed npm packaging requirements live in `docs/npm-binary-packaging.md`.
+
+Implemented release-spine APIs:
+
+- `parseCliReleaseManifest(...)` validates manifest input.
+- `verifyReleaseBinaries(...)` verifies final binary paths against manifest binary records.
+- `resolveReleaseRenderers(...)` resolves zero, one, many, or all registered renderers without checking publisher credentials.
+- `packageRelease(...)` validates the manifest, verifies binaries, runs selected renderers, and verifies final package artifact bytes.
+- `verifyPackageArtifacts(...)` verifies package artifact file name, size, and sha256 against package records.
+- `planReleaseYank(...)` derives a dry-run yank plan from manifest package records.
+- `@lili/releases/renderers/all` exports `createDefaultRendererRegistry()` for the implemented npm, PyPI, Homebrew, and Scoop renderers.
+
+The root package export intentionally stays renderer-light. Concrete renderers are loaded through `@lili/releases/renderers/npm`, `@lili/releases/renderers/pypi`, `@lili/releases/renderers/homebrew`, `@lili/releases/renderers/scoop`, or the all-renderer convenience subpath. Publisher adapter types live behind `@lili/releases/publishers`; concrete publishing remains a separate Phase 7 adapter layer.
 
 ## Manifest schema
 
@@ -64,18 +76,29 @@ export const CliReleaseManifest = z.object({
       .optional(),
   }),
 
-  product: z.object({
+  subject: z.object({
     id: z.string(),
     name: z.string(),
     version: z.string(),
     commit: z.string(),
-    catalogDigest: z.string(),
-    surfaceManifest: z
-      .object({
-        path: z.string(),
-        sha256: z.string().regex(/^[a-f0-9]{64}$/),
-      })
-      .optional(),
+    contract: z.discriminatedUnion("kind", [
+      z.object({
+        kind: z.literal("product-catalog"),
+        digest: z.string(),
+        surfaceManifest: z.object({
+          path: z.string(),
+          sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        }).optional(),
+      }),
+      z.object({
+        kind: z.literal("core-command-manifest"),
+        digest: z.string(),
+        commandManifest: z.object({
+          path: z.string(),
+          sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        }).optional(),
+      }),
+    ]),
   }),
 
   release: z.object({
@@ -156,7 +179,7 @@ export const CliReleaseManifest = z.object({
     checkedAt: z.string().optional(),
     targetEnv: z.string().optional(),
     targetBaseUrl: z.string().url().optional(),
-    catalogDigest: z.string().optional(),
+    contractDigest: z.string().optional(),
     destructiveIncluded: z.boolean().default(false),
     summary: z
       .object({
@@ -224,7 +247,7 @@ export const CliReleaseManifest = z.object({
 
 `metadata` exists so pure package renderers do not need to read `package.json`, git config, product schema source, or build directories.
 
-`product.catalogDigest` is the normalized catalog digest. Do not record a digest of raw product schema source text as the release provenance anchor.
+`subject.contract.digest` is the release provenance anchor. For Product-generated CLIs it is the normalized catalog digest. For handwritten CLIs it is the core command-manifest digest. Do not record a digest of raw Product schema source text or generated source text as the release provenance anchor.
 
 `binaries[].target` stores the exact Bun `--target` string used at compile time, including `baseline`, `modern`, and `musl` when present. `platform`, `arch`, `libc`, and `cpuVariant` are normalized fields used by renderers and must agree with the target string.
 
@@ -252,7 +275,7 @@ Only stable release-facing facts belong in the manifest.
 Required pipeline:
 
 ```txt
-1. Read binary artifacts from @lili/build output.
+1. Read binary artifacts and compile flag profiles from @lili/build output.
 2. Apply signing/notarization hooks where configured.
 3. Verify signature/notarization where configured.
 4. Compute sha256 and size over final binary bytes.
@@ -264,7 +287,9 @@ Required pipeline:
 10. Support yank/rollback from one manifest reference.
 ```
 
-Do not verify staging directories as the final proof. Verify packed artifacts.
+Do not verify staging directories as the final proof. The shared release spine verifies final package artifact file bytes; ecosystem renderer tests inspect package-format details such as npm `.tgz` contents, PyPI `RECORD` entries, and Homebrew/Scoop manifest text.
+
+`@lili/releases` never invokes `Bun.build()` and never rebuilds a binary. `binaries[].compileFlagsDigest` is copied from the `@lili/build` compile flag profile, while `binaries[].sha256` and `binaries[].size` are computed after signing/notarization from the final bytes that will be packaged.
 
 ## Renderer selection
 
@@ -451,7 +476,7 @@ Required checks:
 | Rule | Required check |
 |---|---|
 | `release/manifest-schema` | Manifest validates against `CliReleaseManifest`. |
-| `release/catalog-provenance` | Manifest contains product id, name, version, commit, and catalog digest. |
+| `release/contract-provenance` | Manifest contains subject id, name, version, commit, contract kind, and contract digest. |
 | `release/runtime-contract` | Manifest records env/config expectations for remote transport and other runtime config. |
 | `release/auth-contract` | Manifest records non-secret auth providers, modes, env var names, generated auth commands, context selectors, and session-storage posture. |
 | `release/conformance-provenance` | Manifest records required conformance report metadata when release policy requires server conformance. |
@@ -502,10 +527,10 @@ Upstream reference points for these requirements:
 
 Distribution MVP is accepted only when:
 
-- manifest includes release version, product/catalog provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/cpuVariant/url/sha256/size
+- manifest includes release version, subject/contract provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/cpuVariant/url/sha256/size
 - manifest includes renderer metadata needed by pure package renderers
 - manifest includes non-secret auth/session expectations when auth providers are configured
-- manifest can record conformance report version, hash, target, summary, catalog digest, and destructive-case status when publishing policy requires conformance
+- manifest can record conformance report version, hash, target, summary, contract digest, and destructive-case status when publishing policy requires conformance
 - manifest can record executable metadata needed for Windows resource fields without embedding local icon paths
 - manifest includes stable package identity records and can be joined to verified artifact records by package ID
 - renderers are pure manifest-to-staged-package functions
