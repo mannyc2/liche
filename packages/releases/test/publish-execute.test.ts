@@ -441,6 +441,7 @@ describe('executeReleasePublish', () => {
         scoop: scoopToken,
       },
       executors,
+      oidc: { idTokenFetcher: async () => ({ ok: true, token: 'stub-jwt' }) },
     })
     expect(result.ok).toBe(true)
     expect(seen.npm).toBe(npmOidc)

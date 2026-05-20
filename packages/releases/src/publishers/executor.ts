@@ -15,6 +15,7 @@ import type {
   PypiCredentials,
   ScoopCredentials,
 } from './preflight.js'
+import type { OidcExchangeEnv } from './oidc.js'
 
 export type ExecutorFailure = {
   code: string
@@ -30,6 +31,7 @@ export type StepExecutorInput<Step, Creds> = {
   step: Step
   credentials: Creds
   bytes: Uint8Array
+  oidc?: OidcExchangeEnv
 }
 
 export type NpmStepExecutor = (
@@ -64,6 +66,7 @@ export type ExecuteFailureCode =
   | 'ARTIFACT_READ_FAILED'
   | 'ARTIFACT_TAMPERED'
   | 'CREDENTIAL_MISSING'
+  | 'OIDC_CONTEXT_MISSING'
   | 'EXECUTOR_MISSING'
   | 'EXECUTOR_FAILED'
 
@@ -80,6 +83,7 @@ export type ExecuteReleasePublishInput = {
   plan: ReleasePublishPlan
   credentials: PublisherCredentials
   executors: PublisherExecutorRegistry
+  oidc?: OidcExchangeEnv
 }
 
 export type ExecuteReleasePublishResult =
@@ -141,33 +145,46 @@ async function dispatchExecutor(
   step: PublishStep,
   credentials: object,
   bytes: Uint8Array,
+  oidc: OidcExchangeEnv | undefined,
   executors: PublisherExecutorRegistry,
 ): Promise<StepExecutorResult> {
   switch (step.kind) {
-    case 'npm-publish':
-      return executors.npm!({
+    case 'npm-publish': {
+      const input: StepExecutorInput<NpmPublishStep, NpmCredentials> = {
         step,
         credentials: credentials as NpmCredentials,
         bytes,
-      })
-    case 'pypi-upload':
-      return executors.pypi!({
+      }
+      if (oidc) input.oidc = oidc
+      return executors.npm!(input)
+    }
+    case 'pypi-upload': {
+      const input: StepExecutorInput<PypiPublishStep, PypiCredentials> = {
         step,
         credentials: credentials as PypiCredentials,
         bytes,
-      })
-    case 'homebrew-write-formula':
-      return executors.homebrew!({
+      }
+      if (oidc) input.oidc = oidc
+      return executors.pypi!(input)
+    }
+    case 'homebrew-write-formula': {
+      const input: StepExecutorInput<HomebrewPublishStep, HomebrewCredentials> = {
         step,
         credentials: credentials as HomebrewCredentials,
         bytes,
-      })
-    case 'scoop-write-manifest':
-      return executors.scoop!({
+      }
+      if (oidc) input.oidc = oidc
+      return executors.homebrew!(input)
+    }
+    case 'scoop-write-manifest': {
+      const input: StepExecutorInput<ScoopPublishStep, ScoopCredentials> = {
         step,
         credentials: credentials as ScoopCredentials,
         bytes,
-      })
+      }
+      if (oidc) input.oidc = oidc
+      return executors.scoop!(input)
+    }
   }
 }
 
@@ -176,6 +193,7 @@ async function executeStep(
   step: PublishStep,
   credentials: PublisherCredentials,
   executors: PublisherExecutorRegistry,
+  oidc: OidcExchangeEnv | undefined,
 ): Promise<{ ok: true; receipt: ExecutorReceipt } | { ok: false; failure: ExecuteFailure }> {
   const bytes = await readBytes(step.artifactPath)
   if (!bytes) {
@@ -219,6 +237,18 @@ async function executeStep(
     }
   }
 
+  if ((creds as { kind?: unknown }).kind === 'oidc' && !oidc) {
+    return {
+      ok: false,
+      failure: failure(
+        stepIndex,
+        step,
+        'OIDC_CONTEXT_MISSING',
+        `publisher '${step.ecosystem}' has an OIDC credential but no OIDC exchange env was supplied`,
+      ),
+    }
+  }
+
   const executor = executors[step.ecosystem]
   if (!executor) {
     return {
@@ -234,7 +264,7 @@ async function executeStep(
 
   let result: StepExecutorResult
   try {
-    result = await dispatchExecutor(step, creds, bytes, executors)
+    result = await dispatchExecutor(step, creds, bytes, oidc, executors)
   } catch (error) {
     return {
       ok: false,
@@ -273,7 +303,13 @@ export async function executeReleasePublish(
   for (let stepIndex = 0; stepIndex < input.plan.steps.length; stepIndex += 1) {
     const step = input.plan.steps[stepIndex]
     if (!step) continue
-    const stepResult = await executeStep(stepIndex, step, input.credentials, input.executors)
+    const stepResult = await executeStep(
+      stepIndex,
+      step,
+      input.credentials,
+      input.executors,
+      input.oidc,
+    )
     if (!stepResult.ok) {
       return { ok: false, completed, failure: stepResult.failure }
     }

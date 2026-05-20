@@ -74,10 +74,14 @@ export type {
   YankPackagePlan,
 } from './yank.js'
 export {
+  DEFAULT_NPM_REGISTRY_AUDIENCE,
+  OIDC_EXECUTOR_FAILURE_CODES,
   OIDC_PROVIDERS,
   PUBLISHER_ENV_NAMES,
+  audienceForNpmRegistry,
   executeReleasePublish,
   loadPublisherCredentialsFromEnv,
+  npmOidcExchangeUrl,
   planReleasePublish,
   preflightReleasePublish,
 } from './publishers/index.js'
@@ -101,6 +105,10 @@ export type {
   NpmStepExecutor,
   NpmTokenCredential,
   OidcCredential,
+  OidcExchangeEnv,
+  OidcExecutorFailureCode,
+  OidcIdTokenFetcher,
+  OidcIdTokenResult,
   OidcProvider,
   PlanReleasePublishInput,
   PlanReleasePublishResult,

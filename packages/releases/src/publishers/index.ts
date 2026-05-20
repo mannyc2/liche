@@ -35,6 +35,19 @@ export {
 } from './credentials-env.js'
 export type { EnvRecord, PublisherEnvNames } from './credentials-env.js'
 
+export {
+  DEFAULT_NPM_REGISTRY_AUDIENCE,
+  OIDC_EXECUTOR_FAILURE_CODES,
+  audienceForNpmRegistry,
+  npmOidcExchangeUrl,
+} from './oidc.js'
+export type {
+  OidcExchangeEnv,
+  OidcExecutorFailureCode,
+  OidcIdTokenFetcher,
+  OidcIdTokenResult,
+} from './oidc.js'
+
 export { executeReleasePublish } from './executor.js'
 export type {
   ExecuteFailure,
