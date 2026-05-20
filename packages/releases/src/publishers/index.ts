@@ -29,6 +29,19 @@ export type ReleasePublisher = {
 
 export type PublisherRegistry = Partial<Record<PackageEcosystem, ReleasePublisher>>
 
+export { preflightReleasePublish } from './preflight.js'
+export type {
+  HomebrewCredentials,
+  NpmCredentials,
+  PreflightFailure,
+  PreflightFailureCode,
+  PreflightReleasePublishInput,
+  PreflightReleasePublishResult,
+  PublisherCredentials,
+  PypiCredentials,
+  ScoopCredentials,
+} from './preflight.js'
+
 export { planReleasePublish } from './plan.js'
 export type {
   GitRepoTarget,
