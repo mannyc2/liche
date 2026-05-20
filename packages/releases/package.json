@@ -9,6 +9,54 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./manifest": {
+      "types": "./src/manifest.ts",
+      "default": "./src/manifest.ts"
+    },
+    "./binary": {
+      "types": "./src/binary.ts",
+      "default": "./src/binary.ts"
+    },
+    "./artifacts": {
+      "types": "./src/artifacts.ts",
+      "default": "./src/artifacts.ts"
+    },
+    "./package": {
+      "types": "./src/package.ts",
+      "default": "./src/package.ts"
+    },
+    "./yank": {
+      "types": "./src/yank.ts",
+      "default": "./src/yank.ts"
+    },
+    "./renderers": {
+      "types": "./src/renderers/index.ts",
+      "default": "./src/renderers/index.ts"
+    },
+    "./renderers/all": {
+      "types": "./src/renderers/all.ts",
+      "default": "./src/renderers/all.ts"
+    },
+    "./renderers/npm": {
+      "types": "./src/renderers/npm.ts",
+      "default": "./src/renderers/npm.ts"
+    },
+    "./renderers/pypi": {
+      "types": "./src/renderers/pypi.ts",
+      "default": "./src/renderers/pypi.ts"
+    },
+    "./renderers/homebrew": {
+      "types": "./src/renderers/homebrew.ts",
+      "default": "./src/renderers/homebrew.ts"
+    },
+    "./renderers/scoop": {
+      "types": "./src/renderers/scoop.ts",
+      "default": "./src/renderers/scoop.ts"
+    },
+    "./publishers": {
+      "types": "./src/publishers/index.ts",
+      "default": "./src/publishers/index.ts"
     }
   },
   "files": ["src"],

@@ -33,3 +33,51 @@ export type {
   VerifyBinaryInput,
   VerifyBinaryResult,
 } from './binary.js'
+export {
+  PACKAGE_ECOSYSTEMS,
+  isPackageEcosystem,
+  resolveReleaseRenderers,
+} from './renderers/index.js'
+export type {
+  ReleaseRenderer,
+  ReleaseRendererInput,
+  ReleaseRendererValidationInput,
+  RendererConfigMap,
+  RendererRegistry,
+  RendererSelection,
+  RendererSelectionFailure,
+  RendererSelectionFailureCode,
+  RenderPackageArtifact,
+  RenderPackageResult,
+  ResolveReleaseRenderersInput,
+  ResolveReleaseRenderersResult,
+} from './renderers/index.js'
+export { verifyPackageArtifacts } from './artifacts.js'
+export type {
+  PackageArtifactVerificationFailure,
+  PackageArtifactVerificationFailureCode,
+  VerifiedPackageArtifact,
+  VerifyPackageArtifactsInput,
+  VerifyPackageArtifactsResult,
+} from './artifacts.js'
+export { packageRelease } from './package.js'
+export type {
+  PackageReleaseFailure,
+  PackageReleaseFailureStage,
+  PackageReleaseInput,
+  PackageReleaseResult,
+  PackageReleaseSuccess,
+} from './package.js'
+export { planReleaseYank } from './yank.js'
+export type {
+  ReleaseYankPlan,
+  YankPackagePlan,
+} from './yank.js'
+export type {
+  PublisherRegistry,
+  PublishPackageInput,
+  PublishPackageResult,
+  PublishSelection,
+  ReleasePublisher,
+  ReleasePublisherValidationInput,
+} from './publishers/index.js'
