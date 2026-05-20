@@ -1,6 +1,6 @@
 import { join, relative } from 'node:path'
 import { normalizeProduct, type Catalog } from './catalog.js'
-import { canonicalDigest } from './digest.js'
+import { canonicalDigest } from '@lili/build'
 import { generateCli } from './generate-cli.js'
 import { generateOpenapi } from './generate-openapi.js'
 import {

@@ -1,56 +1,52 @@
 #!/usr/bin/env bun
-import { dirname, isAbsolute, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { Cli, z } from '@lili/core'
-import { checkAgainstDir, generateToDir } from './generate.js'
-import { Product } from './product.js'
-import { LI_BUILD_SKILL_INDEX, LI_BUILD_SKILL_MARKDOWN } from './skill.js'
+import { compileEntrypoint } from './compile.js'
+import type { CompileTarget } from './compile.js'
 
-const GENERATOR_VERSION = '0.0.0'
-
-async function loadProduct(productPath: string): Promise<Product> {
-  const absolute = isAbsolute(productPath) ? productPath : resolve(process.cwd(), productPath)
-  const mod = await import(absolute)
-  const product = mod.default as Product | undefined
-  if (!product || product.kind !== 'lili.product') {
-    throw new Error(`Module at ${absolute} does not default-export a Product.create() result`)
-  }
-  return product
-}
+const BUILD_TOOL_VERSION = '0.0.0'
 
 export const cli = Cli.create('li-build', {
-  builtins: { completions: true, mcp: true, skills: true },
-  skill: {
-    index: LI_BUILD_SKILL_INDEX,
-    markdown: LI_BUILD_SKILL_MARKDOWN,
-  },
-  version: GENERATOR_VERSION,
-}).command('generate', {
+  builtins: { completions: true },
+  version: BUILD_TOOL_VERSION,
+}).command('compile-entry', {
   alias: { out: 'o' },
-  args: z.object({ product: z.string() }),
+  args: z.object({ entrypoint: z.string() }),
   options: z.object({
-    check: z.boolean().default(false),
-    out: z.string().optional(),
+    commit: z.string(),
+    contractDigest: z.string(),
+    out: z.string(),
+    releaseVersion: z.string(),
+    target: z.string(),
   }),
   async run(ctx) {
-    const productPath = resolve(process.cwd(), ctx.args.product)
-    const outDir = ctx.options.out ? resolve(process.cwd(), ctx.options.out) : dirname(productPath)
-    const product = await loadProduct(productPath)
-    const options = { outDir, generatorVersion: GENERATOR_VERSION }
+    const result = await compileEntrypoint({
+      entrypoint: resolve(process.cwd(), ctx.args.entrypoint),
+      outfile: resolve(process.cwd(), ctx.options.out),
+      target: ctx.options.target as CompileTarget,
+      constants: {
+        releaseVersion: ctx.options.releaseVersion,
+        contractDigest: ctx.options.contractDigest,
+        sourceCommit: ctx.options.commit,
+        buildToolVersion: BUILD_TOOL_VERSION,
+      },
+    })
 
-    if (ctx.options.check) {
-      const result = await checkAgainstDir(product, options)
-      if (result.ok) return { inSync: true }
+    if (!result.ok) {
+      const hint = result.logs.length > 0
+        ? result.logs.map((log) => String(log)).join('\n')
+        : result.error === undefined ? undefined : String(result.error)
       return ctx.error({
-        code: 'GENERATED_SURFACE_DRIFT',
-        hint: result.drift.join('\n'),
-        message: 'Generated artifacts are out of sync',
+        code: 'COMPILE_FAILED',
+        message: 'Bun.build failed',
+        ...(hint === undefined ? {} : { hint }),
       })
     }
 
-    const result = await generateToDir(product, options)
     return {
-      generatedPath: result.generatedPath,
-      manifestPath: result.manifestPath,
+      outfile: result.plan.outfile,
+      entrypoint: result.plan.entrypoint,
+      compileFlagsDigest: result.plan.compileFlagsDigest,
     }
   },
 })

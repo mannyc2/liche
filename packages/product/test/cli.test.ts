@@ -22,12 +22,12 @@ async function runCli(
   return { exitCode, stderr, stdout }
 }
 
-describe('li-build CLI', () => {
+describe('li-product CLI', () => {
   let dir: string
   const productPath = join(import.meta.dir, 'fixtures/workers.product.ts')
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'lili-build-cli-'))
+    dir = mkdtempSync(join(tmpdir(), 'lili-product-cli-'))
   })
 
   afterEach(() => {
@@ -59,23 +59,23 @@ describe('li-build CLI', () => {
     expect(error.hint).toContain('generated file missing')
   })
 
-  test('skills add installs authored li-build guidance', async () => {
+  test('skills add installs authored li-product guidance', async () => {
     const result = await runCli(['skills', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout)
-    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-build/SKILL.md') } })
+    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-product/SKILL.md') } })
     const content = await Bun.file(body.data.path).text()
     expect(content).toContain('description: Author and maintain lili product schemas')
     expect(content).toContain('Product.create(')
-    expect(content).toContain('li-build generate <product.ts> --check')
+    expect(content).toContain('li-product generate <product.ts> --check')
   })
 
-  test('mcp add is enabled for li-build', async () => {
+  test('mcp add is enabled for li-product', async () => {
     const result = await runCli(['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout)
     expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude.json') } })
     const config = await Bun.file(body.data.path).json()
-    expect(config.mcpServers['li-build']).toEqual({ args: ['--mcp'], command: 'li-build' })
+    expect(config.mcpServers['li-product']).toEqual({ args: ['--mcp'], command: 'li-product' })
   })
 })

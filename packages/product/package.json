@@ -1,0 +1,35 @@
+{
+  "name": "@lili/product",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "bin": {
+    "li-product": "./src/cli.ts"
+  },
+  "files": ["src"],
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "bun test",
+    "mutate": "stryker run"
+  },
+  "dependencies": {
+    "@lili/build": "workspace:*",
+    "@lili/core": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@hughescr/stryker-bun-runner": "catalog:test",
+    "@stryker-mutator/core": "catalog:test",
+    "@stryker-mutator/typescript-checker": "catalog:test",
+    "@types/bun": "catalog:test",
+    "typescript": "catalog:"
+  }
+}
