@@ -1,87 +1,108 @@
-# lili
+# Lili
 
-A Bun-native, small-dependency, LLM-friendly CLI core.
+Lili is a Bun-native toolkit for building CLIs that are useful to humans, scripts, and agents.
 
-## Rewrite planning docs
+The v1 workflow is:
 
-The current package is the Bun-native core implementation. The planned rewrite is documented before implementation in:
+1. Write a CLI directly with `@lili/core`, or describe a product once with `@lili/product`.
+2. Generate runtime surfaces from the Product catalog when you need CLI, OpenAPI, MCP, docs, conformance, diagnostics, or telemetry wiring.
+3. Compile standalone binaries with `@lili/build`.
+4. Render package-manager artifacts and plan publishing with `@lili/releases`.
 
-```txt
-docs/invariant.md
-docs/package-layout.md
-docs/next-plan.md
-docs/application-integration.md
-docs/config-primitive.md
-docs/http-operation-transport.md
-docs/schema-ir-openapi.md
-docs/server-conformance.md
-docs/build-system.md
-docs/distribution.md
-docs/npm-binary-packaging.md
-docs/releases.md
-docs/v1-release-plan.md
-docs/v2-platform-goals.md
-docs/coverage-rewrite.md
+## Handwritten CLI
+
+Use `@lili/core` when the command tree is already clear and you want a normal TypeScript CLI.
+
+```ts
+import { Cli, z } from "@lili/core";
+
+export const cli = Cli.create({ name: "shipyard", version: "0.1.0" })
+  .command("deploy", {
+    options: z.object({ entrypoint: z.string() }),
+    run(ctx) {
+      return ctx.ok({ deployment_id: `dep-${ctx.options.entrypoint}` });
+    },
+  });
+
+if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-See `docs/AGENTS.md` for doc rules and update workflow.
+`@lili/core` provides typed args/options/env parsing, config loading, output envelopes, MCP stdio, command manifests, lifecycle events, auth/session helpers, HTTP operation transport, local diagnostics, and opt-in telemetry sinks.
 
-Key planning decisions:
+## Product Schema
 
-- `@lili/core` owns the runtime CLI framework, opt-in config primitive, and outbound HTTP operation transport.
-- `@lili/product` owns Product schema authoring, general config and binding declarations, catalog normalization, lints, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance.
-- `@lili/build` owns reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance.
-- `@lili/releases` owns the release manifest, renderer interface, selectable renderers, and final-artifact verification.
-- There is no `release-extra` package; npm, PyPI, Homebrew, and Scoop are renderer choices inside `@lili/releases`.
-- OpenAPI is generated output, not MVP input.
-- The internal docs is repo-internal only.
-- V1 should publish the self-contained package toolchain; V2 is the hosted service/platform layer and must not block package publication.
+Use `@lili/product` when a product needs multiple generated surfaces from one catalog.
 
-## Runtime dependencies
+```ts
+import { Auth, Command, Field, Product, Runtime, Shape } from "@lili/product";
 
-```txt
-@toon-format/toon  exact TOON encode/decode behavior
-tokenx             token count and token slicing
-yaml               YAML config/output behavior
-zod                public schema API and JSON Schema generation
+export default Product.create({ id: "workers", name: "Workers", version: "1.0.0" })
+  .auth(Auth.none())
+  .remote({ baseUrl: Runtime.env("WORKERS_API_BASE_URL") })
+  .command("deploy", Command.remoteHttp({
+    summary: "Deploy a Worker",
+    input: Shape.object({ name: Field.string("Worker name") }),
+    output: Shape.object({ id: Field.string("Deployment ID") }),
+    http: { method: "POST", path: "/deployments", bind: { body: true } },
+  }));
 ```
 
-## Bun-native edges
-
-The implementation keeps platform/runtime work at Bun edges:
-
-- `Bun.argv` for default CLI args.
-- `Bun.env` for environment input.
-- `Bun.file` and `Bun.write` for config and sync files.
-- Bun Shell for `mkdir -p` when available.
-- Bun stdin/stdout for MCP stdio and CLI output.
-- `bun:test` for the test runner.
-
-## Layout
-
-```txt
-src/
-  cli/          create, serve, fetch, execution, builtins
-  command/      registry, resolution, schema/manifest helpers
-  parser/       globals, argv/options, config loading
-  schema/       Zod adapter and JSON Schema conversion
-  format/       TOON, JSON, JSONL, YAML, markdown, filters, tokens
-  mcp/          minimal JSON-RPC stdio/http implementation
-  skills/       skill markdown generation and sync helpers
-  runtime/      Bun-native IO/process edge functions
-```
-
-The current core behavior plan lives in `docs/behavior-plan.md`. Current core tests should be written from that plan.
-
-Rewrite tests should be written from the rewrite requirement docs and tracked in `docs/coverage-rewrite.md`.
-
-## Scripts
+Generate and check surfaces:
 
 ```sh
-bun test
-bun test test/property.test.ts --rerun-each=3 --randomize
-bun run check
-bun run mutate
+li-product generate ./product.ts --out ./generated
+li-product generate ./product.ts --out ./generated --check --json
 ```
 
-`bun run mutate` uses Stryker's command runner to invoke `bun test`.
+Generated Product outputs include the CLI source, OpenAPI, command manifest, MCP tools, agent reference, docs reference, config schema, catalog JSON, discovery JSON, compile entrypoint, and drift manifest.
+
+## Compile
+
+Use `@lili/build` or `li-build` to produce standalone Bun binaries with recorded compile flags and build provenance.
+
+```sh
+li-build build ./src/cli.ts \
+  --targets native \
+  --release-version 0.1.0 \
+  --commit 0000000 \
+  --contract-digest sha256:example \
+  --out ./dist/bin \
+  --record ./dist/build-record.json \
+  --json
+```
+
+## Package And Publish
+
+Use `@lili/releases` or `li-release` after binaries exist. It consumes build records and final binary bytes, renders package-manager artifacts, verifies final artifacts, and creates dry-run publish plans.
+
+```sh
+li-release package ./dist/build-record.json --out ./dist/release --json
+li-release publish ./dist/release/manifest.json --ecosystems npm --dry-run --json
+```
+
+Release renderers cover npm, PyPI, Homebrew, and Scoop. Publisher planning is separate from rendering, so CI can consume generated handoff artifacts instead of reconstructing package order in workflow YAML.
+
+## Examples
+
+Run the example smoke suite:
+
+```sh
+bun test examples
+```
+
+The examples cover handwritten CLIs, generated Product CLIs, auth/context resolution, remote HTTP transport, compile/release shape, package renderers, and release dry-run workflows.
+
+## Packages
+
+- `@lili/core`: CLI runtime, config, auth/session, HTTP transport, diagnostics, telemetry, MCP, and command manifests.
+- `@lili/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
+- `@lili/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
+- `@lili/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.
+
+## Repository Checks
+
+```sh
+bun run check
+bun run test
+bun run test:examples
+```
