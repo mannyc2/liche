@@ -215,7 +215,7 @@ export async function packageRelease(input: PackageReleaseInput): Promise<Packag
 
   return {
     ok: true,
-    manifest: parsed.manifest,
+    manifest: { ...parsed.manifest, packages: rendered.packages },
     binaries: binaryResult.verified,
     packages: rendered.packages,
     packageArtifacts: packageArtifactResult.verified,

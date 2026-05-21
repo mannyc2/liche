@@ -57,8 +57,26 @@ export type PublisherExecutorRegistry = {
   scoop?: ScoopStepExecutor
 }
 
+export type ExecutorReceiptArtifact = {
+  path: string
+  fileName: string
+  sha256: string
+  size: number
+}
+
+export type ExecutorReceiptCredential = {
+  kind: 'token' | 'oidc'
+  provider?: string
+  audience?: string
+}
+
 export type ExecutorReceipt = {
+  stepIndex: number
+  packageId: string
+  ecosystem: PackageEcosystem
   step: PublishStep
+  artifact: ExecutorReceiptArtifact
+  credential: ExecutorReceiptCredential
   metadata?: Record<string, unknown>
 }
 
@@ -139,6 +157,38 @@ function tamperedDetails(
     expectedSize: step.size,
     actualSize,
   }
+}
+
+function credentialReceipt(credentials: object): ExecutorReceiptCredential {
+  const supplied = credentials as { kind?: unknown; provider?: unknown; audience?: unknown }
+  const kind = supplied.kind === 'oidc' ? 'oidc' : 'token'
+  const receipt: ExecutorReceiptCredential = { kind }
+  if (typeof supplied.provider === 'string') receipt.provider = supplied.provider
+  if (typeof supplied.audience === 'string') receipt.audience = supplied.audience
+  return receipt
+}
+
+function executorReceipt(
+  stepIndex: number,
+  step: PublishStep,
+  credentials: object,
+  result: Extract<StepExecutorResult, { ok: true }>,
+): ExecutorReceipt {
+  const receipt: ExecutorReceipt = {
+    stepIndex,
+    packageId: step.packageId,
+    ecosystem: step.ecosystem,
+    step,
+    artifact: {
+      path: step.artifactPath,
+      fileName: step.artifactFileName,
+      sha256: step.sha256,
+      size: step.size,
+    },
+    credential: credentialReceipt(credentials),
+  }
+  if (result.metadata !== undefined) receipt.metadata = result.metadata
+  return receipt
 }
 
 async function dispatchExecutor(
@@ -291,9 +341,7 @@ async function executeStep(
     }
   }
 
-  const receipt: ExecutorReceipt = { step }
-  if (result.metadata !== undefined) receipt.metadata = result.metadata
-  return { ok: true, receipt }
+  return { ok: true, receipt: executorReceipt(stepIndex, step, creds, result) }
 }
 
 export async function executeReleasePublish(

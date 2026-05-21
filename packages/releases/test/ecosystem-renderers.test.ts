@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
@@ -143,6 +143,20 @@ describe('ecosystem renderers', () => {
     const umbrellaArtifact = result.packageArtifacts.find((artifact) => artifact.packageId === umbrella.id)
     const linuxArtifact = result.packageArtifacts.find((artifact) => artifact.packageId === linux.id)
     if (!umbrellaArtifact || !linuxArtifact) throw new Error('missing verified npm artifacts')
+    expect(umbrellaArtifact.path).toContain('/tarballs/')
+    expect(linuxArtifact.path).toContain('/tarballs/')
+
+    const umbrellaDir = join(tmp, 'artifacts', 'npm', 'package-dirs', 'acme-workers')
+    const linuxDir = join(tmp, 'artifacts', 'npm', 'package-dirs', 'acme-workers-linux-x64')
+    const umbrellaDirPackageJson = JSON.parse(
+      readFileSync(join(umbrellaDir, 'package.json'), 'utf8'),
+    ) as {
+      scripts?: unknown
+      optionalDependencies: Record<string, string>
+      bin: Record<string, string>
+    }
+    expect(umbrellaDirPackageJson.scripts).toBeUndefined()
+    expect(umbrellaDirPackageJson.bin).toEqual({ workers: './bin/workers.js' })
 
     const umbrellaEntries = readTarGzEntries(await Bun.file(umbrellaArtifact.path).bytes())
     const umbrellaPackageJson = JSON.parse(
@@ -164,7 +178,7 @@ describe('ecosystem renderers', () => {
       'could not find a compatible packaged binary',
     )
     const shimPath = join(tmp, 'missing-optional-shim.mjs')
-    writeFileSync(shimPath, Buffer.from(umbrellaEntries.get('package/bin/workers.js')!))
+    writeFileSync(shimPath, readFileSync(join(umbrellaDir, 'bin', 'workers.js')))
     const shimRun = Bun.spawnSync({
       cmd: ['bun', shimPath],
       stdout: 'pipe',
@@ -172,6 +186,17 @@ describe('ecosystem renderers', () => {
     })
     expect(shimRun.exitCode).toBe(1)
     expect(shimRun.stderr.toString()).toContain('Install optional dependencies')
+
+    const linuxDirPackageJson = JSON.parse(
+      readFileSync(join(linuxDir, 'package.json'), 'utf8'),
+    ) as { scripts?: unknown; os: string[]; cpu: string[]; libc: string }
+    expect(linuxDirPackageJson.scripts).toBeUndefined()
+    expect(linuxDirPackageJson.os).toEqual(['linux'])
+    expect(linuxDirPackageJson.cpu).toEqual(['x64'])
+    expect(linuxDirPackageJson.libc).toBe('glibc')
+    expect(sha256Hex(readFileSync(join(linuxDir, 'bin', 'workers')))).toBe(
+      sha256Hex(binaryBytes['workers-linux-x64']),
+    )
 
     const linuxEntries = readTarGzEntries(await Bun.file(linuxArtifact.path).bytes())
     const linuxPackageJson = JSON.parse(
@@ -186,6 +211,28 @@ describe('ecosystem renderers', () => {
     expect(sha256Hex(linuxEntries.get('package/bin/workers')!)).toBe(
       sha256Hex(binaryBytes['workers-linux-x64']),
     )
+  })
+
+  test('npm can stage inspectable package directories without packing tarballs', async () => {
+    const outDir = join(tmp, 'npm-directory-only')
+    const result = await packageRelease({
+      manifest: manifestInput(),
+      binaryPaths,
+      renderers: ['npm'],
+      rendererRegistry: createDefaultRendererRegistry(),
+      rendererConfig: {
+        npm: { packageScope: '@acme', pack: false },
+      },
+      outDir,
+    })
+    if (!result.ok) {
+      throw new Error(`rendering failed: ${JSON.stringify(result.failures, null, 2)}`)
+    }
+
+    expect(result.packages.every((record) => record.artifact === undefined)).toBe(true)
+    expect(result.packageArtifacts).toEqual([])
+    expect(await Bun.file(join(outDir, 'npm', 'package-dirs', 'acme-workers', 'package.json')).exists()).toBe(true)
+    expect(await Bun.file(join(outDir, 'npm', 'tarballs', 'acme-workers-0.1.0.tgz')).exists()).toBe(false)
   })
 
   test('PyPI renders wheels with platform tags, scripts, and RECORD hashes', async () => {

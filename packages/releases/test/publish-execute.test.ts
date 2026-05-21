@@ -222,6 +222,21 @@ describe('executeReleasePublish', () => {
       'homebrew:workers',
       'scoop:workers',
     ])
+    expect(result.completed[2]).toMatchObject({
+      stepIndex: 2,
+      packageId: 'pypi:lili-workers',
+      ecosystem: 'pypi',
+      artifact: {
+        path: baseFixture.artifacts.pypi.path,
+        fileName: baseFixture.artifacts.pypi.fileName,
+        sha256: baseFixture.artifacts.pypi.sha256,
+        size: baseFixture.artifacts.pypi.size,
+      },
+      credential: { kind: 'token' },
+    })
+    expect(JSON.stringify(result.completed)).not.toContain('npm-token')
+    expect(JSON.stringify(result.completed)).not.toContain('pypi-token')
+    expect(JSON.stringify(result.completed)).not.toContain('github-token')
   })
 
   test('passes executor metadata through to the receipt', async () => {
@@ -446,5 +461,12 @@ describe('executeReleasePublish', () => {
     expect(result.ok).toBe(true)
     expect(seen.npm).toBe(npmOidc)
     expect(seen.pypi).toBe(pypiOidc)
+    if (!result.ok) return
+    expect(result.completed[0]?.credential).toEqual({ kind: 'oidc', provider: 'github-actions' })
+    expect(result.completed[2]?.credential).toEqual({
+      kind: 'oidc',
+      provider: 'github-actions',
+      audience: 'pypi',
+    })
   })
 })

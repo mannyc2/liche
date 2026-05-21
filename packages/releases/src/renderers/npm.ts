@@ -1,5 +1,7 @@
-import { join } from 'node:path'
+import { chmod, mkdir, rm, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { createTarGz } from './archives/tar.js'
+import type { TarEntry } from './archives/tar.js'
 import {
   commandName,
   metadataLines,
@@ -18,6 +20,13 @@ export type NpmRendererConfig = {
   packageName?: string
   packageScope?: string
   commandName?: string
+  pack?: boolean
+}
+
+type NpmPackageFile = {
+  path: string
+  data: Uint8Array | string
+  mode?: number
 }
 
 const NPM_OS = {
@@ -49,6 +58,10 @@ function npmPlatformPackageName(umbrellaName: string, binary: BinaryTarget): str
 
 function npmTarballFileName(packageName: string, version: string): string {
   return `${packageName.replace(/^@/, '').replace(/\//g, '-')}-${version}.tgz`
+}
+
+function npmPackageDirName(packageName: string): string {
+  return packageName.replace(/^@/, '').replace(/\//g, '-')
 }
 
 function repository(manifest: CliReleaseManifest): Record<string, string> | undefined {
@@ -155,6 +168,44 @@ process.exit(1);
 `
 }
 
+function packEnabled(config: unknown): boolean {
+  return (config as NpmRendererConfig | undefined)?.pack ?? true
+}
+
+async function writePackageDirectory(root: string, files: readonly NpmPackageFile[]): Promise<void> {
+  await rm(root, { recursive: true, force: true })
+  await mkdir(root, { recursive: true })
+  for (const file of files) {
+    const path = join(root, file.path)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, file.data)
+    if (file.mode !== undefined) await chmod(path, file.mode)
+  }
+}
+
+function packageTarEntries(files: readonly NpmPackageFile[]): TarEntry[] {
+  return files.map((file) => {
+    const entry: TarEntry = {
+      path: `package/${file.path}`,
+      data: file.data,
+    }
+    if (file.mode !== undefined) entry.mode = file.mode
+    return entry
+  })
+}
+
+async function packPackageDirectory(
+  input: ReleaseRendererInput,
+  packageName: string,
+  version: string,
+  files: readonly NpmPackageFile[],
+): Promise<Awaited<ReturnType<typeof writeArtifact>>> {
+  const fileName = npmTarballFileName(packageName, version)
+  const outDir = join(input.outDir, 'tarballs')
+  await mkdir(outDir, { recursive: true })
+  return writeArtifact(join(outDir, fileName), createTarGz(packageTarEntries(files)))
+}
+
 async function renderNpm(input: ReleaseRendererInput): Promise<RenderPackageResult> {
   const name = npmPackageName(input.manifest, input.config)
   const command = commandName(input.manifest, input.config)
@@ -169,21 +220,22 @@ async function renderNpm(input: ReleaseRendererInput): Promise<RenderPackageResu
 
   const packages: PackageRecord[] = []
   const artifacts: Array<{ packageId: string; path: string }> = []
+  const packageDirs = join(input.outDir, 'package-dirs')
+  const shouldPack = packEnabled(input.config)
 
   for (const { binary, name: platformName } of platformPackages) {
     const binaryBytes = await readBinary(verifiedPath(input, binary.id))
-    const tarball = createTarGz([
+    const files: NpmPackageFile[] = [
       {
-        path: 'package/package.json',
+        path: 'package.json',
         data: `${JSON.stringify(npmPlatformPackageJson(input.manifest, platformName, binary), null, 2)}\n`,
       },
-      { path: 'package/README.md', data: metadataLines(input.manifest) },
-      { path: `package/bin/${binary.filename}`, data: binaryBytes, mode: 0o755 },
-    ])
-    const fileName = npmTarballFileName(platformName, version)
-    const artifact = await writeArtifact(join(input.outDir, fileName), tarball)
+      { path: 'README.md', data: metadataLines(input.manifest) },
+      { path: `bin/${binary.filename}`, data: binaryBytes, mode: 0o755 },
+    ]
+    await writePackageDirectory(join(packageDirs, npmPackageDirName(platformName)), files)
     const packageId = `npm:${platformName}`
-    packages.push({
+    const record: PackageRecord = {
       id: packageId,
       renderer: 'npm',
       ecosystem: 'npm',
@@ -191,9 +243,13 @@ async function renderNpm(input: ReleaseRendererInput): Promise<RenderPackageResu
       name: platformName,
       version,
       targetBinaryId: binary.id,
-      artifact: packageArtifact(artifact),
-    })
-    artifacts.push({ packageId, path: artifact.path })
+    }
+    if (shouldPack) {
+      const artifact = await packPackageDirectory(input, platformName, version, files)
+      record.artifact = packageArtifact(artifact)
+      artifacts.push({ packageId, path: artifact.path })
+    }
+    packages.push(record)
   }
 
   const shimPackages = platformPackages.map(({ binary, name }) => ({
@@ -201,26 +257,30 @@ async function renderNpm(input: ReleaseRendererInput): Promise<RenderPackageResu
     binary: binary.filename,
     target: binary.target,
   }))
-  const umbrellaTarball = createTarGz([
+  const umbrellaFiles: NpmPackageFile[] = [
     {
-      path: 'package/package.json',
+      path: 'package.json',
       data: `${JSON.stringify(npmUmbrellaPackageJson(input.manifest, name, command, optionalDependencies), null, 2)}\n`,
     },
-    { path: 'package/README.md', data: metadataLines(input.manifest) },
-    { path: `package/bin/${command}.js`, data: npmShim(command, version, shimPackages), mode: 0o755 },
-  ])
-  const umbrella = await writeArtifact(join(input.outDir, npmTarballFileName(name, version)), umbrellaTarball)
+    { path: 'README.md', data: metadataLines(input.manifest) },
+    { path: `bin/${command}.js`, data: npmShim(command, version, shimPackages), mode: 0o755 },
+  ]
+  await writePackageDirectory(join(packageDirs, npmPackageDirName(name)), umbrellaFiles)
   const umbrellaId = `npm:${name}`
-  packages.push({
+  const umbrellaRecord: PackageRecord = {
     id: umbrellaId,
     renderer: 'npm',
     ecosystem: 'npm',
     kind: 'npm-umbrella',
     name,
     version,
-    artifact: packageArtifact(umbrella),
-  })
-  artifacts.push({ packageId: umbrellaId, path: umbrella.path })
+  }
+  if (shouldPack) {
+    const umbrella = await packPackageDirectory(input, name, version, umbrellaFiles)
+    umbrellaRecord.artifact = packageArtifact(umbrella)
+    artifacts.push({ packageId: umbrellaId, path: umbrella.path })
+  }
+  packages.push(umbrellaRecord)
 
   return { packages, artifacts }
 }
