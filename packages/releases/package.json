@@ -1,9 +1,9 @@
 {
   "name": "@lili/releases",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "license": "MIT",
+  "description": "Release manifests, package renderers, and publisher planning for Lili CLIs.",
   "sideEffects": false,
   "exports": {
     ".": {
@@ -62,17 +62,20 @@
   "bin": {
     "li-release": "./src/cli.ts"
   },
-  "files": ["src"],
+  "files": ["src", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "check": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
-    "@lili/core": "workspace:*",
-    "zod": "catalog:"
+    "@lili/core": "^0.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/bun": "catalog:test",
-    "typescript": "catalog:"
+    "@types/bun": "latest",
+    "typescript": "latest"
   }
 }

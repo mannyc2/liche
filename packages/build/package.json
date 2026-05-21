@@ -1,9 +1,9 @@
 {
   "name": "@lili/build",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "license": "MIT",
+  "description": "Build and compile planning primitives for Bun-native Lili CLIs.",
   "sideEffects": false,
   "exports": {
     ".": {
@@ -14,21 +14,24 @@
   "bin": {
     "li-build": "./src/cli.ts"
   },
-  "files": ["src"],
+  "files": ["src", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "check": "tsc --noEmit",
     "test": "bun test",
     "mutate": "stryker run"
   },
   "dependencies": {
-    "@lili/core": "workspace:*",
-    "zod": "catalog:"
+    "@lili/core": "^0.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@hughescr/stryker-bun-runner": "catalog:test",
-    "@stryker-mutator/core": "catalog:test",
-    "@stryker-mutator/typescript-checker": "catalog:test",
-    "@types/bun": "catalog:test",
-    "typescript": "catalog:"
+    "@hughescr/stryker-bun-runner": "^1.2.2",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@types/bun": "latest",
+    "typescript": "latest"
   }
 }
