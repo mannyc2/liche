@@ -1,0 +1,20 @@
+{
+  "name": "shipyard-cli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "release": "li-release ship",
+    "release:dry-run": "li-release ship --dry-run",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@lili/build": "0.0.0",
+    "@lili/core": "0.0.0",
+    "@lili/releases": "0.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "subject": {
+    "id": "shipyard",
+    "name": "Shipyard CLI",
+    "command": "shipyard"
+  },
+  "metadata": {
+    "description": "Inspect and promote application deployments.",
+    "license": "MIT",
+    "repository": "acme/shipyard-cli"
+  },
+  "host": {
+    "kind": "github-assets",
+    "repository": "acme/shipyard-cli"
+  },
+  "contract": {
+    "kind": "core-command-manifest"
+  },
+  "ecosystems": {
+    "npm": {
+      "package": "@acme/shipyard"
+    },
+    "pypi": {
+      "distribution": "acme-shipyard"
+    },
+    "homebrew": {
+      "tap": "acme/homebrew-tap",
+      "formula": "shipyard"
+    },
+    "scoop": {
+      "bucket": "acme/scoop-bucket",
+      "manifest": "shipyard"
+    }
+  }
+}

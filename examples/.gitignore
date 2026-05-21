@@ -1,0 +1,12 @@
+.tmp/
+*/.tmp/
+*/lili.generated.ts
+*/lili.generated.openapi.json
+*/lili.generated.commands.json
+*/lili.generated.mcp.json
+*/lili.generated.agent.md
+*/lili.generated.docs.md
+*/lili.generated.config.schema.json
+*/lili.generated.manifest.json
+*/lili.compile-entry.ts
+

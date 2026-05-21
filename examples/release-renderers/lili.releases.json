@@ -1,0 +1,15 @@
+{
+  "subject": { "id": "workers", "name": "Workers CLI", "command": "workers" },
+  "metadata": {
+    "description": "Workers CLI example package",
+    "license": "MIT",
+    "repository": "acme/workers"
+  },
+  "host": {
+    "kind": "url-template",
+    "template": "https://downloads.example.test/workers/{version}/{filename}"
+  },
+  "ecosystems": {
+    "npm": { "package": "@acme/workers" }
+  }
+}

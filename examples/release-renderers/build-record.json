@@ -1,0 +1,24 @@
+{
+  "recordVersion": 1,
+  "entrypoint": "examples/product-workers/lili.compile-entry.ts",
+  "constants": {
+    "releaseVersion": "0.1.0",
+    "contractDigest": "sha256:example-product-catalog",
+    "sourceCommit": "0123456789abcdef0123456789abcdef01234567",
+    "buildToolVersion": "0.0.0"
+  },
+  "binaries": [
+    {
+      "id": "workers-linux-x64",
+      "target": "bun-linux-x64",
+      "platform": "linux",
+      "arch": "x64",
+      "libc": "glibc",
+      "path": "examples/release-renderers/bin/workers-linux-x64",
+      "filename": "workers",
+      "sha256": "511b15a0c5fac5e5972ecf5c115de3b92d83d78681998cc51e5a30433052b64f",
+      "size": 24,
+      "compileFlagsDigest": "sha256:example-compile-flags"
+    }
+  ]
+}
