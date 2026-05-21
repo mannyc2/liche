@@ -56,6 +56,18 @@ describe('TARGET_PRESETS', () => {
     ])
   })
 
+  test("'npm' preset includes musl Linux targets as first-class defaults", () => {
+    expect([...TARGET_PRESETS.npm]).toEqual([
+      'darwin-arm64',
+      'darwin-x64',
+      'linux-arm64',
+      'linux-arm64-musl',
+      'linux-x64',
+      'linux-x64-musl',
+      'windows-x64',
+    ])
+  })
+
   test("'scoop' preset is windows-only", () => {
     expect([...TARGET_PRESETS.scoop]).toEqual(['windows-x64'])
   })

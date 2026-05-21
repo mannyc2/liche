@@ -2,7 +2,7 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import { Cli, z } from '@lili/core'
+import { Cli, Config, z } from '@lili/core'
 import { buildBinaries } from './build.js'
 import { compileEntrypoint } from './compile.js'
 import type { CompileTarget } from './compile.js'
@@ -10,6 +10,19 @@ import { isTargetPreset } from './targets.js'
 import type { TargetSelection } from './targets.js'
 
 const BUILD_TOOL_VERSION = '0.0.0'
+
+const BuildCliConfigSchema = z.object({
+  build: z.object({
+    targets: z.string().optional(),
+    out: z.string().optional(),
+    record: z.string().optional(),
+    parallel: z.boolean().optional(),
+  }).strict().optional(),
+  compileEntry: z.object({
+    target: z.string().optional(),
+    out: z.string().optional(),
+  }).strict().optional(),
+}).strict()
 
 function parseTargets(raw: string): TargetSelection {
   const trimmed = raw.trim()
@@ -22,6 +35,14 @@ function parseTargets(raw: string): TargetSelection {
 
 export const cli = Cli.create('li-build', {
   builtins: { completions: true },
+  config: Config.object({
+    files: ['li-build.json', 'li-build.jsonc', 'li-build.yaml', 'li-build.yml', 'li-build.toml'],
+    schema: BuildCliConfigSchema,
+    scopes: {
+      project: { discoverUpwards: true },
+      user: { xdg: true },
+    },
+  }),
   version: BUILD_TOOL_VERSION,
 })
   .command('compile-entry', {
@@ -34,6 +55,10 @@ export const cli = Cli.create('li-build', {
       releaseVersion: z.string(),
       target: z.string(),
     }),
+    optionConfig: {
+      out: 'compileEntry.out',
+      target: 'compileEntry.target',
+    },
     async run(ctx) {
       const result = await compileEntrypoint({
         entrypoint: resolve(process.cwd(), ctx.args.entrypoint),
@@ -77,6 +102,12 @@ export const cli = Cli.create('li-build', {
       record: z.string().optional(),
       parallel: z.boolean().default(true),
     }),
+    optionConfig: {
+      out: 'build.out',
+      parallel: 'build.parallel',
+      record: 'build.record',
+      targets: 'build.targets',
+    },
     async run(ctx) {
       const result = await buildBinaries({
         entrypoint: resolve(process.cwd(), ctx.args.entrypoint),
