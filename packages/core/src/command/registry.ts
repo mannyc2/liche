@@ -16,6 +16,8 @@ export type CommandScope = {
 export function selectCommand(state: CliState, tokens: string[]): SelectedCommand | undefined {
   let commands = state.commands
   let root = state.root
+  let events = [] as SelectedCommand['events']
+  let hooks = { beforeExecute: [] } as SelectedCommand['hooks']
   let middlewares = [] as SelectedCommand['middlewares']
   const path: string[] = []
 
@@ -29,6 +31,8 @@ export function selectCommand(state: CliState, tokens: string[]): SelectedComman
     if (isGroup(entry)) {
       path.push(canonicalToken)
       commands = entry.commands
+      events = events.concat(entry.events)
+      hooks = { beforeExecute: hooks.beforeExecute.concat(entry.hooks.beforeExecute) }
       root = entry.root
       middlewares = middlewares.concat(entry.middlewares)
       continue
@@ -37,6 +41,8 @@ export function selectCommand(state: CliState, tokens: string[]): SelectedComman
     return {
       argv: { args: tokens.slice(index + 1) },
       entry,
+      events,
+      hooks,
       middlewares,
       path: path.concat(canonicalToken),
       rootDef: state.def,
@@ -47,6 +53,8 @@ export function selectCommand(state: CliState, tokens: string[]): SelectedComman
   return {
     argv: { args: tokens.slice(path.length) },
     entry: root,
+    events,
+    hooks,
     middlewares,
     path,
     rootDef: state.def,
@@ -182,6 +190,7 @@ function enrichEntry(
 	    ...(aliases.length ? { aliases } : undefined),
 	    ...(def.auth ? { auth: def.auth } : undefined),
 	    description: def.description,
+    entry,
     name: fullName,
     schema: commandSchema(entry),
     ...(examples ? { examples } : undefined),

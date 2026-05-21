@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli, Formatter, z } from '../src/index.js'
+import { Cli, Config, Formatter, z } from '../src/index.js'
 import * as Fetch from '../src/fetch/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import * as Parser from '../src/parser/index.js'
@@ -196,31 +196,27 @@ describe('format, filter, CTA, and schema behavior', () => {
 })
 
 describe('runtime and config behavior', () => {
-  test('loadConfig reads JSON, YAML, explicit paths, disabled config, and loader fallback', async () => {
+  test('loadConfig reads JSON, YAML, explicit paths, and disabled config', async () => {
     const root = await mkdtemp(join(tmpdir(), 'lili-config-'))
     const jsonPath = join(root, 'app.json')
     const yamlPath = join(root, 'app.yaml')
-    await Bun.write(jsonPath, JSON.stringify({ commands: { run: { options: { mode: 'json' } } } }))
-    await Bun.write(yamlPath, 'commands:\n  run:\n    options:\n      mode: yaml\n')
+    await Bun.write(jsonPath, JSON.stringify({ mode: 'json' }))
+    await Bun.write(yamlPath, 'mode: yaml\n')
 
     try {
-      const jsonCli = Cli.create('app', { config: { files: [jsonPath] } })
-      const yamlCli = Cli.create('app', { config: { files: [yamlPath] } })
-      const loaderCli = Cli.create('app', { config: { files: [join(root, 'missing.json')], loader: (path) => ({ path }) } })
+      const jsonCli = Cli.create('app', { config: Config.object({ files: [jsonPath] }) })
+      const yamlCli = Cli.create('app', { config: Config.object({ files: [yamlPath] }) })
 
       expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({
-        commands: { run: { options: { mode: 'json' } } },
+        mode: 'json',
       })
       expect(await Parser.loadConfig('app', (yamlCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({
-        commands: { run: { options: { mode: 'yaml' } } },
+        mode: 'yaml',
       })
       expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { configDisabled: true, rest: [] })).toBeUndefined()
-      expect(await Parser.loadConfig('app', (loaderCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({ path: undefined })
       expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { configPath: jsonPath, rest: [] })).toEqual({
-        commands: { run: { options: { mode: 'json' } } },
+        mode: 'json',
       })
-      const loaded = await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { rest: ['run'] })
-      expect(Parser.commandConfig(loaded, ['run'])).toEqual({ options: { mode: 'json' } })
     } finally {
       await rm(root, { force: true, recursive: true })
     }
@@ -430,7 +426,7 @@ describe('parser globals and internal helpers', () => {
   test('MCP HTTP handler wraps protocol responses as JSON', async () => {
     const cli = Cli.create('app', { version: '1.0.0' })
     const response = await handleMcpHttp('app', (cli as InternalCli)[stateSymbol], new Request('http://localhost/mcp', {
-      body: JSON.stringify({ id: 1, method: 'initialize' }),
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' }),
       method: 'POST',
     }))
 
@@ -448,24 +444,25 @@ describe('parser globals and internal helpers', () => {
     })
     const state = (cli as InternalCli)[stateSymbol]
 
-    const tools = (await Mcp.mcpMessage('app', state, { id: 1, method: 'tools/list' })) as any
+    const tools = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })) as any
     expect(tools.result.tools).toMatchObject([
       { description: 'root tool', inputSchema: { type: 'object' }, name: '(root)' },
       { name: 'fail' },
     ])
 
     const rootCall = (await Mcp.mcpMessage('app', state, {
+      jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
       params: { name: '(root)', arguments: { options: { shout: true } } },
     })) as any
     expect(rootCall.result).toEqual({ content: [{ text: '{"shout":true}', type: 'text' }], isError: false })
 
-    const failed = (await Mcp.mcpMessage('app', state, { id: 3, method: 'tools/call', params: { name: 'fail' } })) as any
+    const failed = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'fail' } })) as any
     expect(failed.result.isError).toBe(true)
     expect(JSON.parse(failed.result.content[0].text)).toMatchObject({ code: 'FAIL', message: 'nope' })
 
-    const missing = (await Mcp.mcpMessage('app', state, { id: 4, method: 'tools/call', params: { name: 'missing' } })) as any
+    const missing = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'missing' } })) as any
     expect(missing.result).toEqual({
       content: [{ text: '{"code":"COMMAND_NOT_FOUND","message":"No tool missing"}', type: 'text' }],
       isError: true,

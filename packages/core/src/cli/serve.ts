@@ -1,8 +1,8 @@
-import type { CliState, Dict, Format, ServeOptions } from '../types.js'
+import type { CliEvent, CliEventSubscription, CliState, Dict, Format, ServeOptions } from '../types.js'
 import { execute } from './execute.js'
 import { ParseError } from '../errors/error.js'
 import { format, formatCta, pick, tokenCount, tokenSlice } from '../format/index.js'
-import { loadConfig, parseGlobals } from '../parser/index.js'
+import { loadConfigResolution, parseGlobals } from '../parser/index.js'
 import { outputPolicy, selectCommand } from '../command/registry.js'
 import { renderHelp } from '../help/render.js'
 import { commandSchema } from '../command/schema.js'
@@ -12,6 +12,7 @@ import { skillIndex, skillMarkdown } from '../skills/generate.js'
 import { manifestEnvelope } from '../command/registry.js'
 import { complete, shells } from '../completions/shells.js'
 import { formatHumanValidationError } from './format-error.js'
+import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 
 export async function serveCli(
   name: string,
@@ -25,12 +26,24 @@ export async function serveCli(
   }
   const env = options.env ?? (Bun.env as Dict<string | undefined>)
   const isTty = options.isTty ?? process.stdout.isTTY === true
+  const invocation = isCiEnv(env) ? 'ci' : 'cli'
 
   let flags
   try {
     flags = parseGlobals(argv, state.def.config?.flag, state.def.generated?.disabledGlobals)
   } catch (error) {
     if (error instanceof ParseError) {
+      await emitServeLifecycle(name, state, state.events, {
+        agent: !isTty,
+        error: { code: 'PARSE_ERROR', exitCode: 1 },
+        exitCode: 1,
+        format: state.def.format ?? 'toon',
+        formatExplicit: false,
+        invocation,
+        result: 'user_error',
+        surface: { kind: 'parse' },
+        type: 'parse.failed',
+      })
       io.err(`Error (PARSE_ERROR): ${error.shortMessage}\n`)
       ;(options.exit ?? process.exit)(1)
       return
@@ -38,20 +51,58 @@ export async function serveCli(
     throw error
   }
   const outputFormat = flags.json ? 'json' : flags.format ?? state.def.format ?? 'toon'
+  const formatExplicit = !!(flags.formatExplicit || flags.json)
   const human = !flags.formatExplicit && !flags.json && isTty
 
   if (env['COMPLETE']) {
     if (!shells.includes(env['COMPLETE'] as any)) {
+      await emitServeLifecycle(name, state, state.events, {
+        agent: !isTty || formatExplicit,
+        error: { code: 'PARSE_ERROR' },
+        format: outputFormat,
+        formatExplicit,
+        invocation,
+        result: 'user_error',
+        surface: { kind: 'completion' },
+        type: 'parse.failed',
+      })
       io.err(`Unknown completion shell '${env['COMPLETE']}'. Supported: ${shells.join(', ')}\n`)
       return
     }
     const suggestions = complete(state, flags.rest, Math.max(flags.rest.length - 1, 0))
+    await emitServeLifecycle(name, state, state.events, {
+      agent: !isTty || formatExplicit,
+      completion: { shell: env['COMPLETE'], suggestionCount: suggestions.length },
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      surface: { kind: 'completion' },
+      type: 'completion.generated',
+    })
     return io.out(`${suggestions.join('\n')}${suggestions.length ? '\n' : ''}`)
   }
 
-  if (flags.version) return io.out(`${state.def.version ?? '0.0.0'}\n`)
+  if (flags.version) {
+    await emitServeLifecycle(name, state, state.events, {
+      agent: !isTty || formatExplicit,
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      surface: { kind: 'version' },
+      type: 'version.rendered',
+    })
+    return io.out(`${state.def.version ?? '0.0.0'}\n`)
+  }
   if (flags.mcp) return await serveMcp(name, state, options)
-  if (await runBuiltin(name, state, flags, io, outputFormat, env as Record<string, string | undefined>)) return
+  if (await runBuiltin(name, state, flags, io, outputFormat, env as Record<string, string | undefined>, (event) =>
+    emitServeLifecycle(name, state, state.events, {
+      agent: !isTty || formatExplicit,
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      ...event,
+    }),
+  )) return
 
   if (flags.llms) {
     const wantsStructured = flags.formatExplicit && outputFormat !== 'md'
@@ -63,14 +114,59 @@ export async function serveCli(
   }
 
   const selected = selectCommand(state, flags.rest)
-  if (flags.help || !selected) return io.out(`${renderHelp(name, state, selected, flags.rest)}\n`)
-  if (flags.schema) return io.out(`${format(commandSchema(selected.entry), outputFormat)}\n`)
+  if (!selected && flags.rest.length > 0) {
+    await emitServeLifecycle(name, state, state.events, {
+      agent: !isTty || formatExplicit,
+      error: { code: 'COMMAND_NOT_FOUND' },
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      surface: { kind: 'command' },
+      type: 'command.not_found',
+    })
+  }
+  if (flags.help || !selected) {
+    await emitServeLifecycle(name, state, selected ? state.events.concat(selected.events) : state.events, {
+      agent: !isTty || formatExplicit,
+      ...(selected ? { command: eventCommand(selected) } : undefined),
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      surface: { kind: 'help' },
+      type: 'help.rendered',
+    })
+    return io.out(`${renderHelp(name, state, selected, flags.rest)}\n`)
+  }
+  if (flags.schema) {
+    await emitServeLifecycle(name, state, state.events.concat(selected.events), {
+      agent: !isTty || formatExplicit,
+      command: eventCommand(selected),
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      surface: { kind: 'schema' },
+      type: 'schema.generated',
+    })
+    return io.out(`${format(commandSchema(selected.entry), outputFormat)}\n`)
+  }
 
   let configLoaded
   try {
-    configLoaded = await loadConfig(name, state, flags)
+    configLoaded = await loadConfigResolution(name, state, flags, env)
   } catch (error) {
     if (error instanceof ParseError) {
+      await emitServeLifecycle(name, state, state.events.concat(selected.events), {
+        agent: !isTty || formatExplicit,
+        command: eventCommand(selected),
+        error: { code: 'PARSE_ERROR', exitCode: 1 },
+        exitCode: 1,
+        format: outputFormat,
+        formatExplicit,
+        invocation,
+        result: 'user_error',
+        surface: { kind: 'parse' },
+        type: 'parse.failed',
+      })
       io.err(`Error (PARSE_ERROR): ${error.shortMessage}\n`)
       ;(options.exit ?? process.exit)(1)
       return
@@ -78,7 +174,6 @@ export async function serveCli(
     throw error
   }
 
-  const formatExplicit = !!(flags.formatExplicit || flags.json)
   const policy = outputPolicy(selected) ?? state.def.outputPolicy ?? 'all'
   const streamingEligible = !flags.fullOutput && !flags.filterOutput && !flags.tokenCount && flags.tokenLimit === undefined && !flags.tokenOffset
   let streamed = false
@@ -90,9 +185,17 @@ export async function serveCli(
     config: configLoaded,
     displayName: name,
     env,
+    events: state.events.concat(selected.events),
     format: outputFormat,
     formatExplicit,
-    invocation: isCiEnv(env) ? 'ci' : 'cli',
+    global: {
+      ...(flags.noSession ? { noSession: true } : undefined),
+      ...(flags.nonInteractive ? { nonInteractive: true } : undefined),
+      ...(flags.profile ? { profile: flags.profile } : undefined),
+    },
+    hooks: mergeHooks(state.hooks, selected.hooks),
+    invocation,
+    isTty,
     middlewares: state.middlewares.concat(selected.middlewares),
     onDeprecation: (flag) => {
       if (isTty) io.err(`warning: ${flag} is deprecated\n`)
@@ -105,6 +208,7 @@ export async function serveCli(
           io.out(text.endsWith('\n') ? text : `${text}\n`)
         }
       : undefined,
+    version: state.def.version,
   })
 
   const exitCode = result.ok ? 0 : Number(result.error.exitCode ?? 1)
@@ -127,6 +231,15 @@ export async function serveCli(
   }
 
   if (exitCode) (options.exit ?? process.exit)(exitCode)
+}
+
+async function emitServeLifecycle(
+  binaryName: string,
+  state: CliState,
+  subscriptions: readonly CliEventSubscription[],
+  event: Omit<CliEvent, 'cli' | 'occurredAt'>,
+): Promise<void> {
+  await emitLifecycleEvent(subscriptions, createLifecycleEvent(binaryName, state.def.version, event))
 }
 
 function isCiEnv(env: Dict<string | undefined>): boolean {

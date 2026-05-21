@@ -1,5 +1,5 @@
 import type { CliState, ServeOptions } from '../types.js'
-import { mcpMessage } from './protocol.js'
+import { mcpMessage, mcpParseError } from './protocol.js'
 
 export async function serveMcp(binaryName: string, state: CliState, options: ServeOptions = {}): Promise<void> {
   const out = options.stdout ?? ((s: string) => void Bun.stdout.write(s))
@@ -9,7 +9,12 @@ export async function serveMcp(binaryName: string, state: CliState, options: Ser
 
   async function emit(line: string) {
     if (!line.trim()) return
-    out(`${JSON.stringify(await mcpMessage(binaryName, state, JSON.parse(line)))}\n`)
+    try {
+      const response = await mcpMessage(binaryName, state, JSON.parse(line))
+      if (response) out(`${JSON.stringify(response)}\n`)
+    } catch {
+      out(`${JSON.stringify(mcpParseError())}\n`)
+    }
   }
 
   for await (const chunk of stdin) {

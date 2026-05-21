@@ -10,6 +10,8 @@ export const AUTH_CODES = {
   PERMISSION_DENIED: 'AUTH_PERMISSION_DENIED',
   INTERACTIVE_REQUIRED: 'AUTH_INTERACTIVE_REQUIRED',
   TOKEN_SOURCE_UNAVAILABLE: 'AUTH_TOKEN_SOURCE_UNAVAILABLE',
+  SESSION_CORRUPT: 'AUTH_SESSION_CORRUPT',
+  SESSION_LOCKED: 'AUTH_SESSION_LOCKED',
 } as const
 
 export type AuthErrorCode = (typeof AUTH_CODES)[keyof typeof AUTH_CODES]
@@ -21,6 +23,7 @@ export type AuthErrorDetails = {
   requiredContexts?: { id: string; envVar?: string | undefined; flag?: string | undefined }[] | undefined
   requiredPermissions?: string[] | undefined
   missingScopes?: string[] | undefined
+  profile?: string | undefined
   status?: number | undefined
 }
 
@@ -31,8 +34,8 @@ function authError(code: AuthErrorCode, message: string, details?: AuthErrorDeta
 export function authMissing(input: {
   providerId: string
   envVars: string[]
-  loginCommand?: string
-  requiredPermissions?: string[]
+  loginCommand?: string | undefined
+  requiredPermissions?: string[] | undefined
 }): LiliError {
   const remedies: string[] = []
   if (input.loginCommand) remedies.push(`run \`${input.loginCommand}\``)
@@ -75,7 +78,7 @@ export function authContextRequired(input: {
 export function authScopeMissing(input: {
   providerId: string
   missingScopes: string[]
-  requiredPermissions?: string[]
+  requiredPermissions?: string[] | undefined
 }): LiliError {
   const message = `Credential is missing required scopes: ${input.missingScopes.join(', ')}.`
   return authError(AUTH_CODES.SCOPE_MISSING, message, {
@@ -87,8 +90,8 @@ export function authScopeMissing(input: {
 
 export function authPermissionDenied(input: {
   providerId: string
-  requiredPermissions?: string[]
-  status?: number
+  requiredPermissions?: string[] | undefined
+  status?: number | undefined
 }): LiliError {
   return authError(AUTH_CODES.PERMISSION_DENIED, 'Permission denied.', {
     providerId: input.providerId,
@@ -97,16 +100,37 @@ export function authPermissionDenied(input: {
   })
 }
 
-export function authInvalid(input: { providerId: string; status?: number }): LiliError {
+export function authInvalid(input: { providerId: string; status?: number | undefined }): LiliError {
   return authError(AUTH_CODES.INVALID, 'Authentication rejected by server.', {
     providerId: input.providerId,
     status: input.status ?? 401,
   })
 }
 
-export function authExpired(input: { providerId: string; loginCommand?: string }): LiliError {
+export function authExpired(input: { providerId: string; loginCommand?: string | undefined }): LiliError {
   return authError(AUTH_CODES.EXPIRED, 'Authentication expired.', {
     providerId: input.providerId,
     loginCommand: input.loginCommand,
+  })
+}
+
+export function authInteractiveRequired(input: { providerId: string; loginCommand?: string | undefined }): LiliError {
+  return authError(AUTH_CODES.INTERACTIVE_REQUIRED, 'Interactive login is required for this command.', {
+    providerId: input.providerId,
+    loginCommand: input.loginCommand,
+  })
+}
+
+export function authSessionCorrupt(input: { providerId?: string; profile?: string }): LiliError {
+  return authError(AUTH_CODES.SESSION_CORRUPT, 'Stored auth session is corrupt.', {
+    providerId: input.providerId,
+    profile: input.profile,
+  })
+}
+
+export function authSessionLocked(input: { providerId?: string; profile?: string }): LiliError {
+  return authError(AUTH_CODES.SESSION_LOCKED, 'Stored auth session is locked by another process.', {
+    providerId: input.providerId,
+    profile: input.profile,
   })
 }

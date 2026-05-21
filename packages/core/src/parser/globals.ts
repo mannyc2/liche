@@ -12,6 +12,9 @@ export type GlobalFlags = {
   json?: boolean | undefined
   llms?: boolean | undefined
   mcp?: boolean | undefined
+  noSession?: boolean | undefined
+  nonInteractive?: boolean | undefined
+  profile?: string | undefined
   rest: string[]
   schema?: boolean | undefined
   tokenCount?: boolean | undefined
@@ -28,7 +31,7 @@ export function parseGlobals(
   disabledGlobals?: readonly DisabledGlobal[] | undefined,
 ): GlobalFlags {
   const flags: GlobalFlags = { rest: [] }
-  const valueFlags = new Set(['format', 'filter-output', 'token-limit', 'token-offset', 'config'])
+  const valueFlags = new Set(['format', 'filter-output', 'token-limit', 'token-offset', 'config', 'profile'])
   if (configFlag) valueFlags.add(configFlag)
   const disabled = new Set<string>(disabledGlobals ?? [])
 
@@ -68,6 +71,9 @@ export function parseGlobals(
     else if (token === '--schema') flags.schema = true
     else if (token === '--llms') flags.llms = true
     else if (token === '--mcp') flags.mcp = true
+    else if (token === '--non-interactive') flags.nonInteractive = true
+    else if (token === '--no-session') flags.noSession = true
+    else if (key === 'profile') flags.profile = value
     else if (token === '--token-count') flags.tokenCount = true
     else if (key === 'token-limit') flags.tokenLimit = parseFiniteNumber(value!, '--token-limit')
     else if (key === 'token-offset') flags.tokenOffset = parseFiniteNumber(value!, '--token-offset')

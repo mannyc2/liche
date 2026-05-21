@@ -11,6 +11,8 @@ function build(commandName: string, def: any) {
   const selected: SelectedCommand = {
     argv: { args: [], options: {} },
     entry,
+    events: [],
+    hooks: { beforeExecute: [] },
     middlewares: [],
     path: [commandName],
   }

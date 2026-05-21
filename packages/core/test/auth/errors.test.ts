@@ -6,8 +6,11 @@ import {
   authContextRequired,
   authExpired,
   authInvalid,
+  authInteractiveRequired,
   authMissing,
   authPermissionDenied,
+  authSessionCorrupt,
+  authSessionLocked,
   authScopeMissing,
 } from '../../src/auth/errors.js'
 import { LiliError, errorToObject } from '../../src/errors/error.js'
@@ -24,6 +27,9 @@ describe('AUTH_* error factories', () => {
       authPermissionDenied({ providerId: 'acme', requiredPermissions: ['admin'] }),
       authInvalid({ providerId: 'acme' }),
       authExpired({ providerId: 'acme' }),
+      authInteractiveRequired({ providerId: 'acme' }),
+      authSessionCorrupt({ providerId: 'acme', profile: 'default' }),
+      authSessionLocked({ providerId: 'acme', profile: 'default' }),
     ]
     for (const e of samples) {
       expect(e).toBeInstanceOf(LiliError)
@@ -127,6 +133,9 @@ describe('AUTH_* error factories', () => {
         'AUTH_CONTEXT_REQUIRED',
         'AUTH_SCOPE_MISSING',
         'AUTH_PERMISSION_DENIED',
+        'AUTH_INTERACTIVE_REQUIRED',
+        'AUTH_SESSION_CORRUPT',
+        'AUTH_SESSION_LOCKED',
       ]),
     )
   })

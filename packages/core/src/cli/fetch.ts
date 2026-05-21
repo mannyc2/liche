@@ -3,6 +3,7 @@ import { execute } from './execute.js'
 import { selectCommand } from '../command/registry.js'
 import { handleMcpHttp } from '../mcp/http.js'
 import { isObject } from '../internal.js'
+import { createLifecycleEvent, emitLifecycleEvent, mergeHooks } from './lifecycle.js'
 
 export async function fetchCli(name: string, state: CliState, request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -12,6 +13,15 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   const path = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
   const selected = selectCommand(state, path)
   if (!selected) {
+    await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
+      agent: true,
+      error: { code: 'COMMAND_NOT_FOUND', status: 404 },
+      format: 'json',
+      formatExplicit: true,
+      invocation: 'agent',
+      surface: { kind: 'command' },
+      type: 'command.not_found',
+    }))
     return Response.json(
       { ok: false, error: { code: 'COMMAND_NOT_FOUND', message: `No command for ${url.pathname}` } },
       { status: 404 },
@@ -30,14 +40,19 @@ export async function fetchCli(name: string, state: CliState, request: Request):
           agent: true,
           argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
           displayName: name,
-	          env: Bun.env as Dict<string | undefined>,
-	          format: 'jsonl',
-	          formatExplicit: true,
-	          invocation: 'agent',
-	          middlewares: state.middlewares.concat(selected.middlewares),
+          events: state.events.concat(selected.events),
+          env: Bun.env as Dict<string | undefined>,
+          format: 'jsonl',
+          formatExplicit: true,
+          global: {},
+          hooks: mergeHooks(state.hooks, selected.hooks),
+          invocation: 'agent',
+          isTty: false,
+          middlewares: state.middlewares.concat(selected.middlewares),
           onChunk: (chunk) => {
             controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'chunk', data: chunk })}\n`))
           },
+          version: state.def.version,
         })
         controller.enqueue(encoder.encode(`${JSON.stringify(result)}\n`))
         controller.close()
@@ -50,11 +65,16 @@ export async function fetchCli(name: string, state: CliState, request: Request):
     agent: true,
     argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
     displayName: name,
-	    env: Bun.env as Dict<string | undefined>,
-	    format: 'json',
-	    formatExplicit: true,
-	    invocation: 'agent',
-	    middlewares: state.middlewares.concat(selected.middlewares),
+    events: state.events.concat(selected.events),
+    env: Bun.env as Dict<string | undefined>,
+    format: 'json',
+    formatExplicit: true,
+    global: {},
+    hooks: mergeHooks(state.hooks, selected.hooks),
+    invocation: 'agent',
+    isTty: false,
+    middlewares: state.middlewares.concat(selected.middlewares),
+    version: state.def.version,
   })
 
   return Response.json(result, { status: result.ok ? 200 : Number(result.error.status ?? 400) })

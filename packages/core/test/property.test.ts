@@ -3,7 +3,6 @@ import fc from 'fast-check'
 import { z } from '../src/index.js'
 import { format } from '../src/format/index.js'
 import { parseCommandOptions, parseObject } from '../src/parser/argv.js'
-import { commandConfig } from '../src/parser/config.js'
 
 describe('property tests', () => {
   test('flag parser preserves numeric values and boolean negation across generated inputs', () => {
@@ -31,17 +30,15 @@ describe('property tests', () => {
     )
   })
 
-  test('config/env/CLI precedence invariant keeps CLI options above config values', () => {
+  test('config/env/CLI precedence invariant keeps CLI options above explicit config bindings', () => {
     fc.assert(
       fc.property(fc.boolean(), fc.boolean(), (configCache, cliCache) => {
         const definition = {
           options: z.object({ cache: z.boolean() }),
         }
-        const config = { commands: { run: { options: { cache: configCache } } } }
         const argv = parseCommandOptions(definition, [cliCache ? '--cache' : '--no-cache'])
-        const configured = commandConfig(config, ['run'])['options'] as Record<string, unknown>
         const merged = {
-          ...configured,
+          cache: configCache,
           ...argv.options,
         }
 

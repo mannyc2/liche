@@ -8,8 +8,13 @@ import type {
   Schema,
   ServeOptions,
   MiddlewareHandler,
+  CliEventSubscriber,
+  CliEventTarget,
+  CliHookHandler,
+  CliHookType,
 } from '../types.js'
 import { fetchCli } from './fetch.js'
+import { normalizeEvents, normalizeHooks } from './lifecycle.js'
 import { serveCli } from './serve.js'
 
 export const stateSymbol: unique symbol = Symbol('lili.cli.state')
@@ -31,7 +36,14 @@ export function create(nameOrDefinition: string | (CreateOptions & { name: strin
   const name = typeof nameOrDefinition === 'string' ? nameOrDefinition : nameOrDefinition.name
   const definition = typeof nameOrDefinition === 'string' ? maybeDefinition : nameOrDefinition
   const root = definition.run || definition.fetch ? definition : undefined
-  const state: CliState = { commands: new Map(), def: definition, middlewares: [], root }
+  const state: CliState = {
+    commands: new Map(),
+    def: definition,
+    events: normalizeEvents(definition.events),
+    hooks: normalizeHooks(definition.hooks),
+    middlewares: [],
+    root,
+  }
 
   const cli: InternalCli = {
     [stateSymbol]: state,
@@ -47,6 +59,16 @@ export function create(nameOrDefinition: string | (CreateOptions & { name: strin
 
     fetch(request: Request) {
       return fetchCli(name, state, request)
+    },
+
+    hook<T extends CliHookType>(type: T, handler: CliHookHandler<T>) {
+      state.hooks[type].push(handler as any)
+      return cli
+    },
+
+    on(target: CliEventTarget, subscriber: CliEventSubscriber) {
+      state.events.push({ subscriber, target })
+      return cli
     },
 
     serve(argv?: string[], options: ServeOptions = {}) {
@@ -86,6 +108,8 @@ function mount(parent: InternalCli, child: InternalCli): CliInstance {
     _group: true,
     commands: childState.commands,
     description: child.description,
+    events: childState.events,
+    hooks: childState.hooks,
     middlewares: childState.middlewares,
     name: child.name,
     outputPolicy: childState.def.outputPolicy,

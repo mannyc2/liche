@@ -1,17 +1,30 @@
-import { authCiTokenMissing, authContextRequired, authMissing, authScopeMissing } from './errors.js'
+import { authCiTokenMissing, authContextRequired, authExpired, authMissing, authScopeMissing } from './errors.js'
 import { secret } from './secret.js'
-import type { AuthCredential, AuthProviderRuntime, ContextRuntime, InvocationKind, ResolvedAuthMeta } from './types.js'
+import type {
+  AuthCredential,
+  AuthProviderRuntime,
+  ContextRuntime,
+  InvocationKind,
+  ResolvedAuthMeta,
+  SessionStore,
+  StoredProfile,
+} from './types.js'
 
 export type ResolveAuthInput = {
   provider: AuthProviderRuntime
   required: boolean
-  requiredScopes?: string[]
-  requiredPermissions?: string[]
-  profile?: string
+  requiredScopes?: string[] | undefined
+  requiredPermissions?: string[] | undefined
+  productId?: string | undefined
+  profile?: string | undefined
+  profileEnvVar?: string | undefined
   invocation: InvocationKind
-  nonInteractive?: boolean
-  allowStoredSession?: boolean
-  env?: Record<string, string | undefined>
+  nonInteractive?: boolean | undefined
+  allowStoredSession?: boolean | undefined
+  noSession?: boolean | undefined
+  env?: Record<string, string | undefined> | undefined
+  loginCommand?: string | undefined
+  sessionStore?: SessionStore | undefined
 }
 
 export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredential | undefined> {
@@ -28,16 +41,19 @@ export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredenti
     const value = env[source.envVar]
     if (value && value.length > 0) {
       const credential = buildCredential(provider, value, source.scopes)
-      if (requiredScopes && requiredScopes.length > 0 && credential.scopes) {
-        const missing = requiredScopes.filter((s) => !credential.scopes!.includes(s))
-        if (missing.length > 0) {
-          throw authScopeMissing({
-            providerId: provider.id,
-            missingScopes: missing,
-            ...(requiredPermissions ? { requiredPermissions } : undefined),
-          })
-        }
-      }
+      assertScopes(provider.id, credential, requiredScopes, requiredPermissions)
+      return credential
+    }
+  }
+
+  const sessionSource = provider.tokenSources.find((source) => source.kind === 'session')
+  if (sessionSource && input.sessionStore && input.productId && sessionAllowed(input)) {
+    const profile = await resolveProfileName(input)
+    const stored = await input.sessionStore.loadProfile(input.productId, provider.id, profile)
+    const credential = credentialFromStoredProfile(provider, stored)
+    if (credential) {
+      if (isExpired(credential.expiresAt)) throw authExpired({ providerId: provider.id, loginCommand: input.loginCommand })
+      assertScopes(provider.id, credential, requiredScopes, requiredPermissions)
       return credential
     }
   }
@@ -50,8 +66,30 @@ export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredenti
   throw authMissing({
     providerId: provider.id,
     envVars: envVarsTried,
+    loginCommand: input.loginCommand,
     ...(requiredPermissions ? { requiredPermissions } : undefined),
   })
+}
+
+async function resolveProfileName(input: ResolveAuthInput): Promise<string> {
+  if (input.profile) return input.profile
+  if (input.profileEnvVar) {
+    const fromEnv = input.env?.[input.profileEnvVar]
+    if (fromEnv) return fromEnv
+  }
+  if (input.productId && input.sessionStore) {
+    const active = await input.sessionStore.getActiveProfile(input.productId, input.provider.id)
+    if (active) return active
+  }
+  return 'default'
+}
+
+function sessionAllowed(input: ResolveAuthInput): boolean {
+  if (input.noSession) return false
+  if (input.allowStoredSession !== undefined) return input.allowStoredSession
+  if (input.invocation === 'cli') return true
+  if (input.invocation === 'agent' || input.invocation === 'mcp') return !!input.profile
+  return false
 }
 
 function buildCredential(provider: AuthProviderRuntime, raw: string, scopes: string[] | undefined): AuthCredential {
@@ -68,13 +106,57 @@ function buildCredential(provider: AuthProviderRuntime, raw: string, scopes: str
   return credential
 }
 
+function credentialFromStoredProfile(
+  provider: AuthProviderRuntime,
+  profile: StoredProfile | undefined,
+): AuthCredential | undefined {
+  const stored = profile?.credential
+  const token = stored?.accessToken
+  if (!profile || !stored || !token) return undefined
+  return {
+    providerId: provider.id,
+    source: 'session',
+    profile: profile.profile,
+    kind: stored.kind,
+    secret: token,
+    header: provider.header,
+    account: profile.account,
+    scopes: stored.scopes,
+    expiresAt: stored.expiresAt,
+    refreshAvailable: false,
+  }
+}
+
+function assertScopes(
+  providerId: string,
+  credential: AuthCredential,
+  requiredScopes: string[] | undefined,
+  requiredPermissions: string[] | undefined,
+): void {
+  if (!requiredScopes || requiredScopes.length === 0 || !credential.scopes) return
+  const missing = requiredScopes.filter((s) => !credential.scopes!.includes(s))
+  if (missing.length > 0) {
+    throw authScopeMissing({
+      providerId,
+      missingScopes: missing,
+      ...(requiredPermissions ? { requiredPermissions } : undefined),
+    })
+  }
+}
+
+function isExpired(expiresAt: string | undefined): boolean {
+  return expiresAt !== undefined && Date.parse(expiresAt) <= Date.now()
+}
+
 export type ResolveContextInput = {
   contexts: ContextRuntime[]
   required: string[]
-  explicit?: Record<string, string | undefined>
-  env?: Record<string, string | undefined>
-  credentialSource?: 'env' | 'session' | 'none'
-  providerId?: string
+  explicit?: Record<string, string | undefined> | undefined
+  env?: Record<string, string | undefined> | undefined
+  credentialSource?: 'env' | 'session' | 'none' | undefined
+  providerId?: string | undefined
+  profile?: StoredProfile | undefined
+  profileExplicit?: boolean | undefined
 }
 
 export async function resolveContext(input: ResolveContextInput): Promise<Record<string, string>> {
@@ -90,7 +172,10 @@ export async function resolveContext(input: ResolveContextInput): Promise<Record
     }
     const explicitValue = ctx.flag ? explicit[ctx.flag] : undefined
     const envValue = ctx.envVar ? env[ctx.envVar] : undefined
-    const value = explicitValue ?? envValue
+    const storedValue = input.profile && (input.credentialSource === 'session' || input.profileExplicit)
+      ? input.profile.selectedContexts?.[id]
+      : undefined
+    const value = explicitValue ?? envValue ?? storedValue
     if (value && value.length > 0) {
       resolved[id] = value
     } else {

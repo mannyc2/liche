@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, Formatter, middleware, z } from '../src/index.js'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Cli, Config, Formatter, middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import { parseJsonOutput, runCli } from './helpers.js'
@@ -38,21 +41,6 @@ describe('contract: command resolution and execution', () => {
 
     const result = await runCli(cli, ['i', '123', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ id: 123 })
-  })
-
-  test('aliases use the target command path for config lookup', async () => {
-    const cli = Cli.create('app', {
-      config: {
-        loader: () => ({ commands: { inspect: { options: { verbose: true } } } }),
-      },
-    }).command('inspect', {
-      aliases: ['i'],
-      options: z.object({ verbose: z.boolean().default(false) }),
-      run: ({ options }) => options,
-    })
-
-    const result = await runCli(cli, ['i', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ verbose: true })
   })
 
   test('mounting child CLIs preserves group commands and root-only children', async () => {
@@ -127,27 +115,16 @@ describe('contract: args, flags, config, env, middleware', () => {
     expect(parseJsonOutput(result.stdout)).toEqual({ count: 0, enabled: false })
   })
 
-  test('merges config before CLI options so explicit CLI values win', async () => {
-    const cli = Cli.create('app', {
-      config: {
-        loader: () => ({ commands: { run: { options: { cache: true, mode: 'config' } } } }),
-      },
-    }).command('run', {
-      options: z.object({ cache: z.boolean().default(false), mode: z.string().default('default') }),
-      run: ({ options }) => options,
-    })
-
-    const result = await runCli(cli, ['run', '--mode', 'cli', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ cache: true, mode: 'cli' })
-  })
-
   test('optionEnv populates option defaults from env (argv > env > config > default)', async () => {
     const make = () =>
       Cli.create('app', {
-        config: { loader: () => ({ commands: { run: { options: { token: 'fromconfig' } } } }) },
+        config: Config.object({
+          schema: z.object({ tokenDefault: z.string().default('fromconfig') }),
+        }),
       }).command('run', {
         options: z.object({ token: z.string().default('default') }),
         optionEnv: { token: 'MYAPP_TOKEN' },
+        optionConfig: { token: 'tokenDefault' },
         run: ({ options }) => options,
       })
 
@@ -159,6 +136,62 @@ describe('contract: args, flags, config, env, middleware', () => {
 
     const configFallback = await runCli(make(), ['run', '--json'], { env: {} })
     expect(parseJsonOutput(configFallback.stdout)).toEqual({ token: 'fromconfig' })
+  })
+
+  test('first-class config exposes ctx.config, explicit option bindings, and source provenance', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lili-config-contract-'))
+    try {
+      const path = join(dir, 'app.jsonc')
+      writeFileSync(path, `{
+        // JSONC comments are allowed.
+        "baseUrl": "https://api.example.test",
+        "defaultOrg": "org_config",
+        "timeoutMs": 2500
+      }`)
+      const cli = Cli.create('app', {
+        config: Config.object({
+          files: [path],
+          schema: z.strictObject({
+            baseUrl: z.string().url().default('https://default.example.test'),
+            defaultOrg: z.string(),
+            timeoutMs: z.coerce.number().default(1000),
+          }),
+        }),
+      }).command('deploy', {
+        options: z.object({
+          org: z.string(),
+          timeoutMs: z.coerce.number(),
+          loose: z.string().default('schema'),
+        }),
+        optionConfig: {
+          org: 'defaultOrg',
+          timeoutMs: 'timeoutMs',
+        },
+        run: (ctx) => ({
+          baseUrl: ctx.config['baseUrl'],
+          baseUrlSource: ctx.sources.config('baseUrl').kind,
+          looseSource: ctx.sources.option('loose'),
+          org: ctx.options.org,
+          orgSource: ctx.sources.option('org'),
+          timeoutMs: ctx.options.timeoutMs,
+        }),
+      })
+
+      const configFallback = await runCli(cli, ['deploy', '--json'])
+      expect(parseJsonOutput(configFallback.stdout)).toEqual({
+        baseUrl: 'https://api.example.test',
+        baseUrlSource: 'project-file',
+        looseSource: 'default',
+        org: 'org_config',
+        orgSource: 'project-config',
+        timeoutMs: 2500,
+      })
+
+      const argv = await runCli(cli, ['deploy', '--org', 'org_argv', '--json'])
+      expect(parseJsonOutput(argv.stdout).orgSource).toBe('argv')
+    } finally {
+      rmSync(dir, { force: true, recursive: true })
+    }
   })
 
   test('validates command env from the supplied serve env', async () => {
@@ -253,7 +286,7 @@ describe('contract: fetch and schema', () => {
 
     const mcp = await cli.fetch(
       new Request('http://localhost/mcp', {
-        body: JSON.stringify({ id: 1, method: 'tools/list' }),
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
         method: 'POST',
       }),
     )
@@ -308,22 +341,22 @@ describe('contract: mcp, completions, and token behavior', () => {
     })
     const state = (cli as InternalCli)[stateSymbol]
 
-    await expect(Mcp.mcpMessage('app', state, { id: 1, method: 'initialize' })).resolves.toMatchObject({
+    await expect(Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'initialize' })).resolves.toMatchObject({
       id: 1,
       jsonrpc: '2.0',
       result: { serverInfo: { name: 'app', version: '1.2.3' } },
     })
-    await expect(Mcp.mcpMessage('app', state, { id: 2, method: 'tools/list' })).resolves.toMatchObject({
+    await expect(Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 2, method: 'tools/list' })).resolves.toMatchObject({
       id: 2,
       result: { tools: [{ name: 'echo' }] },
     })
     await expect(
-      Mcp.mcpMessage('app', state, { id: 3, method: 'tools/call', params: { name: 'echo', arguments: { args: { message: 'hi' } } } }),
+      Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'echo', arguments: { args: { message: 'hi' } } } }),
     ).resolves.toMatchObject({
       id: 3,
       result: { content: [{ text: '{"message":"hi"}', type: 'text' }], isError: false },
     })
-    await expect(Mcp.mcpMessage('app', state, { id: 4, method: 'missing' })).resolves.toMatchObject({
+    await expect(Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 4, method: 'missing' })).resolves.toMatchObject({
       error: { code: -32601 },
       id: 4,
       jsonrpc: '2.0',

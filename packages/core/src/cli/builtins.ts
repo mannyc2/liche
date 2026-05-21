@@ -1,4 +1,4 @@
-import type { CliState, Format } from '../types.js'
+import type { Awaitable, CliEvent, CliState, Format } from '../types.js'
 import type { GlobalFlags } from '../parser/globals.js'
 import { completionScript, shells } from '../completions/shells.js'
 import { format } from '../format/index.js'
@@ -7,6 +7,7 @@ import { renderTypegen } from '../command/typegen.js'
 import { builtinCommands, builtinEnabled } from './builtin-metadata.js'
 
 export type BuiltinIo = { out(s: string): void; err(s: string): void }
+export type BuiltinLifecycleEmitter = (event: Omit<CliEvent, 'agent' | 'cli' | 'format' | 'formatExplicit' | 'invocation' | 'occurredAt'>) => Awaitable<void>
 
 export async function runBuiltin(
   name: string,
@@ -15,6 +16,7 @@ export async function runBuiltin(
   io: BuiltinIo,
   outputFormat: Format,
   env: Record<string, string | undefined> = {},
+  emitLifecycle?: BuiltinLifecycleEmitter | undefined,
 ): Promise<boolean> {
   const [command, subcommand, ...rest] = flags.rest
 
@@ -26,6 +28,11 @@ export async function runBuiltin(
       io.err(`Unknown shell '${shell}'. Supported: ${shells.join(', ')}\n`)
       return true
     }
+    await emitLifecycle?.({
+      completion: { shell },
+      surface: { kind: 'completion', name: 'completions' },
+      type: 'completion.generated',
+    })
     io.out(`${completionScript(shell, name)}\n`)
     return true
   }
@@ -69,6 +76,10 @@ export async function runBuiltin(
   if ((command === 'skills' || command === 'mcp') && (flags.help || !subcommand)) {
     const builtin = builtinCommands.find((item) => item.name === command)
     const subcommands = builtin?.subcommands?.map((item) => `  ${name} ${command} ${item.name}  ${item.description}`).join('\n')
+    await emitLifecycle?.({
+      surface: { kind: 'help', name: command },
+      type: 'help.rendered',
+    })
     io.out(`${subcommands ?? `${name} ${command}`}\n`)
     return true
   }

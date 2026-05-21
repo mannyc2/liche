@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { isSecretString } from '../../src/auth/secret.js'
+import { createFileSessionStore, secret } from '../../src/index.js'
 import { applyAuth, authMetaFromCredential, resolveAuth, resolveContext } from '../../src/auth/resolve.js'
 import type { AuthProviderRuntime, ContextRuntime } from '../../src/auth/types.js'
 import { LiliError } from '../../src/errors/error.js'
@@ -248,6 +252,170 @@ describe('resolveContext (env+flag, 3D-A)', () => {
   test('returns empty object when no contexts are required', async () => {
     const out = await resolveContext({ contexts, required: [], explicit: {}, env: {} })
     expect(out).toEqual({})
+  })
+
+  test('stored selected context is used only for a session credential or explicit profile', async () => {
+    const profile = {
+      schemaVersion: 1 as const,
+      productId: 'acme',
+      providerId: 'oauth',
+      profile: 'work',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      selectedContexts: { org: 'stored-org' },
+    }
+    expect(await resolveContext({
+      contexts,
+      required: ['org'],
+      explicit: {},
+      env: {},
+      credentialSource: 'session',
+      profile,
+    })).toEqual({ org: 'stored-org' })
+    expect(await resolveContext({
+      contexts,
+      required: ['org'],
+      explicit: {},
+      env: {},
+      credentialSource: 'env',
+      profile,
+      profileExplicit: true,
+    })).toEqual({ org: 'stored-org' })
+    await expect(resolveContext({
+      contexts,
+      required: ['org'],
+      explicit: {},
+      env: {},
+      credentialSource: 'env',
+      profile,
+    })).rejects.toThrow()
+  })
+})
+
+describe('resolveAuth (file sessions, no implicit login)', () => {
+  const provider: AuthProviderRuntime = {
+    id: 'acme',
+    kind: 'oauthDevice',
+    tokenSources: [
+      { kind: 'env', envVar: 'ACME_TOKEN' },
+      { kind: 'session', profiles: true },
+    ],
+    session: { enabled: true, profiles: true },
+    commands: { login: 'login' },
+  }
+
+  async function withStore(fn: (root: string, store: ReturnType<typeof createFileSessionStore>) => Promise<void>) {
+    const root = mkdtempSync(join(tmpdir(), 'lili-resolve-'))
+    try {
+      await fn(root, createFileSessionStore({ root }))
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
+  }
+
+  test('env credentials beat stored sessions', async () => {
+    await withStore(async (_root, sessionStore) => {
+      await sessionStore.saveProfile('acme', 'acme', 'default', {
+        schemaVersion: 1,
+        productId: 'acme',
+        providerId: 'acme',
+        profile: 'default',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        credential: { kind: 'bearer', accessToken: secret('stored-token') },
+      })
+      const credential = await resolveAuth({
+        provider,
+        productId: 'acme',
+        required: true,
+        invocation: 'cli',
+        env: { ACME_TOKEN: 'env-token' },
+        sessionStore,
+      })
+      expect(credential?.source).toBe('env')
+      expect(credential?.secret.reveal()).toBe('env-token')
+    })
+  })
+
+  test('human CLI may use a stored session without starting login', async () => {
+    await withStore(async (_root, sessionStore) => {
+      await sessionStore.saveProfile('acme', 'acme', 'work', {
+        schemaVersion: 1,
+        productId: 'acme',
+        providerId: 'acme',
+        profile: 'work',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        account: { id: 'u_1' },
+        credential: { kind: 'bearer', accessToken: secret('stored-token') },
+      })
+      const credential = await resolveAuth({
+        provider,
+        productId: 'acme',
+        required: true,
+        invocation: 'cli',
+        env: {},
+        sessionStore,
+      })
+      expect(credential?.source).toBe('session')
+      expect(credential?.profile).toBe('work')
+      expect(credential?.secret.reveal()).toBe('stored-token')
+    })
+  })
+
+  test('CI and MCP do not use stored sessions implicitly', async () => {
+    await withStore(async (_root, sessionStore) => {
+      await sessionStore.saveProfile('acme', 'acme', 'default', {
+        schemaVersion: 1,
+        productId: 'acme',
+        providerId: 'acme',
+        profile: 'default',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        credential: { kind: 'bearer', accessToken: secret('stored-token') },
+      })
+      await expect(resolveAuth({
+        provider,
+        productId: 'acme',
+        required: true,
+        invocation: 'ci',
+        env: {},
+        sessionStore,
+      })).rejects.toMatchObject({ code: 'AUTH_CI_TOKEN_MISSING' })
+      await expect(resolveAuth({
+        provider,
+        productId: 'acme',
+        required: true,
+        invocation: 'mcp',
+        env: {},
+        sessionStore,
+      })).rejects.toMatchObject({ code: 'AUTH_MISSING' })
+    })
+  })
+
+  test('MCP can use a stored session only when a profile is explicitly pinned', async () => {
+    await withStore(async (_root, sessionStore) => {
+      await sessionStore.saveProfile('acme', 'acme', 'work', {
+        schemaVersion: 1,
+        productId: 'acme',
+        providerId: 'acme',
+        profile: 'work',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        credential: { kind: 'bearer', accessToken: secret('stored-token') },
+      })
+      const credential = await resolveAuth({
+        provider,
+        productId: 'acme',
+        required: true,
+        invocation: 'mcp',
+        profile: 'work',
+        env: {},
+        sessionStore,
+      })
+      expect(credential?.source).toBe('session')
+      expect(credential?.profile).toBe('work')
+    })
   })
 })
 

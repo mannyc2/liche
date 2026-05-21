@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli, middleware, z } from '../src/index.js'
+import { Cli, Config, middleware, z } from '../src/index.js'
 import { parseJsonOutput, runCli } from './helpers.js'
 import { renderTypegen } from '../src/command/typegen.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
@@ -257,11 +257,12 @@ describe('parity: MCP tool naming uses underscores', () => {
     const cli = Cli.create('app').command(pr)
     const state = (cli as InternalCli)[stateSymbol]
 
-    const list = await Mcp.mcpMessage('app', state, { id: 1, method: 'tools/list' })
+    const list = await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
     const tools = (list as any).result.tools.map((tool: any) => tool.name)
     expect(tools).toEqual(['pr_list', 'pr_view'])
 
     const call = await Mcp.mcpMessage('app', state, {
+      jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
       params: { name: 'pr_list', arguments: {} },
@@ -362,7 +363,7 @@ describe('parity: vars defaults layering', () => {
   })
 })
 
-describe('parity: config loader defaults', () => {
+describe('parity: config object defaults', () => {
   test('--config without a configured schema raises ParseError', async () => {
     const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
     const result = await runCli(cli, ['run', '--config', './nope.json', '--json'])
@@ -372,9 +373,12 @@ describe('parity: config loader defaults', () => {
 
   test('--no-config disables config loading even when files exist', async () => {
     const cli = Cli.create('app', {
-      config: { loader: () => ({ commands: { run: { options: { mode: 'from-config' } } } }) },
+      config: Config.object({
+        schema: z.object({ modeDefault: z.string().default('from-config') }),
+      }),
     }).command('run', {
       options: z.object({ mode: z.string().default('default') }),
+      optionConfig: { mode: 'modeDefault' },
       run: ({ options }) => options,
     })
     const result = await runCli(cli, ['run', '--no-config', '--json'])

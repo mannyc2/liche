@@ -6,8 +6,54 @@ export type Format = 'toon' | 'json' | 'yaml' | 'md' | 'jsonl'
 export type DisabledGlobal = 'format'
 export type OutputPolicy = 'all' | 'agent-only'
 export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
+export type GlobalOptions = {
+  nonInteractive?: boolean | undefined
+  noSession?: boolean | undefined
+  profile?: string | undefined
+}
 export type Schema<T = unknown> = z.ZodType<T>
 export type InferSchema<T> = T extends z.ZodType<infer O> ? O : unknown
+
+export type ConfigScopeDeclaration =
+  | boolean
+  | {
+      discoverUpwards?: boolean | undefined
+      xdg?: boolean | undefined
+    }
+
+export type ConfigScopesDeclaration = {
+  project?: ConfigScopeDeclaration | undefined
+  user?: ConfigScopeDeclaration | undefined
+}
+
+export type ConfigObjectDefinition<T = Record<string, unknown>> = {
+  kind: 'lili.config.object'
+  files?: readonly string[] | undefined
+  flag?: string | undefined
+  schema?: Schema<T> | undefined
+  scopes?: ConfigScopesDeclaration | undefined
+}
+
+export type ConfigDefinition<T = Record<string, unknown>> = ConfigObjectDefinition<T>
+
+export type ConfigValueSource =
+  | { kind: 'default' }
+  | { kind: 'explicit-file'; path: string }
+  | { kind: 'project-file'; path: string }
+  | { kind: 'user-file'; path: string }
+
+export type OptionValueSource =
+  | 'argv'
+  | 'env'
+  | 'explicit-config'
+  | 'project-config'
+  | 'user-config'
+  | 'default'
+
+export type SourceInspector = {
+  config(path: string): ConfigValueSource
+  option(name: string): OptionValueSource
+}
 
 export type Cta =
   | string
@@ -89,6 +135,7 @@ export type RunContext<
 > = {
   agent: boolean
   args: A
+  config: Record<string, unknown>
   displayName: string
   env: E
   error(input: {
@@ -101,11 +148,14 @@ export type RunContext<
   }): never
   format: Format
   formatExplicit: boolean
+  global: GlobalOptions
   invocation: InvocationKind
+  isTty: boolean
   name: string
   ok(data?: unknown, meta?: ResultMeta): never
   options: O
   set(key: string, value: unknown): void
+  sources: SourceInspector
   var: V
 }
 
@@ -114,6 +164,90 @@ export type MiddlewareHandler = (
   context: MiddlewareContext,
   next: () => Promise<void>,
 ) => Awaitable<void | Result | unknown>
+
+export type CliEventType =
+  | 'command.selected'
+  | 'command.started'
+  | 'command.completed'
+  | 'command.failed'
+  | 'validation.failed'
+  | 'parse.failed'
+  | 'command.not_found'
+  | 'help.rendered'
+  | 'version.rendered'
+  | 'completion.generated'
+  | 'schema.generated'
+  | 'mcp.initialize'
+  | 'mcp.tools_listed'
+  | 'mcp.tool_call.started'
+  | 'mcp.tool_call.completed'
+  | 'mcp.tool_call.failed'
+  | 'hook.failed'
+export type CliEventTarget = CliEventType | '*'
+export type CliEventCommand = {
+  id: string
+  path: readonly string[]
+}
+export type CliEventCompletion = {
+  shell?: string | undefined
+  suggestionCount?: number | undefined
+}
+export type CliEventError = {
+  code: string
+  exitCode?: number | undefined
+  fieldErrorCount?: number | undefined
+  retryable?: boolean | undefined
+  status?: number | undefined
+}
+export type CliEventMcp = {
+  method: 'initialize' | 'tools/list' | 'tools/call'
+  toolCount?: number | undefined
+}
+export type CliEventSurface = {
+  kind: 'command' | 'completion' | 'help' | 'mcp' | 'parse' | 'schema' | 'version'
+  name?: string | undefined
+}
+export type CliEvent = {
+  agent: boolean
+  cli: {
+    name: string
+    version?: string | undefined
+  }
+  command?: CliEventCommand | undefined
+  completion?: CliEventCompletion | undefined
+  durationMs?: number | undefined
+  error?: CliEventError | undefined
+  exitCode?: number | undefined
+  format: Format
+  formatExplicit: boolean
+  invocation: InvocationKind
+  mcp?: CliEventMcp | undefined
+  occurredAt: string
+  result?: 'success' | 'user_error' | 'system_error' | 'canceled' | undefined
+  surface?: CliEventSurface | undefined
+  type: CliEventType
+}
+export type CliEventSubscriber = (event: Readonly<CliEvent>) => Awaitable<void>
+export type CliEventRegistration =
+  | CliEventSubscriber
+  | {
+      subscriber: CliEventSubscriber
+      target: CliEventTarget
+    }
+export type CliEventSubscription = {
+  subscriber: CliEventSubscriber
+  target: CliEventTarget
+}
+
+export type BeforeExecuteHook = (context: MiddlewareContext) => Awaitable<void>
+export type CliHookType = 'beforeExecute'
+export type CliHookHandler<T extends CliHookType = CliHookType> = T extends 'beforeExecute' ? BeforeExecuteHook : never
+export type CliHookRegistration = {
+  beforeExecute?: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined
+}
+export type CliHooks = {
+  beforeExecute: BeforeExecuteHook[]
+}
 
 export type FetchHandler = (request: Request) => Awaitable<Response>
 export type Example =
@@ -150,6 +284,7 @@ export type CommandDefinition<
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = {
+  agent?: boolean | undefined
   alias?: Record<string, string> | undefined
   aliases?: string[] | undefined
   args?: A | undefined
@@ -163,6 +298,7 @@ export type CommandDefinition<
   middleware?: MiddlewareHandler[] | undefined
   options?: O | undefined
   optionEnv?: Record<string, string> | undefined
+  optionConfig?: Record<string, string> | undefined
   output?: Out | undefined
   outputPolicy?: OutputPolicy | undefined
   run?:
@@ -182,13 +318,7 @@ export type CreateOptions<
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = CommandDefinition<A, E, O, Out> & {
   builtins?: BuiltinsConfig | undefined
-  config?:
-    | {
-        files?: string[] | undefined
-        flag?: string | undefined
-        loader?: ((path: string | undefined) => Awaitable<Record<string, unknown> | undefined>) | undefined
-      }
-    | undefined
+  config?: ConfigDefinition | undefined
   format?: Format | undefined
   generated?:
     | {
@@ -196,6 +326,8 @@ export type CreateOptions<
         disabledGlobals?: readonly DisabledGlobal[] | undefined
       }
     | undefined
+  events?: readonly CliEventRegistration[] | undefined
+  hooks?: CliHookRegistration | undefined
   mcp?: { agents?: string[] | undefined; command?: string | undefined } | undefined
   skill?: SkillDefinition | undefined
   name?: string | undefined
@@ -215,6 +347,8 @@ export type GroupEntry = {
   _group: true
   commands: Map<string, Entry>
   description?: string | undefined
+  events: CliEventSubscription[]
+  hooks: CliHooks
   middlewares: MiddlewareHandler[]
   name: string
   outputPolicy?: OutputPolicy | undefined
@@ -235,6 +369,8 @@ export type Entry = CommandDefinition | GroupEntry | FetchEntry | AliasEntry
 export type CliState = {
   commands: Map<string, Entry>
   def: CreateOptions
+  events: CliEventSubscription[]
+  hooks: CliHooks
   middlewares: MiddlewareHandler[]
   root?: CommandDefinition | undefined
 }
@@ -262,7 +398,9 @@ export type CliInstance = {
   description?: string | undefined
   env?: Schema<any> | undefined
   fetch(request: Request): Promise<Response>
+  hook<T extends CliHookType>(type: T, handler: CliHookHandler<T>): CliInstance
   name: string
+  on(target: CliEventTarget, subscriber: CliEventSubscriber): CliInstance
   serve(argv?: string[], options?: ServeOptions): Promise<void>
   use(handler: MiddlewareHandler): CliInstance
   vars?: Schema<any> | undefined
@@ -271,6 +409,8 @@ export type CliInstance = {
 export type SelectedCommand = {
   argv: { args: string[]; options?: Record<string, unknown> | undefined }
   entry: Entry
+  events: CliEventSubscription[]
+  hooks: CliHooks
   middlewares: MiddlewareHandler[]
   path: string[]
   rootDef?: CreateOptions | undefined
