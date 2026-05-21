@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
+  Config,
   Field,
   Product,
+  Runtime,
   Shape,
   canonicalDigest,
   generateCli,
@@ -178,6 +180,46 @@ describe('generateCli — run bodies by execution mode', () => {
     const purgeBlock = extractCommandBlock(source, 'purge')
     expect(purgeBlock).toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
     expect(purgeBlock).toMatch(/remote-http commands is not implemented yet \(Phase 4\)/)
+  })
+
+  test('remote-http command with product remote config calls core HTTP transport', () => {
+    const cat = normalizeProduct(
+      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
+        .config(Config.object({
+          files: ['p.jsonc'],
+          fields: Shape.object({
+            apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
+            defaultZone: Field.string('Default zone').optional(),
+          }),
+          scopes: { project: { discoverUpwards: true }, user: false },
+        }))
+        .remote({ baseUrl: Runtime.config('apiBaseUrl') })
+        .command(
+          'purge',
+          Command.remoteHttp({
+            summary: 'Purge',
+            input: Shape.object({
+              zone: Field.string('Zone').fromConfig('defaultZone'),
+            }),
+            output: Shape.object({ purge_id: Field.string('Purge ID') }),
+            http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'] } },
+          }),
+        ),
+    )
+    const source = generate(cat)
+    expect(source.match(/from '@lili\/core'/)?.[0]).toBe("from '@lili/core'")
+    expect(source).toContain(`import { Cli, Config, callHttpOperation, z } from '@lili/core'`)
+    expect(source).toContain(`config: Config.object({`)
+    expect(source).toContain(`files: ['p.jsonc'],`)
+    expect(source).toContain(`optionConfig: { 'zone': 'defaultZone' },`)
+    const purgeBlock = extractCommandBlock(source, 'purge')
+    expect(purgeBlock).toContain(`const data = await callHttpOperation({`)
+    expect(purgeBlock).toContain(`baseUrl: ctx.config['apiBaseUrl'] as string,`)
+    expect(purgeBlock).toContain(`method: 'POST',`)
+    expect(purgeBlock).toContain(`path: '/zones/{zone}/purge',`)
+    expect(purgeBlock).toContain(`bind: { path: ['zone'], body: false },`)
+    expect(purgeBlock).not.toContain(`REMOTE_NOT_IMPLEMENTED`)
   })
 
   test('local handlers from the same module deduplicate to one import per export', () => {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
 import workersProduct from './fixtures/workers.product.js'
@@ -44,12 +45,12 @@ describe('generated CLI — source matches golden', () => {
 })
 
 describe('generated CLI — boundary discipline', () => {
-  test('generated source imports only Cli and z from @lili/core', () => {
+  test('generated source imports only public @lili/core APIs required by the fixture', () => {
     const source = readFileSync(join(FIXTURE_DIR, 'workers.generated.ts'), 'utf8')
     const coreImports = [...source.matchAll(/from '@lili\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, z')
+    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, z')
   })
 
   test('generated source does not import from @lili/core subpaths or internals', () => {
@@ -99,13 +100,32 @@ describe('generated CLI — runtime parity with handwritten', () => {
     })
   })
 
-  test('script list returns the Phase 4 not-implemented error envelope', async () => {
-    const argv = ['script', 'list', '--json']
-    const gen = await runCli(workersGenerated, argv)
-    const env = JSON.parse(gen.stdout)
-    expect(env.ok).toBe(false)
-    expect(env.error.code).toBe('REMOTE_NOT_IMPLEMENTED')
-    expect(env.error.message).toContain('Phase 4')
+  test('script list resolves apiBaseUrl from config and calls remote HTTP transport', async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(new URL(request.url).pathname).toBe('/')
+        return Response.json([
+          { id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' },
+        ])
+      },
+    })
+    const dir = mkdtempSync(join(tmpdir(), 'lili-workers-config-'))
+    const configPath = join(dir, 'workers.jsonc')
+    try {
+      writeFileSync(configPath, JSON.stringify({ apiBaseUrl: server.url.origin }))
+      const gen = await runCli(workersGenerated, ['--config', configPath, 'script', 'list', '--json'])
+      const env = JSON.parse(gen.stdout)
+      expect(gen.exitCode).toBe(0)
+      expect(env).toEqual({
+        ok: true,
+        data: [{ id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' }],
+        meta: { execution: { mode: 'remote-http', source: 'schema-default' } },
+      })
+    } finally {
+      rmSync(dir, { force: true, recursive: true })
+      server.stop(true)
+    }
   })
 
   test('--format json is rejected on generated CLIs', async () => {

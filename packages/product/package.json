@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@hughescr/stryker-bun-runner": "catalog:test",
+    "@modelcontextprotocol/sdk": "catalog:test",
     "@stryker-mutator/core": "catalog:test",
     "@stryker-mutator/typescript-checker": "catalog:test",
     "@types/bun": "catalog:test",

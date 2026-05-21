@@ -1,4 +1,4 @@
-import { Auth, Command, Field, Product, Shape } from '../../src/index.js'
+import { Auth, Command, Config, Field, Product, Runtime, Shape } from '../../src/index.js'
 
 // Canonical Phase 3B fixture: a Workers-shaped product with one resource
 // operation, one hybrid-workflow command, one local command, and one binding.
@@ -11,6 +11,15 @@ export default Product.create({
   description: 'Build and deploy serverless applications.',
 })
   .auth(Auth.none())
+  .config(Config.object({
+    files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
+    fields: Shape.object({
+      apiBaseUrl: Field.string('API base URL').default('https://api.cloudflare.test'),
+      accountId: Field.string('Default account ID').optional(),
+    }),
+    scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
+  }))
+  .remote({ baseUrl: Runtime.config('apiBaseUrl') })
   .permissions({
     'workers:read': Auth.permission.scope('workers.read'),
     'workers:edit': Auth.permission.scope('workers.edit'),
@@ -25,6 +34,9 @@ export default Product.create({
         .field('created_at', Field.datetime('Creation time').immutable().optional())
         .operation('list', {
           summary: 'List Worker scripts',
+          effects: { kind: 'read', idempotent: true },
+          policy: { conformanceEligible: true },
+          examples: [{ command: 'workers script list --json' }],
           http: { method: 'GET', path: '' },
           output: Shape.list('script'),
           requires: { permissions: ['workers:read'] },
@@ -34,6 +46,9 @@ export default Product.create({
     'deploy',
     Command.workflow({
       summary: 'Deploy a Worker',
+      effects: { kind: 'exec', idempotent: false },
+      policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: false },
+      examples: [{ command: 'workers deploy --entrypoint src/index.ts --environment preview --json' }],
       input: Shape.object({
         entrypoint: Field.string('Entrypoint file'),
         environment: Field.string('Environment').optional(),

@@ -2,11 +2,13 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
+  Config,
   DEFAULT_GENERATED_VOCABULARY,
   Field,
   lintCatalog,
   normalizeProduct,
   Product,
+  Runtime,
   Shape,
   vocabulary,
 } from '../src/index.js'
@@ -183,6 +185,26 @@ describe('lintCatalog — shape/unknown-resource-ref', () => {
   })
 })
 
+describe('lintCatalog — config/runtime', () => {
+  test('secret fields in general config fail config/no-secret-fields', () => {
+    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+      .config(Config.object({
+        fields: Shape.object({ apiToken: Field.string('API token').secret() }),
+      }))
+    expect(lintProductInput(p).find((i) => i.code === 'config/no-secret-fields')).toBeDefined()
+  })
+
+  test('remote baseUrl must reference a declared config field when config-backed', () => {
+    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+      .config(Config.object({
+        fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
+      }))
+      .remote({ baseUrl: Runtime.config('missingBaseUrl') })
+    const issue = lintProductInput(p).find((i) => i.code === 'catalog/remote-base-url')
+    expect(issue?.message).toContain("unknown config field 'missingBaseUrl'")
+  })
+})
+
 describe('lintCatalog — clean product', () => {
   test('workers-style product with resource + workflow + local command produces no issues', () => {
     const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
@@ -192,6 +214,9 @@ describe('lintCatalog — clean product', () => {
           .field('name', Field.string('Script name').humanLabel())
           .operation('list', {
             summary: 'List Worker scripts',
+            effects: { kind: 'read', idempotent: true },
+            policy: { conformanceEligible: true },
+            examples: [{ command: 'workers script list --json' }],
             http: { method: 'GET', path: '' },
             output: Shape.list('script'),
           }),
@@ -199,6 +224,41 @@ describe('lintCatalog — clean product', () => {
       .command('deploy', Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }))
       .command('dev', Command.local({ summary: 'Dev', handler: 'wrangler.dev' }))
     expect(lintProductInput(p)).toEqual([])
+  })
+})
+
+describe('lintCatalog — capability safety metadata', () => {
+  test('agent or conformance visible capabilities must declare effects, policy, and examples', () => {
+    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+      .command('deploy', Command.remoteHttp({
+        summary: 'Deploy',
+        http: { method: 'POST', path: '/deploy' },
+        surfaces: { agent: true },
+      }))
+    expect(lintProductInput(p).map((issue) => issue.code)).toEqual([
+      'capability/effects-required',
+      'capability/policy-required',
+      'capability/examples-required',
+    ])
+  })
+
+  test('dangerous and delete capabilities require consistent policy flags', () => {
+    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+      .command('deleteCache', Command.remoteHttp({
+        summary: 'Delete cache',
+        effects: { kind: 'delete' },
+        policy: { dangerous: false, requiresConfirmation: false, conformanceEligible: true },
+        examples: [{ command: 'workers delete-cache --json' }],
+        http: { method: 'DELETE', path: '/cache' },
+        surfaces: { agent: true },
+      }))
+    expect(lintProductInput(p).filter((issue) => issue.code === 'capability/policy-inconsistent')).toEqual([
+      {
+        code: 'capability/policy-inconsistent',
+        path: 'capabilities[0].policy.dangerous',
+        message: "Delete capability 'deleteCache' must be marked dangerous",
+      },
+    ])
   })
 })
 

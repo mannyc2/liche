@@ -12,6 +12,11 @@ import product from './fixtures/workers.product.js'
 
 const GEN_FILE = 'lili.generated.ts'
 const OPENAPI_FILE = 'lili.generated.openapi.json'
+const COMMANDS_FILE = 'lili.generated.commands.json'
+const MCP_FILE = 'lili.generated.mcp.json'
+const AGENT_FILE = 'lili.generated.agent.md'
+const DOCS_FILE = 'lili.generated.docs.md'
+const CONFIG_FILE = 'lili.generated.config.schema.json'
 const MANIFEST_FILE = 'lili.generated.manifest.json'
 
 describe('generate --check drift detection', () => {
@@ -32,6 +37,24 @@ describe('generate --check drift detection', () => {
     expect(result.manifest.surfaces[1]!.id).toBe('openapi')
     expect(result.manifest.surfaces[1]!.source).toBe('openapi')
     expect(result.manifest.surfaces[1]!.artifacts).toEqual([OPENAPI_FILE])
+    expect(result.manifest.surfaces.map((surface) => surface.id)).toEqual([
+      'cli',
+      'openapi',
+      'command-manifest',
+      'mcp-tools',
+      'agent-reference',
+      'docs-reference',
+      'config-schema',
+    ])
+    expect(result.manifest.surfaces.map((surface) => surface.artifacts[0])).toEqual([
+      GEN_FILE,
+      OPENAPI_FILE,
+      COMMANDS_FILE,
+      MCP_FILE,
+      AGENT_FILE,
+      DOCS_FILE,
+      CONFIG_FILE,
+    ])
 
     const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     expect(check.ok).toBe(true)
@@ -59,6 +82,30 @@ describe('generate --check drift detection', () => {
     expect(check.ok).toBe(false)
     if (check.ok) throw new Error('expected drift')
     expect(check.drift.some((d) => d.includes("surface 'openapi' output digest mismatch"))).toBe(true)
+  })
+
+  test('hand-edit to command manifest fails check with command-manifest surface mismatch', async () => {
+    await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    const path = join(dir, COMMANDS_FILE)
+    const before = await Bun.file(path).text()
+    await Bun.write(path, before.replace('"workers"', '"workers-edited"'))
+
+    const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    expect(check.ok).toBe(false)
+    if (check.ok) throw new Error('expected drift')
+    expect(check.drift.some((d) => d.includes("surface 'command-manifest' output digest mismatch"))).toBe(true)
+  })
+
+  test('hand-edit to docs reference fails check with docs-reference surface mismatch', async () => {
+    await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    const path = join(dir, DOCS_FILE)
+    const before = await Bun.file(path).text()
+    await Bun.write(path, before.replace('Workers CLI reference', 'Edited CLI reference'))
+
+    const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
+    expect(check.ok).toBe(false)
+    if (check.ok) throw new Error('expected drift')
+    expect(check.drift.some((d) => d.includes("surface 'docs-reference' output digest mismatch"))).toBe(true)
   })
 
   test('hand-edit to manifest fails check', async () => {
@@ -152,7 +199,7 @@ describe('generate --check drift detection', () => {
     expect(m.schema.version).toBe('1.0.0')
     expect(m.schema.digest).toMatch(/^sha256:[0-9a-f]{64}$/)
     expect(m.generatorVersion).toBe('0.0.0')
-    expect(m.surfaces).toHaveLength(2)
+    expect(m.surfaces).toHaveLength(7)
 
     const expectedInputDigest = canonicalDigest(normalizeProduct(product))
 
@@ -172,5 +219,17 @@ describe('generate --check drift detection', () => {
     expect(openapi.outputDigest).not.toBe(cli.outputDigest)
     expect(openapi.generationOptionsDigest).not.toBe(cli.generationOptionsDigest)
     expect(openapi.artifacts).toEqual([OPENAPI_FILE])
+
+    const byId = new Map(m.surfaces.map((surface) => [surface.id, surface]))
+    expect(byId.get('command-manifest')?.source).toBe('catalog')
+    expect(byId.get('command-manifest')?.artifacts).toEqual([COMMANDS_FILE])
+    expect(byId.get('mcp-tools')?.source).toBe('catalog')
+    expect(byId.get('mcp-tools')?.artifacts).toEqual([MCP_FILE])
+    expect(byId.get('agent-reference')?.source).toBe('catalog')
+    expect(byId.get('agent-reference')?.artifacts).toEqual([AGENT_FILE])
+    expect(byId.get('docs-reference')?.source).toBe('catalog')
+    expect(byId.get('docs-reference')?.artifacts).toEqual([DOCS_FILE])
+    expect(byId.get('config-schema')?.source).toBe('catalog')
+    expect(byId.get('config-schema')?.artifacts).toEqual([CONFIG_FILE])
   })
 })

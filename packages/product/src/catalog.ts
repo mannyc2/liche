@@ -1,4 +1,6 @@
 import type {
+  AuthCommandSpec,
+  AuthIdentitySpec,
   AuthSpec,
   ContextSpec,
   PermissionSpec,
@@ -7,10 +9,14 @@ import type {
   TokenSource,
 } from './auth.js'
 import type {
+  CapabilityExample,
   CommandSpec,
+  EffectKind,
+  EffectsSpec,
   Execution,
   HttpBind,
   HttpSpec,
+  PolicySpec,
   SurfaceHints,
   WorkflowStep,
 } from './command.js'
@@ -22,6 +28,8 @@ import type {
   ResourceBuilder,
   ResourceOperationSpec,
 } from './product.js'
+import type { ProductConfigSpec } from './config.js'
+import type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
 import type { ListShape, ObjectShape, Shape } from './shape.js'
 import type { JsonSchemaNode } from './types.js'
 import type { Vocabulary } from './vocabulary.js'
@@ -98,10 +106,46 @@ export type NormalizedBinding = {
   fields: NormalizedObjectShape
 }
 
+export type NormalizedConfigScopes = {
+  project: { discoverUpwards: boolean } | false
+  user: { xdg: boolean } | false
+}
+
+export type NormalizedConfig = {
+  files: string[]
+  scopes: NormalizedConfigScopes
+  fields: NormalizedObjectShape
+}
+
+export type NormalizedRuntimeValue =
+  | { kind: 'literal'; value: string }
+  | { kind: 'env'; envVar: string; fallback?: string }
+  | { kind: 'config'; path: string }
+
+export type NormalizedRemote = {
+  baseUrl: NormalizedRuntimeValue
+}
+
 export type NormalizedRequires = {
   auth: boolean
   contexts: string[]
   permissions: string[]
+}
+
+export type NormalizedEffects = {
+  kind: EffectKind
+  idempotent?: boolean
+}
+
+export type NormalizedPolicy = {
+  dangerous: boolean
+  requiresConfirmation: boolean
+  conformanceEligible: boolean
+}
+
+export type NormalizedCapabilityExample = {
+  summary?: string
+  command: string
 }
 
 export type ResourceOperationCapability = {
@@ -112,6 +156,9 @@ export type ResourceOperationCapability = {
   command: string[]
   summary: string
   description?: string
+  effects?: NormalizedEffects
+  policy?: NormalizedPolicy
+  examples: NormalizedCapabilityExample[]
   http?: NormalizedHttpSpec
   input?: NormalizedShape
   output: NormalizedShape
@@ -124,8 +171,12 @@ export type CommandCapability = {
   id: string
   family: 'workflow' | 'auth' | 'setup' | 'diagnostic' | 'dev'
   command: string[]
+  generated?: boolean
   summary: string
   description?: string
+  effects?: NormalizedEffects
+  policy?: NormalizedPolicy
+  examples: NormalizedCapabilityExample[]
   execution: NormalizedExecution
   input?: NormalizedShape
   output?: NormalizedShape
@@ -152,15 +203,45 @@ export type NormalizedTokenSource = {
   mode: 'any' | 'ci'
   label?: string
   scopes?: string[]
+} | {
+  kind: 'session'
+  profiles: boolean
+  refresh: boolean
+}
+
+export type NormalizedAuthCommands = {
+  login?: string
+  logout?: string
+  switch?: string
+  whoami?: string
+}
+
+export type NormalizedAuthIdentity = {
+  http: NormalizedHttpSpec
+  subject: string
+  label?: string
 }
 
 export type NormalizedAuth =
   | { kind: 'none' }
   | {
-      kind: 'bearer' | 'apiKey'
+      kind: 'bearer' | 'apiKey' | 'oauthDevice'
       id: string
       header?: string
+      tokenKind?: 'bearer' | 'apiKey'
       tokenSources: NormalizedTokenSource[]
+      commands?: NormalizedAuthCommands
+      identity?: NormalizedAuthIdentity
+      oauthDevice?: {
+        clientId: string
+        endpoints: {
+          deviceAuthorization: string
+          token: string
+          revoke?: string
+        }
+        scopes?: string[]
+      }
+      session?: { enabled: boolean; profiles: boolean }
     }
 
 export type NormalizedContextSelect = {
@@ -198,22 +279,21 @@ export type Catalog = {
   auth: NormalizedAuth
   permissions: NormalizedPermission[]
   contexts: NormalizedContext[]
+  config?: NormalizedConfig
+  remote?: NormalizedRemote
   resources: NormalizedResource[]
   bindings: NormalizedBinding[]
   capabilities: Capability[]
 }
 
 export function normalizeProduct(product: Product): Catalog {
-  if (product.authSpec === undefined) {
-    throw new Error(
-      `Product '${product.id}' must declare an auth posture via .auth(Auth.none()|Auth.bearer(...)|Auth.apiKey(...)) before normalization.`,
-    )
-  }
-  const auth = normalizeAuth(product.authSpec)
+  const auth = normalizeAuth(product.authSpec ?? { kind: 'none' })
   const permissions = normalizePermissions(product.permissionSpecs)
   const permissionIds = new Set(permissions.map((p) => p.id))
   const contexts = product.contexts.map(normalizeContext)
   const contextIds = new Set(contexts.map((c) => c.id))
+  const config = product.configSpec ? normalizeConfig(product.configSpec) : undefined
+  const remote = product.remoteSpec ? normalizeRemote(product.remoteSpec) : undefined
   const resources = product.resources.map(normalizeResource)
   const resourceCapabilities = product.resources.flatMap((r) =>
     r.operations.map(({ verb, spec }) =>
@@ -223,6 +303,7 @@ export function normalizeProduct(product: Product): Catalog {
   const commandCapabilities = product.commands.map(({ id, spec }) =>
     normalizeCommand(id, spec, auth.kind !== 'none', contextIds, permissionIds),
   )
+  const authCapabilities = normalizeAuthCapabilities(auth, contexts)
   const bindings = product.bindings.map(normalizeBinding)
   return {
     kind: 'lili.catalog',
@@ -232,10 +313,51 @@ export function normalizeProduct(product: Product): Catalog {
     auth,
     permissions,
     contexts,
+    ...(config ? { config } : undefined),
+    ...(remote ? { remote } : undefined),
     resources,
     bindings,
-    capabilities: [...resourceCapabilities, ...commandCapabilities],
+    capabilities: [...resourceCapabilities, ...commandCapabilities, ...authCapabilities],
   }
+}
+
+function normalizeConfig(config: ProductConfigSpec): NormalizedConfig {
+  const fields = normalizeShape(config.fields)
+  if (fields.kind !== 'object') {
+    throw new Error(`Product config fields must be Shape.object(), got Shape.list`)
+  }
+  return {
+    files: config.files ? [...config.files] : [],
+    scopes: normalizeConfigScopes(config),
+    fields,
+  }
+}
+
+function normalizeConfigScopes(config: ProductConfigSpec): NormalizedConfigScopes {
+  const project = config.scopes?.project
+  const user = config.scopes?.user
+  return {
+    project: project === false
+      ? false
+      : { discoverUpwards: project === true || (typeof project === 'object' && project.discoverUpwards === true) },
+    user: user === true || (typeof user === 'object' && user.xdg === true)
+      ? { xdg: true }
+      : false,
+  }
+}
+
+function normalizeRemote(remote: ProductRemoteSpec): NormalizedRemote {
+  return { baseUrl: normalizeRuntimeValue(remote.baseUrl) }
+}
+
+function normalizeRuntimeValue(value: RuntimeValueSpec): NormalizedRuntimeValue {
+  if (value.kind === 'literal') return { kind: 'literal', value: value.value }
+  if (value.kind === 'env') {
+    const out: NormalizedRuntimeValue = { kind: 'env', envVar: value.envVar }
+    if (value.fallback !== undefined) out.fallback = value.fallback
+    return out
+  }
+  return { kind: 'config', path: value.path }
 }
 
 function normalizeAuth(spec: AuthSpec): NormalizedAuth {
@@ -246,11 +368,30 @@ function normalizeAuth(spec: AuthSpec): NormalizedAuth {
     id: spec.id,
     tokenSources,
   }
-  if (spec.header) out.header = spec.header
+  if (spec.kind === 'oauthDevice') {
+    out.tokenKind = spec.token.kind
+    if (spec.token.header) out.header = spec.token.header
+    if (spec.commands) out.commands = normalizeAuthCommands(spec.commands)
+    if (spec.identity) out.identity = normalizeAuthIdentity(spec.identity)
+    out.oauthDevice = {
+      clientId: spec.clientId,
+      endpoints: { ...spec.endpoints },
+      ...(spec.scopes ? { scopes: [...spec.scopes] } : undefined),
+    }
+  } else if (spec.header) out.header = spec.header
+  const sessionSource = tokenSources.find((source) => source.kind === 'session')
+  if (sessionSource) out.session = { enabled: true, profiles: sessionSource.profiles }
   return out
 }
 
 function normalizeTokenSource(source: TokenSource): NormalizedTokenSource {
+  if (source.kind === 'session') {
+    return {
+      kind: 'session',
+      profiles: source.profiles !== false,
+      refresh: source.refresh === true,
+    }
+  }
   const out: NormalizedTokenSource = {
     kind: 'env',
     envVar: source.envVar,
@@ -259,6 +400,77 @@ function normalizeTokenSource(source: TokenSource): NormalizedTokenSource {
   if (source.label) out.label = source.label
   if (source.scopes) out.scopes = [...source.scopes]
   return out
+}
+
+function normalizeAuthCommands(commands: AuthCommandSpec): NormalizedAuthCommands {
+  const out: NormalizedAuthCommands = {}
+  if (commands.login) out.login = commands.login
+  if (commands.logout) out.logout = commands.logout
+  if (commands.switch) out.switch = commands.switch
+  if (commands.whoami) out.whoami = commands.whoami
+  return out
+}
+
+function normalizeAuthIdentity(identity: AuthIdentitySpec): NormalizedAuthIdentity {
+  const out: NormalizedAuthIdentity = {
+    http: normalizeHttpSpec(identity.http),
+    subject: identity.subject,
+  }
+  if (identity.label) out.label = identity.label
+  return out
+}
+
+function normalizeAuthCapabilities(auth: NormalizedAuth, contexts: NormalizedContext[]): CommandCapability[] {
+  if (auth.kind === 'none' || !auth.commands) return []
+  const out: CommandCapability[] = []
+  const hasSession = auth.tokenSources.some((source) => source.kind === 'session')
+  if (auth.commands.whoami && (auth.identity || hasSession)) {
+    out.push(authCapability('auth.whoami', auth.commands.whoami, 'Show current authentication status', 'auth-session-read', true))
+  }
+  if (auth.commands.switch && hasSession && auth.session?.profiles && contexts.length > 0) {
+    out.push(authCapability('auth.switch', auth.commands.switch, 'Switch stored auth context', 'auth-context-write', false))
+  }
+  if (auth.commands.login && auth.kind === 'oauthDevice' && hasSession) {
+    out.push(authCapability('auth.login', auth.commands.login, 'Log in with OAuth device flow', 'auth-session-write', false))
+  }
+  if (auth.commands.logout && hasSession) {
+    out.push(authCapability('auth.logout', auth.commands.logout, 'Log out of stored auth session', 'auth-session-delete', false))
+  }
+  return out
+}
+
+function authCapability(
+  id: string,
+  command: string,
+  summary: string,
+  effect: EffectKind,
+  agent: boolean,
+): CommandCapability {
+  return {
+    kind: 'command',
+    id,
+    family: 'auth',
+    command: [command],
+    generated: true,
+    summary,
+    examples: [],
+    execution: { mode: 'local', handler: id, needs: [] },
+    effects: { kind: effect },
+    policy: {
+      dangerous: false,
+      requiresConfirmation: false,
+      conformanceEligible: false,
+    },
+    requires: { auth: false, contexts: [], permissions: [] },
+    surfaces: {
+      cli: true,
+      cliCommand: command,
+      docs: true,
+      dashboard: false,
+      agent,
+      openapi: false,
+    },
+  }
 }
 
 function normalizePermissions(specs: Readonly<Record<string, PermissionSpec>>): NormalizedPermission[] {
@@ -386,11 +598,14 @@ function normalizeResourceOperation(
     verb,
     command: [resourceId, verb],
     summary: spec.summary,
+    examples: normalizeExamples(spec.examples),
     output: normalizeShape(spec.output),
     requires: normalizeRequires(spec.requires, authEnabled, contextIds, permissionIds, id),
     surfaces: normalizeSurfacesForResourceOperation(spec.surfaces, http !== undefined),
   }
   if (spec.description) cap.description = spec.description
+  if (spec.effects) cap.effects = normalizeEffects(spec.effects)
+  if (spec.policy) cap.policy = normalizePolicy(spec.policy)
   if (http) cap.http = http
   if (spec.input) cap.input = normalizeShape(spec.input)
   return cap
@@ -410,14 +625,39 @@ function normalizeCommand(
     family: spec.family,
     command: [id],
     summary: spec.summary,
+    examples: normalizeExamples(spec.examples),
     execution,
     requires: normalizeRequires(spec.requires, authEnabled, contextIds, permissionIds, id),
     surfaces: normalizeSurfacesForCommand(spec.surfaces, execution),
   }
   if (spec.description) cap.description = spec.description
+  if (spec.effects) cap.effects = normalizeEffects(spec.effects)
+  if (spec.policy) cap.policy = normalizePolicy(spec.policy)
   if (spec.input) cap.input = normalizeShape(spec.input)
   if (spec.output) cap.output = normalizeShape(spec.output)
   return cap
+}
+
+function normalizeEffects(effects: EffectsSpec): NormalizedEffects {
+  const out: NormalizedEffects = { kind: effects.kind }
+  if (effects.idempotent !== undefined) out.idempotent = effects.idempotent
+  return out
+}
+
+function normalizePolicy(policy: PolicySpec): NormalizedPolicy {
+  return {
+    dangerous: policy.dangerous === true,
+    requiresConfirmation: policy.requiresConfirmation === true,
+    conformanceEligible: policy.conformanceEligible !== false,
+  }
+}
+
+function normalizeExamples(examples: readonly CapabilityExample[] | undefined): NormalizedCapabilityExample[] {
+  return (examples ?? []).map((example) => {
+    const out: NormalizedCapabilityExample = { command: example.command }
+    if (example.summary) out.summary = example.summary
+    return out
+  })
 }
 
 function normalizeExecution(execution: Execution): NormalizedExecution {
@@ -536,6 +776,7 @@ export function fieldToJsonSchema(field: NormalizedField): JsonSchemaNode {
   }
   if (field.description) base.description = field.description
   if (field.default !== undefined) base.default = field.default
+  if (field.configPath !== undefined) base['x-lili-config-path'] = field.configPath
   if (field.secret) base['x-lili-secret'] = true
   if (field.identifier) base['x-lili-identifier'] = true
   if (field.humanLabel) base['x-lili-human-label'] = true

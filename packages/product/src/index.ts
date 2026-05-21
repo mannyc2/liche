@@ -13,6 +13,21 @@ export type { GenerateOptions } from './generate-cli.js'
 export { generateOpenapi } from './generate-openapi.js'
 export type { GenerateOpenapiOptions } from './generate-openapi.js'
 
+export { generateCommandManifest } from './generate-command-manifest.js'
+export type { GenerateCommandManifestOptions } from './generate-command-manifest.js'
+
+export { generateMcpTools } from './generate-mcp-tools.js'
+export type { GenerateMcpToolsOptions } from './generate-mcp-tools.js'
+
+export { generateAgentReference } from './generate-agent-reference.js'
+export type { GenerateAgentReferenceOptions } from './generate-agent-reference.js'
+
+export { generateDocsReference } from './generate-docs-reference.js'
+export type { GenerateDocsReferenceOptions } from './generate-docs-reference.js'
+
+export { generateConfigSchema, shouldGenerateConfigSchema } from './generate-config-schema.js'
+export type { GenerateConfigSchemaOptions } from './generate-config-schema.js'
+
 export { generateToDir, checkAgainstDir } from './generate.js'
 export type {
   CheckResult,
@@ -41,7 +56,10 @@ export type { ListShape, ObjectShape } from './shape.js'
 export { Command } from './command.js'
 export type {
   CommandFamily,
+  CapabilityExample,
   CommandSpec,
+  EffectKind,
+  EffectsSpec,
   Execution,
   HttpBind,
   HttpMethod,
@@ -50,12 +68,24 @@ export type {
   LocalExecution,
   LocalInit,
   LocalNeed,
+  PolicySpec,
   RemoteHttpExecution,
   RemoteHttpInit,
   SurfaceHints,
   WorkflowInit,
   WorkflowStep,
 } from './command.js'
+
+export { Config } from './config.js'
+export type {
+  ConfigScopeSpec,
+  ConfigScopesSpec,
+  ProductConfigObjectInit,
+  ProductConfigSpec,
+} from './config.js'
+
+export { Runtime } from './runtime.js'
+export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
 
 export { Product, ResourceBuilder } from './product.js'
 export type {
@@ -74,7 +104,10 @@ export { Auth } from './auth.js'
 export type {
   AuthApiKeySpec,
   AuthBearerSpec,
+  AuthCommandSpec,
+  AuthIdentitySpec,
   AuthNoneSpec,
+  AuthOAuthDeviceSpec,
   AuthSpec,
   ContextEnvSpec,
   ContextRemoteSpec,
@@ -85,6 +118,7 @@ export type {
   PermissionSpec,
   ProductContextEntry,
   RequiresSpec,
+  SessionTokenSource,
   TokenSource,
   TokenSourceMode,
 } from './auth.js'
@@ -99,17 +133,24 @@ export type {
   CommandCapability,
   NormalizedAuth,
   NormalizedBinding,
+  NormalizedConfig,
+  NormalizedConfigScopes,
   NormalizedContext,
   NormalizedContextSelect,
   NormalizedExecution,
+  NormalizedCapabilityExample,
+  NormalizedEffects,
   NormalizedHttpBind,
   NormalizedHttpSpec,
   NormalizedListShape,
   NormalizedObjectShape,
   NormalizedPermission,
+  NormalizedPolicy,
   NormalizedProductScope,
   NormalizedRequires,
   NormalizedResource,
+  NormalizedRemote,
+  NormalizedRuntimeValue,
   NormalizedShape,
   NormalizedSurfaces,
   NormalizedTokenSource,

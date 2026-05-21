@@ -2,10 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
+  Config,
   Field,
   FieldBuilder,
   Product,
   ResourceBuilder,
+  Runtime,
   Shape,
 } from '../src/index.js'
 
@@ -61,6 +63,12 @@ describe('Field builder', () => {
     const f = Field.boolean('Validate without publishing').optional().default(false).toField()
     expect(f.default).toBe(false)
     expect('default' in f).toBe(true)
+  })
+
+  test('fromConfig() records the explicit config path without changing requiredness', () => {
+    const f = Field.string('Organization').optional().fromConfig('defaultOrg').toField()
+    expect(f.configPath).toBe('defaultOrg')
+    expect(f.required).toBe(false)
   })
 
   test('toField produces a plain record decoupled from the builder', () => {
@@ -236,6 +244,23 @@ describe('Product builder', () => {
     expect(product.description).toBe('Build and deploy serverless applications.')
     expect(product.scope).toEqual({ kind: 'account', param: 'account_id' })
   })
+
+  test('config() and remote() store product-level runtime declarations', () => {
+    const config = Config.object({
+      files: ['workers.jsonc'],
+      fields: Shape.object({
+        apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
+      }),
+      scopes: { project: { discoverUpwards: true }, user: false },
+    })
+    const remote = { baseUrl: Runtime.config('apiBaseUrl') }
+    const product = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+      .config(config)
+      .remote(remote)
+
+    expect(product.configSpec).toBe(config)
+    expect(product.remoteSpec).toBe(remote)
+  })
 })
 
 describe('Auth authoring API', () => {
@@ -286,6 +311,48 @@ describe('Auth authoring API', () => {
   test('Auth.token.env can carry known scopes for best-effort local scope checks', () => {
     const src = Auth.token.env('ACME_TOKEN', { scopes: ['cache.read'] })
     expect(src).toEqual({ kind: 'env', envVar: 'ACME_TOKEN', scopes: ['cache.read'] })
+  })
+
+  test('Auth.token.session enables file-backed profile storage', () => {
+    expect(Auth.token.session({ profiles: true })).toEqual({ kind: 'session', profiles: true })
+  })
+
+  test('Auth.oauthDevice captures endpoints, identity, commands, and session sources', () => {
+    const identity = Auth.identity({
+      http: { method: 'GET', path: '/me' },
+      subject: 'id',
+      label: 'email',
+    })
+    const commands = Auth.commands({ login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' })
+    expect(Auth.oauthDevice({
+      id: 'acme',
+      token: { kind: 'bearer' },
+      clientId: 'acme-cli',
+      endpoints: {
+        deviceAuthorization: 'https://auth.example.test/device',
+        token: 'https://auth.example.test/token',
+      },
+      sources: [Auth.token.env('ACME_TOKEN'), Auth.token.session({ profiles: true })],
+      identity,
+      commands,
+      scopes: ['cache.write'],
+    })).toEqual({
+      kind: 'oauthDevice',
+      id: 'acme',
+      token: { kind: 'bearer' },
+      clientId: 'acme-cli',
+      endpoints: {
+        deviceAuthorization: 'https://auth.example.test/device',
+        token: 'https://auth.example.test/token',
+      },
+      sources: [
+        { kind: 'env', envVar: 'ACME_TOKEN' },
+        { kind: 'session', profiles: true },
+      ],
+      identity,
+      commands,
+      scopes: ['cache.write'],
+    })
   })
 
   test('Auth.permission.scope returns a product permission backed by an OAuth scope', () => {

@@ -1,6 +1,8 @@
 import type { AuthSpec, ContextSpec, PermissionSpec, ProductContextEntry, RequiresSpec } from './auth.js'
-import type { CommandSpec, HttpSpec, SurfaceHints } from './command.js'
+import type { CapabilityExample, CommandSpec, EffectsSpec, HttpSpec, PolicySpec, SurfaceHints } from './command.js'
+import type { ProductConfigSpec } from './config.js'
 import type { FieldBuilder } from './field.js'
+import type { ProductRemoteSpec } from './runtime.js'
 import type { Shape } from './shape.js'
 import { DEFAULT_GENERATED_VOCABULARY, type Vocabulary } from './vocabulary.js'
 
@@ -28,6 +30,9 @@ export type ResourceInit = {
 export type ResourceOperationSpec = {
   summary: string
   description?: string
+  effects?: EffectsSpec
+  policy?: PolicySpec
+  examples?: readonly CapabilityExample[]
   http?: HttpSpec
   input?: Shape
   output: Shape
@@ -101,6 +106,8 @@ export class Product {
   #resources: ResourceBuilder[] = []
   #commands: ProductCommandEntry[] = []
   #bindings: BindingSpec[] = []
+  #config: ProductConfigSpec | undefined
+  #remote: ProductRemoteSpec | undefined
   #auth: AuthSpec | undefined
   #contexts: ProductContextEntry[] = []
   #permissions: Record<string, PermissionSpec> = {}
@@ -132,6 +139,22 @@ export class Product {
 
   binding(spec: BindingSpec): this {
     this.#bindings.push(spec)
+    return this
+  }
+
+  config(spec: ProductConfigSpec): this {
+    if (this.#config !== undefined) {
+      throw new Error(`Product '${this.id}' already declared config; only one config object is allowed.`)
+    }
+    this.#config = spec
+    return this
+  }
+
+  remote(spec: ProductRemoteSpec): this {
+    if (this.#remote !== undefined) {
+      throw new Error(`Product '${this.id}' already declared remote settings.`)
+    }
+    this.#remote = spec
     return this
   }
 
@@ -171,6 +194,14 @@ export class Product {
 
   get bindings(): readonly BindingSpec[] {
     return this.#bindings
+  }
+
+  get configSpec(): ProductConfigSpec | undefined {
+    return this.#config
+  }
+
+  get remoteSpec(): ProductRemoteSpec | undefined {
+    return this.#remote
   }
 
   get authSpec(): AuthSpec | undefined {

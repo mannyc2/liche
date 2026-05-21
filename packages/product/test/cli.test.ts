@@ -41,9 +41,11 @@ describe('li-product CLI', () => {
 
     const data = JSON.parse(result.stdout)
     expect(data).toEqual({
+      compileEntrypointPath: join(dir, 'lili.compile-entry.ts'),
       generatedPath: join(dir, 'lili.generated.ts'),
       manifestPath: join(dir, 'lili.generated.manifest.json'),
     })
+    expect(await Bun.file(data.compileEntrypointPath).exists()).toBe(true)
     expect(await Bun.file(data.generatedPath).exists()).toBe(true)
     expect(await Bun.file(data.manifestPath).exists()).toBe(true)
   })

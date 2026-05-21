@@ -19,6 +19,7 @@ export type NormalizedField = {
   humanLabel: boolean
   mutability: FieldMutability
   default?: unknown
+  configPath?: string
 }
 
 // Authoring builder. Mutable, chainable. Catalog normalization reads the final
@@ -35,6 +36,7 @@ export class FieldBuilder {
   #mutability: FieldMutability = 'mutable'
   #hasDefault = false
   #default?: unknown
+  #configPath?: string
 
   constructor(type: FieldType, description: string) {
     this.type = type
@@ -87,6 +89,11 @@ export class FieldBuilder {
     return this
   }
 
+  fromConfig(path: string): this {
+    this.#configPath = path
+    return this
+  }
+
   toField(): NormalizedField {
     const base: NormalizedField = {
       type: this.type,
@@ -99,6 +106,7 @@ export class FieldBuilder {
     }
     if (this.#values) (base as { values?: readonly string[] }).values = [...this.#values]
     if (this.#hasDefault) (base as { default?: unknown }).default = this.#default
+    if (this.#configPath) (base as { configPath?: string }).configPath = this.#configPath
     return base
   }
 }

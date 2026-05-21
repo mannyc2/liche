@@ -18,6 +18,7 @@ const ID_PATTERN = /^[a-z][a-zA-Z0-9]*(?:[.-][a-z][a-zA-Z0-9]*)*$/
 export function lintCatalog(catalog: Catalog): LintIssue[] {
   const issues: LintIssue[] = []
   lintProductHeader(catalog, issues)
+  lintConfig(catalog, issues)
   catalog.resources.forEach((resource, index) => {
     const path = `resources[${index}]`
     if (!hasText(resource.path)) {
@@ -39,6 +40,29 @@ export function lintCatalog(catalog: Catalog): LintIssue[] {
   const resourceIds = new Set(catalog.resources.map((r) => r.id))
   catalog.capabilities.forEach((cap, index) => lintCapability(cap, index, catalog, resourceIds, issues))
   return issues
+}
+
+function lintConfig(catalog: Catalog, issues: LintIssue[]): void {
+  if (!catalog.config) return
+  for (const [key, field] of Object.entries(catalog.config.fields.properties)) {
+    if (field.secret) {
+      issues.push({
+        code: 'config/no-secret-fields',
+        path: `config.fields.${key}`,
+        message: `Config field '${key}' is marked secret; use auth/session or env primitives for credentials`,
+      })
+    }
+  }
+  if (catalog.remote?.baseUrl.kind === 'config') {
+    const path = catalog.remote.baseUrl.path
+    if (!catalog.config.fields.properties[path]) {
+      issues.push({
+        code: 'catalog/remote-base-url',
+        path: 'remote.baseUrl',
+        message: `Remote base URL references unknown config field '${path}'`,
+      })
+    }
+  }
 }
 
 function lintProductHeader(catalog: Catalog, issues: LintIssue[]): void {
@@ -77,12 +101,58 @@ function lintCapability(
   } else {
     lintCommand(cap, base, catalog, issues)
   }
+  lintCapabilitySafety(cap, base, issues)
   if (cap.input) lintShapeReferences(cap.input, `${base}.input`, resourceIds, issues)
   if (cap.kind === 'resource-operation') {
     lintShapeReferences(cap.output, `${base}.output`, resourceIds, issues)
   } else if (cap.output) {
     lintShapeReferences(cap.output, `${base}.output`, resourceIds, issues)
   }
+}
+
+function lintCapabilitySafety(cap: Capability, base: string, issues: LintIssue[]): void {
+  if (!isExternallyAdvertised(cap)) return
+  if (!cap.effects) {
+    issues.push({
+      code: 'capability/effects-required',
+      path: `${base}.effects`,
+      message: `Capability '${cap.id}' is agent or conformance visible and must declare effects`,
+      recommendation: 'declare effects: { kind } so agents can distinguish read/write/delete/exec/auth-session behavior',
+    })
+  }
+  if (!cap.policy) {
+    issues.push({
+      code: 'capability/policy-required',
+      path: `${base}.policy`,
+      message: `Capability '${cap.id}' is agent or conformance visible and must declare safety policy`,
+      recommendation: 'declare policy with conformanceEligible and any dangerous/confirmation requirements',
+    })
+  }
+  if (cap.examples.length === 0) {
+    issues.push({
+      code: 'capability/examples-required',
+      path: `${base}.examples`,
+      message: `Capability '${cap.id}' is agent or conformance visible and must include at least one example`,
+    })
+  }
+  if (cap.effects?.kind === 'delete' && cap.policy && !cap.policy.dangerous) {
+    issues.push({
+      code: 'capability/policy-inconsistent',
+      path: `${base}.policy.dangerous`,
+      message: `Delete capability '${cap.id}' must be marked dangerous`,
+    })
+  }
+  if (cap.policy?.dangerous === true && cap.policy.requiresConfirmation !== true) {
+    issues.push({
+      code: 'capability/policy-inconsistent',
+      path: `${base}.policy.requiresConfirmation`,
+      message: `Dangerous capability '${cap.id}' must require confirmation`,
+    })
+  }
+}
+
+function isExternallyAdvertised(cap: Capability): boolean {
+  return cap.surfaces.agent || cap.surfaces.openapi
 }
 
 function lintResourceOperation(

@@ -10,7 +10,13 @@ export type EnvTokenSource = {
   scopes?: readonly string[]
 }
 
-export type TokenSource = EnvTokenSource
+export type SessionTokenSource = {
+  kind: 'session'
+  profiles?: boolean
+  refresh?: boolean
+}
+
+export type TokenSource = EnvTokenSource | SessionTokenSource
 
 export type AuthNoneSpec = { kind: 'none' }
 
@@ -28,7 +34,36 @@ export type AuthBearerSpec = {
   sources: TokenSource[]
 }
 
-export type AuthSpec = AuthNoneSpec | AuthApiKeySpec | AuthBearerSpec
+export type AuthIdentitySpec = {
+  http: HttpSpec
+  subject: string
+  label?: string
+}
+
+export type AuthCommandSpec = {
+  login?: string
+  logout?: string
+  switch?: string
+  whoami?: string
+}
+
+export type AuthOAuthDeviceSpec = {
+  kind: 'oauthDevice'
+  id: string
+  token: { kind: 'bearer' | 'apiKey'; header?: string }
+  clientId: string
+  endpoints: {
+    deviceAuthorization: string
+    token: string
+    revoke?: string
+  }
+  sources: TokenSource[]
+  identity?: AuthIdentitySpec
+  commands?: AuthCommandSpec
+  scopes?: readonly string[]
+}
+
+export type AuthSpec = AuthNoneSpec | AuthApiKeySpec | AuthBearerSpec | AuthOAuthDeviceSpec
 
 export type ContextSelectSpec = {
   flag?: string
@@ -77,12 +112,47 @@ export const Auth = {
     if (init.header) out.header = init.header
     return out
   },
+  oauthDevice(init: {
+    id: string
+    token: { kind: 'bearer' | 'apiKey'; header?: string }
+    clientId: string
+    endpoints: AuthOAuthDeviceSpec['endpoints']
+    sources: TokenSource[]
+    identity?: AuthIdentitySpec
+    commands?: AuthCommandSpec
+    scopes?: readonly string[]
+  }): AuthOAuthDeviceSpec {
+    const out: AuthOAuthDeviceSpec = {
+      kind: 'oauthDevice',
+      id: init.id,
+      token: { ...init.token },
+      clientId: init.clientId,
+      endpoints: { ...init.endpoints },
+      sources: [...init.sources],
+    }
+    if (init.identity) out.identity = init.identity
+    if (init.commands) out.commands = { ...init.commands }
+    if (init.scopes) out.scopes = [...init.scopes]
+    return out
+  },
+  commands(init: AuthCommandSpec): AuthCommandSpec {
+    return { ...init }
+  },
+  identity(init: AuthIdentitySpec): AuthIdentitySpec {
+    return { ...init, http: { ...init.http } }
+  },
   token: {
     env(envVar: string, opts?: { mode?: TokenSourceMode; label?: string; scopes?: readonly string[] }): EnvTokenSource {
       const out: EnvTokenSource = { kind: 'env', envVar }
       if (opts?.mode) out.mode = opts.mode
       if (opts?.label) out.label = opts.label
       if (opts?.scopes) out.scopes = [...opts.scopes]
+      return out
+    },
+    session(opts?: { profiles?: boolean; refresh?: boolean }): SessionTokenSource {
+      const out: SessionTokenSource = { kind: 'session' }
+      if (opts?.profiles !== undefined) out.profiles = opts.profiles
+      if (opts?.refresh !== undefined) out.refresh = opts.refresh
       return out
     },
   },

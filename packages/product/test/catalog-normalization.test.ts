@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
+  Config,
   Field,
   Product,
+  Runtime,
   Shape,
   buildAuthManifest,
   canonicalDigest,
@@ -36,6 +38,9 @@ function workersProduct() {
           .field('created_at', Field.datetime('Creation time').immutable().optional())
           .operation('list', {
             summary: 'List Worker scripts',
+            effects: { kind: 'read', idempotent: true },
+            policy: { conformanceEligible: true },
+            examples: [{ command: 'workers script list --json' }],
             http: { method: 'GET', path: '' },
             output: Shape.list('script'),
             requires: { permissions: ['workers:read'] },
@@ -46,6 +51,9 @@ function workersProduct() {
       'deploy',
       Command.workflow({
         summary: 'Deploy a Worker',
+        effects: { kind: 'exec', idempotent: false },
+        policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: false },
+        examples: [{ command: 'workers deploy --entrypoint src/index.ts --environment preview --json' }],
         input: Shape.object({
           entrypoint: Field.string('Entrypoint file'),
           environment: Field.string('Environment').optional(),
@@ -298,6 +306,63 @@ describe('Bindings', () => {
   })
 })
 
+describe('Product config and remote runtime values', () => {
+  test('config normalizes as a sibling of bindings with project/user scopes', () => {
+    const catalog = normalizeProduct(
+      Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+        .auth(Auth.none())
+        .config(Config.object({
+          files: ['workers.jsonc', 'workers.toml'],
+          fields: Shape.object({
+            apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
+            defaultOrg: Field.string('Default org').optional(),
+          }),
+          scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
+        }))
+        .binding({
+          key: 'kv_namespaces',
+          fields: Shape.object({ binding: Field.string('Binding'), id: Field.string('ID') }),
+        }),
+    )
+
+    expect(catalog.config?.files).toEqual(['workers.jsonc', 'workers.toml'])
+    expect(catalog.config?.scopes).toEqual({
+      project: { discoverUpwards: true },
+      user: { xdg: true },
+    })
+    expect(Object.keys(catalog.config!.fields.properties)).toEqual(['apiBaseUrl', 'defaultOrg'])
+    expect(catalog.bindings.map((b) => b.key)).toEqual(['kv_namespaces'])
+  })
+
+  test('remote base URLs normalize from literal, env, and config sources', () => {
+    const literal = normalizeProduct(
+      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
+        .remote({ baseUrl: Runtime.literal('https://api.example.test') }),
+    )
+    expect(literal.remote).toEqual({ baseUrl: { kind: 'literal', value: 'https://api.example.test' } })
+
+    const env = normalizeProduct(
+      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
+        .remote({ baseUrl: Runtime.env('P_API_URL', { fallback: 'https://fallback.example.test' }) }),
+    )
+    expect(env.remote).toEqual({
+      baseUrl: { kind: 'env', envVar: 'P_API_URL', fallback: 'https://fallback.example.test' },
+    })
+
+    const config = normalizeProduct(
+      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
+        .config(Config.object({
+          fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
+        }))
+        .remote({ baseUrl: Runtime.config('apiBaseUrl') }),
+    )
+    expect(config.remote).toEqual({ baseUrl: { kind: 'config', path: 'apiBaseUrl' } })
+  })
+})
+
 describe('JSON Schema projection', () => {
   test('field metadata projects into description, format, and x-lili-* extensions', () => {
     const idSchema = fieldToJsonSchema({
@@ -330,6 +395,11 @@ describe('JSON Schema projection', () => {
     expect(f['x-lili-secret']).toBe(true)
     expect(f['x-lili-human-label']).toBe(true)
     expect('x-lili-mutability' in f).toBe(false)
+  })
+
+  test('option config bindings project as x-lili-config-path', () => {
+    const f = Field.string('Organization').optional().fromConfig('defaultOrg').toField()
+    expect(fieldToJsonSchema(f)['x-lili-config-path']).toBe('defaultOrg')
   })
 
   test('enum and datetime types project type+format/enum lists', () => {
@@ -411,9 +481,45 @@ describe('Auth normalization', () => {
     })
   })
 
-  test('product without an auth declaration is rejected by normalizeProduct', () => {
+  test('Auth.oauthDevice normalizes session source, identity, commands, and generated auth capabilities', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.oauthDevice({
+        id: 'acme',
+        token: { kind: 'bearer' },
+        clientId: 'acme-cli',
+        endpoints: {
+          deviceAuthorization: 'https://auth.example.test/device',
+          token: 'https://auth.example.test/token',
+        },
+        sources: [Auth.token.env('ACME_TOKEN'), Auth.token.session({ profiles: true })],
+        identity: Auth.identity({ http: { method: 'GET', path: '/me' }, subject: 'id', label: 'email' }),
+        commands: Auth.commands({ login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' }),
+      }))
+      .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+    const catalog = normalizeProduct(product)
+    expect(catalog.auth).toMatchObject({
+      kind: 'oauthDevice',
+      id: 'acme',
+      tokenKind: 'bearer',
+      tokenSources: [
+        { kind: 'env', envVar: 'ACME_TOKEN', mode: 'any' },
+        { kind: 'session', profiles: true, refresh: false },
+      ],
+      session: { enabled: true, profiles: true },
+      commands: { login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' },
+      identity: { http: { method: 'GET', path: '/me', bind: { path: [], query: [], headers: {}, body: false } }, subject: 'id', label: 'email' },
+    })
+    expect(catalog.capabilities.filter((cap) => cap.kind === 'command' && cap.family === 'auth').map((cap) => cap.command[0])).toEqual([
+      'whoami',
+      'switch',
+      'login',
+      'logout',
+    ])
+  })
+
+  test('product without an auth declaration normalizes to no auth', () => {
     const product = Product.create({ id: 'leaky', name: 'L', version: '0.1.0' })
-    expect(() => normalizeProduct(product)).toThrow(/Auth\.none/)
+    expect(normalizeProduct(product).auth).toEqual({ kind: 'none' })
   })
 })
 
@@ -609,6 +715,38 @@ describe('Surface manifest auth metadata', () => {
       ],
       contexts: [{ id: 'org', source: 'env', flag: 'org', envVar: 'ACME_ORG_ID' }],
       requiredRuntimeCapabilities: ['env'],
+    })
+  })
+
+  test('OAuth device auth manifest records session storage and non-secret command metadata', () => {
+    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+      .auth(Auth.oauthDevice({
+        id: 'acme',
+        token: { kind: 'bearer' },
+        clientId: 'acme-cli',
+        endpoints: {
+          deviceAuthorization: 'https://auth.example.test/device',
+          token: 'https://auth.example.test/token',
+        },
+        sources: [Auth.token.env('ACME_TOKEN'), Auth.token.session({ profiles: true })],
+        commands: Auth.commands({ login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' }),
+      }))
+      .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+    expect(buildAuthManifest(normalizeProduct(product)).providers[0]).toMatchObject({
+      id: 'acme',
+      kind: 'oauthDevice',
+      credentialTransport: 'bearer',
+      modes: ['env', 'session', 'oauth-device'],
+      commands: { login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' },
+      envVars: [{ name: 'ACME_TOKEN', purpose: 'bearer-token', mode: 'any' }],
+      sessionStorage: {
+        used: true,
+        profiles: true,
+        storesAccessTokens: true,
+        storesRefreshTokens: false,
+        keychainRequired: false,
+      },
+      requiredRuntimeCapabilities: ['env', 'filesystem', 'tty-for-login'],
     })
   })
 })

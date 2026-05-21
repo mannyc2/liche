@@ -5,8 +5,11 @@ import type {
   CommandCapability,
   NormalizedAuth,
   NormalizedContext,
+  NormalizedHttpBind,
   NormalizedPermission,
+  NormalizedRuntimeValue,
   NormalizedShape,
+  NormalizedObjectShape,
   ResourceOperationCapability,
 } from './catalog.js'
 import type { JsonSchemaNode } from './types.js'
@@ -21,7 +24,7 @@ function neededContexts(cap: Capability): string[] {
 
 function authRuntimeUsed(catalog: Catalog): boolean {
   if (catalog.auth.kind === 'none') return false
-  return catalog.capabilities.some(needsAuthResolution)
+  return catalog.capabilities.some((cap) => needsAuthResolution(cap) || (cap.kind === 'command' && cap.family === 'auth'))
 }
 
 function contextRuntimeUsed(catalog: Catalog): boolean {
@@ -57,6 +60,8 @@ export function generateCli(catalog: Catalog, options: GenerateOptions): string 
 function renderAuthConstants(catalog: Catalog): string[] {
   const lines: string[] = []
   if (authRuntimeUsed(catalog) && catalog.auth.kind !== 'none') {
+    lines.push(`const PRODUCT_ID = ${q(catalog.product.id)}`)
+    lines.push(`const PROFILE_ENV_VAR = ${q(profileEnvVar(catalog.product.id))}`)
     lines.push(`const AUTH_PROVIDER = ${renderAuth(catalog.auth)} as const`)
   }
   if (contextRuntimeUsed(catalog) && catalog.contexts.length > 0) {
@@ -68,6 +73,9 @@ function renderAuthConstants(catalog: Catalog): string[] {
 function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
   const sources = auth.tokenSources
     .map((s) => {
+      if (s.kind === 'session') {
+        return `{ kind: 'session', profiles: ${s.profiles ? 'true' : 'false'}, refresh: ${s.refresh ? 'true' : 'false'} }`
+      }
       const fields = [`kind: 'env'`, `envVar: ${q(s.envVar)}`, `mode: ${q(s.mode)}`]
       if (s.label) fields.push(`label: ${q(s.label)}`)
       if (s.scopes) fields.push(`scopes: ${renderStringArray(s.scopes)}`)
@@ -76,7 +84,39 @@ function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
     .join(', ')
   const parts = [`id: ${q(auth.id)}`, `kind: ${q(auth.kind)}`]
   if (auth.header) parts.push(`header: ${q(auth.header)}`)
+  if (auth.tokenKind) parts.push(`tokenKind: ${q(auth.tokenKind)}`)
   parts.push(`tokenSources: [${sources}]`)
+  if (auth.session) parts.push(`session: { enabled: true, profiles: ${auth.session.profiles ? 'true' : 'false'} }`)
+  if (auth.commands) parts.push(`commands: ${renderAuthCommands(auth.commands)}`)
+  if (auth.oauthDevice) parts.push(`oauthDevice: ${renderOauthDevice(auth.oauthDevice)}`)
+  if (auth.identity) parts.push(`identity: ${renderIdentity(auth.identity)}`)
+  return `{ ${parts.join(', ')} }`
+}
+
+function renderAuthCommands(commands: Exclude<NormalizedAuth, { kind: 'none' }>['commands']): string {
+  const entries = Object.entries(commands ?? {})
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}: ${q(value as string)}`)
+  return `{ ${entries.join(', ')} }`
+}
+
+function renderOauthDevice(oauth: NonNullable<Exclude<NormalizedAuth, { kind: 'none' }>['oauthDevice']>): string {
+  const endpoints = [
+    `deviceAuthorization: ${q(oauth.endpoints.deviceAuthorization)}`,
+    `token: ${q(oauth.endpoints.token)}`,
+  ]
+  if (oauth.endpoints.revoke) endpoints.push(`revoke: ${q(oauth.endpoints.revoke)}`)
+  const parts = [`clientId: ${q(oauth.clientId)}`, `endpoints: { ${endpoints.join(', ')} }`]
+  if (oauth.scopes) parts.push(`scopes: ${renderStringArray(oauth.scopes)}`)
+  return `{ ${parts.join(', ')} }`
+}
+
+function renderIdentity(identity: NonNullable<Exclude<NormalizedAuth, { kind: 'none' }>['identity']>): string {
+  const parts = [
+    `http: { method: ${q(identity.http.method)}, path: ${q(identity.http.path)} }`,
+    `subject: ${q(identity.subject)}`,
+  ]
+  if (identity.label) parts.push(`label: ${q(identity.label)}`)
   return `{ ${parts.join(', ')} }`
 }
 
@@ -124,6 +164,7 @@ function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
   const out: ParsedHandler[] = []
   for (const cap of catalog.capabilities) {
     if (cap.kind !== 'command') continue
+    if (cap.family === 'auth') continue
     if (cap.execution.mode === 'local' || cap.execution.mode === 'hybrid-workflow') {
       out.push(parseHandler(cap.execution.handler))
     }
@@ -133,9 +174,17 @@ function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
 
 function renderImports(catalog: Catalog): string[] {
   const coreNames = new Set(['Cli', 'z'])
+  if (catalog.config) coreNames.add('Config')
+  if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
   if (authRuntimeUsed(catalog)) {
-    coreNames.add('applyAuth')
+    coreNames.add('createFileSessionStore')
     coreNames.add('resolveAuth')
+  }
+  if (catalog.capabilities.some(isAuthCommand)) {
+    coreNames.add('authSwitch')
+    coreNames.add('authWhoami')
+    coreNames.add('logoutAuthSession')
+    coreNames.add('oauthDeviceLogin')
   }
   if (contextRuntimeUsed(catalog)) {
     coreNames.add('resolveContext')
@@ -152,6 +201,16 @@ function renderImports(catalog: Catalog): string[] {
     out.push(`import { ${sorted} } from '${handlerModulePath(module)}'`)
   }
   return out
+}
+
+function hasHttpTransport(cap: Capability): boolean {
+  return cap.kind === 'resource-operation'
+    ? cap.http !== undefined
+    : cap.execution.mode === 'remote-http'
+}
+
+function isAuthCommand(cap: Capability): cap is CommandCapability & { family: 'auth' } {
+  return cap.kind === 'command' && cap.family === 'auth'
 }
 
 function renderCli(catalog: Catalog): string[] {
@@ -184,6 +243,7 @@ function renderCli(catalog: Catalog): string[] {
   lines.push(`  name: ${q(catalog.product.id)},`)
   lines.push(`  version: ${q(catalog.product.version)},`)
   lines.push(`  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },`)
+  if (catalog.config) lines.push(...renderConfigDeclaration('  ', catalog))
   lines.push(`})`)
   for (const varName of resourceVars) {
     lines.push(`  .command(${varName})`)
@@ -197,8 +257,9 @@ function renderCli(catalog: Catalog): string[] {
 }
 
 function renderCapability(indent: string, catalog: Catalog, cap: Capability): string[] {
+  if (isAuthCommand(cap)) return renderAuthCapability(indent, catalog, cap)
   const lines: string[] = []
-  const commandName = cap.kind === 'resource-operation' ? cap.verb : cap.id
+  const commandName = cap.kind === 'resource-operation' ? cap.verb : cap.command[0] ?? cap.id
   lines.push(`${indent}.command(${q(commandName)}, {`)
   if (cap.description) lines.push(`${indent}  description: ${q(cap.description)},`)
   const inputSchema = capabilityInputSchema(catalog, cap)
@@ -207,6 +268,8 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   const authMetadata = renderCommandAuthMetadata(catalog, cap)
   if (authMetadata) lines.push(`${indent}  auth: ${authMetadata},`)
   if (envSchema) lines.push(`${indent}  env: ${renderSchema(envSchema, `${indent}  `)},`)
+  const optionConfig = capabilityOptionConfig(cap)
+  if (optionConfig) lines.push(`${indent}  optionConfig: ${optionConfig},`)
   lines.push(`${indent}  options: ${renderSchema(inputSchema, `${indent}  `)},`)
   lines.push(`${indent}  output: ${renderSchema(outputSchema, `${indent}  `)},`)
   lines.push(`${indent}  async run(ctx) {`)
@@ -214,6 +277,109 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   lines.push(`${indent}  },`)
   lines.push(`${indent}})`)
   return lines
+}
+
+function renderAuthCapability(indent: string, catalog: Catalog, cap: CommandCapability): string[] {
+  const commandName = cap.command[0] ?? cap.id
+  const lines: string[] = []
+  lines.push(`${indent}.command(${q(commandName)}, {`)
+  lines.push(`${indent}  agent: ${cap.surfaces.agent ? 'true' : 'false'},`)
+  lines.push(`${indent}  description: ${q(cap.summary)},`)
+  if (cap.id === 'auth.switch') {
+    lines.push(`${indent}  options: ${renderSwitchOptions(catalog.contexts, `${indent}  `)},`)
+  } else if (cap.id === 'auth.logout') {
+    lines.push(`${indent}  options: z.object({ profile: z.string().optional(), all: z.boolean().optional() }),`)
+  } else {
+    lines.push(`${indent}  options: z.object({ profile: z.string().optional() }),`)
+  }
+  lines.push(`${indent}  output: ${renderAuthOutputSchema(cap.id)},`)
+  if (cap.id === 'auth.whoami') {
+    lines.push(`${indent}  auth: { required: false, status: 'requires-runtime-resolution', providerId: AUTH_PROVIDER.id },`)
+  }
+  lines.push(`${indent}  async run(ctx) {`)
+  lines.push(`${indent}    const sessionStore = createFileSessionStore()`)
+  lines.push(`${indent}    const profile = typeof ctx.options.profile === 'string' ? ctx.options.profile : undefined`)
+  if (cap.id === 'auth.whoami') {
+    lines.push(`${indent}    const data = await authWhoami({`)
+    lines.push(...renderAuthRuntimeArgs(`${indent}      `, catalog))
+    lines.push(`${indent}      profile,`)
+    lines.push(`${indent}      sessionStore,`)
+    lines.push(`${indent}    })`)
+  } else if (cap.id === 'auth.switch') {
+    lines.push(`${indent}    const data = await authSwitch({`)
+    lines.push(...renderAuthRuntimeArgs(`${indent}      `, catalog))
+    lines.push(`${indent}      contexts: CONTEXTS,`)
+    lines.push(`${indent}      profile,`)
+    lines.push(`${indent}      sessionStore,`)
+    lines.push(`${indent}      values: ctx.options as Record<string, string | undefined>,`)
+    lines.push(`${indent}    })`)
+  } else if (cap.id === 'auth.login') {
+    lines.push(`${indent}    const data = await oauthDeviceLogin({`)
+    lines.push(...renderAuthRuntimeArgs(`${indent}      `, catalog))
+    lines.push(`${indent}      interactive: ctx.isTty,`)
+    lines.push(`${indent}      profile,`)
+    lines.push(`${indent}      sessionStore,`)
+    lines.push(`${indent}    })`)
+  } else if (cap.id === 'auth.logout') {
+    lines.push(`${indent}    const data = await logoutAuthSession({`)
+    lines.push(...renderAuthRuntimeArgs(`${indent}      `, catalog))
+    lines.push(`${indent}      all: ctx.options.all === true,`)
+    lines.push(`${indent}      profile,`)
+    lines.push(`${indent}      sessionStore,`)
+    lines.push(`${indent}    })`)
+  }
+  lines.push(`${indent}    return ctx.ok(data, { execution: { mode: 'local', source: 'schema-default' } })`)
+  lines.push(`${indent}  },`)
+  lines.push(`${indent}})`)
+  return lines
+}
+
+function renderAuthRuntimeArgs(indent: string, catalog: Catalog): string[] {
+  const lines = [
+    `${indent}productId: PRODUCT_ID,`,
+    `${indent}provider: AUTH_PROVIDER,`,
+    `${indent}profileEnvVar: PROFILE_ENV_VAR,`,
+    `${indent}global: ctx.global,`,
+    `${indent}invocation: ctx.invocation,`,
+    `${indent}env: ctx.env as Record<string, string | undefined>,`,
+    `${indent}loginCommand: ${q(`${catalog.product.id} login`)},`,
+  ]
+  if (catalog.remote) lines.push(`${indent}baseUrl: ${renderRuntimeValue(catalog.remote.baseUrl)},`)
+  return lines
+}
+
+function renderSwitchOptions(contexts: NormalizedContext[], indent: string): string {
+  const entries = [`${indent}  profile: z.string().optional(),`]
+  for (const ctx of contexts) {
+    if (!ctx.select.flag) continue
+    entries.push(`${indent}  ${q(ctx.select.flag)}: z.string().optional(),`)
+  }
+  return `z.object({\n${entries.join('\n')}\n${indent}})`
+}
+
+function renderAuthOutputSchema(id: string): string {
+  const account = `z.object({ id: z.string(), label: z.string().optional() })`
+  const contexts = `z.record(z.string(), z.string())`
+  if (id === 'auth.switch') {
+    return `z.object({ profile: z.string(), contexts: ${contexts} })`
+  }
+  if (id === 'auth.logout') {
+    return `z.object({ authenticated: z.boolean(), deleted: z.number(), profile: z.string().optional() })`
+  }
+  const fields = [
+    `authenticated: z.boolean()`,
+    `source: z.enum(['env', 'session']).optional()`,
+    `profile: z.string().optional()`,
+    `account: ${account}.optional()`,
+    `contexts: ${contexts}.optional()`,
+    `expiresAt: z.string().optional()`,
+    `refreshAvailable: z.boolean().optional()`,
+  ]
+  if (id === 'auth.login') {
+    fields.push(`verificationUri: z.string().optional()`)
+    fields.push(`userCode: z.string().optional()`)
+  }
+  return `z.object({ ${fields.join(', ')} })`
 }
 
 function capabilityInputSchema(catalog: Catalog, cap: Capability): JsonSchemaNode {
@@ -243,16 +409,28 @@ function capabilityInputSchema(catalog: Catalog, cap: Capability): JsonSchemaNod
 function capabilityEnvSchema(catalog: Catalog, cap: Capability): JsonSchemaNode | undefined {
   const envVars = new Set<string>()
   if (needsAuthResolution(cap) && catalog.auth.kind !== 'none') {
-    for (const source of catalog.auth.tokenSources) envVars.add(source.envVar)
+    for (const source of catalog.auth.tokenSources) {
+      if (source.kind === 'env') envVars.add(source.envVar)
+    }
   }
   for (const ctxId of cap.requires.contexts) {
     const ctx = catalog.contexts.find((c) => c.id === ctxId)
     if (ctx?.select.env) envVars.add(ctx.select.env)
   }
+  if (catalog.remote?.baseUrl.kind === 'env' && hasHttpTransport(cap)) envVars.add(catalog.remote.baseUrl.envVar)
   if (envVars.size === 0) return undefined
   const properties: Record<string, JsonSchemaNode> = {}
   for (const envVar of [...envVars].sort()) properties[envVar] = { type: 'string' }
   return { type: 'object', properties }
+}
+
+function capabilityOptionConfig(cap: Capability): string | undefined {
+  if (!cap.input || cap.input.kind !== 'object') return undefined
+  const entries = Object.entries(cap.input.properties)
+    .filter(([, field]) => field.configPath !== undefined)
+    .map(([key, field]) => `${q(key)}: ${q(field.configPath!)}`)
+    .sort()
+  return entries.length ? `{ ${entries.join(', ')} }` : undefined
 }
 
 function capabilityOutputSchema(catalog: Catalog, cap: Capability): JsonSchemaNode {
@@ -275,6 +453,7 @@ function shapeToJsonSchema(catalog: Catalog, shape: NormalizedShape): JsonSchema
 function renderCapabilityRun(indent: string, catalog: Catalog, cap: Capability): string[] {
   const preamble = renderAuthPreamble(indent, catalog, cap)
   if (cap.kind === 'resource-operation') {
+    if (cap.http && catalog.remote) return renderRemoteCall(indent, catalog, cap, cap.http, preamble)
     return [
       ...preamble,
       `${indent}return ctx.error({`,
@@ -285,6 +464,7 @@ function renderCapabilityRun(indent: string, catalog: Catalog, cap: Capability):
   }
   const mode = cap.execution.mode
   if (mode === 'remote-http') {
+    if (catalog.remote) return renderRemoteCall(indent, catalog, cap, cap.execution.http, preamble)
     return [
       ...preamble,
       `${indent}return ctx.error({`,
@@ -301,11 +481,44 @@ function renderCapabilityRun(indent: string, catalog: Catalog, cap: Capability):
   ]
 }
 
+function renderRemoteCall(
+  indent: string,
+  catalog: Catalog,
+  cap: Capability,
+  http: NonNullable<ResourceOperationCapability['http']>,
+  preamble: string[],
+): string[] {
+  const inputExpr = neededContexts(cap).length > 0
+    ? `{ ...(ctx.options as Record<string, unknown>), ...context }`
+    : `ctx.options as Record<string, unknown>`
+  const authExpr = needsAuthResolution(cap)
+    ? `credential ? { kind: 'resolved', credential } : { kind: 'none' }`
+    : `{ kind: 'none' }`
+  return [
+    ...preamble,
+    `${indent}const data = await callHttpOperation({`,
+    `${indent}  id: ${q(cap.id)},`,
+    `${indent}  baseUrl: ${renderRuntimeValue(catalog.remote!.baseUrl)},`,
+    `${indent}  auth: ${authExpr},`,
+    `${indent}  method: ${q(http.method)},`,
+    `${indent}  path: ${q(http.path)},`,
+    `${indent}  bind: ${renderHttpBind(http.bind)},`,
+    `${indent}  input: ${inputExpr},`,
+    `${indent}  inputFields: ${renderStringArray(inputFieldNames(catalog, cap))},`,
+    `${indent}  output: ${renderSchema(capabilityOutputSchema(catalog, cap), `${indent}  `)},`,
+    `${indent}  env: ctx.env as Record<string, string | undefined>,`,
+    `${indent}})`,
+    `${indent}return ctx.ok(data, { execution: { mode: 'remote-http', source: 'schema-default' } })`,
+  ]
+}
+
 function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): string[] {
   const lines: string[] = []
   if (needsAuthResolution(cap)) {
+    lines.push(`${indent}const sessionStore = createFileSessionStore()`)
     lines.push(`${indent}const credential = await resolveAuth({`)
     lines.push(`${indent}  provider: AUTH_PROVIDER,`)
+    lines.push(`${indent}  productId: PRODUCT_ID,`)
     lines.push(`${indent}  required: true,`)
     if (cap.requires.permissions.length > 0) {
       lines.push(`${indent}  requiredPermissions: ${renderStringArray(cap.requires.permissions)},`)
@@ -315,10 +528,21 @@ function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): 
       lines.push(`${indent}  requiredScopes: ${renderStringArray(requiredScopes)},`)
     }
     lines.push(`${indent}  invocation: ctx.invocation,`)
+    lines.push(`${indent}  profile: ctx.global.profile,`)
+    lines.push(`${indent}  profileEnvVar: PROFILE_ENV_VAR,`)
+    lines.push(`${indent}  nonInteractive: ctx.global.nonInteractive,`)
+    lines.push(`${indent}  noSession: ctx.global.noSession,`)
     lines.push(`${indent}  env: ctx.env as Record<string, string | undefined>,`)
+    lines.push(`${indent}  loginCommand: ${q(`${catalog.product.id} login`)},`)
+    lines.push(`${indent}  sessionStore,`)
     lines.push(`${indent}})`)
   }
   if (neededContexts(cap).length > 0) {
+    if (needsAuthResolution(cap)) {
+      lines.push(`${indent}const storedProfile = !ctx.global.noSession && (credential?.source === 'session' || ctx.global.profile)`)
+      lines.push(`${indent}  ? await sessionStore.loadProfile(PRODUCT_ID, AUTH_PROVIDER.id, credential?.profile ?? ctx.global.profile ?? 'default')`)
+      lines.push(`${indent}  : undefined`)
+    }
     const required = neededContexts(cap).map((c) => q(c)).join(', ')
     lines.push(`${indent}const context = await resolveContext({`)
     lines.push(`${indent}  contexts: CONTEXTS,`)
@@ -327,17 +551,71 @@ function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): 
     lines.push(`${indent}  env: ctx.env as Record<string, string | undefined>,`)
     if (needsAuthResolution(cap)) {
       lines.push(`${indent}  providerId: AUTH_PROVIDER.id,`)
+      lines.push(`${indent}  credentialSource: credential?.source ?? 'none',`)
+      lines.push(`${indent}  profile: storedProfile,`)
+      lines.push(`${indent}  profileExplicit: ctx.global.profile !== undefined,`)
     }
     lines.push(`${indent}})`)
   }
   if (needsAuthResolution(cap)) {
-    lines.push(`${indent}const headers = new Headers()`)
-    lines.push(`${indent}if (credential) applyAuth(headers, credential)`)
   }
-  // Mark intentionally-unused locals so the stub doesn't blow up under noUnusedLocals.
-  if (needsAuthResolution(cap)) lines.push(`${indent}void headers`)
-  if (neededContexts(cap).length > 0) lines.push(`${indent}void context`)
+  // Mark intentionally-unused locals so stubs don't blow up under noUnusedLocals.
+  if (!hasHttpTransport(cap) && needsAuthResolution(cap)) lines.push(`${indent}void credential`)
+  if (!hasHttpTransport(cap) && neededContexts(cap).length > 0) lines.push(`${indent}void context`)
   return lines
+}
+
+function renderConfigDeclaration(indent: string, catalog: Catalog): string[] {
+  const config = catalog.config!
+  const lines = [`${indent}config: Config.object({`]
+  if (config.files.length > 0) lines.push(`${indent}  files: ${renderStringArray(config.files)},`)
+  lines.push(`${indent}  schema: ${renderStrictObjectSchema(config.fields, `${indent}  `)},`)
+  lines.push(`${indent}  scopes: ${renderConfigScopes(config.scopes)},`)
+  lines.push(`${indent}}),`)
+  return lines
+}
+
+function renderConfigScopes(scopes: NonNullable<Catalog['config']>['scopes']): string {
+  const project = scopes.project === false
+    ? 'false'
+    : `{ discoverUpwards: ${scopes.project.discoverUpwards ? 'true' : 'false'} }`
+  const user = scopes.user === false ? 'false' : `{ xdg: ${scopes.user.xdg ? 'true' : 'false'} }`
+  return `{ project: ${project}, user: ${user} }`
+}
+
+function renderStrictObjectSchema(shape: NormalizedObjectShape, indent: string): string {
+  const schema = renderSchema(shape.jsonSchema, indent)
+  return schema.startsWith('z.object(') ? `z.strictObject(${schema.slice('z.object('.length)}` : schema
+}
+
+function renderRuntimeValue(value: NormalizedRuntimeValue): string {
+  if (value.kind === 'literal') return q(value.value)
+  if (value.kind === 'env') {
+    const parts = [`envVar: ${q(value.envVar)}`]
+    if (value.fallback !== undefined) parts.push(`literal: ${q(value.fallback)}`)
+    return `{ ${parts.join(', ')} }`
+  }
+  return `ctx.config[${q(value.path)}] as string`
+}
+
+function renderHttpBind(bind: NormalizedHttpBind): string {
+  const parts: string[] = []
+  if (bind.path.length > 0) parts.push(`path: ${renderStringArray(bind.path)}`)
+  if (bind.query.length > 0) parts.push(`query: ${renderStringArray(bind.query)}`)
+  const headerEntries = Object.entries(bind.headers)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([key, value]) => `${q(key)}: ${q(String(value))}`)
+  if (headerEntries.length > 0) parts.push(`headers: { ${headerEntries.join(', ')} }`)
+  if (bind.body === true) parts.push(`body: true`)
+  else if (Array.isArray(bind.body) && bind.body.length > 0) parts.push(`body: ${renderStringArray(bind.body)}`)
+  else parts.push(`body: false`)
+  return `{ ${parts.join(', ')} }`
+}
+
+function inputFieldNames(catalog: Catalog, cap: Capability): string[] {
+  if (!cap.input) return []
+  const schema = shapeToJsonSchema(catalog, cap.input)
+  return Object.keys(schema.properties ?? {}).sort()
 }
 
 function requiredScopesFor(permissions: NormalizedPermission[], cap: Capability): string[] {
@@ -360,7 +638,7 @@ function renderCommandAuthMetadata(catalog: Catalog, cap: Capability): string | 
   ]
   if (cap.requires.auth && catalog.auth.kind !== 'none') {
     fields.push(`providerId: ${q(catalog.auth.id)}`)
-    fields.push(`envVars: ${renderStringArray(catalog.auth.tokenSources.map((s) => s.envVar))}`)
+    fields.push(`envVars: ${renderStringArray(catalog.auth.tokenSources.flatMap((s) => s.kind === 'env' ? [s.envVar] : []))}`)
   }
   const contexts = cap.requires.contexts.map((ctxId) => {
     const ctx = catalog.contexts.find((c) => c.id === ctxId)
@@ -434,6 +712,10 @@ function renderObjectSchema(node: JsonSchemaNode, indent: string): string {
 
 function q(s: string): string {
   return `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+}
+
+function profileEnvVar(productId: string): string {
+  return `${productId.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase()}_PROFILE`
 }
 
 function sanitizeIdent(name: string): string {

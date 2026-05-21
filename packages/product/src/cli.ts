@@ -51,6 +51,7 @@ export const cli = Cli.create('li-product', {
 
     const result = await generateToDir(product, options)
     return {
+      compileEntrypointPath: result.compileEntrypointPath,
       generatedPath: result.generatedPath,
       manifestPath: result.manifestPath,
     }

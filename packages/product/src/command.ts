@@ -32,6 +32,33 @@ export type SurfaceHints = {
   openapi?: boolean
 }
 
+export type EffectKind =
+  | 'read'
+  | 'write'
+  | 'delete'
+  | 'exec'
+  | 'auth-session'
+  | 'auth-session-read'
+  | 'auth-session-write'
+  | 'auth-session-delete'
+  | 'auth-context-write'
+
+export type EffectsSpec = {
+  kind: EffectKind
+  idempotent?: boolean
+}
+
+export type PolicySpec = {
+  dangerous?: boolean
+  requiresConfirmation?: boolean
+  conformanceEligible?: boolean
+}
+
+export type CapabilityExample = {
+  summary?: string
+  command: string
+}
+
 export type CommandFamily = 'workflow' | 'auth' | 'setup' | 'diagnostic' | 'dev'
 
 export type RemoteHttpExecution = {
@@ -59,6 +86,9 @@ export type CommandSpec = {
   family: CommandFamily
   summary: string
   description?: string
+  effects?: EffectsSpec
+  policy?: PolicySpec
+  examples?: CapabilityExample[]
   input?: Shape
   output?: Shape
   requires?: RequiresSpec
@@ -69,6 +99,9 @@ export type CommandSpec = {
 type CommandShared = {
   summary: string
   description?: string
+  effects?: EffectsSpec
+  policy?: PolicySpec
+  examples?: readonly CapabilityExample[]
   input?: Shape
   output?: Shape
   requires?: RequiresSpec
@@ -116,6 +149,9 @@ export const Command = {
 function buildCommandSpec(shared: CommandShared, family: CommandFamily, execution: Execution): CommandSpec {
   const spec: CommandSpec = { family, summary: shared.summary, execution }
   if (shared.description) spec.description = shared.description
+  if (shared.effects) spec.effects = shared.effects
+  if (shared.policy) spec.policy = shared.policy
+  if (shared.examples) spec.examples = [...shared.examples]
   if (shared.input) spec.input = shared.input
   if (shared.output) spec.output = shared.output
   if (shared.requires) spec.requires = shared.requires

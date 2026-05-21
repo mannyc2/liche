@@ -3,12 +3,20 @@ import type { Catalog, NormalizedAuth, NormalizedContext } from './catalog.js'
 
 export type AuthManifestEntry = {
   id: string
-  kind: 'none' | 'bearer' | 'apiKey'
+  kind: 'none' | 'bearer' | 'apiKey' | 'oauthDevice'
   credentialTransport?: 'bearer' | 'apiKey'
-  modes: Array<'env'>
+  modes: Array<'env' | 'session' | 'oauth-device'>
+  commands?: { login?: string; logout?: string; switch?: string; whoami?: string }
   envVars: Array<{ name: string; purpose: 'bearer-token' | 'api-key'; mode: 'any' | 'ci' }>
   contexts: Array<{ id: string; envVar?: string; flag?: string; source: 'env' | 'remote' }>
-  requiredRuntimeCapabilities: Array<'env'>
+  sessionStorage?: {
+    keychainRequired: boolean
+    profiles: boolean
+    storesAccessTokens: boolean
+    storesRefreshTokens: boolean
+    used: boolean
+  }
+  requiredRuntimeCapabilities: Array<'env' | 'filesystem' | 'tty-for-login'>
 }
 
 export type ManifestAuth = {
@@ -59,15 +67,38 @@ function buildAuthEntry(auth: NormalizedAuth, contexts: NormalizedContext[]): Au
       requiredRuntimeCapabilities: [],
     }
   }
-  const purpose: 'bearer-token' | 'api-key' = auth.kind === 'apiKey' ? 'api-key' : 'bearer-token'
+  const transport: 'bearer' | 'apiKey' = auth.kind === 'apiKey' || auth.tokenKind === 'apiKey' ? 'apiKey' : 'bearer'
+  const purpose: 'bearer-token' | 'api-key' = transport === 'apiKey' ? 'api-key' : 'bearer-token'
+  const envSources = auth.tokenSources.filter((source) => source.kind === 'env')
+  const hasSession = auth.tokenSources.some((source) => source.kind === 'session')
+  const modes: AuthManifestEntry['modes'] = [
+    ...(envSources.length > 0 ? ['env' as const] : []),
+    ...(hasSession ? ['session' as const] : []),
+    ...(auth.kind === 'oauthDevice' ? ['oauth-device' as const] : []),
+  ]
+  const runtime: AuthManifestEntry['requiredRuntimeCapabilities'] = [
+    ...(envSources.length > 0 ? ['env' as const] : []),
+    ...(hasSession ? ['filesystem' as const] : []),
+    ...(auth.kind === 'oauthDevice' ? ['tty-for-login' as const] : []),
+  ]
   return {
     id: auth.id,
     kind: auth.kind,
-    credentialTransport: auth.kind,
-    modes: ['env'],
-    envVars: auth.tokenSources.map((s) => ({ name: s.envVar, purpose, mode: s.mode })),
+    credentialTransport: transport,
+    modes,
+    ...(auth.commands ? { commands: auth.commands } : undefined),
+    envVars: envSources.map((s) => ({ name: s.envVar, purpose, mode: s.mode })),
     contexts: contextEntries,
-    requiredRuntimeCapabilities: ['env'],
+    ...(hasSession ? {
+      sessionStorage: {
+        used: true,
+        profiles: auth.session?.profiles === true,
+        storesAccessTokens: true,
+        storesRefreshTokens: false,
+        keychainRequired: false,
+      },
+    } : undefined),
+    requiredRuntimeCapabilities: runtime,
   }
 }
 

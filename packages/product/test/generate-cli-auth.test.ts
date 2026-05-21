@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
+import { Auth, Command, Product, Runtime, canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
+import type { RuntimeProduct } from '../src/index.js'
 import workersAuthProduct from './fixtures/workers-auth.product.js'
 import workersProduct from './fixtures/workers.product.js'
 
-function generate(product: typeof workersAuthProduct): string {
+function generate(product: RuntimeProduct): string {
   const catalog = normalizeProduct(product)
   const inputDigest = canonicalDigest(catalog)
   const optionsDigest = canonicalDigest({
@@ -21,11 +22,46 @@ function generate(product: typeof workersAuthProduct): string {
   })
 }
 
+function oauthProduct(): RuntimeProduct {
+  return Product.create({
+    id: 'workers-oauth',
+    name: 'Workers OAuth',
+    version: '1.0.0',
+    description: 'Workers fixture with OAuth device login and file sessions.',
+  })
+    .remote({ baseUrl: Runtime.literal('https://api.example.test') })
+    .auth(Auth.oauthDevice({
+      id: 'acme',
+      token: { kind: 'bearer' },
+      clientId: 'acme-cli',
+      endpoints: {
+        deviceAuthorization: 'https://auth.example.test/device',
+        token: 'https://auth.example.test/token',
+      },
+      sources: [
+        Auth.token.env('ACME_TOKEN', { label: 'Bearer token' }),
+        Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' }),
+        Auth.token.session({ profiles: true }),
+      ],
+      identity: Auth.identity({ http: { method: 'GET', path: '/me' }, subject: 'id', label: 'email' }),
+      commands: Auth.commands({ login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' }),
+    }))
+    .permissions({
+      'cache:write': Auth.permission.scope('cache.write'),
+    })
+    .context('org', Auth.context.env({ label: 'Organization', select: { flag: 'org', env: 'ACME_ORG_ID' } }))
+    .command('purge', Command.remoteHttp({
+      summary: 'Purge cache for an org',
+      http: { method: 'POST', path: '/orgs/{org_id}/purge_cache' },
+      requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
+    }))
+}
+
 describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertions', () => {
-  test('imports applyAuth, resolveAuth, resolveContext alongside Cli and z', () => {
+  test('imports resolveAuth and resolveContext alongside Cli and z', () => {
     const source = generate(workersAuthProduct)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, applyAuth, resolveAuth, resolveContext, z')
+    expect(importLine?.[1]).toBe('Cli, createFileSessionStore, resolveAuth, resolveContext, z')
   })
 
   test('emits AUTH_PROVIDER constant carrying id, kind, header (when present), and token sources', () => {
@@ -68,8 +104,8 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).toMatch(
       /const context = await resolveContext\(\{[\s\S]*?contexts: CONTEXTS,[\s\S]*?required: \['org'\],[\s\S]*?explicit: ctx\.options[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?providerId: AUTH_PROVIDER\.id,[\s\S]*?\}\)/,
     )
-    expect(source).toContain('const headers = new Headers()')
-    expect(source).toContain('if (credential) applyAuth(headers, credential)')
+    expect(source).not.toContain('applyAuth')
+    expect(source).not.toContain('const headers = new Headers()')
     expect(source).toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
   })
 
@@ -102,7 +138,27 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('resolveAuth')
     expect(source).not.toContain('applyAuth')
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, z')
+    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, z')
+  })
+
+  test('OAuth/session product emits file-session auth commands and OAuth runtime metadata', () => {
+    const source = generate(oauthProduct())
+    expect(source).toContain(`const PRODUCT_ID = 'workers-oauth'`)
+    expect(source).toContain(`const PROFILE_ENV_VAR = 'WORKERS_OAUTH_PROFILE'`)
+    expect(source).toContain(`{ kind: 'session', profiles: true, refresh: false }`)
+    expect(source).toContain(`oauthDevice: { clientId: 'acme-cli'`)
+    expect(source).toContain(`identity: { http: { method: 'GET', path: '/me' }, subject: 'id', label: 'email' }`)
+    expect(source).toContain(`.command('whoami', {`)
+    expect(source).toContain(`agent: true`)
+    expect(source).toContain(`.command('switch', {`)
+    expect(source).toContain(`.command('login', {`)
+    expect(source).toContain(`.command('logout', {`)
+    expect(source).toContain(`agent: false`)
+    expect(source).toContain(`createFileSessionStore`)
+    expect(source).toContain(`oauthDeviceLogin`)
+    expect(source).toContain(`authWhoami`)
+    expect(source).toContain(`logoutAuthSession`)
+    expect(source).not.toContain('.reveal(')
   })
 })
 
@@ -124,11 +180,13 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       ACME_CI_TOKEN: process.env.ACME_CI_TOKEN,
       ACME_ORG_ID: process.env.ACME_ORG_ID,
       CI: process.env.CI,
+      LILI_HOME: process.env.LILI_HOME,
     }
     delete process.env.ACME_TOKEN
     delete process.env.ACME_CI_TOKEN
     delete process.env.ACME_ORG_ID
     delete process.env.CI
+    delete process.env.LILI_HOME
   })
 
   afterEach(() => {
@@ -149,6 +207,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     argv: string[],
     env: Record<string, string | undefined> = {},
     stdin?: AsyncIterable<string>,
+    isTty = false,
   ): Promise<{ stdout: string; exitCode: number }> {
     const mod = (await import(modulePath)) as {
       default: {
@@ -182,7 +241,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       exit: (code) => {
         exitCode = code
       },
-      isTty: false,
+      isTty,
       env,
     }
     if (stdin) opts.stdin = stdin
@@ -279,5 +338,109 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       requiredScopes: ['cache.write'],
     })
     expect(JSON.stringify(purge.auth)).not.toContain('tok-runtime')
+  })
+
+  test('generated OAuth login/whoami/switch/logout round-trip through file sessions', async () => {
+    writeFileSync(modulePath, generate(oauthProduct()), 'utf8')
+    process.env.LILI_HOME = join(dir, 'home')
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/device')) {
+        expect(init?.method).toBe('POST')
+        return Response.json({
+          device_code: 'device-1',
+          user_code: 'ABCD-EFGH',
+          verification_uri: 'https://auth.example.test/activate',
+          expires_in: 60,
+          interval: 1,
+        })
+      }
+      if (url.endsWith('/token')) {
+        return Response.json({ access_token: 'oauth-token', expires_in: 3600, scope: 'cache.write' })
+      }
+      if (url.endsWith('/me')) {
+        expect((init?.headers as Headers).get('authorization')).toBe('Bearer oauth-token')
+        return Response.json({ id: 'u_1', email: 'dev@example.test' })
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    }) as typeof fetch
+    try {
+      const login = await runGenerated(['login', '--json'], {}, undefined, true)
+      expect(login.exitCode).toBe(0)
+      expect(JSON.stringify(JSON.parse(login.stdout))).not.toContain('oauth-token')
+
+      const switched = await runGenerated(['switch', '--org', 'org_1', '--json'])
+      expect(switched.exitCode).toBe(0)
+      expect(JSON.parse(switched.stdout).data).toMatchObject({ profile: 'default', contexts: { org: 'org_1' } })
+
+      const whoami = await runGenerated(['whoami', '--json'])
+      expect(whoami.exitCode).toBe(0)
+      expect(JSON.parse(whoami.stdout).data).toMatchObject({
+        authenticated: true,
+        source: 'session',
+        profile: 'default',
+        account: { id: 'u_1', label: 'dev@example.test' },
+        contexts: { org: 'org_1' },
+      })
+      expect(whoami.stdout).not.toContain('oauth-token')
+
+      const logout = await runGenerated(['logout', '--json'])
+      expect(logout.exitCode).toBe(0)
+      expect(JSON.parse(logout.stdout).data).toMatchObject({ authenticated: false, deleted: 1, profile: 'default' })
+
+      const after = await runGenerated(['whoami', '--json'])
+      expect(JSON.parse(after.stdout).data).toEqual({ authenticated: false })
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  test('generated MCP path never uses stored session implicitly and hides interactive auth commands', async () => {
+    writeFileSync(modulePath, generate(oauthProduct()), 'utf8')
+    process.env.LILI_HOME = join(dir, 'home')
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url.endsWith('/device')) {
+        return Response.json({
+          device_code: 'device-1',
+          user_code: 'ABCD-EFGH',
+          verification_uri: 'https://auth.example.test/activate',
+          expires_in: 60,
+          interval: 1,
+        })
+      }
+      if (url.endsWith('/token')) return Response.json({ access_token: 'oauth-token', expires_in: 3600 })
+      if (url.endsWith('/me')) return Response.json({ id: 'u_1', email: 'dev@example.test' })
+      throw new Error(`unexpected fetch ${url}`)
+    }) as typeof fetch
+    try {
+      expect((await runGenerated(['login', '--json'], {}, undefined, true)).exitCode).toBe(0)
+      const listRequest = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+      const list = await runGenerated(['--mcp'], {}, asyncIter([`${listRequest}\n`]))
+      const toolNames = JSON.parse(list.stdout).result.tools.map((tool: { name: string }) => tool.name)
+      expect(toolNames).toContain('whoami')
+      expect(toolNames).toContain('purge')
+      expect(toolNames).not.toContain('login')
+      expect(toolNames).not.toContain('logout')
+      expect(toolNames).not.toContain('switch')
+
+      const callRequest = JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'purge',
+          arguments: { options: { org: 'org_1' } },
+        },
+      })
+      const call = await runGenerated(['--mcp'], {}, asyncIter([`${callRequest}\n`]))
+      const response = JSON.parse(call.stdout)
+      expect(response.result.isError).toBe(true)
+      expect(JSON.parse(response.result.content[0].text).code).toBe('AUTH_MISSING')
+    } finally {
+      globalThis.fetch = originalFetch
+    }
   })
 })

@@ -1,7 +1,5 @@
-import { join } from 'node:path'
 import {
   compileEntrypoint,
-  renderCompileEntrypoint,
 } from '@lili/build'
 import type {
   BunBuildFn,
@@ -49,12 +47,7 @@ export async function compileProduct(
   build?: BunBuildFn,
 ): Promise<CompileProductResult> {
   const generated = await generateToDir(product, options)
-  const generatedFileName = options.generatedFileName ?? 'lili.generated.ts'
-  const compileEntrypointPath = join(
-    options.outDir,
-    options.compileEntryFileName ?? 'lili.compile-entry.ts',
-  )
-  await Bun.write(compileEntrypointPath, renderCompileEntrypoint(generatedFileName))
+  const compileEntrypointPath = generated.compileEntrypointPath
 
   const compileResult = await compileEntrypoint(
     {
