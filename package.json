@@ -35,6 +35,7 @@
   },
   "scripts": {
     "check": "bun run --filter '*' check",
+    "examples:smoke": "bun test examples",
     "test": "bun run --filter '*' test",
     "test:core": "bun run --filter @lili/core test",
     "test:examples": "bun test examples"

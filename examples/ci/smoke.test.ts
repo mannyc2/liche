@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createCompilePlan } from '@lili/build'
 import { cli } from './src/cli.js'
 
 describe('ci release example', () => {
@@ -85,6 +86,38 @@ describe('ci release example', () => {
       'deployments list',
       'deployments promote',
     ])
+  })
+
+  test('documents a package-boundary compile plan through @lili/build', () => {
+    const plan = createCompilePlan({
+      entrypoint: join(import.meta.dir, 'src/cli.ts'),
+      outfile: join(tmpDir, 'shipyard'),
+      target: 'bun-linux-x64',
+      constants: {
+        releaseVersion: '0.1.0',
+        contractDigest: 'sha256:example',
+        sourceCommit: '0000000',
+        buildToolVersion: '0.0.0',
+      },
+      metafile: true,
+    })
+
+    expect(plan.flags).toMatchObject({
+      target: 'bun-linux-x64',
+      minify: true,
+      sourcemap: 'linked',
+      bytecode: true,
+      packages: 'bundle',
+    })
+    expect(plan.buildOptions).toMatchObject({
+      entrypoints: [join(import.meta.dir, 'src/cli.ts')],
+      compile: {
+        outfile: join(tmpDir, 'shipyard'),
+        target: 'bun-linux-x64',
+      },
+      metafile: true,
+    })
+    expect(plan.compileFlagsDigest).toMatch(/^sha256:/)
   })
 })
 

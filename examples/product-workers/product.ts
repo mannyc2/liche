@@ -17,6 +17,31 @@ export default Product.create({
     scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
   }))
   .remote({ baseUrl: Runtime.config('apiBaseUrl') })
+  .ops({
+    doctor: { packageManagers: ['bun', 'npm'] },
+    telemetry: {
+      enabledEnvVar: 'WORKERS_TELEMETRY',
+      fileEnvVar: 'WORKERS_TELEMETRY_FILE',
+    },
+    notices: {
+      updates: [{
+        id: 'workers-cli-0.2.0',
+        severity: 'info',
+        message: 'Workers CLI 0.2.0 is available on the stable channel.',
+        since: '2026-05-21',
+      }],
+      channels: [{
+        id: 'workers-next',
+        severity: 'info',
+        message: 'Use the next channel for generated remote command previews.',
+      }],
+      yanks: [{
+        id: 'workers-cli-0.1.0',
+        severity: 'warning',
+        message: 'Workers CLI 0.1.0 was yanked due to a packaging regression.',
+      }],
+    },
+  })
   .permissions({
     'workers:read': Auth.permission.scope('workers.read'),
     'workers:edit': Auth.permission.scope('workers.edit'),
@@ -36,6 +61,8 @@ export default Product.create({
         .field('created_at', Field.datetime('Creation time').immutable().optional())
         .operation('list', {
           summary: 'List Worker scripts',
+          effects: { kind: 'read', idempotent: true },
+          policy: { conformanceEligible: true },
           http: { method: 'GET', path: '' },
           output: Shape.list('script'),
           requires: { permissions: ['workers:read'] },

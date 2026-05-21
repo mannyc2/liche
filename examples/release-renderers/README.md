@@ -5,7 +5,7 @@ This example shows `@lili/releases` consuming a build record and verified final 
 Run the packaging command from the repository root:
 
 ```sh
-bun packages/releases/src/cli.ts package examples/release-renderers/build-record.json \
+li-release package examples/release-renderers/build-record.json \
   --config examples/release-renderers/lili.releases.json \
   --out examples/release-renderers/.tmp/release \
   --json

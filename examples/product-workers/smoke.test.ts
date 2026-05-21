@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkAgainstDir, generateToDir } from '@lili/product'
+import { checkAgainstDir, conformProduct, generateToDir } from '@lili/product'
 import product from './product.js'
 
 type GeneratedCliModule = {
@@ -40,9 +40,11 @@ describe('product-workers example', () => {
 
     expect(Object.keys(result.artifacts).sort()).toEqual([
       'agent-reference',
+      'catalog',
       'cli',
       'command-manifest',
       'config-schema',
+      'discovery',
       'docs-reference',
       'mcp-tools',
       'openapi',
@@ -113,6 +115,85 @@ describe('product-workers example', () => {
       })
     } finally {
       server.stop(true)
+    }
+  })
+
+  test('conformance runs against an owned fixture server', async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(new URL(request.url).pathname).toBe('/')
+        return Response.json([
+          { id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' },
+        ])
+      },
+    })
+
+    try {
+      const report = await conformProduct(product, {
+        baseUrl: server.url.origin,
+        capability: 'script.list',
+      })
+      expect(report.summary).toEqual({ passed: 1, failed: 0, skipped: 0, total: 1 })
+      expect(report.cases[0]).toMatchObject({
+        capability: 'script.list',
+        status: 'passed',
+        request: { method: 'GET' },
+        response: { status: 200 },
+      })
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('generated local ops expose diagnostics, notices, catalog, and opt-in telemetry', async () => {
+    const result = await generateToDir(product, { outDir, generatorVersion: 'example' })
+    const cli = await loadGenerated(result.generatedPath)
+
+    const doctor = await runGenerated(cli, ['doctor', '--json'], {
+      PATH: '/tmp/project/node_modules/.bin',
+    })
+    expect(doctor.exitCode).toBe(0)
+    expect(JSON.parse(doctor.stdout).data.checks.map((check: { id: string }) => check.id)).toEqual([
+      'path.present',
+      'path.local-bin',
+      'package-manager.bun',
+      'package-manager.npm',
+    ])
+
+    const catalog = await runGenerated(cli, ['catalog', '--json'])
+    expect(JSON.parse(catalog.stdout).data.ops.telemetry.enabledEnvVar).toBe('WORKERS_TELEMETRY')
+
+    const notices = await runGenerated(cli, ['notices', '--json'])
+    expect(JSON.parse(notices.stdout).data.yanks[0].id).toBe('workers-cli-0.1.0')
+
+    const telemetryFile = join(outDir, 'telemetry.jsonl')
+    const telemetry = await runGenerated(cli, ['telemetry', '--json'], {
+      WORKERS_TELEMETRY: '1',
+      WORKERS_TELEMETRY_FILE: telemetryFile,
+    })
+    expect(JSON.parse(telemetry.stdout).data).toEqual({
+      enabled: true,
+      sink: { kind: 'file', path: telemetryFile },
+      redaction: 'enabled',
+    })
+
+    const savedTelemetry = {
+      WORKERS_TELEMETRY: process.env.WORKERS_TELEMETRY,
+      WORKERS_TELEMETRY_FILE: process.env.WORKERS_TELEMETRY_FILE,
+    }
+    try {
+      process.env.WORKERS_TELEMETRY = '1'
+      process.env.WORKERS_TELEMETRY_FILE = telemetryFile
+      const deploy = await runGenerated(cli, ['deploy', '--entrypoint', 'src/index.ts', '--json'])
+      expect(deploy.exitCode).toBe(0)
+      const lines = readFileSync(telemetryFile, 'utf8').trim().split('\n')
+      expect(lines.some((line) => line.includes('command.completed'))).toBe(true)
+    } finally {
+      if (savedTelemetry.WORKERS_TELEMETRY === undefined) delete process.env.WORKERS_TELEMETRY
+      else process.env.WORKERS_TELEMETRY = savedTelemetry.WORKERS_TELEMETRY
+      if (savedTelemetry.WORKERS_TELEMETRY_FILE === undefined) delete process.env.WORKERS_TELEMETRY_FILE
+      else process.env.WORKERS_TELEMETRY_FILE = savedTelemetry.WORKERS_TELEMETRY_FILE
     }
   })
 })

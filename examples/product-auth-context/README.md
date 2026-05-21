@@ -5,7 +5,7 @@ This product demonstrates generated auth metadata and runtime credential/context
 Generate surfaces in place:
 
 ```sh
-bun packages/product/src/cli.ts generate examples/product-auth-context/product.ts --out examples/product-auth-context
+li-product generate examples/product-auth-context/product.ts --out examples/product-auth-context
 ```
 
 Run the generated CLI without credentials:
@@ -26,4 +26,4 @@ Run with CI-only token and env context:
 CI=true ACME_CI_TOKEN=tok_ci ACME_ORG_ID=acme bun examples/product-auth-context/run-generated.ts purge --zone zone-a --json
 ```
 
-The final command currently returns `REMOTE_NOT_IMPLEMENTED` after auth/context resolution succeeds. That is expected until remote transport lands.
+The final command returns `REMOTE_NOT_IMPLEMENTED` after auth/context resolution succeeds because this example intentionally omits a product remote base URL.
