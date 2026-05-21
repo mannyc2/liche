@@ -33,6 +33,7 @@ import type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
 import type { ListShape, ObjectShape, Shape } from './shape.js'
 import type { JsonSchemaNode } from './types.js'
 import type { Vocabulary } from './vocabulary.js'
+import { normalizeOpsSpec, type ProductNotice, type ProductPackageManager } from './ops.js'
 
 export type NormalizedHttpBind = {
   path: string[]
@@ -124,6 +125,22 @@ export type NormalizedRuntimeValue =
 
 export type NormalizedRemote = {
   baseUrl: NormalizedRuntimeValue
+}
+
+export type NormalizedOps = {
+  enabled: boolean
+  doctor: false | {
+    packageManagers: ProductPackageManager[]
+  }
+  telemetry: false | {
+    enabledEnvVar: string
+    fileEnvVar: string
+  }
+  notices: {
+    updates: ProductNotice[]
+    channels: ProductNotice[]
+    yanks: ProductNotice[]
+  }
 }
 
 export type NormalizedRequires = {
@@ -276,6 +293,7 @@ export type Catalog = {
     scope?: NormalizedProductScope
   }
   vocabulary: NormalizedVocabulary
+  ops: NormalizedOps
   auth: NormalizedAuth
   permissions: NormalizedPermission[]
   contexts: NormalizedContext[]
@@ -310,6 +328,7 @@ export function normalizeProduct(product: Product): Catalog {
     catalogVersion: 1,
     product: normalizeProductHeader(product),
     vocabulary: normalizeVocabulary(product.vocabulary),
+    ops: normalizeOpsSpec(product.opsSpec),
     auth,
     permissions,
     contexts,

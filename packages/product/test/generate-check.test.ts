@@ -17,6 +17,8 @@ const MCP_FILE = 'lili.generated.mcp.json'
 const AGENT_FILE = 'lili.generated.agent.md'
 const DOCS_FILE = 'lili.generated.docs.md'
 const CONFIG_FILE = 'lili.generated.config.schema.json'
+const CATALOG_FILE = 'lili.generated.catalog.json'
+const DISCOVERY_FILE = 'lili.generated.discovery.json'
 const MANIFEST_FILE = 'lili.generated.manifest.json'
 
 describe('generate --check drift detection', () => {
@@ -45,6 +47,8 @@ describe('generate --check drift detection', () => {
       'agent-reference',
       'docs-reference',
       'config-schema',
+      'catalog',
+      'discovery',
     ])
     expect(result.manifest.surfaces.map((surface) => surface.artifacts[0])).toEqual([
       GEN_FILE,
@@ -54,6 +58,8 @@ describe('generate --check drift detection', () => {
       AGENT_FILE,
       DOCS_FILE,
       CONFIG_FILE,
+      CATALOG_FILE,
+      DISCOVERY_FILE,
     ])
 
     const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
@@ -199,7 +205,7 @@ describe('generate --check drift detection', () => {
     expect(m.schema.version).toBe('1.0.0')
     expect(m.schema.digest).toMatch(/^sha256:[0-9a-f]{64}$/)
     expect(m.generatorVersion).toBe('0.0.0')
-    expect(m.surfaces).toHaveLength(7)
+    expect(m.surfaces).toHaveLength(9)
 
     const expectedInputDigest = canonicalDigest(normalizeProduct(product))
 
@@ -231,5 +237,9 @@ describe('generate --check drift detection', () => {
     expect(byId.get('docs-reference')?.artifacts).toEqual([DOCS_FILE])
     expect(byId.get('config-schema')?.source).toBe('catalog')
     expect(byId.get('config-schema')?.artifacts).toEqual([CONFIG_FILE])
+    expect(byId.get('catalog')?.source).toBe('catalog')
+    expect(byId.get('catalog')?.artifacts).toEqual([CATALOG_FILE])
+    expect(byId.get('discovery')?.source).toBe('catalog')
+    expect(byId.get('discovery')?.artifacts).toEqual([DISCOVERY_FILE])
   })
 })

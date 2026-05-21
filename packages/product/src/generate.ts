@@ -35,6 +35,10 @@ export type GenerateToDirOptions = {
   docsReferenceFileName?: string
   configSchemaSurfaceId?: string
   configSchemaFileName?: string
+  catalogSurfaceId?: string
+  catalogFileName?: string
+  discoverySurfaceId?: string
+  discoveryFileName?: string
 }
 
 export type GenerateArtifact = {
@@ -89,6 +93,10 @@ function prepareGeneration(product: Product, options: GenerateToDirOptions): Pre
   const docsReferenceFileName = options.docsReferenceFileName ?? 'lili.generated.docs.md'
   const configSchemaSurfaceId = options.configSchemaSurfaceId ?? 'config-schema'
   const configSchemaFileName = options.configSchemaFileName ?? 'lili.generated.config.schema.json'
+  const catalogSurfaceId = options.catalogSurfaceId ?? 'catalog'
+  const catalogFileName = options.catalogFileName ?? 'lili.generated.catalog.json'
+  const discoverySurfaceId = options.discoverySurfaceId ?? 'discovery'
+  const discoveryFileName = options.discoveryFileName ?? 'lili.generated.discovery.json'
   const manifestFileName = options.manifestFileName ?? 'lili.generated.manifest.json'
 
   const catalog: Catalog = normalizeProduct(product)
@@ -228,6 +236,32 @@ function prepareGeneration(product: Product, options: GenerateToDirOptions): Pre
       generationOptionsDigest: configSchemaGenerationOptionsDigest,
     })
   }
+  const catalogGenerationOptionsDigest = canonicalDigest({
+    surfaceId: catalogSurfaceId,
+    catalogFileName,
+    manifestFileName,
+  })
+  surfaces.push({
+    id: catalogSurfaceId,
+    source: 'catalog',
+    fileName: catalogFileName,
+    path: join(options.outDir, catalogFileName),
+    contents: `${JSON.stringify(catalog, null, 2)}\n`,
+    generationOptionsDigest: catalogGenerationOptionsDigest,
+  })
+  const discoveryGenerationOptionsDigest = canonicalDigest({
+    surfaceId: discoverySurfaceId,
+    discoveryFileName,
+    manifestFileName,
+  })
+  surfaces.push({
+    id: discoverySurfaceId,
+    source: 'catalog',
+    fileName: discoveryFileName,
+    path: join(options.outDir, discoveryFileName),
+    contents: `${JSON.stringify(discoveryArtifact(catalog), null, 2)}\n`,
+    generationOptionsDigest: discoveryGenerationOptionsDigest,
+  })
   assertDistinctSurfaceConfig(surfaces, compileEntryFileName)
 
   const manifest: GeneratedSurfaceManifest = {
@@ -254,6 +288,35 @@ function prepareGeneration(product: Product, options: GenerateToDirOptions): Pre
     manifest,
     manifestPath: join(options.outDir, manifestFileName),
     surfaces,
+  }
+}
+
+function discoveryArtifact(catalog: Catalog): Record<string, unknown> {
+  return {
+    product: catalog.product,
+    commands: catalog.capabilities
+      .filter((capability) => capability.surfaces.cli)
+      .map((capability) => ({
+        id: capability.id,
+        command: capability.command.join(' '),
+        kind: capability.kind,
+        summary: capability.summary,
+      })),
+    configFiles: catalog.config?.files ?? [],
+    ops: {
+      doctor: catalog.ops.doctor !== false,
+      telemetry: catalog.ops.telemetry !== false
+        ? {
+            enabledEnvVar: catalog.ops.telemetry.enabledEnvVar,
+            fileEnvVar: catalog.ops.telemetry.fileEnvVar,
+          }
+        : false,
+      notices: {
+        updates: catalog.ops.notices.updates.length,
+        channels: catalog.ops.notices.channels.length,
+        yanks: catalog.ops.notices.yanks.length,
+      },
+    },
   }
 }
 

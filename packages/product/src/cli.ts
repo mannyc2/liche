@@ -3,6 +3,7 @@ import { dirname, isAbsolute, resolve } from 'node:path'
 import { Cli, z } from '@lili/core'
 import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
+import { conformProduct, type ConformanceCase } from './conformance.js'
 import { checkAgainstDir, generateToDir } from './generate.js'
 import { Product } from './product.js'
 import { LI_PRODUCT_SKILL_INDEX, LI_PRODUCT_SKILL_MARKDOWN } from './skill.js'
@@ -17,6 +18,17 @@ async function loadProduct(productPath: string): Promise<Product> {
     throw new Error(`Module at ${absolute} does not default-export a Product.create() result`)
   }
   return product
+}
+
+async function loadFixtures(fixturePath: string | undefined): Promise<ConformanceCase[] | undefined> {
+  if (!fixturePath) return undefined
+  const absolute = isAbsolute(fixturePath) ? fixturePath : resolve(process.cwd(), fixturePath)
+  const mod = await import(absolute)
+  const fixtures = mod.default as unknown
+  if (!Array.isArray(fixtures)) {
+    throw new Error(`Module at ${absolute} must default-export a ConformanceCase[]`)
+  }
+  return fixtures as ConformanceCase[]
 }
 
 export const cli = Cli.create('li-product', {
@@ -51,6 +63,9 @@ export const cli = Cli.create('li-product', {
 
     const result = await generateToDir(product, options)
     return {
+      artifactPaths: Object.fromEntries(
+        Object.entries(result.artifacts).map(([id, artifact]) => [id, artifact.path]),
+      ),
       compileEntrypointPath: result.compileEntrypointPath,
       generatedPath: result.generatedPath,
       manifestPath: result.manifestPath,
@@ -102,6 +117,42 @@ export const cli = Cli.create('li-product', {
       entrypoint: result.plan.entrypoint,
       compileFlagsDigest: result.plan.compileFlagsDigest,
     }
+  },
+}).command('conform', {
+  alias: { baseUrl: 'u', fixture: 'f', report: 'r' },
+  args: z.object({ product: z.string() }),
+  options: z.object({
+    baseUrl: z.string().optional(),
+    capability: z.string().optional(),
+    fixture: z.string().optional(),
+    includeDestructive: z.boolean().default(false),
+    report: z.string().optional(),
+  }),
+  async run(ctx) {
+    const product = await loadProduct(resolve(process.cwd(), ctx.args.product))
+    const fixtures = await loadFixtures(ctx.options.fixture)
+    const conformOptions = {
+      env: ctx.env as Record<string, string | undefined>,
+      includeDestructive: ctx.options.includeDestructive,
+    }
+    const report = await conformProduct(product, {
+      ...conformOptions,
+      ...(ctx.options.baseUrl === undefined ? {} : { baseUrl: ctx.options.baseUrl }),
+      ...(ctx.options.capability === undefined ? {} : { capability: ctx.options.capability }),
+      ...(fixtures === undefined ? {} : { fixtures }),
+    })
+    if (ctx.options.report) {
+      const reportPath = resolve(process.cwd(), ctx.options.report)
+      await Bun.write(reportPath, `${JSON.stringify(report, null, 2)}\n`)
+    }
+    if (report.summary.failed > 0) {
+      return ctx.error({
+        code: 'CONFORMANCE_FAILED',
+        message: `${report.summary.failed} conformance case(s) failed`,
+        hint: JSON.stringify(report.summary),
+      })
+    }
+    return report
   },
 })
 

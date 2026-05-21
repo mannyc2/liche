@@ -1,4 +1,4 @@
-import { Auth, Command, Product } from '../../src/index.js'
+import { Auth, Command, Product, Runtime } from '../../src/index.js'
 
 // Phase 3D-A fixture: a Workers-shaped product with Auth.bearer, one
 // remote context with --org/ACME_ORG_ID, and a remote-http command that
@@ -13,6 +13,7 @@ export default Product.create({
   version: '1.0.0',
   description: 'Workers fixture with bearer-token auth and org context.',
 })
+  .remote({ baseUrl: Runtime.env('ACME_API_BASE_URL') })
   .auth(
     Auth.bearer({
       id: 'acme',
@@ -36,7 +37,7 @@ export default Product.create({
     'purge',
     Command.remoteHttp({
       summary: 'Purge cache for an org',
-      http: { method: 'POST', path: '/orgs/{org_id}/purge_cache' },
+      http: { method: 'POST', path: '/orgs/{org}/purge_cache', bind: { path: ['org'], body: [] } },
       requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
     }),
   )

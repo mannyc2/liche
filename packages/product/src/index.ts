@@ -36,6 +36,15 @@ export type {
   GenerateToDirOptions,
 } from './generate.js'
 
+export { conformProduct } from './conformance.js'
+export type {
+  ConformanceCase,
+  ConformanceReport,
+  ConformanceReportCase,
+  ConformanceStatus,
+  ConformProductOptions,
+} from './conformance.js'
+
 export { compileProduct } from './compile.js'
 export type {
   CompileProductFailure,
@@ -86,6 +95,8 @@ export type {
 
 export { Runtime } from './runtime.js'
 export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
+
+export type { ProductNotice, ProductOpsSpec, ProductPackageManager } from './ops.js'
 
 export { Product, ResourceBuilder } from './product.js'
 export type {
@@ -144,6 +155,7 @@ export type {
   NormalizedHttpSpec,
   NormalizedListShape,
   NormalizedObjectShape,
+  NormalizedOps,
   NormalizedPermission,
   NormalizedPolicy,
   NormalizedProductScope,

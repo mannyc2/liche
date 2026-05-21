@@ -58,10 +58,10 @@ function oauthProduct(): RuntimeProduct {
 }
 
 describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertions', () => {
-  test('imports resolveAuth and resolveContext alongside Cli and z', () => {
+  test('imports HTTP transport, resolveAuth, and resolveContext alongside Cli and z', () => {
     const source = generate(workersAuthProduct)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, createFileSessionStore, resolveAuth, resolveContext, z')
+    expect(importLine?.[1]).toBe('Cli, callHttpOperation, createFileSessionStore, resolveAuth, resolveContext, z')
   })
 
   test('emits AUTH_PROVIDER constant carrying id, kind, header (when present), and token sources', () => {
@@ -96,7 +96,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).toMatch(/env: z\.object\(\{[\s\S]*?'ACME_ORG_ID': z\.string\(\)\.optional\(\)/)
   })
 
-  test('run body resolves auth and context before the (Phase 4) stub return', () => {
+  test('run body resolves auth and context before calling core HTTP transport', () => {
     const source = generate(workersAuthProduct)
     expect(source).toMatch(
       /const credential = await resolveAuth\(\{[\s\S]*?provider: AUTH_PROVIDER,[\s\S]*?required: true,[\s\S]*?requiredPermissions: \['cache:write'\],[\s\S]*?requiredScopes: \['cache\.write'\],[\s\S]*?invocation: ctx\.invocation,[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?\}\)/,
@@ -106,7 +106,11 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     )
     expect(source).not.toContain('applyAuth')
     expect(source).not.toContain('const headers = new Headers()')
-    expect(source).toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
+    expect(source).toContain(`const data = await callHttpOperation({`)
+    expect(source).toContain(`baseUrl: { envVar: 'ACME_API_BASE_URL' },`)
+    expect(source).toContain(`auth: credential ? { kind: 'resolved', credential } : { kind: 'none' },`)
+    expect(source).toContain(`requiredPermissions: ['cache:write'],`)
+    expect(source).not.toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
   })
 
   test('generated source never inlines raw token values or calls secret.reveal()', () => {
@@ -138,7 +142,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('resolveAuth')
     expect(source).not.toContain('applyAuth')
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, z')
+    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, createLocalTelemetrySink, runLocalDoctor, z')
   })
 
   test('OAuth/session product emits file-session auth commands and OAuth runtime metadata', () => {
@@ -256,25 +260,54 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     expect(stdout).not.toContain('REMOTE_NOT_IMPLEMENTED')
   })
 
-  test('with ACME_TOKEN injected through ServeOptions.env, the resolution path succeeds without reading process.env', async () => {
-    const { stdout, exitCode } = await runGenerated(['purge', '--org', 'acme-corp', '--json'], {
-      ACME_TOKEN: 'tok-runtime',
+  test('with ACME_TOKEN injected through ServeOptions.env, generated remote command calls core HTTP transport', async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(new URL(request.url).pathname).toBe('/orgs/acme-corp/purge_cache')
+        expect(request.method).toBe('POST')
+        expect(request.headers.get('authorization')).toBe('Bearer tok-runtime')
+        return Response.json({})
+      },
     })
-    expect(exitCode).toBe(1)
-    expect(stdout).toContain('REMOTE_NOT_IMPLEMENTED')
-    expect(stdout).not.toContain('AUTH_MISSING')
-    expect(stdout).not.toContain('tok-runtime')
+    try {
+      const { stdout, exitCode } = await runGenerated(['purge', '--org', 'acme-corp', '--json'], {
+        ACME_API_BASE_URL: server.url.origin,
+        ACME_TOKEN: 'tok-runtime',
+      })
+      expect(exitCode).toBe(0)
+      expect(JSON.parse(stdout)).toMatchObject({
+        ok: true,
+        data: {},
+        meta: { execution: { mode: 'remote-http', source: 'schema-default' } },
+      })
+      expect(stdout).not.toContain('AUTH_MISSING')
+      expect(stdout).not.toContain('tok-runtime')
+    } finally {
+      server.stop(true)
+    }
   })
 
   test('context env fallback reaches resolveContext when --org is omitted', async () => {
-    const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
-      ACME_TOKEN: 'tok-runtime',
-      ACME_ORG_ID: 'env-org',
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(new URL(request.url).pathname).toBe('/orgs/env-org/purge_cache')
+        return Response.json({})
+      },
     })
-    expect(exitCode).toBe(1)
-    expect(stdout).toContain('REMOTE_NOT_IMPLEMENTED')
-    expect(stdout).not.toContain('VALIDATION_ERROR')
-    expect(stdout).not.toContain('AUTH_CONTEXT_REQUIRED')
+    try {
+      const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
+        ACME_API_BASE_URL: server.url.origin,
+        ACME_TOKEN: 'tok-runtime',
+        ACME_ORG_ID: 'env-org',
+      })
+      expect(exitCode).toBe(0)
+      expect(stdout).not.toContain('VALIDATION_ERROR')
+      expect(stdout).not.toContain('AUTH_CONTEXT_REQUIRED')
+    } finally {
+      server.stop(true)
+    }
   })
 
   test('missing context produces AUTH_CONTEXT_REQUIRED instead of option validation', async () => {
@@ -287,15 +320,48 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
   })
 
   test('CI invocation can use a ci-mode token source from ServeOptions.env', async () => {
-    const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
-      CI: 'true',
-      ACME_CI_TOKEN: 'ci-token',
-      ACME_ORG_ID: 'env-org',
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(request.headers.get('authorization')).toBe('Bearer ci-token')
+        return Response.json({})
+      },
     })
-    expect(exitCode).toBe(1)
-    expect(stdout).toContain('REMOTE_NOT_IMPLEMENTED')
-    expect(stdout).not.toContain('AUTH_MISSING')
-    expect(stdout).not.toContain('ci-token')
+    try {
+      const { stdout, exitCode } = await runGenerated(['purge', '--json'], {
+        CI: 'true',
+        ACME_API_BASE_URL: server.url.origin,
+        ACME_CI_TOKEN: 'ci-token',
+        ACME_ORG_ID: 'env-org',
+      })
+      expect(exitCode).toBe(0)
+      expect(stdout).not.toContain('AUTH_MISSING')
+      expect(stdout).not.toContain('ci-token')
+    } finally {
+      server.stop(true)
+    }
+  })
+
+  test('401 and 403 responses map through generated resolved-auth semantics without leaking tokens', async () => {
+    for (const [status, code] of [[401, 'AUTH_INVALID'], [403, 'AUTH_PERMISSION_DENIED']] as const) {
+      const server = Bun.serve({
+        port: 0,
+        fetch() {
+          return Response.json({ token: 'tok-runtime' }, { status })
+        },
+      })
+      try {
+        const { stdout, exitCode } = await runGenerated(['purge', '--org', 'acme-corp', '--json'], {
+          ACME_API_BASE_URL: server.url.origin,
+          ACME_TOKEN: 'tok-runtime',
+        })
+        expect(exitCode).toBe(1)
+        expect(stdout).toContain(code)
+        expect(stdout).not.toContain('tok-runtime')
+      } finally {
+        server.stop(true)
+      }
+    }
   })
 
   test('CI invocation without a token source fails with AUTH_CI_TOKEN_MISSING', async () => {

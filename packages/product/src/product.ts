@@ -4,6 +4,7 @@ import type { ProductConfigSpec } from './config.js'
 import type { FieldBuilder } from './field.js'
 import type { ProductRemoteSpec } from './runtime.js'
 import type { Shape } from './shape.js'
+import type { ProductOpsSpec } from './ops.js'
 import { DEFAULT_GENERATED_VOCABULARY, type Vocabulary } from './vocabulary.js'
 
 export type ProductScope = {
@@ -110,6 +111,7 @@ export class Product {
   #remote: ProductRemoteSpec | undefined
   #auth: AuthSpec | undefined
   #contexts: ProductContextEntry[] = []
+  #ops: ProductOpsSpec | undefined
   #permissions: Record<string, PermissionSpec> = {}
 
   private constructor(init: ProductInit) {
@@ -184,6 +186,14 @@ export class Product {
     return this
   }
 
+  ops(spec: ProductOpsSpec): this {
+    if (this.#ops !== undefined) {
+      throw new Error(`Product '${this.id}' already declared local ops settings.`)
+    }
+    this.#ops = spec
+    return this
+  }
+
   get resources(): readonly ResourceBuilder[] {
     return this.#resources
   }
@@ -214,6 +224,10 @@ export class Product {
 
   get permissionSpecs(): Readonly<Record<string, PermissionSpec>> {
     return this.#permissions
+  }
+
+  get opsSpec(): ProductOpsSpec | undefined {
+    return this.#ops
   }
 }
 

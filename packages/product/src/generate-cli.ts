@@ -31,6 +31,10 @@ function contextRuntimeUsed(catalog: Catalog): boolean {
   return catalog.capabilities.some((c) => c.requires.contexts.length > 0)
 }
 
+function opsRuntimeUsed(catalog: Catalog): boolean {
+  return catalog.ops.enabled && (catalog.ops.doctor !== false || catalog.ops.telemetry !== false)
+}
+
 function capabilityHasAuthMetadata(cap: Capability): boolean {
   return cap.requires.auth || cap.requires.contexts.length > 0 || cap.requires.permissions.length > 0
 }
@@ -47,9 +51,13 @@ export function generateCli(catalog: Catalog, options: GenerateOptions): string 
   lines.push(...renderHeader(catalog, options))
   lines.push('')
   lines.push(...renderImports(catalog))
-  if (authRuntimeUsed(catalog) || contextRuntimeUsed(catalog)) {
+  if (authRuntimeUsed(catalog) || contextRuntimeUsed(catalog) || opsRuntimeUsed(catalog)) {
     lines.push('')
-    lines.push(...renderAuthConstants(catalog))
+    lines.push(...renderRuntimeConstants(catalog))
+  }
+  if (catalog.ops.enabled) {
+    lines.push('')
+    lines.push(...renderCatalogConstants(catalog))
   }
   lines.push('')
   lines.push(...renderCli(catalog))
@@ -57,17 +65,33 @@ export function generateCli(catalog: Catalog, options: GenerateOptions): string 
   return lines.join('\n')
 }
 
-function renderAuthConstants(catalog: Catalog): string[] {
+function renderRuntimeConstants(catalog: Catalog): string[] {
   const lines: string[] = []
-  if (authRuntimeUsed(catalog) && catalog.auth.kind !== 'none') {
+  if (authRuntimeUsed(catalog) || opsRuntimeUsed(catalog)) {
     lines.push(`const PRODUCT_ID = ${q(catalog.product.id)}`)
+  }
+  if (authRuntimeUsed(catalog) && catalog.auth.kind !== 'none') {
     lines.push(`const PROFILE_ENV_VAR = ${q(profileEnvVar(catalog.product.id))}`)
     lines.push(`const AUTH_PROVIDER = ${renderAuth(catalog.auth)} as const`)
   }
   if (contextRuntimeUsed(catalog) && catalog.contexts.length > 0) {
     lines.push(`const CONTEXTS = ${renderContexts(catalog.contexts)} as const`)
   }
+  if (catalog.ops.doctor !== false) {
+    lines.push(`const DOCTOR_PACKAGE_MANAGERS = ${renderStringArray(catalog.ops.doctor.packageManagers)} as const`)
+  }
+  if (catalog.ops.telemetry !== false) {
+    lines.push(`const TELEMETRY_ENABLED_ENV_VAR = ${q(catalog.ops.telemetry.enabledEnvVar)}`)
+    lines.push(`const TELEMETRY_FILE_ENV_VAR = ${q(catalog.ops.telemetry.fileEnvVar)}`)
+  }
   return lines
+}
+
+function renderCatalogConstants(catalog: Catalog): string[] {
+  return [
+    `const GENERATED_CATALOG = ${JSON.stringify(catalog, null, 2)} as const`,
+    `const STATIC_NOTICES = ${JSON.stringify(catalog.ops.notices, null, 2)} as const`,
+  ]
 }
 
 function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
@@ -176,6 +200,8 @@ function renderImports(catalog: Catalog): string[] {
   const coreNames = new Set(['Cli', 'z'])
   if (catalog.config) coreNames.add('Config')
   if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
+  if (catalog.ops.enabled && catalog.ops.telemetry !== false) coreNames.add('createLocalTelemetrySink')
+  if (catalog.ops.enabled && catalog.ops.doctor !== false) coreNames.add('runLocalDoctor')
   if (authRuntimeUsed(catalog)) {
     coreNames.add('createFileSessionStore')
     coreNames.add('resolveAuth')
@@ -243,6 +269,9 @@ function renderCli(catalog: Catalog): string[] {
   lines.push(`  name: ${q(catalog.product.id)},`)
   lines.push(`  version: ${q(catalog.product.version)},`)
   lines.push(`  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },`)
+  if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
+    lines.push(`  events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],`)
+  }
   if (catalog.config) lines.push(...renderConfigDeclaration('  ', catalog))
   lines.push(`})`)
   for (const varName of resourceVars) {
@@ -251,8 +280,62 @@ function renderCli(catalog: Catalog): string[] {
   for (const cmd of topLevelCommands) {
     lines.push(...renderCapability('  ', catalog, cmd))
   }
+  if (catalog.ops.enabled) lines.push(...renderOpsCommands('  ', catalog))
   lines.push('')
   lines.push(`export default cli`)
+  return lines
+}
+
+function renderOpsCommands(indent: string, catalog: Catalog): string[] {
+  const lines: string[] = []
+  if (catalog.ops.enabled && catalog.ops.doctor !== false) {
+    lines.push(`${indent}.command('doctor', {`)
+    lines.push(`${indent}  agent: true,`)
+    lines.push(`${indent}  description: 'Run local installation and PATH diagnostics.',`)
+    lines.push(`${indent}  env: z.object({ 'PATH': z.string().optional() }),`)
+    lines.push(`${indent}  output: z.unknown(),`)
+    lines.push(`${indent}  async run(ctx) {`)
+    lines.push(`${indent}    return await runLocalDoctor({`)
+    lines.push(`${indent}      cliName: PRODUCT_ID,`)
+    lines.push(`${indent}      version: ${q(catalog.product.version)},`)
+    lines.push(`${indent}      env: ctx.env as Record<string, string | undefined>,`)
+    lines.push(`${indent}      packageManagers: DOCTOR_PACKAGE_MANAGERS,`)
+    lines.push(`${indent}    })`)
+    lines.push(`${indent}  },`)
+    lines.push(`${indent}})`)
+  }
+  lines.push(`${indent}.command('catalog', {`)
+  lines.push(`${indent}  agent: true,`)
+  lines.push(`${indent}  description: 'Print the generated local catalog artifact.',`)
+  lines.push(`${indent}  output: z.unknown(),`)
+  lines.push(`${indent}  run() { return GENERATED_CATALOG },`)
+  lines.push(`${indent}})`)
+  lines.push(`${indent}.command('notices', {`)
+  lines.push(`${indent}  agent: true,`)
+  lines.push(`${indent}  description: 'Print static update, channel, and yank notices.',`)
+  lines.push(`${indent}  output: z.unknown(),`)
+  lines.push(`${indent}  run() { return STATIC_NOTICES },`)
+  lines.push(`${indent}})`)
+  if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
+    lines.push(`${indent}.command('telemetry', {`)
+    lines.push(`${indent}  agent: true,`)
+    lines.push(`${indent}  description: 'Show local telemetry sink status.',`)
+    lines.push(`${indent}  env: z.object({`)
+    lines.push(`${indent}    [TELEMETRY_ENABLED_ENV_VAR]: z.string().optional(),`)
+    lines.push(`${indent}    [TELEMETRY_FILE_ENV_VAR]: z.string().optional(),`)
+    lines.push(`${indent}  }),`)
+    lines.push(`${indent}  output: z.unknown(),`)
+    lines.push(`${indent}  run(ctx) {`)
+    lines.push(`${indent}    const raw = ctx.env[TELEMETRY_ENABLED_ENV_VAR]`)
+    lines.push(`${indent}    const enabled = raw !== undefined && raw !== '' && raw !== '0' && raw.toLowerCase() !== 'false'`)
+    lines.push(`${indent}    return {`)
+    lines.push(`${indent}      enabled,`)
+    lines.push(`${indent}      sink: ctx.env[TELEMETRY_FILE_ENV_VAR] ? { kind: 'file', path: ctx.env[TELEMETRY_FILE_ENV_VAR] } : undefined,`)
+    lines.push(`${indent}      redaction: 'enabled',`)
+    lines.push(`${indent}    }`)
+    lines.push(`${indent}  },`)
+    lines.push(`${indent}})`)
+  }
   return lines
 }
 
@@ -504,9 +587,10 @@ function renderRemoteCall(
     `${indent}  path: ${q(http.path)},`,
     `${indent}  bind: ${renderHttpBind(http.bind)},`,
     `${indent}  input: ${inputExpr},`,
-    `${indent}  inputFields: ${renderStringArray(inputFieldNames(catalog, cap))},`,
+    `${indent}  inputFields: ${renderStringArray(remoteInputFieldNames(catalog, cap))},`,
     `${indent}  output: ${renderSchema(capabilityOutputSchema(catalog, cap), `${indent}  `)},`,
     `${indent}  env: ctx.env as Record<string, string | undefined>,`,
+    ...(cap.requires.permissions.length > 0 ? [`${indent}  requiredPermissions: ${renderStringArray(cap.requires.permissions)},`] : []),
     `${indent}})`,
     `${indent}return ctx.ok(data, { execution: { mode: 'remote-http', source: 'schema-default' } })`,
   ]
@@ -607,7 +691,7 @@ function renderHttpBind(bind: NormalizedHttpBind): string {
     .map(([key, value]) => `${q(key)}: ${q(String(value))}`)
   if (headerEntries.length > 0) parts.push(`headers: { ${headerEntries.join(', ')} }`)
   if (bind.body === true) parts.push(`body: true`)
-  else if (Array.isArray(bind.body) && bind.body.length > 0) parts.push(`body: ${renderStringArray(bind.body)}`)
+  else if (Array.isArray(bind.body)) parts.push(`body: ${renderStringArray(bind.body)}`)
   else parts.push(`body: false`)
   return `{ ${parts.join(', ')} }`
 }
@@ -616,6 +700,10 @@ function inputFieldNames(catalog: Catalog, cap: Capability): string[] {
   if (!cap.input) return []
   const schema = shapeToJsonSchema(catalog, cap.input)
   return Object.keys(schema.properties ?? {}).sort()
+}
+
+function remoteInputFieldNames(catalog: Catalog, cap: Capability): string[] {
+  return [...new Set([...inputFieldNames(catalog, cap), ...neededContexts(cap)])].sort()
 }
 
 function requiredScopesFor(permissions: NormalizedPermission[], cap: Capability): string[] {

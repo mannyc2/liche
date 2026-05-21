@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "Build and deploy serverless applications.",
     "x-lili-generator-version": "0.0.0",
-    "x-lili-catalog-digest": "sha256:de12f799dd0d9df13d4c580e45a85dbacec48854728853a8c110d1e0b6a9d484",
+    "x-lili-catalog-digest": "sha256:19302d8458e264fd82f1945dec540d67e29d7cdc261aa56f76c4ae839abf4115",
     "x-lili-generation-options-digest": "sha256:a6dacd68d2c4378548c2d103b512edd2bf5db82a433a5e65f5fffb84ad5b353b",
     "x-lili-surface-id": "openapi"
   },

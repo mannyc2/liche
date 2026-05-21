@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { ServeOptions } from '@lili/core'
 import { canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
 import workersProduct from './fixtures/workers.product.js'
 import workersGenerated from './fixtures/workers.generated.js'
@@ -11,15 +12,20 @@ const FIXTURE_DIR = join(import.meta.dir, 'fixtures')
 
 type CapturedRun = { stdout: string; stderr: string; exitCode: number }
 
-async function runCli(cli: typeof workersGenerated, argv: string[]): Promise<CapturedRun> {
+async function runCli(
+  cli: typeof workersGenerated,
+  argv: string[],
+  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+): Promise<CapturedRun> {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
   await cli.serve(argv, {
+    ...options,
     stdout: (s) => { stdout += s },
     stderr: (s) => { stderr += s },
     exit: (code) => { exitCode = code },
-    isTty: false,
+    isTty: options.isTty ?? false,
   })
   return { stdout, stderr, exitCode }
 }
@@ -50,7 +56,7 @@ describe('generated CLI — boundary discipline', () => {
     const coreImports = [...source.matchAll(/from '@lili\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, z')
+    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, createLocalTelemetrySink, runLocalDoctor, z')
   })
 
   test('generated source does not import from @lili/core subpaths or internals', () => {
@@ -138,6 +144,64 @@ describe('generated CLI — runtime parity with handwritten', () => {
     const out = await runCli(workersGenerated, ['skills', 'list', '--json'])
     expect(out.stdout).toContain('Usage: workers <command>')
     expect(out.stdout).not.toContain('skills list')
+  })
+
+  test('generated local ops commands expose doctor, catalog, notices, and telemetry status', async () => {
+    const doctor = await runCli(workersGenerated, ['doctor', '--json'], {
+      env: { PATH: '/tmp/project/node_modules/.bin' },
+    })
+    expect(doctor.exitCode).toBe(0)
+    const doctorJson = JSON.parse(doctor.stdout)
+    expect(doctorJson.data.cli).toEqual({ name: 'workers', version: '1.0.0' })
+    expect(doctorJson.data.checks.map((check: { id: string }) => check.id)).toEqual([
+      'path.present',
+      'path.local-bin',
+      'package-manager.bun',
+      'package-manager.npm',
+    ])
+
+    const catalog = JSON.parse((await runCli(workersGenerated, ['catalog', '--json'])).stdout)
+    expect(catalog.data.product.id).toBe('workers')
+    expect(catalog.data.ops.notices.updates[0].id).toBe('workers-cli-1.1.0')
+
+    const notices = JSON.parse((await runCli(workersGenerated, ['notices', '--json'])).stdout)
+    expect(notices.data.yanks[0].id).toBe('workers-cli-0.9.0')
+
+    const telemetry = JSON.parse((await runCli(workersGenerated, ['telemetry', '--json'], {
+      env: {
+        WORKERS_TELEMETRY: '1',
+        WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
+      },
+    })).stdout)
+    expect(telemetry.data).toEqual({
+      enabled: true,
+      sink: { kind: 'file', path: '/tmp/workers-telemetry.jsonl' },
+      redaction: 'enabled',
+    })
+  })
+
+  test('generated telemetry sink is opt-in and writes local JSONL when enabled', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lili-workers-telemetry-'))
+    const file = join(dir, 'telemetry.jsonl')
+    const saved = {
+      WORKERS_TELEMETRY: process.env.WORKERS_TELEMETRY,
+      WORKERS_TELEMETRY_FILE: process.env.WORKERS_TELEMETRY_FILE,
+    }
+    try {
+      process.env.WORKERS_TELEMETRY = '1'
+      process.env.WORKERS_TELEMETRY_FILE = file
+      const out = await runCli(workersGenerated, ['deploy', '--entrypoint', 'src/index.ts', '--json'])
+      expect(out.exitCode).toBe(0)
+      const lines = readFileSync(file, 'utf8').trim().split('\n')
+      expect(lines.length).toBeGreaterThan(0)
+      expect(lines.some((line) => line.includes('command.completed'))).toBe(true)
+    } finally {
+      if (saved.WORKERS_TELEMETRY === undefined) delete process.env.WORKERS_TELEMETRY
+      else process.env.WORKERS_TELEMETRY = saved.WORKERS_TELEMETRY
+      if (saved.WORKERS_TELEMETRY_FILE === undefined) delete process.env.WORKERS_TELEMETRY_FILE
+      else process.env.WORKERS_TELEMETRY_FILE = saved.WORKERS_TELEMETRY_FILE
+      rmSync(dir, { force: true, recursive: true })
+    }
   })
 })
 

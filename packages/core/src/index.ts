@@ -20,6 +20,7 @@ export {
   probeIdentity,
 } from './auth/index.js'
 export { callHttpOperation, serializeHttpOperationRequest } from './http/index.js'
+export { createLocalTelemetrySink, redactTelemetryValue, runLocalDoctor } from './ops/local.js'
 export type { AuthRuntimeInput, FileSessionStoreOptions } from './auth/index.js'
 export type { SecretString } from './auth/secret.js'
 export type {
@@ -102,3 +103,11 @@ export type {
   RuntimeValue,
   SerializedHttpRequest,
 } from './http/index.js'
+export type {
+  LocalDoctorCheck,
+  LocalDoctorCheckStatus,
+  LocalDoctorInput,
+  LocalDoctorPackageManager,
+  LocalDoctorReport,
+  LocalTelemetrySinkOptions,
+} from './ops/local.js'

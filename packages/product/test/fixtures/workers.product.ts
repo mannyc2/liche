@@ -20,6 +20,31 @@ export default Product.create({
     scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
   }))
   .remote({ baseUrl: Runtime.config('apiBaseUrl') })
+  .ops({
+    doctor: { packageManagers: ['bun', 'npm'] },
+    telemetry: {
+      enabledEnvVar: 'WORKERS_TELEMETRY',
+      fileEnvVar: 'WORKERS_TELEMETRY_FILE',
+    },
+    notices: {
+      updates: [{
+        id: 'workers-cli-1.1.0',
+        severity: 'info',
+        message: 'Workers CLI 1.1.0 is available on the stable channel.',
+        since: '2026-05-21',
+      }],
+      channels: [{
+        id: 'workers-next-channel',
+        severity: 'info',
+        message: 'Use the next channel for generated remote command previews.',
+      }],
+      yanks: [{
+        id: 'workers-cli-0.9.0',
+        severity: 'warning',
+        message: 'Workers CLI 0.9.0 was yanked due to a packaging regression.',
+      }],
+    },
+  })
   .permissions({
     'workers:read': Auth.permission.scope('workers.read'),
     'workers:edit': Auth.permission.scope('workers.edit'),

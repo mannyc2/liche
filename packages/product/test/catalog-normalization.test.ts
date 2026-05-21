@@ -114,6 +114,45 @@ describe('Catalog header', () => {
   })
 })
 
+describe('Local ops normalization', () => {
+  test('ops are off until the product opts into generated local support', () => {
+    const catalog = normalizeProduct(Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()))
+    expect(catalog.ops).toEqual({
+      enabled: false,
+      doctor: false,
+      telemetry: false,
+      notices: { updates: [], channels: [], yanks: [] },
+    })
+  })
+
+  test('ops opt-in normalizes doctor defaults, telemetry env vars, and static notices', () => {
+    const catalog = normalizeProduct(
+      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
+        .auth(Auth.none())
+        .ops({
+          doctor: { packageManagers: ['bun', 'npm'] },
+          telemetry: { enabledEnvVar: 'P_TELEMETRY', fileEnvVar: 'P_TELEMETRY_FILE' },
+          notices: {
+            updates: [{ id: 'p-1.1.0', message: 'P 1.1.0 is available.' }],
+            channels: [{ id: 'p-next', message: 'Next channel available.' }],
+            yanks: [{ id: 'p-0.9.0', severity: 'warning', message: 'P 0.9.0 is yanked.' }],
+          },
+        }),
+    )
+
+    expect(catalog.ops).toEqual({
+      enabled: true,
+      doctor: { packageManagers: ['bun', 'npm'] },
+      telemetry: { enabledEnvVar: 'P_TELEMETRY', fileEnvVar: 'P_TELEMETRY_FILE' },
+      notices: {
+        updates: [{ id: 'p-1.1.0', message: 'P 1.1.0 is available.' }],
+        channels: [{ id: 'p-next', message: 'Next channel available.' }],
+        yanks: [{ id: 'p-0.9.0', severity: 'warning', message: 'P 0.9.0 is yanked.' }],
+      },
+    })
+  })
+})
+
 describe('Resource normalization', () => {
   test('normalizes resource fields into a plain NormalizedField record', () => {
     const catalog = normalizeProduct(workersProduct())
