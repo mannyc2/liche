@@ -2,7 +2,7 @@
 
 This file is the source of truth for tests. Tests should be derived from these cases, not from implementation details.
 
-See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `optionEnv`, validated env via the `env:` schema, and the `bunEnv()` access rule).
+See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `optionEnv`, validated env via the `env:` schema, and the `bunEnv()` access rule). See [config-primitive.md](./config-primitive.md) for the target first-class config contract; the existing `CFG-*` rows cover the current compatibility loader until that implementation slice lands.
 
 ## Goals
 
@@ -46,6 +46,10 @@ See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `
 | AGENT-FLIP-001 | `--json` flips agent | Explicit `--json`/`--format` sets `c.agent` to `true` even on a TTY. | `parity.test.ts` | Leaving `c.agent` tied to the raw TTY check. |
 | LLMS-SHAPE-001 | `--llms` JSON shape | `--llms --format json` returns `{ manifestVersion: 'lili.v1', name, commands: […] }` with per-command `description`, `aliases`, `examples`, `hint`, `usage`, `outputPolicy`, and `schema`. | `parity.test.ts` | Dropping examples/hint/usage from the manifest. |
 | CONFIG-002 | Config flags global | `--config <path>` and `--no-config` are always accepted; passing `--config` to a CLI without a `config` schema is a `ParseError`. | `parity.test.ts` | Treating `--config` as a positional. |
+| CONFIG-003 | First-class config | A declared config primitive produces typed `ctx.config` and source provenance without folding provenance into values. | planned | Returning raw loader output or losing source information. |
+| CONFIG-004 | Config discovery | `--config <path>` loads exactly that file, `--no-config` disables project/user discovery, and passing both is invalid. | planned | Merging explicit files with discovered files or silently accepting conflicting flags. |
+| CONFIG-005 | Explicit option binding | Config values satisfy command options only through explicit option-to-config bindings. | planned | Auto-binding every matching option name to a config key. |
+| CONFIG-006 | Config schema strictness | Unknown config keys fail by default under strict schema validation. | planned | Silently ignoring misspelled durable preferences. |
 | OPENAPI-001 | OpenAPI emit | `GET /openapi.json` returns a `3.1.0` document keyed by command paths with `operationId` derived from the underscored command name. | `parity.test.ts` | Returning the legacy manifest. |
 | OPENAPI-002 | OpenAPI ingest | `ingestOpenApi(spec)` maps path/query/body parameters into typed command descriptors. | `parity.test.ts` | Dropping body parameters. |
 | VARS-001 | Vars defaults | Zod `vars` defaults populate `c.var`; middleware `set()` overrides those defaults. | `parity.test.ts` | Letting defaults clobber middleware-set values. |

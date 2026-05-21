@@ -11,15 +11,16 @@ the binary is the product
 the manifest is the distribution contract
 ```
 
-Only three opt-in features are being added:
+Only four opt-in features are being added:
 
 1. Product system: a runtime product schema that normalizes into a canonical capability catalog and generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema/config surfaces, drift checks, and server conformance.
-2. Build system: reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance. This is useful for Product-generated CLIs and handwritten CLIs.
-3. Distribution: one release manifest, pure package-manager renderers, and final-artifact guard rails.
+2. Config primitive: a first-class, opt-in core config contract for durable non-secret CLI preferences, with generated Product config lowering into the same primitive.
+3. Build system: reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance. This is useful for Product-generated CLIs and handwritten CLIs.
+4. Distribution: one release manifest, pure package-manager renderers, and final-artifact guard rails.
 
 Everything else remains current core runtime behavior unless a requirement document says otherwise.
 
-The canonical catalog is a product capability contract. It models resources, commands, bindings, auth providers, permissions, contexts, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is still not a database model or a license to generate every possible product surface in MVP; product-specific surfaces remain adapter-gated.
+The canonical catalog is a product capability contract. It models resources, commands, general config declarations, bindings, auth providers, permissions, contexts, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is still not a database model or a license to generate every possible product surface in MVP; product-specific surfaces remain adapter-gated.
 
 Generated surfaces must be treated as a graph, not as unrelated emitters. Each generated surface declares its source (`catalog` or `openapi`), generator version, generation options, input digest, output digest, drift check, and owner package. A surface that cannot name those facts is not accepted as part of the build system.
 
@@ -32,7 +33,7 @@ canonical catalog
   -> generated MCP command tools
   -> generated Agent Skill/LLM surfaces
   -> generated docs/reference markdown
-  -> generated JSON Schema for config
+  -> generated JSON Schema for general config and bindings
 
 generated OpenAPI
   -> later downstream HTTP ecosystem surfaces
@@ -46,7 +47,7 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, parser, formatter, MCP basics, skills basics, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs and the shared remote HTTP transport. |
+| `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, formatter, opt-in config primitive, MCP basics, skills basics, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs, typed config, and the shared remote HTTP transport. |
 | `@lili/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
 | `@lili/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up lili's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
 | `@lili/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |

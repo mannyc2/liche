@@ -8,11 +8,11 @@ When a command's `run()` is an async generator and the client requests `Accept: 
 
 Behavior IDs: `STREAM-001`.
 
-The first slice is a pure serializer. Network transport builds on top of it.
+The first landed slice is the core serializer plus network transport. Generated Product command wiring and server conformance still build on top of it.
 
 ## Public primitives
 
-Tentative API:
+API:
 
 ```ts
 export function serializeHttpOperationRequest<TInput>(
@@ -58,6 +58,7 @@ export type HttpOperationRequestSpec<TInput> = {
   path: string;
   bind: HttpOperationBind<TInput>;
   input: TInput;
+  inputFields?: Array<keyof TInput & string>;
   env?: Record<string, string | undefined>;
 };
 
@@ -68,16 +69,21 @@ export type SerializedHttpRequest = {
   body?: string;
 };
 
+export type HttpFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
 export type HttpOperationCall<TInput, TOutput> =
   HttpOperationRequestSpec<TInput> & {
     output: z.ZodType<TOutput>;
-    fetch?: typeof fetch;
+    fetch?: HttpFetch;
     timeoutMs?: number;
     safeBodyBytes?: number;
+    requiredPermissions?: string[];
   };
 ```
 
-MVP intentionally excludes config-backed runtime values. Start with `env` and `literal`; add config-backed values after core has a clean config access story for command handlers.
+`inputFields` is optional because handwritten callers can rely on their own schema discipline. Generated callers should pass it so dead or typoed bind entries fail before network work with `REMOTE_BIND_UNKNOWN_FIELD`.
+
+The first landed transport slice intentionally excludes config-backed runtime values and supports `env` and `literal`. Config-backed values are the next generated-wiring slice and must use the first-class config primitive from `docs/config-primitive.md`, not an ad hoc loader lookup.
 
 Env-backed `bearer` and `apiKey` auth remain supported for handwritten CLIs and the first generated auth slice. Auth/session-aware generated CLIs should resolve credentials before transport and pass `{ kind: "resolved", credential }` so `callHttpOperation` only applies headers and reports HTTP failures. See `docs/auth-session.md`.
 
@@ -140,6 +146,8 @@ Auth is product-level for MVP. Per-capability provider selection remains a non-g
 Do not pass secret values through CLI flags such as `--auth-env NAME=VALUE`. Conformance and runtime should read inherited environment or explicit env files/target config with clear handling.
 
 When a resolved credential is present, `applyAuth` mutates headers. Generated code must not pass raw token strings to transport.
+
+Generated Product commands call this transport only when the catalog declares a product-level remote base URL source. Without that declaration, generated `remote-http` and resource-operation commands keep returning the explicit `REMOTE_NOT_IMPLEMENTED` Phase 4 stub rather than inventing an implicit base URL rule. When a remote base URL is declared, generated callers pass a resolved base URL sourced from a literal, env var, or declared config field while keeping auth/session resolution separate.
 
 ## Timeout
 

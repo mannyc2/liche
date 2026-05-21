@@ -76,7 +76,7 @@ Bearer token via env:
 }))
 ```
 
-OAuth device flow plus CI token mode is a later opt-in slice:
+OAuth device flow plus CI token mode:
 
 ```ts
 .auth(Auth.oauthDevice({
@@ -466,7 +466,7 @@ Server-side permission checks remain authoritative. Local scope checks are best-
 
 ## Device flow UX
 
-OAuth device flow is not part of the first auth slice, but the API must leave room for it.
+OAuth device flow is explicit-login only. Normal auth-required operations never start it.
 
 `login` may display these human-only fields:
 
@@ -622,6 +622,7 @@ Slice A landed in Phase 3D-A (next-plan.md). The behavior in this doc is authori
 
 - `@lili/core`: `SecretString` + `secret()` (`packages/core/src/auth/secret.ts`); env-only `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential` (`packages/core/src/auth/resolve.ts`); `AUTH_MISSING` / `AUTH_CI_TOKEN_MISSING` / `AUTH_CONTEXT_REQUIRED` / `AUTH_SCOPE_MISSING` / `AUTH_PERMISSION_DENIED` / `AUTH_INVALID` / `AUTH_EXPIRED` factories built on `LiliError` (`packages/core/src/auth/errors.ts`). `LiliError.details` and `CommandError.details` carry structured auth payloads through the envelope. `RunContext.invocation` carries `cli` / `ci` / `agent` / `mcp` into generated code so CI-mode token sources are reachable without process-global env mutation.
 - `@lili/product`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.permission.scope`, `Auth.context.env|remote` (`packages/product/src/auth.ts`); `Product.auth(...)`, `Product.permissions(...)`, and `Product.context(...)` chain methods (`packages/product/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` requires an explicit `.auth(...)` and validates capability `requires` against declared contexts, declared product permissions, and auth posture (`packages/product/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/product/src/manifest.ts`).
-- Generated CLI (`packages/product/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `applyAuth` / `resolveAuth` / `resolveContext` from `@lili/core`, emits top-level `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and runs a resolve-then-applyAuth preamble before the (still Phase-4) transport stub. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements still avoid auth-runtime imports.
+- Generated CLI (`packages/product/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `resolveAuth` / `resolveContext` from `@lili/core`, emits top-level `PRODUCT_ID` / `PROFILE_ENV_VAR` / `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env > stored profile fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.global` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and resolves auth/context before remote dispatch. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements still avoid auth-runtime imports.
+- Slice B/C now landed: `@lili/core` exposes `SessionStore`, `createFileSessionStore`, profile/session helpers, identity probing, and OAuth device login helpers. The file store writes restricted JSON under `LILI_HOME` or the platform config root, supports active profiles and selected contexts, quarantines corrupt files, and throws `AUTH_SESSION_CORRUPT` / `AUTH_SESSION_LOCKED` where appropriate. Generated CLIs parse `--profile`, `--non-interactive`, and `--no-session`, emit generated `whoami` / `switch` / `login` / `logout` commands when the auth provider opts in, and hide interactive `login` / `logout` / `switch` from MCP tools. Normal auth-required commands still call `resolveAuth` only; CLI/CI/agent/MCP paths never start OAuth device login implicitly.
 
-Out of scope for 3D-A (and so not yet implemented): file-backed `SessionStore`, profile selection, `--profile` / `--non-interactive` / `--no-session`, generated `whoami` / `switch` / `login` / `logout`, OAuth device flow, `Auth.token.session`, identity endpoint resolution, remote-context `list` runtime calls, and the real `callHttpOperation` / `serializeHttpOperationRequest` transport (which is Phase 4).
+Still deferred: refresh tokens, refresh rotation, OS keychain integration, remote context picker/list runtime calls, hosted policy/session sync, and agent-triggered login.

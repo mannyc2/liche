@@ -2,7 +2,7 @@
 
 `@lili/product` is a product-schema compiler, not a wrapper around `@lili/core`.
 
-The public authoring model is a catalog of product capabilities. Some capabilities are resources, some are workflow commands, and some are config bindings. Generated CLIs are one projection of that catalog. OpenAPI, command manifests, docs, Agent Skills, dashboard metadata, and config surfaces are other projections.
+The public authoring model is a catalog of product capabilities plus product config declarations. Some capabilities are resources, some are workflow commands, and some declarations are product bindings. Generated CLIs are one projection of that catalog. OpenAPI, command manifests, docs, Agent Skills, dashboard metadata, and config surfaces are other projections.
 
 ## Thesis
 
@@ -12,7 +12,7 @@ CLI = user-invokable projection
 OpenAPI = HTTP-backed projection
 Docs = public capability projection
 Agent Skill = explicit safe automation projection
-Config surfaces = binding projection
+Config surfaces = general config plus binding projection
 ```
 
 Do not force every meaningful product action into a CRUD resource operation. `deploy`, `migrate`, `login`, `init`, `doctor`, and `dev` are commands. A command may call HTTP APIs internally, but the user-facing capability is still the workflow.
@@ -22,7 +22,7 @@ Do not force every meaningful product action into a CRUD resource operation. `de
 The public API should follow the existing static-class style used by `Cli.create()`:
 
 ```ts
-import { Command, Field, Product, Shape } from "@lili/product";
+import { Auth, Command, Config, Field, Product, Runtime, Shape } from "@lili/product";
 
 export default Product.create({
   id: "workers",
@@ -31,6 +31,17 @@ export default Product.create({
   description: "Build and deploy serverless applications.",
   scope: { kind: "account", param: "account_id" },
 })
+  .auth(Auth.none())
+  .config(Config.object({
+    files: ["workers.jsonc", "workers.yaml", "workers.toml"],
+    fields: Shape.object({
+      accountId: Field.string("Default account ID").optional(),
+      apiBaseUrl: Field.url("API base URL")
+        .default("https://api.cloudflare.com/client/v4"),
+      outputFormat: Field.enum(["text", "json"]).default("text"),
+    }),
+  }))
+  .remote({ baseUrl: Runtime.config("apiBaseUrl") })
   .resource("script", {
     label: "Worker script",
     path: "/workers/scripts",
@@ -108,6 +119,10 @@ export default Product.create({
 
 The class API is authoring sugar. `@lili/product` must normalize it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
+General config and bindings are separate authoring concepts. Config fields such as `apiBaseUrl`, `accountId`, output preferences, telemetry posture, update channel, or release defaults are durable non-secret product preferences that lower into the core config primitive. Bindings such as `kv_namespaces` are product-specific structured declarations that may project to deployment config, docs, command manifests, and later platform adapters. Both can appear in the generated config JSON Schema, but they are not the same catalog node.
+
+Detailed config primitive requirements live in `docs/config-primitive.md`.
+
 ## Catalog model
 
 Use product-facing names in public docs and APIs:
@@ -122,6 +137,7 @@ type ProductSchema = {
   authProviders: AuthProvider[];
   permissions: Record<string, Permission>;
   contexts: ProductContext[];
+  config?: ProductConfig;
   resources: Resource[];
   commands: Command[];
   bindings: Binding[];
@@ -137,6 +153,8 @@ type Capability =
 Internal implementation may use names such as `Catalog` or `CanonicalCatalog`, but avoid exposing `ProductIR` or `OperationIR` as the user-facing model.
 
 Auth providers, permissions, and contexts are catalog nodes, not runtime session state. They describe what capabilities require and how generated runtime code should resolve credentials/context. Stored sessions, selected profiles, selected org/project values, token material, and account identities are runtime state and must not affect the catalog digest. Detailed requirements live in `docs/auth-session.md`.
+
+Product config declarations are catalog nodes because they change generated runtime behavior and generated schema/docs surfaces. Runtime config values, discovered local file paths, value provenance, selected profiles, selected contexts, and session state must not affect the catalog digest.
 
 ## Resources
 
@@ -326,14 +344,16 @@ A future server adapter may consume the same catalog and provide `implement(...)
 1. Add `Product`, `Resource`, `Command`, `Shape`, and `Field` class APIs.
 2. Normalize product schemas into a plain deterministic `Catalog`.
 3. Flatten resource operations and commands into `Capability[]`.
-4. Move CLI generation from operation-specific input to capability input.
-5. Generalize generation from one hardcoded CLI output to a surface emitter registry.
-6. Add OpenAPI as the next surface emitter.
-7. Keep resource helpers thin. They must lower into the same catalog as explicit resources and commands.
+4. Add general config as a sibling of bindings and lower it into the core config primitive.
+5. Move CLI generation from operation-specific input to capability input.
+6. Generalize generation from one hardcoded CLI output to a surface emitter registry.
+7. Add OpenAPI as the next surface emitter.
+8. Keep resource helpers thin. They must lower into the same catalog as explicit resources and commands.
 
 Verification:
 
 - A workers fixture with one resource, `deploy`, `dev`, and one binding normalizes to a stable catalog.
+- A workers fixture with general config and one binding emits a config JSON Schema that includes both top-level config fields and binding collections.
 - CLI generation includes both resource operations and top-level commands.
 - OpenAPI generation includes HTTP resource operations, excludes command capabilities, and respects explicit `openapi: false` on resource operations.
 - Field metadata appears in CLI help/command manifest and OpenAPI schema extensions.

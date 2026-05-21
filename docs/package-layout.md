@@ -89,7 +89,9 @@ Owns:
 - `.serve()`
 - `.fetch()`
 - middleware
+- observe-only lifecycle events and typed mutation hooks
 - parser/config/env validation
+- first-class opt-in config primitive for durable non-secret preferences
 - formatter/output envelope behavior
 - MCP basics (`--mcp` runtime support remains core; `mcp add` is an opt-in helper built-in)
 - skills/docs helpers (`skills` command helpers are opt-in built-ins; CLIs may provide packaged skill content)
@@ -120,6 +122,7 @@ Does not own product schemas, generated surfaces, server conformance, release ma
 Owns:
 
 - runtime product schema authoring API
+- general product config declarations that lower into `@lili/core` config
 - auth provider, permission, context, and capability requirement declarations
 - canonical catalog normalization
 - schema lints

@@ -20,7 +20,7 @@ Do not generate a CLI directly from frontend routes. A TanStack route tree descr
 
 A developer with a Vite/TanStack app should:
 
-1. Identify product capabilities: resources, commands, and bindings.
+1. Identify product capabilities and durable preferences: resources, commands, general config, and bindings.
 2. Define those capabilities in `lili.schema.ts`.
 3. Implement matching API routes and local handlers in the app's server/runtime layer.
 4. Generate CLI/OpenAPI/MCP/docs/Agent Skill/config surfaces with `@lili/product`.
@@ -55,7 +55,8 @@ The schema is authoritative for product capabilities the application owner contr
 schema = source of truth for owned capability catalog
 resource = durable noun with fields and operations
 command = transient verb or workflow
-binding = config declaration
+config = durable non-secret product preference
+binding = product-specific structured declaration
 http = server implementation of an HTTP-backed capability
 handler = local or hybrid implementation of a command
 ```
@@ -94,7 +95,7 @@ Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`,
 ## Example schema
 
 ```ts
-import { Auth, Command, Field, Product, Shape } from "@lili/product";
+import { Auth, Command, Config, Field, Product, Runtime, Shape } from "@lili/product";
 
 export default Product.create({
   id: "myapp",
@@ -106,6 +107,14 @@ export default Product.create({
     id: "myapp",
     sources: [Auth.token.env("MYAPP_TOKEN")],
   }))
+  .config(Config.object({
+    files: ["myapp.jsonc", "myapp.yaml", "myapp.toml"],
+    fields: Shape.object({
+      apiBaseUrl: Field.url("API base URL").default("https://api.myapp.dev"),
+      defaultProject: Field.string("Default project ID").optional(),
+    }),
+  }))
+  .remote({ baseUrl: Runtime.config("apiBaseUrl") })
   .permissions({
     "projects:read": Auth.permission.scope("projects.read"),
     "projects:deploy": Auth.permission.scope("projects.deploy"),
@@ -178,7 +187,7 @@ It generates:
 - MCP tools
 - docs/reference markdown
 - Agent Skill/LLM surfaces
-- config JSON Schema when configured
+- config JSON Schema when general config or bindings are configured
 - generated surface manifest for drift and provenance
 - conformance plans from capability examples and HTTP bindings
 

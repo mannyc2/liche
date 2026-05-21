@@ -11,7 +11,7 @@ The release manifest is the only contract between binary production and package-
 Renderers must be pure functions:
 
 ```txt
-release manifest + verified binary records -> staged package artifact
+release manifest + verified binary records -> staged package directories and package-manager artifacts
 ```
 
 Renderers must not read product schema files, generated source, package workspaces, or build output directories except through manifest references and explicit verified binary paths.
@@ -34,12 +34,12 @@ Implemented release-spine APIs:
 - `parseCliReleaseManifest(...)` validates manifest input.
 - `verifyReleaseBinaries(...)` verifies final binary paths against manifest binary records.
 - `resolveReleaseRenderers(...)` resolves zero, one, many, or all registered renderers without checking publisher credentials.
-- `packageRelease(...)` validates the manifest, verifies binaries, runs selected renderers, and verifies final package artifact bytes.
+- `packageRelease(...)` validates the manifest, verifies binaries, runs selected renderers, and verifies final package artifact bytes when renderers produce packed artifacts.
 - `verifyPackageArtifacts(...)` verifies package artifact file name, size, and sha256 against package records.
 - `planReleaseYank(...)` derives a dry-run yank plan from manifest package records.
 - `@lili/releases/renderers/all` exports `createDefaultRendererRegistry()` for the implemented npm, PyPI, Homebrew, and Scoop renderers.
 
-The root package export intentionally stays renderer-light. Concrete renderers are loaded through `@lili/releases/renderers/npm`, `@lili/releases/renderers/pypi`, `@lili/releases/renderers/homebrew`, `@lili/releases/renderers/scoop`, or the all-renderer convenience subpath. Publisher adapter types live behind `@lili/releases/publishers`; concrete publishing remains a separate Phase 7 adapter layer.
+The root package export intentionally stays renderer-light. Concrete renderers are loaded through `@lili/releases/renderers/npm`, `@lili/releases/renderers/pypi`, `@lili/releases/renderers/homebrew`, `@lili/releases/renderers/scoop`, or the all-renderer convenience subpath. Publisher adapter types live behind `@lili/releases/publishers`; the CLI registers concrete executors only at publish time so package rendering stays separate from registry or repository mutation.
 
 ## Manifest schema
 
@@ -280,14 +280,14 @@ Required pipeline:
 3. Verify signature/notarization where configured.
 4. Compute sha256 and size over final binary bytes.
 5. Write CliReleaseManifest.
-6. Render staged packages from the manifest.
-7. Pack final package-manager artifacts.
+6. Render inspectable staged package directories or files from the manifest.
+7. Pack final package-manager artifacts when the selected renderer/mode requires packed bytes.
 8. Verify final packed artifacts against the manifest.
 9. Publish from the manifest plus verified artifact records, when requested.
 10. Support yank/rollback from one manifest reference.
 ```
 
-Do not verify staging directories as the final proof. The shared release spine verifies final package artifact file bytes; ecosystem renderer tests inspect package-format details such as npm `.tgz` contents, PyPI `RECORD` entries, and Homebrew/Scoop manifest text.
+Do not treat an uninspected staging directory as final proof. The npm renderer writes package directories first because they are the canonical inspectable output. The pack step then derives `.tgz` files from those directories when exact packed bytes are needed for publish planning or artifact records. The shared release spine verifies final package artifact file bytes when they exist; ecosystem renderer tests inspect package-format details such as npm package directories and derived `.tgz` contents, PyPI `RECORD` entries, and Homebrew/Scoop manifest text.
 
 `@lili/releases` never invokes `Bun.build()` and never rebuilds a binary. `binaries[].compileFlagsDigest` is copied from the `@lili/build` compile flag profile, while `binaries[].sha256` and `binaries[].size` are computed after signing/notarization from the final bytes that will be packaged.
 
@@ -357,7 +357,7 @@ Bun currently cannot use the Windows metadata flags while cross-compiling becaus
 
 ## npm renderer
 
-npm renderer uses the esbuild-style package shape:
+npm renderer uses the esbuild-style package shape and writes unpacked package directories as the primary output:
 
 ```txt
 umbrella package
@@ -371,6 +371,8 @@ platform package
   exactly one binary
   no install scripts
 ```
+
+The optional pack step derives `.tgz` files from those directories. A release can publish directories with `npm publish <dir>` or publish the derived tarballs with `npm publish <file.tgz>` when exact packed-byte artifacts or explicit publish ordering are desired. The release manifest records stable package identity; local directory paths and packed tarball paths stay in verified artifact records or build output, not in the manifest.
 
 The runtime shim must:
 
@@ -386,6 +388,7 @@ Guard rails:
 | `npm/version-skew` | Umbrella optional dependencies pin exact platform package versions from the same manifest. |
 | `npm/no-scripts` | No install, postinstall, preinstall, prepare, or lifecycle scripts. |
 | `npm/one-binary` | Each platform package contains exactly one executable. |
+| `npm/package-dir` | Renderer writes one unpacked directory per npm package with the same package JSON and file tree that will be packed. |
 | `npm/hash` | Pack final `.tgz`, unpack it, hash the packaged binary, compare to manifest. |
 | `npm/actionable-missing-optional` | Shim reports one clear actionable error. |
 
@@ -477,12 +480,13 @@ Required checks:
 |---|---|
 | `release/manifest-schema` | Manifest validates against `CliReleaseManifest`. |
 | `release/contract-provenance` | Manifest contains subject id, name, version, commit, contract kind, and contract digest. |
-| `release/runtime-contract` | Manifest records env/config expectations for remote transport and other runtime config. |
+| `release/runtime-contract` | Manifest records non-secret env/config expectations for remote transport and other runtime config, including config schema artifact digests when generated. |
 | `release/auth-contract` | Manifest records non-secret auth providers, modes, env var names, generated auth commands, context selectors, and session-storage posture. |
 | `release/conformance-provenance` | Manifest records required conformance report metadata when release policy requires server conformance. |
 | `release/target-normalization` | Every binary target string agrees with platform, arch, libc, and cpu variant fields. |
 | `release/binary-hash` | Final signed/notarized binary bytes match manifest sha256. |
 | `release/binary-size` | Final binary size matches manifest size. |
+| `release/npm-package-dir` | npm renderer emits inspectable package directories before packing. |
 | `release/npm-final-tgz` | Packed npm tarball contains expected files and binary hash. |
 | `release/pypi-final-wheel` | Wheel RECORD hashes and packaged binary hash are correct. |
 | `release/homebrew-final-formula` | Formula URL and sha256 match manifest. |
@@ -507,12 +511,14 @@ Ecosystem trust still comes from:
 
 Modern registry provenance should be integrated when the selected publisher supports it:
 
-- npm publishing should prefer Trusted Publishing/OIDC and preserve generated provenance attestations when available.
-- PyPI publishing should prefer Trusted Publishers and attach or preserve supported digital attestations when available.
+- npm publishing should delegate to `npm publish` by default, prefer Trusted Publishing/OIDC, and preserve generated provenance attestations when available.
+- PyPI publishing should delegate to ecosystem-maintained upload tooling. The local token executor uses `python -m twine upload`; Trusted Publisher/OIDC publishing should run through the official PyPI trusted-publisher workflow path and preserve supported digital attestations when available.
 - GitHub Release uploads should support artifact attestation generation and verification when the release runs in GitHub Actions.
 - SBOM generation is not required for the first release slice, but the manifest and artifact record model must leave room for SBOM artifact IDs and hashes.
 
 These mechanisms raise the audit bar but do not replace binary hashing, package verification, signing/notarization, or publisher trust.
+
+Do not make custom OIDC token exchange or registry upload clients the default path. Low-level exchange helpers may exist for adapters, but the normal publish path should let npm, PyPI, Homebrew, and Scoop tooling own registry auth and mutation semantics.
 
 Upstream reference points for these requirements:
 
@@ -537,7 +543,7 @@ Distribution MVP is accepted only when:
 - renderer selection supports zero, one, many, or all implemented renderers
 - renderer preflight and publisher credential preflight are separate
 - npm renderer uses umbrella plus platform optional dependencies with exact version pins when selected
-- npm final `.tgz` artifacts are verified, not just staging directories, when selected
+- npm renderer writes unpacked package directories and verifies derived `.tgz` artifacts when pack output is selected
 - no selected renderer emits install-time script execution unless explicitly approved
 - PyPI/Homebrew/Scoop renderers use the same manifest contract when selected
 - no `release-extra` package exists

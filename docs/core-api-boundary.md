@@ -9,6 +9,19 @@ Deliberate, narrow widening to let tool CLIs ship authored agent guidance withou
 - `CreateOptions.skill?: { markdown?: string; index?: string }` lets a CLI provide packaged skill content for `skills add` and `--llms`. If `markdown` is omitted, core keeps the reflection-generated skill body.
 - New public type `SkillDefinition`.
 
+## V1 supportability re-freeze (lifecycle events and hooks)
+
+Deliberate, narrow widening for local observability and framework extension:
+
+- `CliInstance.on(event, subscriber)` registers observe-only lifecycle subscribers.
+- `CliInstance.hook(name, handler)` registers typed mutation hooks.
+- `CreateOptions.events` and `CreateOptions.hooks` seed the same lanes at construction time for generated CLIs.
+- New public types: `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, `CliEventSurface`, `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook`.
+
+The public guarantee is the lane split, not a hosted telemetry product: event subscribers receive redacted snapshots and cannot affect command results; hooks are explicit mutation points and may fail commands.
+
+Lifecycle events intentionally cover more local surfaces than telemetry exports: command execution, validation, parse failures, help/version/completion/schema rendering, MCP initialize/list/call, not-found, and hook failure. Hosted or file telemetry must consume an explicit allowlist rather than forwarding every event.
+
 ## Phase 3 re-freeze (Commit 3)
 
 Deliberate, narrow widening to support generated CLIs:
@@ -43,11 +56,50 @@ The first staged slice from `docs/next-plan.md` has shipped. The following are n
 - Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential`.
 - Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `ResolvedAuthMeta`, `CommandAuthMetadata`.
 
-Deferred to 3D-B / 3D-C / Phase 4: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, resolved account/session status metadata, `serializeHttpOperationRequest` / `callHttpOperation`.
+Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, and resolved account/session status metadata.
 
 `RunContext` gained `invocation: 'cli' | 'ci' | 'agent' | 'mcp'` so generated command code can pass the real invocation posture into `resolveAuth`. Plain CLI invocations infer `ci` from common CI env vars; MCP and fetch-backed agent calls pass `mcp` / `agent` explicitly.
 
 `LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` envelope gained the matching optional `details` field. `errorToObject` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
+
+### Phase 3D-B/C landed (sessions, generated auth commands, OAuth device)
+
+The session and OAuth slices from `docs/auth-session.md` have shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+
+- Values: `createFileSessionStore`, `defaultSessionRoot`, `isValidProfileName`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`, `probeIdentity`.
+- Types: `SessionStore`, `StoredProfile`, `AuthCommandRuntime`, `AuthGlobalOptions`, `AuthIdentityProbeInput`, `AuthRuntimeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`, `FileSessionStoreOptions`, and `GlobalOptions`.
+
+`RunContext` now carries `global: { profile?, nonInteractive?, noSession? }` and `isTty` so generated auth commands can distinguish explicit login from CI/agent/MCP/noninteractive calls. Core parses `--profile`, `--non-interactive`, and `--no-session` as generated-global inputs; normal commands still call `resolveAuth` and never start OAuth device login implicitly.
+
+The file session store is intentionally plaintext JSON with restricted permissions for MVP. It supports profiles, active profile selection, selected context storage, access-token persistence, corrupt-file quarantine, and lock-timeout errors. Refresh tokens and keychain storage stay deferred.
+
+### Phase 4-A landed (core HTTP transport)
+
+The first outbound remote transport slice has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+
+- Values: `serializeHttpOperationRequest`, `callHttpOperation`.
+- Types: `RuntimeValue`, `HttpAuth`, `HttpMethod`, `HttpFetch`, `HttpOperationBind`, `HttpOperationRequestSpec`, `SerializedHttpRequest`, `HttpOperationCall`, `RemoteErrorDetails`.
+
+This slice covers pure request serialization, env/literal base URL resolution, env or resolved auth application, timeout/network/status/response/schema error normalization, and output validation. Generated Product remote command wiring remains deferred because Product `HttpSpec` currently has no base URL or config source; generated `remote-http` and resource-operation commands should keep the explicit Phase 4 `REMOTE_NOT_IMPLEMENTED` stub until the config primitive and catalog base URL contract are defined.
+
+## Config primitive re-freeze target
+
+The next deliberate widening for generated remote wiring is the first-class config primitive described in `docs/config-primitive.md`.
+
+Planned top-level public additions:
+
+- `Config.object(...)` — public declaration helper for opt-in typed config.
+- Config declaration and provenance types exposed by `CreateOptions.config`, `RunContext.config`, and `RunContext.sources`.
+- Explicit option-to-config bindings so config never satisfies command options by automatic name matching.
+
+Runtime guarantees:
+
+- A CLI without a config declaration rejects `--config` and `--no-config`.
+- `--config <path>` loads exactly that file and disables discovery.
+- `--no-config` disables project and user discovery.
+- Project/user config, session/profile defaults, option env defaults, argv, and schema defaults keep distinct provenance.
+
+This re-freeze must replace the current low-level loader-shaped `CreateOptions.config` compatibility hook with a declarative public contract. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@lili/core` APIs.
 
 Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
@@ -71,6 +123,8 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
 - `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `CreateOptions.builtins` exposes it.
 - `CliInstance` (`packages/core/src/types.ts:203`) — imported through index by `helpers.ts`; public return type for `Cli.create()`.
+- `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `.on()` and `CreateOptions.events` expose the observe-only lifecycle event contract.
+- `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook` — public because `.hook()` and `CreateOptions.hooks` expose typed mutation points.
 - `CommandDefinition` (`packages/core/src/types.ts:108`) — public `.command()` input type.
 - `CreateOptions` (`packages/core/src/types.ts:138`) — must be exported because `Cli.create()` signatures expose it.
 - `Cta` (`packages/core/src/types.ts:10`) — public CTA metadata used by result envelopes.
@@ -91,7 +145,9 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 
 Also export `CommandError` (`packages/core/src/types.ts:33`), `FieldError` (`packages/core/src/types.ts:24`), `InferSchema` (`packages/core/src/types.ts:8`), and `ResultMeta` (`packages/core/src/types.ts:43`) because public types otherwise reference unexported helpers.
 
-The auth/session additions above join this keep-public list only when their implementation and API snapshot tests land. Until then they are planned public surface, not current exports.
+The auth/session additions above are now part of the keep-public list and are guarded by both source-local and package-consumer API snapshot tests.
+
+The config primitive additions above join this keep-public list only when their implementation and API snapshot tests land. Until then they are planned public surface, not current exports.
 
 ## Mark internal
 
@@ -109,7 +165,7 @@ The auth/session additions above join this keep-public list only when their impl
 ## Rename or reshape
 
 - `Completions` (`packages/core/src/completions/index.ts:1`) — `contract.test.ts` imports `Completions.complete`, but current helpers take `CliState`. Either keep completions as built-in CLI behavior only or expose a wrapper that accepts `CliInstance`.
-- `Fetch` (`packages/core/src/fetch/index.ts:1`) — `behavior-edges.test.ts` covers `parseCurl` and `callFetch`, but these are in-process fetch-command internals. The public remote surface must be the documented `serializeHttpOperationRequest` and `callHttpOperation` primitives when implemented.
+- `Fetch` (`packages/core/src/fetch/index.ts:1`) — `behavior-edges.test.ts` covers `parseCurl` and `callFetch`, but these are in-process fetch-command internals. The public outbound remote surface is `serializeHttpOperationRequest` and `callHttpOperation`; do not expose these fetch-command internals as a transport API.
 - `Mcp` (`packages/core/src/mcp/index.ts:1`) — tests import it through index, and docs require MCP basics, but current functions take `CliState`. Public MCP helpers must accept `CliInstance` or be reachable through `cli.fetch()`/`cli.serve()`.
 - `Schema` namespace (`packages/core/src/schema/index.ts:1`) — `behavior-edges.test.ts` imports it through index, but helpers such as `objectShape`, `kind`, and `parseSchema` expose the Zod adapter internals. Keep `z` public and reserve the `Schema` name for the public type.
 - `Skill` (`packages/core/src/skills/index.ts:1`) — tests import it through index and docs name skill/docs helpers, but current functions take `CliState`. Public helpers must accept `CliInstance` or a documented manifest, not internal state.

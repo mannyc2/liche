@@ -114,7 +114,7 @@ For every case:
 3. Assert parsed input equals fixture input.
 4. Serialize HTTP request through the core pure serializer.
 5. Assert request method/path/query/header/body matches `expectRequest`, if provided.
-6. Apply base URL and auth.
+6. Apply base URL from literal/env/config resolution and auth from the auth/session path.
 7. Send request.
 8. Parse response.
 9. Validate response with output schema.
@@ -132,7 +132,7 @@ Default behavior:
 | `destructive: true` | Skip unless explicit fixture and `--include-destructive`. |
 | `requiresConfirmation: true` | Skip unless explicit fixture and `--include-destructive`. |
 | No example/fixture | Skip with reason, never pass silently. |
-| Missing auth/baseUrl | Fail as configuration error. |
+| Missing auth/baseUrl | Fail as configuration error; base URL may come from literal, env, or declared config field sources. |
 
 A destructive fixture must name the target. No destructive capability runs against a generic `--base-url` by accident.
 

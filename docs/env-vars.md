@@ -50,6 +50,14 @@ argv flag > optionEnv > config file > schema default
 
 Env values arrive as strings. Coerce in the options schema with `z.coerce.number()`, `z.stringbool()`, etc. — the same shape you already need for argv-supplied values.
 
+The first-class config primitive target expands the middle of this chain without changing the env boundary:
+
+```txt
+argv flag > optionEnv > session/profile runtime defaults > project config > user config > schema default
+```
+
+Env-backed option defaults remain `optionEnv`; durable non-secret preferences move through `ctx.config`; auth/session state remains on the auth/session path. See `docs/config-primitive.md` for the target config contract.
+
 ## Reading env vars
 
 Inside `src/`, the only sanctioned reader is `bunEnv()` from `src/runtime/bun.ts`. Do not call `process.env`, `Bun.env`, or `import.meta.env` directly. A `test/env-conventions.test.ts` guard enforces this.

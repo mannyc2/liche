@@ -30,7 +30,7 @@ The Product system exists so a user can define an owned product capability catal
 - generated MCP tools
 - generated docs/reference markdown
 - generated Agent Skill/LLM surfaces
-- generated JSON Schema for config, when configured
+- generated JSON Schema for general config and bindings, when configured
 - deterministic drift checks
 - server conformance checks against owned HTTP deployments
 
@@ -81,7 +81,7 @@ Initial catalog-derived surfaces:
 | MCP command tools | catalog | required |
 | Agent Skill/LLM surfaces | catalog | required |
 | docs/reference markdown | catalog | required |
-| JSON Schema for config and bindings | catalog | required when config is declared |
+| JSON Schema for config and bindings | catalog | required when general config or bindings are declared |
 
 OpenAPI-derived downstream surfaces are not the first implementation slice, but the graph must leave a clean path for them:
 
@@ -98,7 +98,7 @@ Product-specific surfaces are also later adapters:
 | Surface | Source | Requirement before implementation |
 |---|---|---|
 | Workers Binding RPC metadata | catalog plus platform adapter requirement | Binding semantics, auth, deployment, and runtime compatibility must be documented. |
-| `wrangler.jsonc` fragments or schema | catalog plus config metadata | Config keys, defaults, env precedence, and ownership must be documented. |
+| `wrangler.jsonc` fragments or schema | catalog plus config metadata | Config keys, defaults, env precedence, and ownership must be documented in `docs/config-primitive.md` plus an adapter requirement. |
 | Dashboard metadata | catalog plus product metadata | UI labels, lifecycle, permissions, safety, and audit behavior must be documented. |
 | Developer docs beyond reference markdown | catalog plus docs metadata | Narrative ownership, examples, and publication target must be documented. |
 | Product API implementation/stubs | catalog plus server adapter requirement | Generated server code is not MVP; conformance remains the first proof that an owned API implements the schema. |
@@ -138,6 +138,7 @@ type ProductSchema = {
   version: string;
   description: string;
   scope?: ProductScope;
+  config?: ProductConfig;
   authProviders: AuthProviderCatalog[];
   permissions: PermissionCatalog[];
   contexts: ContextCatalog[];
@@ -261,11 +262,11 @@ For current core compatibility, handwritten CLIs may continue to use richer form
 
 Outbound HTTP operation transport is core runtime behavior.
 
-`@lili/core` must export a documented primitive, tentatively named `callHttpOperation`, that can be used by handwritten CLIs and generated CLIs. `@lili/product` generates wiring that calls the primitive.
+`@lili/core` exports documented `serializeHttpOperationRequest` and `callHttpOperation` primitives that can be used by handwritten CLIs and generated CLIs. `@lili/product` must generate wiring that calls those primitives after Product has a base URL/config source contract. That contract is the first-class config primitive in `docs/config-primitive.md`, not the current binding-only config-schema surface.
 
 The primitive must own:
 
-- resolving contract-level runtime config such as base URL and auth
+- resolving contract-level runtime config such as base URL, while keeping auth/session resolution on the auth/session path
 - serializing input into path, query, and body according to the HTTP binding
 - making the HTTP request
 - parsing the HTTP response
@@ -634,7 +635,7 @@ Schema lints are CI gates, not style suggestions.
 | `auth/context-required` | A capability requires an unknown context or a context has no flag/env selector. |
 | `auth/permission-required` | A capability requires an unknown product permission. |
 | `auth/agent-safe` | An agent-visible capability has auth/context/permission requirements that cannot be explained without secrets or interaction. |
-| `catalog/remote-base-url` | Catalog-level remote config exists without a base URL env var or literal. |
+| `catalog/remote-base-url` | Catalog-level remote config exists without a base URL literal, env var, or declared config field source. |
 | `capability/http-binding-complete` | HTTP-capable capability leaves input fields unbound. |
 | `http/bind-coverage` | HTTP binding omits input fields, references missing fields, or binds fields to conflicting locations. |
 | `capability/example-consistency` | Example argv does not parse to the declared example input. |
@@ -770,7 +771,7 @@ For releases, the build pipeline must record:
 - build target (including baseline/modern/musl variant)
 - exact compile flag set used
 - `--define` values embedded into the binary
-- runtime config expectations, including env vars required for remote base URL and auth/session
+- runtime config expectations, including declared config schema artifacts and env vars required for remote base URL and auth/session
 
 The recorded flag set is what `release/binary-hash` reproducibility checks compare against. A flag drift between two builds of the same catalog digest is a release failure.
 

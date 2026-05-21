@@ -2,6 +2,8 @@
 
 `@lili/releases` owns npm binary distribution as one selectable renderer.
 
+The npm renderer is directory-first. It writes one unpacked package directory per npm package so CI and humans can inspect the exact `package.json`, README, shim, and binary tree before publish. A separate pack step can then derive `.tgz` files from those directories when a workflow wants exact packed bytes or a flat publish-artifact set.
+
 The package shape follows the esbuild-style model:
 
 ```txt
@@ -95,6 +97,28 @@ Representative Windows x64 package:
 
 No platform package exposes its own `bin` unless a later package-manager behavior proves it is needed. The umbrella exposes the command.
 
+## Renderer output
+
+Default output:
+
+```txt
+npm/
+  package-dirs/
+    acme-cli/
+      package.json
+      README.md
+      bin/acme.js
+    acme-cli-linux-x64/
+      package.json
+      README.md
+      bin/acme
+  tarballs/
+    acme-cli-1.2.3.tgz
+    acme-cli-linux-x64-1.2.3.tgz
+```
+
+`package-dirs/` is the canonical renderer output. `tarballs/` is derived from those directories. API consumers may disable packing when they only need inspectable package directories, but publisher planning requires verified packed artifacts or an ecosystem-specific directory-publish verifier before registry mutation.
+
 ## Shim behavior
 
 The shim must:
@@ -121,14 +145,15 @@ Report one actionable error for:
 - resolved binary not executable
 - platform package version mismatch
 
-## Final `.tgz` verification
+## Package directory and `.tgz` verification
 
-Verification runs on packed artifacts, not staging directories.
+Verification starts with package directories, then checks packed artifacts when pack output is selected.
 
 Required checks:
 
 | Rule | Required check |
 |---|---|
+| `npm/package-dir-created` | One unpacked package directory exists per umbrella/platform package. |
 | `npm/pack-created` | Final `.tgz` exists. |
 | `npm/no-scripts` | No package has preinstall/install/postinstall/prepare scripts. |
 | `npm/version-skew` | Umbrella optionalDependencies exactly equal release version. |
@@ -143,9 +168,11 @@ Required checks:
 Required tests:
 
 - render umbrella package with exact optional dependency pins
-- render platform packages with correct filters
+- render inspectable umbrella and platform package directories
+- render platform package directories with correct filters
 - reject any lifecycle scripts
-- pack and verify final `.tgz`
+- pack package directories and verify final `.tgz`
+- support directory-only rendering without producing `.tgz` artifacts
 - simulate missing optional dependency
 - simulate unsupported platform
 - simulate version skew

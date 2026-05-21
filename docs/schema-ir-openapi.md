@@ -43,6 +43,7 @@ export type Catalog = {
   authProviders: AuthProviderCatalog[];
   permissions: PermissionCatalog[];
   contexts: ContextCatalog[];
+  config?: ProductConfig;
   resources: Resource[];
   commands: Command[];
   bindings: Binding[];
@@ -57,7 +58,14 @@ export type Vocabulary = {
 
 export type RuntimeValue =
   | { envVar: string; literal?: string }
-  | { envVar?: string; literal: string };
+  | { envVar?: string; literal: string }
+  | { config: string; literal?: string };
+
+export type ProductConfig = {
+  files: string[];
+  scopes: { project: boolean; user: boolean };
+  fields: ShapeProjection;
+};
 
 export type RemoteAuth =
   | { kind: "none" }

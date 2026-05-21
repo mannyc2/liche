@@ -9,6 +9,7 @@ This plan starts after the current Bun-native core builder work. It assumes a ha
 - `packages/product` owns product schema authoring, canonical catalog normalization, generation, drift checks, Product compile orchestration, and server conformance.
 - `packages/build` owns reusable Bun build/compile primitives for generated and handwritten CLI entrypoints.
 - `packages/releases` owns release manifests, final binary verification, renderer selection, package-manager artifact rendering, and yank planning.
+- `@lili/core` exposes an opt-in first-class config primitive for handwritten CLIs, and generated Product CLIs lower product config into that same primitive.
 - There is no `release-extra` package. Users choose zero to all release renderers through release configuration.
 - Generated surfaces are tracked through a surface manifest with source digests, generator versions, generation options digests, output digests, and artifact lists.
 - Existing core tests pass after the package move, and new rewrite tests trace to `docs/coverage-rewrite.md`.
@@ -44,7 +45,7 @@ Lock down the public runtime surface before adding generator behavior:
 - skill/docs helpers (core behavior; not exposed as a state-shaped namespace)
 - JSON envelope support for generated schema-driven commands, including metadata channels for execution mode
 
-Outbound HTTP operation serializer and transport (`serializeHttpOperationRequest`, `callHttpOperation`) are deliberately not in the Phase 2 freeze: they do not exist in code yet. They are added and frozen as part of Phase 4 (remote and conformance slice), and the public surface re-freezes at that point.
+Outbound HTTP operation serializer and transport (`serializeHttpOperationRequest`, `callHttpOperation`) were deliberately not part of the Phase 2 freeze. They landed in the Phase 4-A core transport slice and are now part of the re-frozen public surface.
 
 The concrete public/exported surface decision lives in `docs/core-api-boundary.md`.
 
@@ -213,6 +214,8 @@ Implement auth/session in staged slices from `docs/auth-session.md`. Keep the AP
 
 ### Phase 3D-A: env auth and capability requirements
 
+Status: landed.
+
 Add catalog support for:
 
 - one auth provider per product
@@ -233,6 +236,8 @@ Verification:
 
 ### Phase 3D-B: file sessions and context
 
+Status: landed. The default file store, generated profile globals, generated `whoami` / `switch`, selected-context fallback, corrupt-file quarantine, and lock timeout behavior are implemented in `@lili/core` and `@lili/product`.
+
 Add the file-backed `SessionStore` and profile behavior:
 
 - `createFileSessionStore`
@@ -250,6 +255,8 @@ Verification:
 - Concurrent write lock timeout reports `AUTH_SESSION_LOCKED`.
 
 ### Phase 3D-C: OAuth device login
+
+Status: landed for explicit OAuth device login/logout. Refresh tokens, remote context pickers, keychain storage, and agent-triggered login remain deferred.
 
 Add generated OAuth device flow only after env auth and sessions are stable:
 
@@ -270,7 +277,8 @@ Verification:
 
 Prove that generated remote commands and handwritten remote commands share the same core transport:
 
-- generated remote wiring calls `serializeHttpOperationRequest` and `callHttpOperation`
+- core `serializeHttpOperationRequest` and `callHttpOperation` are implemented and frozen; next generated wiring calls those APIs
+- Product config/base URL authoring is defined before generated wiring, because current `HttpSpec` only has `method`, `path`, and `bind`
 - generated auth-aware remote wiring calls `resolveAuth`/`resolveContext` before `callHttpOperation`
 - output schema validation treats HTTP responses as untrusted
 - non-2xx, malformed JSON, unsupported content types, timeout, missing base URL, and missing auth become structured core errors
@@ -284,9 +292,44 @@ Verification:
 - Conformance fixture tests run against a local owned HTTP server.
 - Destructive conformance cases skip unless fixture-backed and explicitly opted in.
 
+## Phase 4-B: config primitive and generated base URL wiring
+
+Implement the config primitive from `docs/config-primitive.md` before removing generated Product remote stubs.
+
+Core requirements:
+
+- public `Config.object(...)`
+- typed `RunContext.config`
+- `RunContext.sources` for config and option provenance
+- explicit option-to-config bindings
+- project and user config discovery
+- strict schema validation
+- JSON, JSONC, YAML, and TOML config parsing
+- `--config` / `--no-config` parse behavior from the config requirements doc
+
+Product requirements:
+
+- public `@lili/product` `Config` helper
+- `Product.config(...)` as a sibling of `.binding(...)`
+- normalized catalog config node
+- generated config JSON Schema containing general config fields and bindings
+- config lints that reject secret fields in general config
+- remote base URL sources from literal, env var, or config field
+
+Verification:
+
+- a handwritten CLI with config receives typed `ctx.config` and provenance
+- a handwritten CLI without config rejects `--config` and `--no-config`
+- config-to-option binding is explicit; matching option names do not bind automatically
+- handwritten tool CLIs use the primitive: `li-build` binds `build.*` and `compileEntry.*` defaults through `Config.object(...)`; `li-release` binds `package.*` and `publish.*` defaults through `Config.object(...)`
+- a Product with config but no bindings still emits a config schema
+- a Product with config and bindings emits both in one schema artifact
+- a generated remote command resolves `baseUrl` from config before calling `callHttpOperation`
+- auth/session values, selected profiles, runtime config values, and provenance stay out of catalog digests and release manifests
+
 ## Phase 5: releases spine
 
-Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This `@lili/releases` package slice is implemented through Phase 5F, and Phase 6 has baseline npm/PyPI/Homebrew/Scoop renderer implementations. Phase 7 publishing is the next release slice.
+Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This `@lili/releases` package slice is implemented through Phase 5F, Phase 6 has baseline npm/PyPI/Homebrew/Scoop renderer implementations, and Phase 7A has the `li-release publish` dry-run/preflight CLI. Concrete ecosystem publisher adapters, receipts, and provenance capture remain the next release slice.
 
 ### Phase 5A: manifest schema and fixture
 
@@ -366,7 +409,7 @@ Phase 5 exits only when `bun run --filter @lili/releases check`, `bun run --filt
 
 Add ecosystem renderers inside `@lili/releases`. This phase renders and verifies package artifacts; it does not publish them to registries.
 
-- npm umbrella plus platform packages
+- npm umbrella plus platform package directories, with optional derived `.tgz` packing
 - PyPI wheels
 - Homebrew formula
 - Scoop JSON manifest
@@ -395,6 +438,13 @@ Verification:
 
 Automate publishing npm, PyPI, Homebrew, and Scoop outputs from one release manifest after Phase 6 artifact rendering and verification are stable.
 
+Implemented Phase 7A:
+
+- `li-release package` writes `package-records.json` and `package-artifacts.json` alongside the release manifest.
+- `li-release publish <manifest> --publishers <id|all>` consumes the release manifest plus verified package records/artifact records without rebuilding or rerendering.
+- The CLI produces a dry-run publish plan, checks selected publisher credentials from canonical env vars, rejects missing git repository settings for selected Homebrew/Scoop publishers, and rechecks artifact bytes on `--no-dry-run` before any executor can mutate.
+- The CLI intentionally registers no concrete registry executors yet, so a non-dry-run attempt can verify bytes but cannot publish to live registries until the adapter slice lands.
+
 The publish command or API must consume:
 
 - one `CliReleaseManifest`
@@ -415,10 +465,10 @@ Required publisher adapters:
 
 Verification:
 
-- A dry-run publish plan lists every registry mutation for npm, PyPI, Homebrew, and Scoop from one manifest reference.
-- Missing credentials or required repository settings for a selected publisher fail before any mutation.
-- Artifact hash verification runs immediately before publish and refuses stale or mismatched packed artifacts.
-- npm publish ordering publishes platform packages before the umbrella package.
+- A dry-run publish plan lists every registry mutation for npm, PyPI, Homebrew, and Scoop from one manifest reference. Implemented for `li-release publish` dry-run planning.
+- Missing credentials or required repository settings for a selected publisher fail before any mutation. Implemented for `li-release publish` preflight.
+- Artifact hash verification runs immediately before publish and refuses stale or mismatched packed artifacts. Implemented for `li-release publish --no-dry-run` before executor dispatch. npm publishing should delegate to `npm publish` against either verified tarballs or verified package directories; custom OIDC upload clients are not the default path.
+- npm publish ordering publishes platform packages before the umbrella package. Implemented in the publish plan.
 - npm and PyPI publisher tests include trusted-publishing/provenance-capable paths when the required CI identity is configured, while token-based fallback stays explicit.
 - Homebrew and Scoop publisher tests use local fixture git repositories or dry-run command capture, not live registry mutation.
 - Selecting a subset of publishers does not require credentials or metadata for unselected publishers.

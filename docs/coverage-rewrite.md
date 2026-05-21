@@ -14,6 +14,7 @@ Implemented in current `src/` first; each behavior maps to a rewrite component:
 | SKILLS-ADD-001 | `@lili/core` skills/sync resolver | `parity.test.ts` |
 | GEN-001 | `@lili/core` for now; revisit when `@lili/build` lands (typegen is arguably a build-time concern) | `parity.test.ts` |
 | MCP-NAME-001 | `@lili/core` mcp transport | `parity.test.ts` |
+| MCP-CONFORMANCE-001 | `@lili/core` MCP JSON-RPC transport + `@lili/product` generated MCP tools | `packages/core/test/mcp-conformance.test.ts`, `packages/product/test/generate-mcp-conformance.test.ts` |
 | AGENT-FLIP-001 | `@lili/core` execute context | `parity.test.ts` |
 | LLMS-SHAPE-001 | `@lili/core` command/registry | `parity.test.ts` |
 | OPENAPI-001 | `@lili/core` command/openapi (emit) | `parity.test.ts` |
@@ -67,7 +68,22 @@ Before adding rewrite tests:
 | BUILD-032 | Compile profile is the source of truth for `Bun.build()` and `compileFlagsDigest`. | `docs/build-system.md` | Unit-test compile profile construction, path-independent digesting, internal entrypoint rendering, and injected `Bun.build()` options. | Bun build API docs + canonical digest | Shell-string compile logic drifts from recorded flags, or release rebuilds from workspace state. |
 | BUILD-033 | `@lili/build` stays generic and does not depend on Product or releases. | `docs/package-layout.md` | Package boundary test inspects runtime dependencies and source imports. | Package graph | Build users who only want standalone CLI compilation pull in Product generation or release rendering. |
 
+## Config primitive coverage
+
+| ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
+|---|---|---|---|---|---|
+| CONFIG-PRIM-001 | Core exposes opt-in `Config.object(...)` for handwritten CLIs. | `docs/config-primitive.md` | Package consumer imports `Config` from `@lili/core`, declares config, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook or Product-only feature. |
+| CONFIG-PRIM-002 | CLIs without config reject `--config` and `--no-config`. | `docs/config-primitive.md` | Invoke no-config CLI with each flag and assert parse errors. | CLI parser | Config flags silently no-op or become positionals. |
+| CONFIG-PRIM-003 | Explicit config path and disabled config behavior are exclusive and source-aware. | `docs/config-primitive.md` | `--config` loads only one file; `--no-config` disables discovery; both together fail. | Temp filesystem fixture | Explicit files are merged with discovered files or conflicting flags are accepted. |
+| CONFIG-PRIM-004 | Project/user discovery follows documented precedence. | `docs/config-primitive.md` | Create user and nested project config files, run from a child cwd, and inspect resolved values/provenance. | Temp filesystem fixture | User config beats project config or upward discovery misses the nearest project file. |
+| CONFIG-PRIM-005 | Config-to-option binding is explicit. | `docs/config-primitive.md` | Matching config and option names do not bind until `optionConfig` is declared. | CLI output fixture | Every matching option name is treated as durable config. |
+| CONFIG-PRIM-006 | Unknown config keys fail under strict schema. | `docs/config-primitive.md` | Config fixture includes a misspelled top-level field and asserts validation failure. | Core schema validation | Misspelled durable preferences are silently ignored. |
+| CONFIG-PRIM-007 | Product config and bindings emit one config schema surface. | `docs/config-primitive.md` | Product fixture with general config and bindings generates schema/docs and surface manifest entries. | Canonical catalog | Binding schema remains the only config surface or general config becomes a separate system. |
+| CONFIG-PRIM-008 | General product config rejects secrets. | `docs/config-primitive.md` | Product fixture marks a config field secret and lints fail. | Product lint | Tokens enter docs, config schema, release manifest, or agent surfaces. |
+
 ## Remote transport coverage
+
+Current status (2026-05-20): `@lili/core` now exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/core/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the core primitive layer. Remaining remote work is generated Product wiring and conformance: Product `HttpSpec` still has no base URL/config source, so generated `remote-http` and resource-operation commands intentionally keep the explicit `REMOTE_NOT_IMPLEMENTED` stub until the config primitive/base URL contract lands.
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
@@ -89,6 +105,19 @@ Before adding rewrite tests:
 | REMOTE-016 | Transport throws structured core errors. | `docs/http-operation-transport.md` | Mock failures and assert execution envelope contains normalized codes. | Error envelope | Transport returns mixed result shapes or leaks raw errors. |
 | REMOTE-017 | Generated capabilities report applied execution mode. | `docs/build-system.md` | Mixed execution fixture covers flag/config/default precedence when supported and asserts `meta.execution.mode` and `meta.execution.source`. | Standard result envelope | Agent cannot tell whether the command touched local simulation, remote HTTP, or a hybrid workflow. |
 | REMOTE-018 | `--local` and `--remote` are mutually exclusive. | `docs/build-system.md` | Generated mixed-mode command invoked with both flags fails before execution. | Parser error fixture | Command silently chooses one mode when the user's intent is ambiguous. |
+| REMOTE-019 | Generated remote commands can resolve base URL from declared config. | `docs/config-primitive.md` | Product remote fixture uses `Runtime.config("apiBaseUrl")`, config file supplies it, generated command calls `callHttpOperation`. | Core transport mock | Generated remote wiring stays env/literal-only or reads app config ad hoc. |
+
+## Core supportability coverage
+
+| ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
+|---|---|---|---|---|---|
+| CORE-OBS-001 | Lifecycle subscribers are observe-only and receive redacted command events. | `docs/v1-release-plan.md` | Register `cli.on('*', subscriber)`, run a command with sensitive args/options/env, and inspect captured events. | Event schema | Telemetry sees raw inputs or only command success paths. |
+| CORE-OBS-002 | Subscriber failures never change command results. | `docs/v1-release-plan.md` | Subscriber throws during `command.started`; command output and exit code remain successful. | Command result envelope | Telemetry sink failure breaks CLI execution. |
+| CORE-OBS-003 | Local lifecycle events cover non-command supportability surfaces without expanding telemetry. | `docs/v1-release-plan.md` | Subscribe to `*`, exercise help/version/completion/schema/not-found/MCP surfaces, and assert event names plus absence of raw argv/request payloads. | Event stream snapshot | Framework hooks become the telemetry API or leak unresolved user input. |
+| CORE-OBS-004 | Telemetry sinks consume an explicit allowlist, not every lifecycle event. | `docs/v1-release-plan.md` | Attach a fixture telemetry subscriber that forwards only the documented allowlist while broad local events are also emitted. | Telemetry allowlist | Help, completion, schema, or MCP discovery events are exported by default. |
+| CORE-OBS-005 | Telemetry config resolves from the reserved `lili.telemetry` namespace without treating command options or declared app config as telemetry controls. | `docs/v1-release-plan.md` | Config fixture contains `lili.telemetry`, command-option config, and unrelated declared product config keys; resolver applies precedence and leaves command option parsing unchanged. | Telemetry control resolver | Telemetry reads raw app config, collides with product keys, or ignores `--no-config`. |
+| CORE-HOOK-001 | Mutation hooks run at documented points before middleware/handler execution. | `docs/v1-release-plan.md` | `beforeExecute` mutates context vars; middleware and handler observe the mutation in order. | Hook contract | Hooks run too late or are conflated with middleware. |
+| CORE-HOOK-002 | Hook failures are command failures, unlike subscriber failures. | `docs/v1-release-plan.md` | `beforeExecute` throws a structured error; command returns the normalized error envelope. | Error envelope | Mutation hooks fail silently or look like telemetry failures. |
 
 ## Generated surfaces coverage
 
@@ -107,7 +136,19 @@ Before adding rewrite tests:
 | SURFACE-011 | Command MCP tools and Code Mode MCP are separate surfaces. | `docs/schema-ir-openapi.md` | Fixture with local-only command appears in command MCP manifest but not in OpenAPI-derived downstream manifest. | Canonical catalog + OpenAPI eligibility | HTTP-only downstream MCP overwrites command MCP semantics. |
 | SURFACE-012 | Product-specific surfaces require explicit adapters. | `docs/application-integration.md` | Request `wrangler.jsonc`, Workers Binding RPC, dashboard metadata, or generated server/API output before adapter registration. | Requirement gate | Build silently emits partial product-specific artifacts. |
 | SURFACE-013 | Command manifest is catalog-derived and includes effects/execution. | `docs/build-system.md` | Generate `schema --json` or command manifest output and assert argv, input/output schemas, effects, execution mode, and examples. | Canonical catalog | Agent manifest loses CLI-only semantics or mirrors OpenAPI instead. |
+| SURFACE-014 | Config JSON Schema is generated from declared general config and bindings, with only explicitly reserved runtime namespaces allowed outside strict product fields. | `docs/config-primitive.md` | Product fixture declares general config fields and bindings; generated config schema includes both plus reserved runtime namespaces and rejects unknown app keys. | Canonical catalog config + bindings | Config docs/schema are absent, binding-only, hand-written separately, or silently accept misspelled product fields. |
 | BUILD-031 | `@lili/product` has package-local mutation testing. | `docs/build-system.md` | Add `packages/product/stryker.conf.mjs`, `mutate` script, root-catalog Stryker dev deps, and config typecheck inclusion; run the package-local mutate command for an initial report. | Stryker + Bun runner | Product package silently lacks the mutation-testing workflow already available in core. |
+
+### Generated surface implementation trace
+
+| ID | Status | Test file(s) |
+|---|---|---|
+| SURFACE-003 | Implemented for catalog-derived MCP tools gated by `surfaces.agent` | `packages/product/test/generate-surfaces.test.ts` |
+| SURFACE-004 | Partially implemented for generated docs/reference markdown from catalog summaries, schemas, auth requirements, bindings, and capability examples | `packages/product/test/generate-surfaces.test.ts` |
+| SURFACE-008 | Implemented for CLI, OpenAPI, command manifest, MCP tools, agent reference, docs reference, and config schema surfaces | `packages/product/test/generate-check.test.ts` |
+| SURFACE-009 | Implemented for generated artifact content and manifest metadata drift, with targeted surface ids | `packages/product/test/generate-check.test.ts` |
+| SURFACE-013 | Expanded with command path, input/output/env schemas, execution, auth/context/permission requirements, effects, policy, and examples; lints reject missing safety metadata for agent/OpenAPI-visible capabilities | `packages/product/test/generate-surfaces.test.ts`, `packages/product/test/vocabulary-lints.test.ts` |
+| SURFACE-014 | Partially implemented for binding-derived config schema; general Product config waits for `CONFIG-PRIM-*` | `packages/product/test/generate-surfaces.test.ts` |
 
 ## Auth/session coverage
 
@@ -155,11 +196,11 @@ AUTH-005 and AUTH-007 require sessions / `whoami` and stay open for 3D-B and bey
 | RELEASE-004 | Binary hash and size use final signed bytes. | `docs/distribution.md` | Sign/mutate fixture bytes before hashing. | sha256/file size | Hash computed before signing. |
 | RELEASE-005 | npm renderer pins exact platform package versions. | `docs/distribution.md` | Render umbrella package and inspect optionalDependencies. | Manifest | Version skew accepted. |
 | RELEASE-006 | npm renderer emits no lifecycle scripts. | `docs/distribution.md` | Inspect package JSONs. | npm package JSON | Install-time execution added. |
-| RELEASE-007 | npm final `.tgz` binary hash matches manifest. | `docs/distribution.md` | Pack, unpack, hash executable. | sha256 | Staging verification misses packed artifact drift. |
+| RELEASE-007 | npm renderer writes package directories and derived `.tgz` artifacts whose binary hash matches the manifest. | `docs/distribution.md` | Inspect package directories; pack, unpack, hash executable. | sha256 | Renderer only emits opaque tarballs or staging verification misses packed artifact drift. |
 | RELEASE-008 | npm shim gives actionable missing optional error. | `docs/distribution.md` | Simulate missing platform package. | Requirement fixture | Module resolution error leaks. |
 | RELEASE-009 | Renderer interface is pure manifest plus verified binary records to staged package. | `docs/distribution.md` | Renderer test runs without schema/build output. | Dependency boundary | Renderer reads non-manifest state. |
 | RELEASE-010 | Yank command uses one manifest reference. | `docs/distribution.md` | Dry-run yank fixture for npm and future ecosystems. | Manifest | Yank requires ad hoc package names. |
-| RELEASE-011 | npm platform packages verify final `.tgz` binaries. | `docs/npm-binary-packaging.md` | Pack, unpack, hash, and inspect package fields. | Manifest + sha256 | Staging directory verification hides packed artifact drift. |
+| RELEASE-011 | npm platform packages verify directory contents and final `.tgz` binaries. | `docs/npm-binary-packaging.md` | Inspect package directory fields; pack, unpack, hash, and inspect package fields. | Manifest + sha256 | Directory output and packed artifact drift apart. |
 | RELEASE-012 | Renderer selection supports zero to all renderers inside `@lili/releases`. | `docs/releases.md` | Release config fixtures cover `[]`, one renderer, multiple renderers, and `all`. | Decision record | npm-only flow or separate `release-extra` package becomes the architecture. |
 | RELEASE-013 | `@lili/releases` consumes build output as manifest/data, not by importing `@lili/core`, `@lili/build`, or `@lili/product`; concrete renderers stay behind subpath exports. | `docs/package-layout.md` | Package boundary test inspects runtime dependencies, imports `@lili/releases` without concrete renderers, and checks renderer subpath exports. | Package graph | Release code reaches around the manifest into core/build/product internals or root imports every renderer. |
 | RELEASE-014 | Publish automation derives npm/PyPI/Homebrew/Scoop mutations from one manifest. | `docs/next-plan.md` | Dry-run publish plan for all implemented publishers from one manifest fixture. | Manifest + verified artifact records | Publisher requires ad hoc package names, versions, or workspace state. |
@@ -193,10 +234,25 @@ AUTH-005 and AUTH-007 require sessions / `whoami` and stay open for 3D-B and bey
 |---|---|---|
 | RELEASE-005 | Implemented for npm umbrella optional dependency pins | `packages/releases/test/ecosystem-renderers.test.ts` |
 | RELEASE-006 | Implemented for rendered npm package JSONs | `packages/releases/test/ecosystem-renderers.test.ts` |
-| RELEASE-007 | Implemented for npm tarball binary hashing | `packages/releases/test/ecosystem-renderers.test.ts` |
+| RELEASE-007 | Implemented for npm package directories plus tarball binary hashing | `packages/releases/test/ecosystem-renderers.test.ts` |
 | RELEASE-008 | Implemented for missing optional dependency shim error | `packages/releases/test/ecosystem-renderers.test.ts` |
-| RELEASE-011 | Implemented for npm platform tarball package fields and binary hash | `packages/releases/test/ecosystem-renderers.test.ts` |
+| RELEASE-011 | Implemented for npm platform package directories, tarball package fields, and binary hash | `packages/releases/test/ecosystem-renderers.test.ts` |
 | RELEASE-019 | Expanded across npm, PyPI, Homebrew, and Scoop artifacts | `packages/releases/test/ecosystem-renderers.test.ts` |
+
+## V1 public-readiness coverage
+
+| ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
+|---|---|---|---|---|---|
+| V1-001 | Every publishable package can be packed and consumed from a temp Bun project. | `docs/v1-release-plan.md` | Pack each package, install packed artifacts into a temp project, and import documented root/subpath exports. | Package READMEs + export maps | Package works only through workspace source paths or unpublished internals. |
+| V1-002 | Public README and package READMEs describe runnable v1 workflows. | `docs/v1-release-plan.md` | Execute README quickstart and package README code blocks through examples or temp projects. | Public docs | Documentation points at internal planning docs or stale package names. |
+| V1-003 | V1 examples dogfood package boundaries. | `docs/v1-release-plan.md` | `bun run examples:smoke` runs handwritten, generated, remote/conformance, compile, and release examples. | Example fixtures | Examples import source-relative internals or skip the release path. |
+| V1-004 | Public docs are curated separately from internal requirement docs. | `docs/v1-release-plan.md` | Package/website file-list check excludes internal requirement docs unless explicitly curated. | Package `files` lists + site inputs | Internal agent/planning docs are shipped wholesale as user docs. |
+| V1-005 | LOC, export, dependency, and boundary metrics are tracked before release candidates. | `docs/v1-release-plan.md` | Metrics command records package source LOC, test LOC, public exports, runtime dependencies, and boundary exceptions. | Metrics baseline | Simplification is asserted without a measured baseline or regression signal. |
+| V1-006 | Hosted service/platform work is V2 and does not block package publication. | `docs/v1-release-plan.md`, `docs/v2-platform-goals.md` | Release checklist fails if hosted-service tasks are required for package pack/temp-consumer/example/release dry-run success. | V1/V2 cutline | A website/backend product becomes an accidental dependency of publishing the libraries. |
+| V1-007 | V1 telemetry is opt-in local instrumentation, not hosted ingestion. | `docs/v1-release-plan.md` | Fixture command emits lifecycle events to a local sink only when enabled; redaction tests cover secrets, env values, context values, and local paths; subscriber failures do not alter results. | Telemetry event schema | Telemetry leaks secrets, becomes mandatory for command execution, or uses mutation hooks as its collection path. |
+| V1-008 | Generated diagnostics are available without a hosted service. | `docs/v1-release-plan.md` | `doctor` fixture covers auth/env/session/install/release/update/agent-readiness checks and emits structured envelopes. | Diagnostic schema | Supportability depends on manual debugging or a SaaS backend. |
+| V1-009 | Local catalog/discovery artifacts are versioned and drift-checked. | `docs/v1-release-plan.md` | Generate CLI, command manifest, surface manifest, MCP/agent discovery, and release metadata; mutate one artifact and assert targeted drift. | Generated catalog manifests | Hosted catalog assumptions hide stale local artifacts. |
+| V1-010 | Install/update/channel UX works from static release metadata. | `docs/v1-release-plan.md` | Fixture release metadata drives install docs, version/update status, channel selection, yanked-version notices, and package-manager wrapper diagnostics. | Release manifest + static metadata | Generated CLIs need a hosted update service to explain install or channel state. |
 
 ## Docs coverage
 

@@ -11,6 +11,7 @@ docs/invariant.md
 docs/package-layout.md
 docs/next-plan.md
 docs/application-integration.md
+docs/config-primitive.md
 docs/http-operation-transport.md
 docs/schema-ir-openapi.md
 docs/server-conformance.md
@@ -18,6 +19,8 @@ docs/build-system.md
 docs/distribution.md
 docs/npm-binary-packaging.md
 docs/releases.md
+docs/v1-release-plan.md
+docs/v2-platform-goals.md
 docs/coverage-rewrite.md
 ```
 
@@ -25,13 +28,14 @@ See `docs/AGENTS.md` for doc rules and update workflow.
 
 Key planning decisions:
 
-- `@lili/core` owns the runtime CLI framework and outbound HTTP operation transport.
-- `@lili/product` owns Product schema authoring, catalog normalization, lints, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance.
+- `@lili/core` owns the runtime CLI framework, opt-in config primitive, and outbound HTTP operation transport.
+- `@lili/product` owns Product schema authoring, general config and binding declarations, catalog normalization, lints, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance.
 - `@lili/build` owns reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance.
 - `@lili/releases` owns the release manifest, renderer interface, selectable renderers, and final-artifact verification.
 - There is no `release-extra` package; npm, PyPI, Homebrew, and Scoop are renderer choices inside `@lili/releases`.
 - OpenAPI is generated output, not MVP input.
 - The internal docs is repo-internal only.
+- V1 should publish the self-contained package toolchain; V2 is the hosted service/platform layer and must not block package publication.
 
 ## Runtime dependencies
 
