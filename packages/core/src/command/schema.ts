@@ -1,10 +1,7 @@
-import type { CommandDefinition, Entry } from '../types.js'
-import { isFetch, isGroup } from './guards.js'
+import type { CommandDefinition, CommandRuntime } from '../types.js'
 import { deprecatedKeys, toJsonSchema } from '../schema/zod.js'
 
-export function commandSchema(entry: Entry) {
-  if (isGroup(entry) || isFetch(entry)) return undefined
-  const definition = entry as CommandDefinition
+export function commandSchema(definition: CommandDefinition | CommandRuntime) {
   const deprecated = deprecatedKeys(definition.options)
   return {
     args: toJsonSchema(definition.args),

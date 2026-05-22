@@ -1,4 +1,4 @@
-import type { CommandDefinition, Dict, Schema } from '../types.js'
+import type { CommandRuntime, Dict, Schema } from '../types.js'
 import { camel, kebab } from '../internal.js'
 import { isBooleanSchema, isDeprecated, isObjectSchema, objectShape, parseSchema } from '../schema/zod.js'
 
@@ -21,7 +21,7 @@ export function parseObject(schema: Schema | undefined, data: Dict = {}): unknow
 }
 
 export function parseCommandOptions(
-  definition: CommandDefinition,
+  definition: CommandRuntime,
   argv: string[],
   seed: Dict = {},
 ): { args: string[]; options: Dict; deprecations: DeprecationWarning[] } {

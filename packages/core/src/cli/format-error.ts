@@ -2,6 +2,7 @@ import type { CliState, FieldError, SelectedCommand } from '../types.js'
 import { kebab } from '../internal.js'
 import { objectShape } from '../schema/zod.js'
 import { renderHelp } from '../help/render.js'
+import { isCommand } from '../command/guards.js'
 
 type ValidationTarget =
   | { kind: 'option'; label: string }
@@ -14,10 +15,10 @@ export function formatHumanValidationError(
   selected: SelectedCommand,
   fieldErrors: FieldError[],
 ): string {
-  const command = selected.entry as any
+  const runtime = isCommand(selected.entry) ? selected.entry.runtime : undefined
   const lines: string[] = []
   for (const fe of fieldErrors) {
-    const target = formatValidationTarget(command, fe.path)
+    const target = formatValidationTarget(runtime, fe.path)
     if (fe.missing) lines.push(`Error: missing required ${target.kind} ${target.label}`)
     else if (target.kind === 'environment variable')
       lines.push(`Error: invalid value for environment variable ${target.label}: ${fe.message}`)
@@ -35,10 +36,10 @@ function formatValidationTarget(command: any, path: string): ValidationTarget {
   const [head, ...tail] = trimmed.split('.')
   const suffix = tail.length ? `.${tail.join('.')}` : ''
 
-  if (head && objectShape(command.options)[head]) {
+  if (head && objectShape(command?.options)[head]) {
     return { kind: 'option', label: `--${kebab(head)}${suffix}` }
   }
-  if (head && objectShape(command.env)[head]) {
+  if (head && objectShape(command?.env)[head]) {
     return { kind: 'environment variable', label: `${head}${suffix}` }
   }
   return { kind: 'argument', label: `<${trimmed}>` }

@@ -437,25 +437,44 @@ export type CreateOptions<
 export type GroupEntry = {
   _group: true
   commands: Map<string, Entry>
+  contract: CommandContract
   description?: string | undefined
   events: CliEventSubscription[]
   hooks: CliHooks
   middlewares: MiddlewareHandler[]
   name: string
   outputPolicy?: OutputPolicy | undefined
-  root?: CommandDefinition | undefined
+  root?: RuntimeEntry | undefined
+}
+
+export type CommandRuntime = {
+  alias?: Record<string, string> | undefined
+  args?: Schema<any> | undefined
+  env?: Schema<any> | undefined
+  middleware?: MiddlewareHandler[] | undefined
+  optionConfig?: Record<string, string> | undefined
+  optionEnv?: Record<string, string> | undefined
+  options?: Schema<any> | undefined
+  output?: Schema<any> | undefined
+  run?: CommandDefinition['run'] | undefined
+}
+
+export type CommandEntry = {
+  _command: true
+  contract: CommandContract
+  runtime: CommandRuntime
 }
 
 export type FetchEntry = {
   _fetch: true
   basePath?: string | undefined
-  description?: string | undefined
+  contract: CommandContract
   fetch: FetchHandler
-  outputPolicy?: OutputPolicy | undefined
 }
 
 export type AliasEntry = { _alias: true; target: string }
-export type Entry = CommandDefinition | GroupEntry | FetchEntry | AliasEntry
+export type RuntimeEntry = CommandEntry | FetchEntry
+export type Entry = RuntimeEntry | GroupEntry | AliasEntry
 
 export type CliState = {
   commands: Map<string, Entry>
@@ -463,7 +482,7 @@ export type CliState = {
   events: CliEventSubscription[]
   hooks: CliHooks
   middlewares: MiddlewareHandler[]
-  root?: CommandDefinition | undefined
+  root?: RuntimeEntry | undefined
 }
 
 export type ServeOptions = {

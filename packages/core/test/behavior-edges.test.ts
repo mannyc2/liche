@@ -46,6 +46,7 @@ describe('fetch command proxy behavior', () => {
       {
         _fetch: true,
         basePath: '//v1/',
+        contract: { name: 'remote', path: ['remote'] },
         fetch: async (request) => {
           seen.push(`${request.method} ${new URL(request.url).pathname} ${request.headers.get('authorization')}`)
           return Response.json({ ok: true })
@@ -60,6 +61,7 @@ describe('fetch command proxy behavior', () => {
     const text = await Fetch.callFetch(
       {
         _fetch: true,
+        contract: { name: 'remote', path: ['remote'] },
         fetch: async () => new Response('nope', { status: 418 }),
       },
       [],
@@ -69,6 +71,7 @@ describe('fetch command proxy behavior', () => {
     const objectError = await Fetch.callFetch(
       {
         _fetch: true,
+        contract: { name: 'remote', path: ['remote'] },
         fetch: async () => Response.json({ reason: 'bad' }, { status: 400 }),
       },
       [],

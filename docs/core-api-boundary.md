@@ -11,7 +11,7 @@ The first hard-cutover slice for the declarative core direction has shipped. The
 - `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` are public because the helpers expose them.
 - `CommandContract.path`, `CommandContract.summary`, and `CommandContract.safety` are public serializable metadata used by manifest and MCP projection.
 
-`Cli.create()` remains public as the lower-level runtime construction primitive while generated adapters are migrated. New handwritten examples should use `defineCli()` and `defineCommand()`.
+`Cli.create()` remains public as the lower-level runtime construction primitive and compatibility adapter for focused runtime tests or direct programmatic assembly. It is not the canonical handwritten or generated authoring API. New handwritten examples and generated CLI output should use `defineCli()` and `defineCommand()`.
 
 ## Phase 3 re-freeze (packaged skills)
 
@@ -119,12 +119,12 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - New handwritten CLI code declares commands through `defineCli()` / `defineCommand()` and uses core runtime behavior through documented top-level APIs only.
 - Generated CLI code declares through `defineCli()` / `defineCommand()` and must not depend on internal registry state.
 - Generated code must not import `stateSymbol`, `InternalCli`, `CliState`, parser helpers, command registry helpers, command guards, help renderers, or schema-adapter internals.
-- Runtime reflection in core remains a handwritten-CLI compatibility surface. Schema-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces belong to `@lili/product`.
+- Runtime reflection in core is backed by serializable `CommandContract` records, not raw `Entry` / `CliState` inspection. Product-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces still belong to `@lili/product` when the Product catalog is the source of truth.
 - Remove or reshape current index exports before freezing. Do not keep duplicate or state-shaped exports just because tests currently reach them.
 
 ## Keep public
 
-- `Cli` (`packages/core/src/cli/create.ts:65`) — lower-level runtime construction primitive and current generated CLI entrypoint.
+- `Cli` (`packages/core/src/cli/create.ts`) — lower-level runtime construction primitive and compatibility adapter. It lowers `.command()` definitions into `CommandContract + runtime` entries at registration time.
 - `defineCli` — canonical handwritten CLI authoring helper for data-first command graphs.
 - `defineCommand` — canonical command declaration helper for analyzable command metadata plus a handler.
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.

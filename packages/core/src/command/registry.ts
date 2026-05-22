@@ -1,4 +1,4 @@
-import type { CliState, CommandContract, CommandDefinition, CommandManifest, Entry, SelectedCommand } from '../types.js'
+import type { CliState, CommandContract, CommandManifest, Entry, RuntimeEntry, SelectedCommand } from '../types.js'
 import { isAlias, isGroup, resolveAlias } from './guards.js'
 import { commandContract } from './contract.js'
 
@@ -10,7 +10,7 @@ export type CommandScope = {
   description?: string | undefined
   entry?: Entry | undefined
   path: string[]
-  root?: CommandDefinition | undefined
+  root?: RuntimeEntry | undefined
 }
 
 export function selectCommand(state: CliState, tokens: string[]): SelectedCommand | undefined {
@@ -80,7 +80,7 @@ export function commandScope(state: CliState, tokens: string[] = []): CommandSco
       return {
         aliases: aliasesFor(commands, canonicalToken),
         commands: new Map(),
-        description: (resolved as any).description,
+        description: commandContract(canonicalToken, resolved)?.description,
         entry: resolved,
         path,
         root: undefined,
@@ -95,7 +95,9 @@ export function commandScope(state: CliState, tokens: string[] = []): CommandSco
   return {
     aliases: path.length ? [] : [],
     commands,
-    description: path.length ? (entry as any)?.description : state.def.description,
+    description: path.length
+      ? (entry ? commandContract(path.join(' '), entry)?.description : undefined)
+      : state.def.description,
     entry,
     path,
     root,
@@ -127,7 +129,7 @@ export function completionCommands(state: CliState, words: string[]): string[] {
 }
 
 export function outputPolicy(selected: SelectedCommand) {
-  return (selected.entry as any).outputPolicy
+  return commandContract(selected.path.join(' ') || '(root)', selected.entry)?.outputPolicy
 }
 
 export function manifest(name: string, state: CliState): CommandManifest {
@@ -155,7 +157,7 @@ function aliasesFor(commands: Map<string, Entry>, target: string): string[] {
 
 export function collectCommandContracts(
   commands: Map<string, Entry>,
-  root?: CommandDefinition | undefined,
+  root?: RuntimeEntry | undefined,
   prefix = '',
 ): CommandContract[] {
   const output: CommandContract[] = root

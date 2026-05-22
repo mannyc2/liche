@@ -1,7 +1,9 @@
 import type {
   CliInstance,
   CliState,
+  CommandEntry,
   CommandDefinition,
+  CommandRuntime,
   CreateOptions,
   DeclarativeCommand,
   DefineCliOptions,
@@ -14,7 +16,10 @@ import type {
   CliEventTarget,
   CliHookHandler,
   CliHookType,
+  RuntimeEntry,
 } from '../types.js'
+import { commandContractFromDefinition, groupContract } from '../command/contract.js'
+import { isCommand, isFetch } from '../command/guards.js'
 import { fetchCli } from './fetch.js'
 import { normalizeEvents, normalizeHooks } from './lifecycle.js'
 import { serveCli } from './serve.js'
@@ -37,7 +42,7 @@ export function create<
 export function create(nameOrDefinition: string | (CreateOptions & { name: string }), maybeDefinition: CreateOptions = {}): CliInstance {
   const name = typeof nameOrDefinition === 'string' ? nameOrDefinition : nameOrDefinition.name
   const definition = typeof nameOrDefinition === 'string' ? maybeDefinition : nameOrDefinition
-  const root = definition.run || definition.fetch ? definition : undefined
+  const root = definition.run || definition.fetch ? createRuntimeEntry('(root)', definition) : undefined
   const state: CliState = {
     commands: new Map(),
     def: definition,
@@ -116,15 +121,11 @@ function register(cli: InternalCli, name: string, definition: CommandDefinition)
 }
 
 function setCommandEntry(commands: Map<string, any>, name: string, definition: CommandDefinition): void {
-  if (definition.fetch && !definition.run) {
-    commands.set(name, {
-      _fetch: true,
-      basePath: definition.basePath,
-      description: definition.description,
-      fetch: definition.fetch,
-      outputPolicy: definition.outputPolicy,
-    } satisfies FetchEntry)
-  } else commands.set(name, definition)
+  if ((definition as any)._alias === true) {
+    commands.set(name, definition as any)
+    return
+  }
+  commands.set(name, createRuntimeEntry(name, definition))
 }
 
 function mount(parent: InternalCli, child: InternalCli): CliInstance {
@@ -132,6 +133,10 @@ function mount(parent: InternalCli, child: InternalCli): CliInstance {
   const group: GroupEntry = {
     _group: true,
     commands: childState.commands,
+    contract: groupContract(child.name, {
+      description: child.description,
+      outputPolicy: childState.def.outputPolicy,
+    }),
     description: child.description,
     events: childState.events,
     hooks: childState.hooks,
@@ -156,7 +161,11 @@ function registerDeclarative(cli: InternalCli, command: DeclarativeCommand): voi
   if (existing?._group) {
     if (definition.description !== undefined) existing.description = definition.description
     if (definition.outputPolicy !== undefined) existing.outputPolicy = definition.outputPolicy
-    if (definition.run) existing.root = definition
+    existing.contract = groupContract(leaf, {
+      description: existing.description,
+      outputPolicy: existing.outputPolicy,
+    })
+    if (definition.run || definition.fetch) existing.root = createRuntimeEntry(leaf, definition)
   } else {
     setCommandEntry(parentCommands, leaf, definition)
   }
@@ -220,6 +229,7 @@ function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<st
     const group: GroupEntry = {
       _group: true,
       commands: new Map(),
+      contract: groupContract(segment, {}),
       events: [],
       hooks: { beforeExecute: [] },
       middlewares: [],
@@ -233,18 +243,23 @@ function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<st
 
 function groupFromExisting(segment: string, existing: any): GroupEntry {
   if (existing?._alias) throw new Error(`Cannot create command group '${segment}' over an existing alias`)
-  if (existing?._fetch) throw new Error(`Cannot create command group '${segment}' over an existing fetch command`)
+  if (isFetch(existing)) throw new Error(`Cannot create command group '${segment}' over an existing fetch command`)
+  if (!isCommand(existing)) throw new Error(`Cannot create command group '${segment}' over an unknown entry`)
 
   return {
     _group: true,
     commands: new Map(),
-    description: existing.description,
+    contract: groupContract(segment, {
+      description: existing.contract.description,
+      outputPolicy: existing.contract.outputPolicy,
+    }),
+    description: existing.contract.description,
     events: [],
     hooks: { beforeExecute: [] },
     middlewares: [],
     name: segment,
-    outputPolicy: existing.outputPolicy,
-    ...(existing.run ? { root: existing } : undefined),
+    outputPolicy: existing.contract.outputPolicy,
+    ...(existing.runtime.run ? { root: existing } : undefined),
   }
 }
 
@@ -272,5 +287,36 @@ function policyFromSafety(safety: NonNullable<DeclarativeCommand['safety']>) {
   return {
     ...(safety.destructive !== undefined ? { dangerous: safety.destructive } : undefined),
     ...(safety.destructive === true ? { requiresConfirmation: true } : undefined),
+  }
+}
+
+function createRuntimeEntry(name: string, definition: CommandDefinition): RuntimeEntry {
+  if (definition.fetch && !definition.run) {
+    return {
+      _fetch: true,
+      basePath: definition.basePath,
+      contract: commandContractFromDefinition(name, definition),
+      fetch: definition.fetch,
+    } satisfies FetchEntry
+  }
+
+  return {
+    _command: true,
+    contract: commandContractFromDefinition(name, definition),
+    runtime: commandRuntime(definition),
+  } satisfies CommandEntry
+}
+
+function commandRuntime(definition: CommandDefinition): CommandRuntime {
+  return {
+    ...(definition.alias ? { alias: definition.alias } : undefined),
+    ...(definition.args ? { args: definition.args } : undefined),
+    ...(definition.env ? { env: definition.env } : undefined),
+    ...(definition.middleware ? { middleware: definition.middleware } : undefined),
+    ...(definition.optionConfig ? { optionConfig: definition.optionConfig } : undefined),
+    ...(definition.optionEnv ? { optionEnv: definition.optionEnv } : undefined),
+    ...(definition.options ? { options: definition.options } : undefined),
+    ...(definition.output ? { output: definition.output } : undefined),
+    ...(definition.run ? { run: definition.run } : undefined),
   }
 }

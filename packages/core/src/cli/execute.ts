@@ -19,7 +19,7 @@ import { LiliError, errorToObject } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
 import type { LoadedConfig } from '../parser/config.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
-import { isFetch, isResult } from '../command/guards.js'
+import { isCommand, isFetch, isResult } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
 import { parseSchema } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
@@ -49,28 +49,30 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
   await emitCommandEvent(binaryName, input, command, 'command.selected')
   await emitCommandEvent(binaryName, input, command, 'command.started')
 
-  const definition = selected.entry as any
-
   try {
     if (isFetch(selected.entry)) {
       const result = await callFetch(selected.entry, selected.argv.args)
       await emitResultEvent(binaryName, input, command, startedAt, result)
       return result
     }
+    if (!isCommand(selected.entry)) {
+      throw new LiliError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
+    }
+    const runtime = selected.entry.runtime
 
-    const argv = parseCommandOptions(definition, input.argvOptions.args, input.argvOptions.options)
+    const argv = parseCommandOptions(runtime, input.argvOptions.args, input.argvOptions.options)
     if (input.onDeprecation) for (const { flag, option } of argv.deprecations) input.onDeprecation(flag, option)
-    const configOptions = optionsFromConfigBindings(definition.optionConfig, input.config)
+    const configOptions = optionsFromConfigBindings(runtime.optionConfig, input.config)
     const fromEnv: Dict = {}
-    for (const [optKey, envName] of Object.entries(definition.optionEnv ?? {}) as [string, string][]) {
+    for (const [optKey, envName] of Object.entries(runtime.optionEnv ?? {}) as [string, string][]) {
       const value = input.env[envName]
       if (value !== undefined) fromEnv[optKey] = value
     }
-    const options = parseObject(definition.options, { ...configOptions.values, ...fromEnv, ...argv.options })
+    const options = parseObject(runtime.options, { ...configOptions.values, ...fromEnv, ...argv.options })
     const args = input.argvOptions.argsObject !== undefined
-      ? parseObject(definition.args, input.argvOptions.argsObject)
-      : parseArgs(definition.args, argv.args)
-    const env = parseObject(definition.env, input.env)
+      ? parseObject(runtime.args, input.argvOptions.argsObject)
+      : parseArgs(runtime.args, argv.args)
+    const env = parseObject(runtime.env, input.env)
     const vars = parseObject((selected.rootDef as any)?.vars, {})
 
     const context: MiddlewareContext = {
@@ -125,9 +127,9 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       }
     }
 
-    const result = await runStack(context, [...input.middlewares, ...(definition.middleware ?? [])], async () => {
-      if (!definition.run) throw new LiliError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
-      return await definition.run(context)
+    const result = await runStack(context, [...input.middlewares, ...(runtime.middleware ?? [])], async () => {
+      if (!runtime.run) throw new LiliError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
+      return await runtime.run(context)
     })
 
     if (isAsyncIterable(result)) {
@@ -150,7 +152,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       return result
     }
 
-    const data = parseSchema(definition.output, result, result)
+    const data = parseSchema(runtime.output, result, result)
     const completed = { ok: true, data } satisfies Result
     await emitResultEvent(binaryName, input, command, startedAt, completed)
     return completed
