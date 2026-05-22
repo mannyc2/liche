@@ -63,7 +63,6 @@ Target root shape:
     "catalog": {
       "typescript": "^5.9.0",
       "zod": "^4.4.0",
-      "@toon-format/toon": "^2.2.0",
       "tokenx": "^1.3.0",
       "yaml": "^2.9.0"
     },
@@ -93,8 +92,8 @@ Owns:
 - parser/config/env validation
 - first-class opt-in config primitive for durable non-secret preferences
 - formatter/output envelope behavior
-- MCP basics (`--mcp` runtime support remains core; `mcp add` is an opt-in helper built-in)
-- skills/docs helpers (`skills` command helpers are opt-in built-ins; CLIs may provide packaged skill content)
+- MCP basics (`--mcp` runtime support and direct command-contract execution remain core; client-specific `mcp add` config writers are optional adapters)
+- skills/docs basics (core may expose packaged skill content and runtime reflection for handwritten CLIs; `skills add`, agent-skill installers, and vendor publishing helpers are optional adapters)
 - outbound HTTP operation transport
 - auth/session runtime primitives (`SecretString`, auth/context resolution, session store, auth header application)
 

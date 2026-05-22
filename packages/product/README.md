@@ -49,4 +49,4 @@ li-product conform ./product.ts --base-url http://localhost:8787 --report .lili/
 
 Conformance reports redact auth material and keep destructive capabilities opt-in.
 
-Generated CLIs use `@lili/core` for runtime behavior, config, auth/session state, local diagnostics, telemetry sinks, and HTTP transport.
+Generated CLIs use `@lili/core` for runtime behavior, config, auth/session state, config-owned diagnostics, opt-in telemetry sinks, and HTTP transport. Catalog-generated surfaces remain canonical for Product command manifests, MCP tools, agent docs, and reference docs.

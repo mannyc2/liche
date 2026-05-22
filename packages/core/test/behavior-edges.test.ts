@@ -12,7 +12,7 @@ import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { builtinHelpLines, builtinSuggestions } from '../src/cli/builtin-metadata.js'
 import { camel, collectAsync, isAsyncIterable, isObject, kebab } from '../src/internal.js'
 import { handleMcpHttp } from '../src/mcp/http.js'
-import { childCommands, collectCommands, commandScope, completionCommands, outputPolicy, selectCommand } from '../src/command/registry.js'
+import { childCommands, collectCommandContracts, commandScope, completionCommands, outputPolicy, selectCommand } from '../src/command/registry.js'
 import { isAlias, isFetch, isGroup, isResult } from '../src/command/guards.js'
 
 describe('fetch command proxy behavior', () => {
@@ -266,7 +266,7 @@ describe('command registry and guards behavior', () => {
 
     expect(completionCommands(state, ['admin', 'a'])).toEqual(['audit', 'a'])
     expect(completionCommands(state, ['admin', 'audit', 'x'])).toEqual([])
-    expect(collectCommands(state.commands, state.root).map((command) => command.name)).toEqual(['admin', 'admin audit', 'admin remote'])
+    expect(collectCommandContracts(state.commands, state.root).map((command) => command.name)).toEqual(['admin', 'admin audit', 'admin remote'])
   })
 })
 
@@ -280,8 +280,17 @@ describe('builtin metadata and skill sync behavior', () => {
     expect(builtinSuggestions(['mcp', 'a'], allBuiltins)).toEqual(['add'])
     expect(builtinSuggestions(['mcp', 'add', ''], allBuiltins)).toEqual([])
     expect(builtinSuggestions(['run', ''])).toEqual([])
+    expect(builtinSuggestions([''], undefined, true)).toEqual(['completions', 'config'])
+    expect(builtinSuggestions(['config', ''], undefined, true)).toEqual(['doctor'])
 
     expect(builtinHelpLines()).toEqual([
+      '  completions  Generate shell completion script',
+    ])
+    expect(builtinHelpLines(undefined, true)).toEqual([
+      '  completions  Generate shell completion script',
+      '  config doctor Inspect config loading',
+    ])
+    expect(builtinHelpLines({ config: false }, true)).toEqual([
       '  completions  Generate shell completion script',
     ])
     expect(builtinHelpLines(allBuiltins)).toEqual([
@@ -391,6 +400,7 @@ describe('parser globals and internal helpers', () => {
 
   test('parseGlobals throws ParseError on invalid format value', () => {
     expect(() => Parser.parseGlobals(['--format', 'bogus'])).toThrow(/Invalid format/)
+    expect(() => Parser.parseGlobals(['--format', 'toon'])).toThrow(/Invalid format/)
   })
 
   test('parseGlobals throws ParseError on non-numeric --token-limit', () => {

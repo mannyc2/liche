@@ -26,7 +26,7 @@ Built-in Commands:
   completions  Generate shell completion script
 
 Global Options:
-  --format <toon|json|yaml|md|jsonl>
+  --format <json|yaml|md|jsonl>
   --json
   --full-output
   --filter-output <paths>
@@ -66,7 +66,7 @@ Built-in Commands:
   completions  Generate shell completion script
 
 Global Options:
-  --format <toon|json|yaml|md|jsonl>
+  --format <json|yaml|md|jsonl>
   --json
   --full-output
   --filter-output <paths>
@@ -93,7 +93,7 @@ Built-in Commands:
   completions  Generate shell completion script
 
 Global Options:
-  --format <toon|json|yaml|md|jsonl>
+  --format <json|yaml|md|jsonl>
   --json
   --full-output
   --filter-output <paths>

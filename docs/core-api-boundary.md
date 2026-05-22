@@ -6,7 +6,7 @@ This records the Phase 2 decision for `packages/core/src/index.ts` before genera
 
 Deliberate, narrow widening to let tool CLIs ship authored agent guidance without making generated product CLI surfaces depend on core reflection:
 
-- `CreateOptions.skill?: { markdown?: string; index?: string }` lets a CLI provide packaged skill content for `skills add` and `--llms`. If `markdown` is omitted, core keeps the reflection-generated skill body.
+- `CreateOptions.skill?: { markdown?: string; index?: string }` lets a CLI provide packaged skill content for `--llms` and opt-in skill installers. If `markdown` is omitted, core keeps the reflection-generated skill body. Client-specific install paths must stay adapter-bound rather than becoming required core behavior.
 - New public type `SkillDefinition`.
 
 ## V1 supportability re-freeze (lifecycle events and hooks)
@@ -115,7 +115,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `Cli` (`packages/core/src/cli/create.ts:65`) — imported by core tests; referenced by `docs/behavior-plan.md`, `docs/next-plan.md`, `docs/package-layout.md`, `docs/build-system.md`, and `docs/invariant.md`; this is the generated CLI entrypoint.
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
 - `z` (`packages/core/src/schema/zod.ts:5`) — imported by many core tests and used in docs examples; public schema authoring convenience.
-- `Formatter` (`packages/core/src/format/index.ts:1`) — imported by `contract.test.ts`, `toon-oracle.test.ts`, and `behavior-edges.test.ts`; docs require formatter/output envelope behavior.
+- `Formatter` (`packages/core/src/format/index.ts:1`) — imported by `contract.test.ts`, `formatter-default.test.ts`, and `behavior-edges.test.ts`; docs require formatter/output envelope behavior.
 - `BaseError` (`packages/core/src/errors/error.ts:3`) — direct error test coverage; public base class for structured core errors.
 - `LiliError` (`packages/core/src/errors/error.ts:25`) — direct error test coverage and docs/log references; user-thrown structured error type.
 - `ParseError` (`packages/core/src/errors/error.ts:70`) — imported through index by `parser-config.test.ts`; public parse failure type.
@@ -183,7 +183,7 @@ These imports are not promotion candidates:
 - `SelectedCommand`, `CliState`, `Entry`, `FetchEntry`, `GroupEntry`, and `AliasEntry` from `packages/core/src/types.ts`
 - `renderHelp` from `packages/core/src/help/render.ts`
 - `renderTypegen` from `packages/core/src/command/typegen.ts`
-- `manifestEnvelope`, `mcpToolName`, `selectCommand`, `commandScope`, `childCommands`, `completionCommands`, `outputPolicy`, and `collectCommands` from `packages/core/src/command/registry.ts`
+- `manifestEnvelope`, `mcpToolName`, `selectCommand`, `commandScope`, `childCommands`, `completionCommands`, `outputPolicy`, and `collectCommandContracts` from `packages/core/src/command/registry.ts`
 - command guards from `packages/core/src/command/guards.ts`
 - `builtinHelpLines` and `builtinSuggestions` from `packages/core/src/cli/builtin-metadata.ts`
 - helpers from `packages/core/src/internal.ts`

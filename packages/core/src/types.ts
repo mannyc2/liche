@@ -2,7 +2,7 @@ import type { z } from 'zod'
 
 export type Dict<T = unknown> = Record<string, T>
 export type Awaitable<T> = T | Promise<T>
-export type Format = 'toon' | 'json' | 'yaml' | 'md' | 'jsonl'
+export type Format = 'json' | 'yaml' | 'md' | 'jsonl'
 export type DisabledGlobal = 'format'
 export type OutputPolicy = 'all' | 'agent-only'
 export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
@@ -113,8 +113,6 @@ export type CommandContract = {
   usage?: readonly Usage[] | undefined
 }
 
-export type CommandManifestEntry = CommandContract
-
 export type CommandEffectKind =
   | 'read'
   | 'write'
@@ -148,7 +146,7 @@ export type CommandAuthMetadata = {
 }
 
 export type CommandManifest = {
-  commands: CommandManifestEntry[]
+  commands: CommandContract[]
   description?: string | undefined
   name: string
   version?: string | undefined

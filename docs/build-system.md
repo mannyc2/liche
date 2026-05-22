@@ -530,7 +530,7 @@ Schema-driven product CLIs must expose a compact command manifest surface for ag
 Required minimum fields per command:
 
 ```ts
-type CommandManifestEntry = {
+type GeneratedCommandManifestEntry = {
   id: string;
   argv: string;
   summary: string;

@@ -1,4 +1,4 @@
-import type { CliState, CommandContract, CommandDefinition, CommandManifest, CommandManifestEntry, Entry, SelectedCommand } from '../types.js'
+import type { CliState, CommandContract, CommandDefinition, CommandManifest, Entry, SelectedCommand } from '../types.js'
 import { isAlias, isGroup, resolveAlias } from './guards.js'
 import { commandContract } from './contract.js'
 
@@ -102,7 +102,7 @@ export function commandScope(state: CliState, tokens: string[] = []): CommandSco
   }
 }
 
-export function childCommands(scope: CommandScope): CommandManifestEntry[] {
+export function childCommands(scope: CommandScope): CommandContract[] {
   return [...scope.commands.entries()]
     .filter(([, entry]) => !isAlias(entry))
     .flatMap(([name, entry]) => {
@@ -153,27 +153,6 @@ function aliasesFor(commands: Map<string, Entry>, target: string): string[] {
     .map(([name]) => name)
 }
 
-export function collectCommands(
-  commands: Map<string, Entry>,
-  root?: CommandDefinition | undefined,
-  prefix = '',
-): CommandManifestEntry[] {
-  const output: CommandManifestEntry[] = root
-    ? [enrichEntry(prefix.trim() || '(root)', commands, root, undefined)]
-    : []
-
-  for (const [name, rawEntry] of commands) {
-    if (isAlias(rawEntry)) continue
-    const entry = resolveAlias(commands, rawEntry)
-    if (!entry) continue
-
-    if (isGroup(entry)) output.push(...collectCommands(entry.commands, entry.root, `${prefix}${name} `))
-    else output.push(enrichEntry(`${prefix}${name}`.trim(), commands, entry, name))
-  }
-
-  return output
-}
-
 export function collectCommandContracts(
   commands: Map<string, Entry>,
   root?: CommandDefinition | undefined,
@@ -196,16 +175,6 @@ export function collectCommandContracts(
   }
 
   return output
-}
-
-function enrichEntry(
-  fullName: string,
-  commands: Map<string, Entry>,
-  entry: Entry,
-  rawName: string | undefined,
-): CommandManifestEntry {
-  const aliases = rawName ? aliasNames(commands, rawName) : []
-  return commandContract(fullName, entry, aliases) ?? { name: fullName }
 }
 
 function aliasNames(commands: Map<string, Entry>, target: string): string[] {

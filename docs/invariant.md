@@ -47,12 +47,70 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, formatter, opt-in config primitive, MCP basics, skills basics, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs, typed config, and the shared remote HTTP transport. |
+| `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, standard formatter, opt-in config primitive, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs, typed config, direct MCP execution, and the shared remote HTTP transport. |
 | `@lili/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
 | `@lili/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up lili's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
 | `@lili/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
 
 Do not create MVP packages for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice belongs inside `@lili/releases` configuration, not in separate first-party packages.
+
+## Core, Product, and extension standard
+
+Use this standard when deciding whether a capability belongs in `@lili/core`, `@lili/product`, or an optional extension/adapter package.
+
+### Belongs in `@lili/core`
+
+Core owns the runtime contract required by both handwritten and generated CLIs:
+
+- command declaration, parsing, validation, execution, middleware, lifecycle events, mutation hooks, and structured errors
+- args/options/env/config loading, value provenance, and the standard result/error envelope
+- standard output formats: JSON, JSONL, YAML, and Markdown
+- stable serializable command contract data needed for help, manifests, schema export, and direct MCP projection
+- config, auth/session, and outbound HTTP transport primitives that generated and handwritten commands call at runtime
+- narrow runtime projections that must share executor internals to stay correct, such as direct MCP tool execution over the command contract
+
+A feature belongs in core only when a CLI cannot keep the same basic command semantics without it, or when putting it outside core would duplicate parser/executor/security/provenance behavior. Core APIs must be source-of-truth primitives, not convenience workflows.
+
+### Does not belong in `@lili/core`
+
+These are optional extensions/adapters, even when they are useful first-party workflows:
+
+- nonessential output renderers and export formats beyond the standard machine/human envelope
+- client-specific `mcp add` config writers
+- `skills add`, agent-skill installers, and vendor-specific agent publishing helpers
+- config mutation UX such as `config set`, `config edit`, and comment-preserving writes
+- extended doctor checks, hosted/export telemetry sinks, local support bundles, and hosted ingestion clients
+- release, build, Product surface, server adapter, dashboard, SDK, Terraform, or framework-specific behavior
+
+The narrow core exception is config-owned diagnostics such as `config doctor` when the config primitive is enabled. It may inspect config loading and provenance; it must not pull in unrelated helper commands or vendor adapters.
+
+### Belongs in `@lili/product`
+
+Product owns the catalog compiler and generated-surface graph:
+
+- product schema authoring APIs for products, resources, commands, bindings, general config, auth providers, permissions, contexts, effects, policy, examples, and surface membership
+- deterministic catalog normalization, lints, digests, vocabulary policy, and generated-surface manifests
+- generated CLI source that lowers through public `@lili/core` APIs
+- generated OpenAPI, MCP command tools, docs/reference markdown, Agent Skill/LLM surfaces, config JSON Schema, and drift checks
+- server conformance against owned HTTP deployments
+- Product-to-build orchestration that delegates compile mechanics to `@lili/build`
+
+Product does not own command execution, parser behavior, runtime config loading, session storage, auth header application, outbound HTTP transport semantics, binary compile mechanics, or package-manager release rendering. Those remain core, build, or release concerns.
+
+### Extension and adapter standard
+
+An extension must declare exactly which stable source it consumes:
+
+- `CommandContract` for handwritten CLI projections or runtime command adapters
+- `Catalog` for Product-owned generated surfaces
+- generated `OpenAPI` for downstream HTTP ecosystem surfaces
+- release manifests and build records for distribution adapters
+
+Extensions must not import package internals, inspect raw schema source, read generated CLI source, depend on `CliState`/`Entry`, or register behavior by mutating hidden runtime state. They may contribute behavior only through public core lanes: command registration, lifecycle events, mutation hooks, documented config declarations, or generated artifacts with drift checks.
+
+Extensions also need a disabled-state test: turning the extension off must leave command execution, JSON/JSONL output, config provenance, structured errors, auth/session resolution, and outbound HTTP transport semantics unchanged.
+
+Do not create a catch-all package unless its opt-in sentence is concrete. "Official optional adapters over stable lili contracts" is a valid package thesis; "miscellaneous things not in core" is not.
 
 ## Execution direction invariant
 

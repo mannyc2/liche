@@ -1,4 +1,4 @@
-import type { CliState, CommandManifestEntry } from '../types.js'
+import type { CliState, CommandContract } from '../types.js'
 import { collectCommandContracts, manifest } from '../command/registry.js'
 
 export function skillMarkdown(name: string, state: CliState): string {
@@ -39,7 +39,7 @@ export function skillMarkdown(name: string, state: CliState): string {
   return lines.join('\n')
 }
 
-function renderExamples(name: string, command: CommandManifestEntry): string[] {
+function renderExamples(name: string, command: CommandContract): string[] {
   return (command.examples ?? []).map((example: any) => {
     if (typeof example === 'string') return `- \`${example}\``
     const args = Object.values(example.args ?? {}).map(String)

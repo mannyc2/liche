@@ -9,7 +9,6 @@ See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `
 - Keep the public API centered on `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, `.use()`, `middleware()`, and `z`.
 - Use Bun-native edges for process/runtime work: `Bun.argv`, `Bun.env`, `Bun.file`, `Bun.write`, Bun Shell, Bun stdin/stdout, and `bun:test`.
 - Use small runtime dependencies where they provide concrete feature parity:
-  - `@toon-format/toon` for exact TOON output.
   - `zod` for public schema compatibility and JSON Schema conversion.
   - `tokenx` for token count and slicing.
   - `yaml` for config/output stringification.
@@ -29,7 +28,7 @@ See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `
 | ENV-002 | Env | `optionEnv` populates option defaults; precedence is argv > env > config > default. | `contract.test.ts` | Letting env beat argv, or skipping env entirely. |
 | ENV-003 | Env | `src/` reads env only through `bunEnv()`; `process.env`/`Bun.env`/`import.meta.env` are forbidden elsewhere. | `env-conventions.test.ts` | Scattering direct env reads across modules. |
 | MW-001 | Middleware | Middleware runs around handlers and can share `ctx.var`. | `contract.test.ts` | Not awaiting `next()` or losing vars. |
-| FMT-001 | TOON | TOON format is exactly the official package output. | `toon-oracle.test.ts` | Hand-written TOON approximation. |
+| FMT-001 | Formatter default | Formatter output defaults to JSON. | `formatter-default.test.ts` | Defaulting to a non-JSON plugin renderer. |
 | FMT-002 | JSONL | JSONL output is one valid JSON value per line. | `property.test.ts` | Joining with commas or pretty JSON. |
 | HTTP-001 | Fetch | `cli.fetch()` dispatches URL path segments and query/body options. | `contract.test.ts` | Ignoring query params or not wrapping results. |
 | SCHEMA-001 | Schema | `--schema` is generated from Zod schemas. | `contract.test.ts` | Hand-written schema snapshots. |
@@ -59,7 +58,7 @@ See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `
 - A generated test must point to at least one behavior case ID.
 - A generated test must state what bad implementation it would catch when adding a new behavior case.
 - Tests should prefer public CLI/fetch APIs over private module calls, except property tests for parser/formatter invariants.
-- Tests should use external oracles when available. TOON tests must compare against `@toon-format/toon`, not expected strings invented by the test author.
+- Tests should use external oracles when available.
 - Mutation testing is used to verify sensitivity, not to reward test volume.
 
 ## Mutation priorities
@@ -89,7 +88,7 @@ Seed bugs to kill before trusting generated test expansion:
 - Skip alias resolution.
 - Skip env validation.
 - Skip output validation.
-- Emit JSON when TOON was requested.
+- Default to a plugin or non-JSON renderer.
 - Drop CTA metadata from success/error envelopes.
 - Count characters instead of tokens.
 ```

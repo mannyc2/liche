@@ -1,4 +1,4 @@
-import type { CliState, CommandManifestEntry, Dict, Schema, SelectedCommand, Usage } from '../types.js'
+import type { CliState, CommandContract, Dict, Schema, SelectedCommand, Usage } from '../types.js'
 import { isGroup } from '../command/guards.js'
 import { childCommands, commandScope } from '../command/registry.js'
 import { description, encodeDefault, isBooleanSchema, isDeprecated, isOptional, objectShape } from '../schema/zod.js'
@@ -31,7 +31,7 @@ export function renderHelp(name: string, state: CliState, selected?: SelectedCom
   lines.push(
     '',
     'Global Options:',
-    '  --format <toon|json|yaml|md|jsonl>',
+    '  --format <json|yaml|md|jsonl>',
     '  --json',
     '  --full-output',
     '  --filter-output <paths>',
@@ -52,7 +52,7 @@ function title(name: string, descriptionText?: string | undefined): string {
   return descriptionText ? `${name} - ${descriptionText}` : name
 }
 
-function commandLines(commands: CommandManifestEntry[]): string[] {
+function commandLines(commands: CommandContract[]): string[] {
   const width = Math.max(1, ...commands.map((command) => command.name.length))
   return commands.map((command) => {
     const aliases = command.aliases?.length ? ` (${command.aliases.join(', ')})` : ''

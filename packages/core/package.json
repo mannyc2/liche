@@ -29,7 +29,6 @@
     "mutate": "stryker run"
   },
   "dependencies": {
-    "@toon-format/toon": "^2.2.0",
     "tokenx": "^1.3.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"

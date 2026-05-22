@@ -20,7 +20,7 @@ Options:
 --capability <glob>
 --fixture <path>
 --report <path>
---format json|toon
+--format json|jsonl
 --include-destructive
 --require-all
 --fail-on-skip

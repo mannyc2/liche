@@ -1,8 +1,8 @@
 import type { CliState } from '../types.js'
-import { collectCommands } from './registry.js'
+import { collectCommandContracts } from './registry.js'
 
 export function renderTypegen(name: string, state: CliState): string {
-  const entries = collectCommands(state.commands, state.root)
+  const entries = collectCommandContracts(state.commands, state.root)
   const records = entries
     .map((entry) => {
       const schema = entry.schema as { args?: unknown; options?: unknown } | undefined

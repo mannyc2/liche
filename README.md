@@ -27,7 +27,7 @@ export const cli = Cli.create({ name: "shipyard", version: "0.1.0" })
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@lili/core` provides typed args/options/env parsing, config loading, output envelopes, MCP stdio, command manifests, lifecycle events, auth/session helpers, HTTP operation transport, local diagnostics, and opt-in telemetry sinks.
+`@lili/core` provides typed args/options/env parsing, config loading, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio, serializable command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor` and telemetry sinks are opt-in; client/vendor installers and nonessential renderers stay outside the required core path.
 
 ## Product Schema
 
@@ -94,7 +94,7 @@ The examples cover handwritten CLIs, generated Product CLIs, auth/context resolu
 
 ## Packages
 
-- `@lili/core`: CLI runtime, config, auth/session, HTTP transport, diagnostics, telemetry, MCP, and command manifests.
+- `@lili/core`: CLI runtime, config, auth/session, HTTP transport, command contracts, direct MCP projection, config-owned diagnostics, and opt-in local telemetry primitives.
 - `@lili/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
 - `@lili/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
 - `@lili/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.

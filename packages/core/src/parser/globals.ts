@@ -23,7 +23,7 @@ export type GlobalFlags = {
   version?: boolean | undefined
 }
 
-const validFormats: ReadonlySet<Format> = new Set(['toon', 'json', 'yaml', 'md', 'jsonl'])
+const validFormats: ReadonlySet<Format> = new Set(['json', 'yaml', 'md', 'jsonl'])
 
 export function parseGlobals(
   argv: string[],
