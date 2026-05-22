@@ -6,7 +6,7 @@ export { pick } from './filter.js'
 export { tokenCount, tokenSlice } from './tokens.js'
 export { formatCta } from './cta.js'
 
-export function format(value: unknown, outputFormat: Format = 'toon'): string {
+export function format(value: unknown, outputFormat: Format = 'json'): string {
   switch (outputFormat) {
     case 'json':
       return JSON.stringify(value ?? null, null, 2)

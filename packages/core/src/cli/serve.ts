@@ -14,6 +14,8 @@ import { complete, shells } from '../completions/shells.js'
 import { formatHumanValidationError } from './format-error.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 
+const DEFAULT_FORMAT: Format = 'json'
+
 export async function serveCli(
   name: string,
   state: CliState,
@@ -37,7 +39,7 @@ export async function serveCli(
         agent: !isTty,
         error: { code: 'PARSE_ERROR', exitCode: 1 },
         exitCode: 1,
-        format: state.def.format ?? 'toon',
+        format: state.def.format ?? DEFAULT_FORMAT,
         formatExplicit: false,
         invocation,
         result: 'user_error',
@@ -50,7 +52,7 @@ export async function serveCli(
     }
     throw error
   }
-  const outputFormat = flags.json ? 'json' : flags.format ?? state.def.format ?? 'toon'
+  const outputFormat = flags.json ? 'json' : flags.format ?? state.def.format ?? DEFAULT_FORMAT
   const formatExplicit = !!(flags.formatExplicit || flags.json)
   const human = !flags.formatExplicit && !flags.json && isTty
 

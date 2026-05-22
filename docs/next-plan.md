@@ -77,6 +77,42 @@ Verification:
 - Mixed execution fixtures reject conflicting flags where both local and remote are supported, honor flag > config > schema default, and include `meta.execution.mode` plus `meta.execution.source`.
 - Generated OpenAPI for a `GET` resource operation emits path/query/header/body placement from HTTP binding metadata and excludes local-only commands.
 
+## Phase 2B: declarative core and plugin extraction
+
+Simplify `@lili/core` around one declarative command contract. Core should own the runtime contract every command depends on; optional projections and client/vendor workflows should move behind plugin-style packages or opt-in adapters.
+
+Core responsibilities:
+
+- command declaration, parsing, validation, execution, and lifecycle hooks
+- args, options, env, config, provenance, and structured errors
+- JSON/JSONL output plus the standard result envelope
+- command contract and schema export for handwritten CLIs
+- MCP tool projection only when it is a direct view of the command contract
+
+Plugin or separate-package responsibilities:
+
+- nonessential renderers such as TOON
+- `skills add` and vendor-specific agent skill installers
+- client-specific `mcp add` config writers
+- config mutation UX such as `config set`, `config edit`, and comment-preserving writes
+- extended doctor checks, telemetry sinks, release/build helpers, and Product-specific generated surfaces
+
+Implementation target:
+
+1. Introduce a serializable `CommandContract` boundary that contains metadata, schemas, config bindings, safety/effects annotations, examples, output contract, and projection hints.
+2. Make `CommandDefinition` an executable wrapper around `CommandContract` plus `run` or `fetch`; manifest/schema/MCP/help surfaces must consume the contract, not internal `Entry` state.
+3. Remove internal-state fields from public manifest output and keep runtime reflection as compatibility for handwritten CLIs.
+4. Convert helper built-ins that are not part of command execution into opt-in plugin/adapters backed by `CommandContract`.
+5. Make TOON explicit opt-in rather than the default core output path.
+
+Verification:
+
+- A contract fixture can emit schema, manifest, help, and MCP tool definitions without executing command handlers.
+- Public manifest JSON contains only serializable contract data and no `Entry`, `CliState`, function, absolute path, timestamp, or runtime handle.
+- Core package dependency and import tests prove `@lili/core` does not depend on plugin packages, Product, Build, or Releases.
+- Disabling optional adapters removes `skills add`, client-specific `mcp add`, TOON, and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
+- Generated Product surfaces consume catalog outputs or `CommandContract` artifacts and do not rely on weaker runtime reflection when a canonical generated surface exists.
+
 ## Phase 3: product vertical slice
 
 Implement the smallest product package slice that proves the architecture:

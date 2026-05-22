@@ -10,6 +10,51 @@ type Env = Record<string, string | undefined>
 
 export type AgentTarget = 'claude-code' | 'cursor' | 'generic'
 
+type McpEntry = { args: string[]; command: string }
+
+type McpTarget = {
+  dir: string
+  file: string
+  write: () => Promise<string>
+}
+
+type AgentInstallAdapter = {
+  mcpTarget?(input: {
+    command: string
+    cwd: string
+    env: Env
+    global: boolean
+    name: string
+  }): McpTarget
+  skillDir?(input: {
+    cwd: string
+    env: Env
+    global: boolean
+    name: string
+  }): string
+}
+
+const AGENT_INSTALL_ADAPTERS: Record<string, AgentInstallAdapter> = {
+  'claude-code': {
+    skillDir({ cwd, env, global, name }) {
+      return global ? `${home(env)}/.claude/skills/${name}` : `${cwd}/.claude/skills/${name}`
+    },
+    mcpTarget({ command, cwd, env, global, name }) {
+      const file = global ? `${home(env)}/.claude.json` : `${cwd}/.mcp.json`
+      return mergeJsonMcpTarget(file, name, { args: ['--mcp'], command })
+    },
+  },
+  cursor: {
+    skillDir({ cwd, env, global, name }) {
+      return global ? `${home(env)}/.cursor/skills/${name}` : `${cwd}/.cursor/skills/${name}`
+    },
+    mcpTarget({ command, cwd, env, global, name }) {
+      const file = global ? `${home(env)}/.cursor/mcp.json` : `${cwd}/.cursor/mcp.json`
+      return mergeJsonMcpTarget(file, name, { args: ['--mcp'], command })
+    },
+  },
+}
+
 export type WriteMcpOptions = {
   agent?: AgentTarget | string | undefined
   command?: string | undefined
@@ -52,12 +97,8 @@ export async function writeMcp(name: string, optionsOrCommand: string | WriteMcp
 }
 
 function skillDir(name: string, agent: string, isGlobal: boolean, env: Env, cwd: string): string {
-  if (agent === 'claude-code') {
-    return isGlobal ? `${home(env)}/.claude/skills/${name}` : `${cwd}/.claude/skills/${name}`
-  }
-  if (agent === 'cursor') {
-    return isGlobal ? `${home(env)}/.cursor/skills/${name}` : `${cwd}/.cursor/skills/${name}`
-  }
+  const adapterPath = AGENT_INSTALL_ADAPTERS[agent]?.skillDir?.({ cwd, env, global: isGlobal, name })
+  if (adapterPath) return adapterPath
   return `${home(env)}/.config/lili/skills/${name}`
 }
 
@@ -68,36 +109,29 @@ function mcpTarget(
   env: Env,
   cwd: string,
   command: string,
-): { dir: string; file: string; write: () => Promise<string> } {
-  const entry = { args: ['--mcp'], command }
-  if (agent === 'claude-code') {
-    const file = isGlobal ? `${home(env)}/.claude.json` : `${cwd}/.mcp.json`
-    return {
-      dir: dirOf(file),
-      file,
-      async write() {
-        const existing = await readJsonOrEmpty(file)
-        return JSON.stringify(mergeMcp(existing, name, entry), null, 2)
-      },
-    }
-  }
-  if (agent === 'cursor') {
-    const file = isGlobal ? `${home(env)}/.cursor/mcp.json` : `${cwd}/.cursor/mcp.json`
-    return {
-      dir: dirOf(file),
-      file,
-      async write() {
-        const existing = await readJsonOrEmpty(file)
-        return JSON.stringify(mergeMcp(existing, name, entry), null, 2)
-      },
-    }
-  }
+): McpTarget {
+  const adapterTarget = agent
+    ? AGENT_INSTALL_ADAPTERS[agent]?.mcpTarget?.({ command, cwd, env, global: isGlobal, name })
+    : undefined
+  if (adapterTarget) return adapterTarget
+
   const dir = `${home(env)}/.config/lili/mcp`
   return {
     dir,
     file: `${dir}/${name}.json`,
     async write() {
-      return JSON.stringify({ mcpServers: { [name]: entry } }, null, 2)
+      return JSON.stringify({ mcpServers: { [name]: { args: ['--mcp'], command } } }, null, 2)
+    },
+  }
+}
+
+function mergeJsonMcpTarget(file: string, name: string, entry: McpEntry): McpTarget {
+  return {
+    dir: dirOf(file),
+    file,
+    async write() {
+      const existing = await readJsonOrEmpty(file)
+      return JSON.stringify(mergeMcp(existing, name, entry), null, 2)
     },
   }
 }
@@ -116,7 +150,7 @@ async function readJsonOrEmpty(path: string): Promise<Record<string, unknown>> {
   }
 }
 
-function mergeMcp(existing: Record<string, unknown>, name: string, entry: { args: string[]; command: string }) {
+function mergeMcp(existing: Record<string, unknown>, name: string, entry: McpEntry) {
   const servers = (existing['mcpServers'] && typeof existing['mcpServers'] === 'object' ? existing['mcpServers'] : {}) as Record<string, unknown>
   return { ...existing, mcpServers: { ...servers, [name]: entry } }
 }

@@ -3,6 +3,10 @@ import { decode, encode } from '@toon-format/toon'
 import { Formatter } from '../src/index.js'
 
 describe('TOON oracle', () => {
+  test('default Formatter output is JSON; TOON is explicit opt-in', () => {
+    expect(Formatter.format({ ok: true })).toBe('{\n  "ok": true\n}')
+  })
+
   test('Formatter.toon delegates exactly to @toon-format/toon encode', () => {
     const value = {
       items: [

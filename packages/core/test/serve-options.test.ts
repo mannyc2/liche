@@ -52,7 +52,7 @@ describe('ServeOptions injection boundary', () => {
     })
 
     expect(captured.agent).toBe(true)
-    expect(stdout.join('')).toContain('hidden: true')
+    expect(stdout.join('')).toContain('"hidden": true')
   })
 
   test('--full-output overrides agent-only policy regardless of TTY', async () => {
@@ -67,7 +67,7 @@ describe('ServeOptions injection boundary', () => {
       stdout: (s) => stdout.push(s),
     })
 
-    expect(stdout.join('')).toContain('ok: true')
+    expect(stdout.join('')).toContain('"ok": true')
   })
 
   test('error result formats human message when isTty=true and routes exit via options', async () => {
@@ -89,7 +89,7 @@ describe('ServeOptions injection boundary', () => {
     })
 
     expect(exitCode).toBe(1)
-    expect(stdout.join('')).toContain('code: NOPE')
+    expect(stdout.join('')).toContain('"code": "NOPE"')
     expect(stderr.join('')).toBe('Error (NOPE): failed\n')
   })
 
