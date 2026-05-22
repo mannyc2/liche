@@ -125,7 +125,9 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `CliInstance` (`packages/core/src/types.ts:203`) — imported through index by `helpers.ts`; public return type for `Cli.create()`.
 - `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `.on()` and `CreateOptions.events` expose the observe-only lifecycle event contract.
 - `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook` — public because `.hook()` and `CreateOptions.hooks` expose typed mutation points.
+- `CommandContract` — public serializable command metadata contract for manifest/schema/help/MCP projections. It must not expose `Entry`, `CliState`, handlers, or runtime registry handles.
 - `CommandDefinition` (`packages/core/src/types.ts:108`) — public `.command()` input type.
+- `CommandEffectKind`, `CommandEffects`, and `CommandPolicy` — public because `CommandDefinition` and `CommandContract` expose safety metadata for command manifests and MCP annotations.
 - `CreateOptions` (`packages/core/src/types.ts:138`) — must be exported because `Cli.create()` signatures expose it.
 - `Cta` (`packages/core/src/types.ts:10`) — public CTA metadata used by result envelopes.
 - `CtaBlock` (`packages/core/src/types.ts:19`) — public CTA metadata used by `ctx.ok()` and `ctx.error()`.

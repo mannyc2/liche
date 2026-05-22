@@ -1,5 +1,5 @@
 import type { CliState, CommandManifestEntry } from '../types.js'
-import { collectCommands, manifest } from '../command/registry.js'
+import { collectCommandContracts, manifest } from '../command/registry.js'
 
 export function skillMarkdown(name: string, state: CliState): string {
   if (state.def.skill?.markdown) return state.def.skill.markdown
@@ -18,7 +18,7 @@ export function skillMarkdown(name: string, state: CliState): string {
     '## Commands',
   ]
 
-  for (const command of collectCommands(state.commands, state.root)) {
+  for (const command of collectCommandContracts(state.commands, state.root)) {
     lines.push('', `### ${command.name}`, command.description ?? '', '', code(name, command.name))
     const schema = command.schema as any
     const optionsSchema = schema?.options
@@ -58,7 +58,7 @@ function kebab(input: string): string {
 export function skillIndex(name: string, state: CliState): string {
   if (state.def.skill?.index) return state.def.skill.index
 
-  const commands = collectCommands(state.commands, state.root)
+  const commands = collectCommandContracts(state.commands, state.root)
   return [`# ${name}`, state.def.description ?? '', '', ...commands.map((command) => `- ${command.name}: ${command.description ?? ''}`)].join('\n')
 }
 

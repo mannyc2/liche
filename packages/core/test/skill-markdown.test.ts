@@ -139,6 +139,21 @@ describe('skillMarkdown — exact output shape', () => {
     const md = Skill.skillMarkdown('app', stateOf(cli))
     expect(md).not.toContain('| Flag | Description |')
   })
+
+  test('reflection-generated skill markdown does not execute command handlers', () => {
+    let executed = false
+    const cli = Cli.create('app').command('run', {
+      description: 'read contract only',
+      run: () => {
+        executed = true
+        throw new Error('skill generation must not execute command handlers')
+      },
+    })
+
+    const md = Skill.skillMarkdown('app', stateOf(cli))
+    expect(executed).toBe(false)
+    expect(md).toContain('### run\nread contract only')
+  })
 })
 
 describe('skillIndex — exact output shape', () => {
@@ -167,5 +182,20 @@ describe('skillIndex — exact output shape', () => {
     const index = Skill.skillIndex('tool', stateOf(cli))
     expect(index).toContain('- run: ')
     expect(index.startsWith('# tool\n\n\n')).toBe(true)
+  })
+
+  test('reflection-generated skill index does not execute command handlers', () => {
+    let executed = false
+    const cli = Cli.create('app').command('run', {
+      description: 'read contract only',
+      run: () => {
+        executed = true
+        throw new Error('skill index generation must not execute command handlers')
+      },
+    })
+
+    const index = Skill.skillIndex('app', stateOf(cli))
+    expect(executed).toBe(false)
+    expect(index).toContain('- run: read contract only')
   })
 })

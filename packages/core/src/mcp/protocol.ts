@@ -1,5 +1,5 @@
 import type { CliEvent, CliEventError, CliEventSubscription, CliState, CommandError, Dict, Result } from '../types.js'
-import { collectCommands, mcpToolName, selectCommand } from '../command/registry.js'
+import { collectCommandContracts, mcpToolName, selectCommand } from '../command/registry.js'
 import { execute } from '../cli/execute.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from '../cli/lifecycle.js'
 
@@ -33,7 +33,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
   }
 
   if (message?.method === 'tools/list') {
-    const tools = collectCommands(state.commands, state.root).filter((command: any) => command.entry?.agent !== false).map((command: any) => ({
+    const tools = collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false).map((command: any) => ({
       ...(command.auth ? { auth: command.auth } : undefined),
       description: command.description,
       inputSchema: {
@@ -45,6 +45,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
         type: 'object',
       },
       name: mcpToolName(command.name),
+      annotations: mcpAnnotations(command),
     }))
     await emitMcpLifecycle(binaryName, state, state.events, {
       agent: true,
@@ -72,7 +73,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       return jsonRpcError(id, -32600, 'Invalid Request')
     }
     const { name: toolName, arguments: input = {} } = message.params
-    const canonical = collectCommands(state.commands, state.root).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
+    const canonical = collectCommandContracts(state.commands, state.root).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
     const path = !canonical || canonical === '(root)' ? [] : canonical.split(' ')
     const selected = canonical ? selectCommand(state, path) : undefined
     const selectedToolName = selected?.path.length ? mcpToolName(selected.path.join(' ')) : '(root)'
@@ -192,6 +193,19 @@ function mcpEventError(error: CommandError): CliEventError {
 function objectSchema(value: unknown) {
   if (isRecord(value) && value['type'] === 'object') return value
   return { type: 'object', properties: {} }
+}
+
+function mcpAnnotations(command: { effects?: any; examples?: unknown; name: string; policy?: any }): Record<string, unknown> {
+  return {
+    command: command.name,
+    ...(command.effects ? { effects: command.effects } : undefined),
+    ...(command.policy ? { policy: command.policy } : undefined),
+    ...(command.examples ? { examples: command.examples } : undefined),
+    destructiveHint: command.policy?.dangerous === true || command.effects?.kind === 'delete',
+    idempotentHint: command.effects?.idempotent === true,
+    openWorldHint: true,
+    readOnlyHint: command.effects?.kind === 'read',
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, any> {

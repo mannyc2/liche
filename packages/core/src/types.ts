@@ -97,17 +97,44 @@ export type Result =
   | { ok: true; data: unknown; meta?: ResultMeta | undefined }
   | { ok: false; error: CommandError; meta?: ResultMeta | undefined }
 
-export type CommandManifestEntry = {
+export type CommandContract = {
+  agent?: boolean | undefined
   aliases?: readonly string[] | undefined
   auth?: CommandAuthMetadata | undefined
   description?: string | undefined
-  entry?: Entry | undefined
+  effects?: CommandEffects | undefined
   examples?: readonly Example[] | undefined
   hint?: string | undefined
   name: string
+  optionConfig?: Record<string, string> | undefined
   outputPolicy?: OutputPolicy | undefined
+  policy?: CommandPolicy | undefined
   schema?: unknown
   usage?: readonly Usage[] | undefined
+}
+
+export type CommandManifestEntry = CommandContract
+
+export type CommandEffectKind =
+  | 'read'
+  | 'write'
+  | 'delete'
+  | 'exec'
+  | 'auth-session'
+  | 'auth-session-read'
+  | 'auth-session-write'
+  | 'auth-session-delete'
+  | 'auth-context-write'
+
+export type CommandEffects = {
+  kind: CommandEffectKind
+  idempotent?: boolean | undefined
+}
+
+export type CommandPolicy = {
+  conformanceEligible?: boolean | undefined
+  dangerous?: boolean | undefined
+  requiresConfirmation?: boolean | undefined
 }
 
 export type CommandAuthMetadata = {
@@ -292,6 +319,7 @@ export type CommandDefinition<
   basePath?: string | undefined
   description?: string | undefined
   env?: E | undefined
+  effects?: CommandEffects | undefined
   examples?: Example[] | undefined
   fetch?: FetchHandler | undefined
   hint?: string | undefined
@@ -301,6 +329,7 @@ export type CommandDefinition<
   optionConfig?: Record<string, string> | undefined
   output?: Out | undefined
   outputPolicy?: OutputPolicy | undefined
+  policy?: CommandPolicy | undefined
   run?:
     | ((context: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Record<string, unknown>>) =>
         | unknown

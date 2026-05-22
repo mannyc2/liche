@@ -5,7 +5,7 @@ import { format, formatCta, pick, tokenCount, tokenSlice } from '../format/index
 import { loadConfigResolution, parseGlobals } from '../parser/index.js'
 import { outputPolicy, selectCommand } from '../command/registry.js'
 import { renderHelp } from '../help/render.js'
-import { commandSchema } from '../command/schema.js'
+import { commandContract } from '../command/contract.js'
 import { serveMcp } from '../mcp/stdio.js'
 import { runBuiltin } from './builtins.js'
 import { skillIndex, skillMarkdown } from '../skills/generate.js'
@@ -147,7 +147,7 @@ export async function serveCli(
       surface: { kind: 'schema' },
       type: 'schema.generated',
     })
-    return io.out(`${format(commandSchema(selected.entry), outputFormat)}\n`)
+    return io.out(`${format(commandContract(selected.path.join(' ') || '(root)', selected.entry)?.schema, outputFormat)}\n`)
   }
 
   let configLoaded

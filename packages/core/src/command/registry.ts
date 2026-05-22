@@ -1,6 +1,6 @@
-import type { CliState, CommandDefinition, CommandManifest, CommandManifestEntry, Entry, SelectedCommand } from '../types.js'
+import type { CliState, CommandContract, CommandDefinition, CommandManifest, CommandManifestEntry, Entry, SelectedCommand } from '../types.js'
 import { isAlias, isGroup, resolveAlias } from './guards.js'
-import { commandSchema } from './schema.js'
+import { commandContract } from './contract.js'
 
 export const MANIFEST_VERSION = 'lili.v1'
 
@@ -105,12 +105,12 @@ export function commandScope(state: CliState, tokens: string[] = []): CommandSco
 export function childCommands(scope: CommandScope): CommandManifestEntry[] {
   return [...scope.commands.entries()]
     .filter(([, entry]) => !isAlias(entry))
-    .map(([name, entry]) => ({
-      aliases: aliasesFor(scope.commands, name),
-      description: (entry as any).description,
-      entry: resolveAlias(scope.commands, entry),
-      name,
-    }))
+    .flatMap(([name, entry]) => {
+      const resolved = resolveAlias(scope.commands, entry)
+      const aliases = aliasesFor(scope.commands, name)
+      const contract = resolved ? commandContract(name, resolved, aliases) : undefined
+      return contract ? [{ ...contract, aliases }] : []
+    })
 }
 
 export function completionCommands(state: CliState, words: string[]): string[] {
@@ -132,7 +132,7 @@ export function outputPolicy(selected: SelectedCommand) {
 
 export function manifest(name: string, state: CliState): CommandManifest {
   return {
-    commands: collectCommands(state.commands, state.root),
+    commands: collectCommandContracts(state.commands, state.root),
     description: state.def.description,
     name,
     version: state.def.version,
@@ -174,30 +174,38 @@ export function collectCommands(
   return output
 }
 
+export function collectCommandContracts(
+  commands: Map<string, Entry>,
+  root?: CommandDefinition | undefined,
+  prefix = '',
+): CommandContract[] {
+  const output: CommandContract[] = root
+    ? [commandContract(prefix.trim() || '(root)', root, [])].filter((item): item is CommandContract => !!item)
+    : []
+
+  for (const [name, rawEntry] of commands) {
+    if (isAlias(rawEntry)) continue
+    const entry = resolveAlias(commands, rawEntry)
+    if (!entry) continue
+
+    if (isGroup(entry)) output.push(...collectCommandContracts(entry.commands, entry.root, `${prefix}${name} `))
+    else {
+      const contract = commandContract(`${prefix}${name}`.trim(), entry, aliasNames(commands, name))
+      if (contract) output.push(contract)
+    }
+  }
+
+  return output
+}
+
 function enrichEntry(
   fullName: string,
   commands: Map<string, Entry>,
   entry: Entry,
   rawName: string | undefined,
 ): CommandManifestEntry {
-  const def = entry as any
   const aliases = rawName ? aliasNames(commands, rawName) : []
-  const examples = def.examples
-  const usage = def.usage
-  const hint = def.hint
-  const outputPolicyValue = def.outputPolicy
-	  return {
-	    ...(aliases.length ? { aliases } : undefined),
-	    ...(def.auth ? { auth: def.auth } : undefined),
-	    description: def.description,
-    entry,
-    name: fullName,
-    schema: commandSchema(entry),
-    ...(examples ? { examples } : undefined),
-    ...(usage ? { usage } : undefined),
-    ...(hint ? { hint } : undefined),
-    ...(outputPolicyValue ? { outputPolicy: outputPolicyValue } : undefined),
-  } as CommandManifestEntry
+  return commandContract(fullName, entry, aliases) ?? { name: fullName }
 }
 
 function aliasNames(commands: Map<string, Entry>, target: string): string[] {
