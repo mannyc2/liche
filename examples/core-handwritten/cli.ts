@@ -5,7 +5,7 @@ import type { CliEvent } from '@lili/core'
 export const observedEvents: Array<Pick<CliEvent, 'type' | 'command' | 'result'>> = []
 
 export const cli = Cli.create('notes', {
-  builtins: { completions: true, gen: true, mcp: false, skills: false },
+  builtins: { completions: true, mcp: false, skills: false },
   description: 'Handwritten notes CLI example.',
   vars: z.object({
     requestId: z.string().default('unset'),
@@ -63,4 +63,3 @@ export const cli = Cli.create('notes', {
   })
 
 if (import.meta.main) await cli.serve(process.argv.slice(2))
-

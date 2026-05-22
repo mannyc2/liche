@@ -390,7 +390,7 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('agent helper builtins are opt-in through public CLI behavior', async () => {
-    const cli = Cli.create('app', { builtins: { gen: true, mcp: true, skills: true } })
+    const cli = Cli.create('app', { builtins: { mcp: true, skills: true } })
       .command('list', { run: () => ({ command: 'list' }) })
       .command('add', { run: () => ({ command: 'add' }) })
 

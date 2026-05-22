@@ -2,6 +2,17 @@
 
 This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/product` starts importing `@lili/core`.
 
+## Declarative authoring re-freeze
+
+The first hard-cutover slice for the declarative core direction has shipped. The public handwritten authoring surface is now data-first:
+
+- `defineCommand({ path, aliases, input, output, safety, run })` declares the analyzable command surface before pairing it with a handler.
+- `defineCli({ name, version, commands })` mounts those command objects into the existing runtime executor.
+- `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` are public because the helpers expose them.
+- `CommandContract.path`, `CommandContract.summary`, and `CommandContract.safety` are public serializable metadata used by manifest and MCP projection.
+
+`Cli.create()` remains public as the lower-level runtime construction primitive while generated adapters are migrated. New handwritten examples should use `defineCli()` and `defineCommand()`.
+
 ## Phase 3 re-freeze (packaged skills)
 
 Deliberate, narrow widening to let tool CLIs ship authored agent guidance without making generated product CLI surfaces depend on core reflection:
@@ -29,7 +40,7 @@ Deliberate, narrow widening to support generated CLIs:
 - `ResultMeta` widened to `Record<string, unknown> & { cta?: CtaBlock }`. Arbitrary meta keys round-trip through `ctx.ok(data, meta)` to the result envelope.
 - `RunContext.ok` signature now accepts `meta?: ResultMeta` (was `meta?: { cta?: CtaBlock }`).
 - `CreateOptions.generated?: { machineOutput: 'envelope'; disabledGlobals?: readonly DisabledGlobal[] }` opts a CLI into envelope output under `--json` and global-flag rejection.
-- `CreateOptions.builtins?: { completions?: boolean; gen?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `gen`, `mcp`, and `skills` default off.
+- `CreateOptions.builtins?: { completions?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `mcp` and `skills` default off. `config doctor` is exposed when config is declared unless explicitly disabled.
 - New public type `DisabledGlobal` (currently `'format'`).
 
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
@@ -105,14 +116,17 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 
 ## Freeze rules
 
-- Generated CLI code registers through `Cli.create().command()` and uses core runtime behavior through documented top-level APIs only.
+- New handwritten CLI code declares commands through `defineCli()` / `defineCommand()` and uses core runtime behavior through documented top-level APIs only.
+- Generated CLI code declares through `defineCli()` / `defineCommand()` and must not depend on internal registry state.
 - Generated code must not import `stateSymbol`, `InternalCli`, `CliState`, parser helpers, command registry helpers, command guards, help renderers, or schema-adapter internals.
 - Runtime reflection in core remains a handwritten-CLI compatibility surface. Schema-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces belong to `@lili/product`.
 - Remove or reshape current index exports before freezing. Do not keep duplicate or state-shaped exports just because tests currently reach them.
 
 ## Keep public
 
-- `Cli` (`packages/core/src/cli/create.ts:65`) — imported by core tests; referenced by `docs/behavior-plan.md`, `docs/next-plan.md`, `docs/package-layout.md`, `docs/build-system.md`, and `docs/invariant.md`; this is the generated CLI entrypoint.
+- `Cli` (`packages/core/src/cli/create.ts:65`) — lower-level runtime construction primitive and current generated CLI entrypoint.
+- `defineCli` — canonical handwritten CLI authoring helper for data-first command graphs.
+- `defineCommand` — canonical command declaration helper for analyzable command metadata plus a handler.
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
 - `z` (`packages/core/src/schema/zod.ts:5`) — imported by many core tests and used in docs examples; public schema authoring convenience.
 - `Formatter` (`packages/core/src/format/index.ts:1`) — imported by `contract.test.ts`, `formatter-default.test.ts`, and `behavior-edges.test.ts`; docs require formatter/output envelope behavior.
@@ -128,6 +142,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `CommandContract` — public serializable command metadata contract for manifest/schema/help/MCP projections. It must not expose `Entry`, `CliState`, handlers, or runtime registry handles.
 - `CommandDefinition` (`packages/core/src/types.ts:108`) — public `.command()` input type.
 - `CommandEffectKind`, `CommandEffects`, and `CommandPolicy` — public because `CommandDefinition` and `CommandContract` expose safety metadata for command manifests and MCP annotations.
+- `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` — public because `defineCli()` / `defineCommand()` expose the declarative authoring contract.
 - `CreateOptions` (`packages/core/src/types.ts:138`) — must be exported because `Cli.create()` signatures expose it.
 - `Cta` (`packages/core/src/types.ts:10`) — public CTA metadata used by result envelopes.
 - `CtaBlock` (`packages/core/src/types.ts:19`) — public CTA metadata used by `ctx.ok()` and `ctx.error()`.
@@ -171,7 +186,6 @@ The config primitive additions above join this keep-public list only when their 
 - `Mcp` (`packages/core/src/mcp/index.ts:1`) — tests import it through index, and docs require MCP basics, but current functions take `CliState`. Public MCP helpers must accept `CliInstance` or be reachable through `cli.fetch()`/`cli.serve()`.
 - `Schema` namespace (`packages/core/src/schema/index.ts:1`) — `behavior-edges.test.ts` imports it through index, but helpers such as `objectShape`, `kind`, and `parseSchema` expose the Zod adapter internals. Keep `z` public and reserve the `Schema` name for the public type.
 - `Skill` (`packages/core/src/skills/index.ts:1`) — tests import it through index and docs name skill/docs helpers, but current functions take `CliState`. Public helpers must accept `CliInstance` or a documented manifest, not internal state.
-- `Typegen` (`packages/core/src/command/registry.ts:5`) — the current namespace is actually command registry reflection, not type generation. Remove it from core's public index. `li gen` remains temporary runtime behavior until `@lili/build` owns typegen, as noted in `docs/build-system.md`.
 - `ZodSchema` (`packages/core/src/types.ts:7` via index alias) — replace with `Schema`; do not freeze this alias.
 
 ## Test-only internal imports
@@ -182,7 +196,6 @@ These imports are not promotion candidates:
 - `formatHumanValidationError` from `packages/core/src/cli/format-error.ts`
 - `SelectedCommand`, `CliState`, `Entry`, `FetchEntry`, `GroupEntry`, and `AliasEntry` from `packages/core/src/types.ts`
 - `renderHelp` from `packages/core/src/help/render.ts`
-- `renderTypegen` from `packages/core/src/command/typegen.ts`
 - `manifestEnvelope`, `mcpToolName`, `selectCommand`, `commandScope`, `childCommands`, `completionCommands`, `outputPolicy`, and `collectCommandContracts` from `packages/core/src/command/registry.ts`
 - command guards from `packages/core/src/command/guards.ts`
 - `builtinHelpLines` and `builtinSuggestions` from `packages/core/src/cli/builtin-metadata.ts`

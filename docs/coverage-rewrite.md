@@ -12,7 +12,6 @@ Implemented in current `src/` first; each behavior maps to a rewrite component:
 | OPT-DEP-001 | `@lili/core` schema metadata + help renderer | `parity.test.ts` |
 | MCP-ADD-001 | `@lili/core` skills/sync resolver | `parity.test.ts` |
 | SKILLS-ADD-001 | `@lili/core` skills/sync resolver | `parity.test.ts` |
-| GEN-001 | `@lili/core` for now; revisit when `@lili/build` lands (typegen is arguably a build-time concern) | `parity.test.ts` |
 | MCP-NAME-001 | `@lili/core` mcp transport | `parity.test.ts` |
 | MCP-CONFORMANCE-001 | `@lili/core` MCP JSON-RPC transport + `@lili/product` generated MCP tools | `packages/core/test/mcp-conformance.test.ts`, `packages/product/test/generate-mcp-conformance.test.ts` |
 | AGENT-FLIP-001 | `@lili/core` execute context | `parity.test.ts` |
@@ -46,7 +45,7 @@ Before adding rewrite tests:
 | BUILD-009 | Schema portability rejects unsupported Zod constructs. | `docs/build-system.md` | Lint transform/custom-refinement fixture. | Zod + requirement | Generated OpenAPI/JSON Schema lies about behavior. |
 | BUILD-010 | Schema does not eagerly import local implementations. | `docs/build-system.md` | Lint schema that imports its `local.module`. | Module graph | Lint/docs/codegen execute implementation side effects. |
 | BUILD-011 | Example argv parses to declared input. | `docs/build-system.md` | Lint mismatched `examples[].argv` and `examples[].input`. | Core parser | Docs examples drift from runtime parsing. |
-| BUILD-012 | Generated command registers through `Cli.create().command()`. | `docs/build-system.md` | Inspect generated TS and execute command through core. | Public core API | Generator invents a parallel runtime. |
+| BUILD-012 | Generated command declares through `defineCli()` / `defineCommand()`. | `docs/build-system.md` | Inspect generated TS and execute command through core. | Public core API | Generator invents a parallel runtime or falls back to fluent registration. |
 | BUILD-013 | Generated remote-http capability calls core HTTP transport. | `docs/build-system.md` | Fixture generated command invokes mocked `callHttpOperation`. | Core transport primitive | Build layer owns duplicated transport behavior. |
 | BUILD-014 | Generated local or hybrid command imports implementation lazily. | `docs/build-system.md` | Assert module is not imported during lint/generate and imports during local execution. | Module side-effect counter | Schema import triggers implementation side effects. |
 | BUILD-015 | Generated and handwritten behavior converges. | `docs/build-system.md` | Run equivalent handwritten and generated CLIs over same inputs and compare output/status. | Public behavior | Generated code diverges from core semantics. |

@@ -3,6 +3,8 @@ import type {
   CliState,
   CommandDefinition,
   CreateOptions,
+  DeclarativeCommand,
+  DefineCliOptions,
   FetchEntry,
   GroupEntry,
   Schema,
@@ -84,22 +86,45 @@ export function create(nameOrDefinition: string | (CreateOptions & { name: strin
   return cli
 }
 
+export function defineCommand<
+  A extends Schema<any> | undefined = undefined,
+  E extends Schema<any> | undefined = undefined,
+  O extends Schema<any> | undefined = undefined,
+  Out extends Schema<any> | undefined = undefined,
+>(definition: DeclarativeCommand<A, E, O, Out>): DeclarativeCommand<A, E, O, Out> {
+  return Object.freeze({
+    ...definition,
+    ...(definition.aliases ? { aliases: Object.freeze(definition.aliases.map((alias) => Object.freeze([...alias]))) } : undefined),
+    path: Object.freeze([...definition.path]) as readonly [string, ...string[]],
+  })
+}
+
+export function defineCli(definition: DefineCliOptions): CliInstance {
+  const { commands = [], ...rootDefinition } = definition
+  const cli = create(rootDefinition as CreateOptions & { name: string }) as InternalCli
+  for (const command of commands) registerDeclarative(cli, command)
+  return cli
+}
+
 export const Cli = { create }
 
 function register(cli: InternalCli, name: string, definition: CommandDefinition): CliInstance {
   const state = cli[stateSymbol]
+  setCommandEntry(state.commands, name, definition)
+  for (const alias of definition.aliases ?? []) state.commands.set(alias, { _alias: true, target: name })
+  return cli
+}
+
+function setCommandEntry(commands: Map<string, any>, name: string, definition: CommandDefinition): void {
   if (definition.fetch && !definition.run) {
-    state.commands.set(name, {
+    commands.set(name, {
       _fetch: true,
       basePath: definition.basePath,
       description: definition.description,
       fetch: definition.fetch,
       outputPolicy: definition.outputPolicy,
     } satisfies FetchEntry)
-  } else state.commands.set(name, definition)
-
-  for (const alias of definition.aliases ?? []) state.commands.set(alias, { _alias: true, target: name })
-  return cli
+  } else commands.set(name, definition)
 }
 
 function mount(parent: InternalCli, child: InternalCli): CliInstance {
@@ -118,4 +143,103 @@ function mount(parent: InternalCli, child: InternalCli): CliInstance {
 
   parent[stateSymbol].commands.set(child.name, childState.root && childState.commands.size === 0 ? childState.root : group)
   return parent
+}
+
+function registerDeclarative(cli: InternalCli, command: DeclarativeCommand): void {
+  const path = [...command.path]
+  const leaf = path.at(-1)
+  if (!leaf) throw new Error('Declarative command path must contain at least one segment')
+
+  const parentCommands = ensureCommandParent(cli[stateSymbol].commands, path.slice(0, -1))
+  setCommandEntry(parentCommands, leaf, normalizeDeclarativeCommand(command))
+
+  for (const alias of command.aliases ?? []) registerDeclarativeAlias(cli[stateSymbol].commands, path, [...alias])
+}
+
+function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefinition {
+  const {
+    aliases: _aliases,
+    input,
+    path: _path,
+    run,
+    summary,
+    ...definition
+  } = command
+
+  return {
+    ...definition,
+    ...(definition.description ?? summary ? { description: definition.description ?? summary } : undefined),
+    ...(input?.args ? { args: input.args } : undefined),
+    ...(input?.config ? { optionConfig: input.config } : undefined),
+    ...(input?.env ? { env: input.env } : undefined),
+    ...(input?.options ? { options: input.options } : undefined),
+    ...(definition.effects ? undefined : command.safety ? { effects: effectsFromSafety(command.safety) } : undefined),
+    ...(definition.policy ? undefined : command.safety ? { policy: policyFromSafety(command.safety) } : undefined),
+    ...(summary ? { summary } : undefined),
+    ...(run
+      ? {
+          run: (ctx) =>
+            run({
+              ctx,
+              input: {
+                args: ctx.args,
+                config: ctx.config,
+                env: ctx.env,
+                options: ctx.options,
+              },
+            }),
+        }
+      : undefined),
+  } as CommandDefinition
+}
+
+function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<string, any> {
+  let current = commands
+  for (const segment of path) {
+    const existing = current.get(segment)
+    if (existing?._group) {
+      current = existing.commands
+      continue
+    }
+    if (existing) throw new Error(`Cannot create command group '${segment}' over an existing command`)
+
+    const group: GroupEntry = {
+      _group: true,
+      commands: new Map(),
+      events: [],
+      hooks: { beforeExecute: [] },
+      middlewares: [],
+      name: segment,
+    }
+    current.set(segment, group)
+    current = group.commands
+  }
+  return current
+}
+
+function registerDeclarativeAlias(commands: Map<string, any>, targetPath: string[], aliasPath: string[]): void {
+  if (!aliasPath.length) throw new Error('Declarative command aliases must contain at least one segment')
+
+  const targetParent = targetPath.slice(0, -1)
+  const aliasParent = aliasPath.length === 1 ? targetParent : aliasPath.slice(0, -1)
+  if (aliasParent.join('\0') !== targetParent.join('\0')) {
+    throw new Error('Declarative command aliases must share the target command parent path')
+  }
+
+  const parent = ensureCommandParent(commands, targetParent)
+  parent.set(aliasPath.at(-1)!, { _alias: true, target: targetPath.at(-1)! })
+}
+
+function effectsFromSafety(safety: NonNullable<DeclarativeCommand['safety']>) {
+  return {
+    kind: safety.readOnly === true ? 'read' : safety.destructive === true ? 'delete' : 'write',
+    ...(safety.idempotent !== undefined ? { idempotent: safety.idempotent } : undefined),
+  } as const
+}
+
+function policyFromSafety(safety: NonNullable<DeclarativeCommand['safety']>) {
+  return {
+    ...(safety.destructive !== undefined ? { dangerous: safety.destructive } : undefined),
+    ...(safety.destructive === true ? { requiresConfirmation: true } : undefined),
+  }
 }

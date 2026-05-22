@@ -54,14 +54,15 @@ function oauthProduct(): RuntimeProduct {
       summary: 'Purge cache for an org',
       http: { method: 'POST', path: '/orgs/{org_id}/purge_cache' },
       requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
+      surfaces: { agent: true },
     }))
 }
 
 describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertions', () => {
-  test('imports HTTP transport, resolveAuth, and resolveContext alongside Cli and z', () => {
+  test('imports HTTP transport, resolveAuth, and resolveContext alongside declarative core helpers', () => {
     const source = generate(workersAuthProduct)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, callHttpOperation, createFileSessionStore, resolveAuth, resolveContext, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, createFileSessionStore, defineCli, defineCommand, resolveAuth, resolveContext, z')
   })
 
   test('emits AUTH_PROVIDER constant carrying id, kind, header (when present), and token sources', () => {
@@ -86,7 +87,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
 
   test('declared context flag is injected as an optional string option so env fallback can resolve it', () => {
     const source = generate(workersAuthProduct)
-    expect(source).toMatch(/\.command\('purge', \{[\s\S]*?options: z\.object\(\{[\s\S]*?'org': z\.string\(\)\.optional\(\)/)
+    expect(source).toMatch(/defineCommand\(\{[\s\S]*?path: \['purge'\],[\s\S]*?options: z\.object\(\{[\s\S]*?'org': z\.string\(\)\.optional\(\)/)
   })
 
   test('command env schema includes only the auth and context env vars needed by the capability', () => {
@@ -142,7 +143,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('resolveAuth')
     expect(source).not.toContain('applyAuth')
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, Config, callHttpOperation, createLocalTelemetrySink, runLocalDoctor, z')
+    expect(importLine?.[1]).toBe('Config, callHttpOperation, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
   })
 
   test('OAuth/session product emits file-session auth commands and OAuth runtime metadata', () => {
@@ -152,11 +153,11 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).toContain(`{ kind: 'session', profiles: true, refresh: false }`)
     expect(source).toContain(`oauthDevice: { clientId: 'acme-cli'`)
     expect(source).toContain(`identity: { http: { method: 'GET', path: '/me' }, subject: 'id', label: 'email' }`)
-    expect(source).toContain(`.command('whoami', {`)
+    expect(source).toContain(`path: ['whoami'],`)
     expect(source).toContain(`agent: true`)
-    expect(source).toContain(`.command('switch', {`)
-    expect(source).toContain(`.command('login', {`)
-    expect(source).toContain(`.command('logout', {`)
+    expect(source).toContain(`path: ['switch'],`)
+    expect(source).toContain(`path: ['login'],`)
+    expect(source).toContain(`path: ['logout'],`)
     expect(source).toContain(`agent: false`)
     expect(source).toContain(`createFileSessionStore`)
     expect(source).toContain(`oauthDeviceLogin`)

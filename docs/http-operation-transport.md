@@ -246,7 +246,7 @@ Do not include auth header values or secret env values in error details or confo
 ## Handwritten CLI example
 
 ```ts
-import { Cli, callHttpOperation, z } from "@lili/core";
+import { callHttpOperation, defineCli, defineCommand, z } from "@lili/core";
 
 const input = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -261,34 +261,49 @@ const output = z.object({
   ),
 });
 
-export const cli = Cli.create("acme").command("users list", {
-  options: input,
-  output,
-  async run(ctx) {
-    return await callHttpOperation({
-      id: "users.list",
-      baseUrl: { envVar: "ACME_API_URL" },
-      auth: { kind: "bearer", envVar: "ACME_TOKEN" },
-      method: "GET",
-      path: "/users",
-      bind: { query: ["limit"] },
-      input: ctx.options,
+export const cli = defineCli({
+  name: "acme",
+  commands: [
+    defineCommand({
+      path: ["users", "list"],
+      input: { options: input },
       output,
-      env: ctx.env,
-    });
-  },
+      safety: {
+        auth: "required",
+        destructive: false,
+        idempotent: true,
+        interactive: "never",
+        openWorld: true,
+        readOnly: true,
+      },
+      async run({ ctx }) {
+        return await callHttpOperation({
+          id: "users.list",
+          baseUrl: { envVar: "ACME_API_URL" },
+          auth: { kind: "bearer", envVar: "ACME_TOKEN" },
+          method: "GET",
+          path: "/users",
+          bind: { query: ["limit"] },
+          input: ctx.options,
+          output,
+          env: ctx.env,
+        });
+      },
+    }),
+  ],
 });
 ```
 
 ## Generated CLI example
 
 ```ts
-cli.command("users list", {
-  description: "List users",
-  options: usersList.input,
+defineCommand({
+  path: ["users", "list"],
+  summary: "List users",
+  input: { options: usersList.input },
   output: usersList.output,
-  async run(ctx) {
-    return await callHttpOperation({
+  async run({ ctx }) {
+    const data = await callHttpOperation({
       id: "users.list",
       baseUrl: contract.remote.baseUrl,
       auth: contract.remote.auth,
@@ -299,6 +314,7 @@ cli.command("users list", {
       output: usersList.output,
       env: ctx.env,
     });
+    return ctx.ok(data, { execution: { mode: "remote-http", source: "schema-default" } });
   },
 });
 ```

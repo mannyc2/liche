@@ -21,7 +21,7 @@ The first useful slice should prove:
 
 - a handwritten core CLI still works without product/build packages
 - a schema normalizes into a deterministic catalog
-- one generated command registers through `Cli.create().command()`
+- one generated command declares through `defineCli()` / `defineCommand()`
 - generated and handwritten command outputs match for the same input
 - fixtures include both CRUD-like commands and workflow commands
 

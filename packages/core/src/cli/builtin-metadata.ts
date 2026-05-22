@@ -11,7 +11,6 @@ export type BuiltinName = keyof BuiltinsConfig
 export const builtinCommands: readonly BuiltinCommand[] = [
   { description: 'Generate shell completion script', name: 'completions' },
   { description: 'Config diagnostics', name: 'config', subcommands: [{ description: 'Inspect config loading', name: 'doctor' }] },
-  { description: 'Generate typed Cli.Commands declarations', name: 'gen' },
   { description: 'MCP server config', name: 'mcp', subcommands: [{ description: 'Register MCP server config', name: 'add' }] },
   {
     description: 'Skill file management',
@@ -27,7 +26,6 @@ export function enabledBuiltins(config: BuiltinsConfig | undefined, hasConfig = 
   return {
     completions: config?.completions ?? true,
     config: config?.config ?? hasConfig,
-    gen: config?.gen ?? false,
     mcp: config?.mcp ?? false,
     skills: config?.skills ?? false,
   }

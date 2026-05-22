@@ -180,7 +180,7 @@ const refs = [
 if (refs.some((value) => value === undefined || value === null)) {
   throw new Error('public package import smoke failed')
 }
-if (!parsed.ok || !plan.compileFlagsDigest || !generated.includes("Cli.create")) {
+if (!parsed.ok || !plan.compileFlagsDigest || !generated.includes("defineCli")) {
   throw new Error('public package runtime smoke failed')
 }
 `)

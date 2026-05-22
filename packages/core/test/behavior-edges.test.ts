@@ -233,6 +233,8 @@ describe('command registry and guards behavior', () => {
     expect(isFetch({ _fetch: true, fetch: async () => new Response() })).toBe(true)
     expect(isFetch('fetch')).toBe(false)
     expect(isResult({ ok: true, data: 1 })).toBe(true)
+    expect(isResult({ ok: true })).toBe(false)
+    expect(isResult({ ok: false, error: { code: 'BROKEN', message: 'failed' } })).toBe(true)
     expect(isResult({ ok: 'true' })).toBe(false)
     expect(isResult(null)).toBe(false)
   })
@@ -273,8 +275,8 @@ describe('command registry and guards behavior', () => {
 describe('builtin metadata and skill sync behavior', () => {
   test('builtin metadata drives opt-in help and nested completion suggestions', () => {
     expect(builtinSuggestions([''])).toEqual(['completions'])
-    const allBuiltins = { gen: true, mcp: true, skills: true }
-    expect(builtinSuggestions([''], allBuiltins)).toEqual(['completions', 'gen', 'mcp', 'skills'])
+    const allBuiltins = { mcp: true, skills: true }
+    expect(builtinSuggestions([''], allBuiltins)).toEqual(['completions', 'mcp', 'skills'])
     expect(builtinSuggestions(['m'], allBuiltins)).toEqual(['mcp'])
     expect(builtinSuggestions(['skills', ''], allBuiltins)).toEqual(['add', 'list'])
     expect(builtinSuggestions(['mcp', 'a'], allBuiltins)).toEqual(['add'])
@@ -295,7 +297,6 @@ describe('builtin metadata and skill sync behavior', () => {
     ])
     expect(builtinHelpLines(allBuiltins)).toEqual([
       '  completions  Generate shell completion script',
-      '  gen          Generate typed Cli.Commands declarations',
       '  mcp add      Register MCP server config',
       '  skills add   Sync skill file',
       '  skills list  List available skills',

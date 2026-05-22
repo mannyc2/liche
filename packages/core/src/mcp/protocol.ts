@@ -195,16 +195,22 @@ function objectSchema(value: unknown) {
   return { type: 'object', properties: {} }
 }
 
-function mcpAnnotations(command: { effects?: any; examples?: unknown; name: string; policy?: any }): Record<string, unknown> {
+function mcpAnnotations(command: { effects?: any; examples?: unknown; name: string; policy?: any; safety?: any }): Record<string, unknown> {
+  const destructive = command.safety?.destructive ?? (command.policy?.dangerous === true || command.effects?.kind === 'delete')
+  const idempotent = command.safety?.idempotent ?? command.effects?.idempotent === true
+  const openWorld = command.safety?.openWorld ?? true
+  const readOnly = command.safety?.readOnly ?? command.effects?.kind === 'read'
+
   return {
     command: command.name,
     ...(command.effects ? { effects: command.effects } : undefined),
     ...(command.policy ? { policy: command.policy } : undefined),
+    ...(command.safety ? { safety: command.safety } : undefined),
     ...(command.examples ? { examples: command.examples } : undefined),
-    destructiveHint: command.policy?.dangerous === true || command.effects?.kind === 'delete',
-    idempotentHint: command.effects?.idempotent === true,
-    openWorldHint: true,
-    readOnlyHint: command.effects?.kind === 'read',
+    destructiveHint: destructive,
+    idempotentHint: idempotent,
+    openWorldHint: openWorld,
+    readOnlyHint: readOnly,
   }
 }
 

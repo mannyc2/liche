@@ -81,7 +81,7 @@ Verification:
 
 Simplify `@lili/core` around one declarative command contract. Core should own the runtime contract every command depends on; optional projections and client/vendor workflows should move behind plugin-style packages or opt-in adapters.
 
-Status: the core hard cutover is implemented. Core now emits serializable `CommandContract` records for runtime projection, public manifests no longer expose runtime state, and core formats are limited to JSON/JSONL/YAML/Markdown. Additional renderers belong outside `@lili/core`.
+Status: the core hard cutover is underway. Core now emits serializable `CommandContract` records for runtime projection, public manifests no longer expose runtime state, core formats are limited to JSON/JSONL/YAML/Markdown, and the public handwritten authoring path starts with `defineCli()` plus `defineCommand()` data objects. Additional renderers belong outside `@lili/core`.
 
 Core responsibilities:
 
@@ -107,13 +107,15 @@ Implementation target:
 
 1. Introduce a serializable `CommandContract` boundary that contains metadata, schemas, config bindings, safety/effects annotations, examples, output contract, and projection hints.
 2. Make `CommandDefinition` an executable wrapper around `CommandContract` plus `run` or `fetch`; manifest/schema/MCP/help surfaces must consume the contract, not internal `Entry` state.
-3. Remove internal-state fields from public manifest output and keep runtime reflection as compatibility for handwritten CLIs.
-4. Convert helper built-ins that are not part of command execution into opt-in plugin/adapters backed by `CommandContract`.
-5. Remove nonessential renderers from core; optional renderers belong in plugin packages.
+3. Make `defineCli()` / `defineCommand()` the canonical handwritten API, with command `path`, aliases, input schemas, output schema, safety metadata, docs metadata, and handler separated in one data-first object.
+4. Remove internal-state fields from public manifest output and keep runtime reflection as compatibility for existing runtime construction.
+5. Convert helper built-ins that are not part of command execution into opt-in plugin/adapters backed by `CommandContract`.
+6. Remove nonessential renderers from core; optional renderers belong in plugin packages.
 
 Verification:
 
 - A contract fixture can emit schema, manifest, help, and MCP tool definitions without executing command handlers.
+- A declarative fixture can execute direct and aliased nested command paths while manifest and MCP projection read safety metadata without executing the handler.
 - Public manifest JSON contains only serializable contract data and no `Entry`, `CliState`, function, absolute path, timestamp, or runtime handle.
 - Core package dependency and import tests prove `@lili/core` does not depend on plugin packages, Product, Build, or Releases.
 - Disabling optional adapters removes `skills add`, client-specific `mcp add`, nonessential renderers, and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.

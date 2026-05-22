@@ -39,5 +39,6 @@ export default Product.create({
       summary: 'Purge cache for an org',
       http: { method: 'POST', path: '/orgs/{org}/purge_cache', bind: { path: ['org'], body: [] } },
       requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
+      surfaces: { agent: true },
     }),
   )

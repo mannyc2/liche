@@ -4,9 +4,12 @@ import type {
   Catalog,
   CommandCapability,
   NormalizedAuth,
+  NormalizedCapabilityExample,
   NormalizedContext,
+  NormalizedEffects,
   NormalizedHttpBind,
   NormalizedPermission,
+  NormalizedPolicy,
   NormalizedRuntimeValue,
   NormalizedShape,
   NormalizedObjectShape,
@@ -197,7 +200,7 @@ function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
 }
 
 function renderImports(catalog: Catalog): string[] {
-  const coreNames = new Set(['Cli', 'z'])
+  const coreNames = new Set(['defineCli', 'defineCommand', 'z'])
   if (catalog.config) coreNames.add('Config')
   if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) coreNames.add('createLocalTelemetrySink')
@@ -241,31 +244,7 @@ function isAuthCommand(cap: Capability): cap is CommandCapability & { family: 'a
 
 function renderCli(catalog: Catalog): string[] {
   const lines: string[] = []
-
-  const byResource = new Map<string, ResourceOperationCapability[]>()
-  for (const cap of catalog.capabilities) {
-    if (cap.kind !== 'resource-operation') continue
-    const bucket = byResource.get(cap.resourceId) ?? []
-    bucket.push(cap)
-    byResource.set(cap.resourceId, bucket)
-  }
-
-  const resourceVars: string[] = []
-  for (const [resourceId, ops] of byResource) {
-    const varName = sanitizeIdent(resourceId)
-    resourceVars.push(varName)
-    lines.push(`const ${varName} = Cli.create(${q(resourceId)})`)
-    for (const op of ops) {
-      lines.push(...renderCapability('  ', catalog, op))
-    }
-    lines.push('')
-  }
-
-  const topLevelCommands: CommandCapability[] = catalog.capabilities.filter(
-    (c): c is CommandCapability => c.kind === 'command',
-  )
-
-  lines.push(`const cli = Cli.create({`)
+  lines.push(`const cli = defineCli({`)
   lines.push(`  name: ${q(catalog.product.id)},`)
   lines.push(`  version: ${q(catalog.product.version)},`)
   lines.push(`  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },`)
@@ -273,14 +252,13 @@ function renderCli(catalog: Catalog): string[] {
     lines.push(`  events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],`)
   }
   if (catalog.config) lines.push(...renderConfigDeclaration('  ', catalog))
+  lines.push(`  commands: [`)
+  for (const cap of catalog.capabilities) {
+    lines.push(...renderCapability('    ', catalog, cap))
+  }
+  if (catalog.ops.enabled) lines.push(...renderOpsCommands('    ', catalog))
+  lines.push(`  ],`)
   lines.push(`})`)
-  for (const varName of resourceVars) {
-    lines.push(`  .command(${varName})`)
-  }
-  for (const cmd of topLevelCommands) {
-    lines.push(...renderCapability('  ', catalog, cmd))
-  }
-  if (catalog.ops.enabled) lines.push(...renderOpsCommands('  ', catalog))
   lines.push('')
   lines.push(`export default cli`)
   return lines
@@ -289,12 +267,14 @@ function renderCli(catalog: Catalog): string[] {
 function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   const lines: string[] = []
   if (catalog.ops.enabled && catalog.ops.doctor !== false) {
-    lines.push(`${indent}.command('doctor', {`)
+    lines.push(`${indent}defineCommand({`)
+    lines.push(`${indent}  path: ['doctor'],`)
     lines.push(`${indent}  agent: true,`)
-    lines.push(`${indent}  description: 'Run local installation and PATH diagnostics.',`)
-    lines.push(`${indent}  env: z.object({ 'PATH': z.string().optional() }),`)
+    lines.push(`${indent}  summary: 'Run local installation and PATH diagnostics.',`)
+    lines.push(`${indent}  input: { env: z.object({ 'PATH': z.string().optional() }) },`)
     lines.push(`${indent}  output: z.unknown(),`)
-    lines.push(`${indent}  async run(ctx) {`)
+    lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
+    lines.push(`${indent}  async run({ ctx }) {`)
     lines.push(`${indent}    return await runLocalDoctor({`)
     lines.push(`${indent}      cliName: PRODUCT_ID,`)
     lines.push(`${indent}      version: ${q(catalog.product.version)},`)
@@ -302,30 +282,36 @@ function renderOpsCommands(indent: string, catalog: Catalog): string[] {
     lines.push(`${indent}      packageManagers: DOCTOR_PACKAGE_MANAGERS,`)
     lines.push(`${indent}    })`)
     lines.push(`${indent}  },`)
-    lines.push(`${indent}})`)
+    lines.push(`${indent}}),`)
   }
-  lines.push(`${indent}.command('catalog', {`)
+  lines.push(`${indent}defineCommand({`)
+  lines.push(`${indent}  path: ['catalog'],`)
   lines.push(`${indent}  agent: true,`)
-  lines.push(`${indent}  description: 'Print the generated local catalog artifact.',`)
+  lines.push(`${indent}  summary: 'Print the generated local catalog artifact.',`)
   lines.push(`${indent}  output: z.unknown(),`)
+  lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
   lines.push(`${indent}  run() { return GENERATED_CATALOG },`)
-  lines.push(`${indent}})`)
-  lines.push(`${indent}.command('notices', {`)
+  lines.push(`${indent}}),`)
+  lines.push(`${indent}defineCommand({`)
+  lines.push(`${indent}  path: ['notices'],`)
   lines.push(`${indent}  agent: true,`)
-  lines.push(`${indent}  description: 'Print static update, channel, and yank notices.',`)
+  lines.push(`${indent}  summary: 'Print static update, channel, and yank notices.',`)
   lines.push(`${indent}  output: z.unknown(),`)
+  lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
   lines.push(`${indent}  run() { return STATIC_NOTICES },`)
-  lines.push(`${indent}})`)
+  lines.push(`${indent}}),`)
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
-    lines.push(`${indent}.command('telemetry', {`)
+    lines.push(`${indent}defineCommand({`)
+    lines.push(`${indent}  path: ['telemetry'],`)
     lines.push(`${indent}  agent: true,`)
-    lines.push(`${indent}  description: 'Show local telemetry sink status.',`)
-    lines.push(`${indent}  env: z.object({`)
+    lines.push(`${indent}  summary: 'Show local telemetry sink status.',`)
+    lines.push(`${indent}  input: { env: z.object({`)
     lines.push(`${indent}    [TELEMETRY_ENABLED_ENV_VAR]: z.string().optional(),`)
     lines.push(`${indent}    [TELEMETRY_FILE_ENV_VAR]: z.string().optional(),`)
-    lines.push(`${indent}  }),`)
+    lines.push(`${indent}  }) },`)
     lines.push(`${indent}  output: z.unknown(),`)
-    lines.push(`${indent}  run(ctx) {`)
+    lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
+    lines.push(`${indent}  run({ ctx }) {`)
     lines.push(`${indent}    const raw = ctx.env[TELEMETRY_ENABLED_ENV_VAR]`)
     lines.push(`${indent}    const enabled = raw !== undefined && raw !== '' && raw !== '0' && raw.toLowerCase() !== 'false'`)
     lines.push(`${indent}    return {`)
@@ -334,7 +320,7 @@ function renderOpsCommands(indent: string, catalog: Catalog): string[] {
     lines.push(`${indent}      redaction: 'enabled',`)
     lines.push(`${indent}    }`)
     lines.push(`${indent}  },`)
-    lines.push(`${indent}})`)
+    lines.push(`${indent}}),`)
   }
   return lines
 }
@@ -342,44 +328,57 @@ function renderOpsCommands(indent: string, catalog: Catalog): string[] {
 function renderCapability(indent: string, catalog: Catalog, cap: Capability): string[] {
   if (isAuthCommand(cap)) return renderAuthCapability(indent, catalog, cap)
   const lines: string[] = []
-  const commandName = cap.kind === 'resource-operation' ? cap.verb : cap.command[0] ?? cap.id
-  lines.push(`${indent}.command(${q(commandName)}, {`)
+  lines.push(`${indent}defineCommand({`)
+  lines.push(`${indent}  path: ${renderStringArray(cap.command)},`)
+  lines.push(`${indent}  agent: ${cap.surfaces.agent ? 'true' : 'false'},`)
+  lines.push(`${indent}  summary: ${q(cap.summary)},`)
   if (cap.description) lines.push(`${indent}  description: ${q(cap.description)},`)
+  if (cap.examples.length > 0) lines.push(`${indent}  examples: ${renderExamples(cap.examples)},`)
+  if (cap.effects) lines.push(`${indent}  effects: ${renderEffects(cap.effects)},`)
+  if (cap.policy) lines.push(`${indent}  policy: ${renderPolicy(cap.policy)},`)
   const inputSchema = capabilityInputSchema(catalog, cap)
   const outputSchema = capabilityOutputSchema(catalog, cap)
   const envSchema = capabilityEnvSchema(catalog, cap)
   const authMetadata = renderCommandAuthMetadata(catalog, cap)
   if (authMetadata) lines.push(`${indent}  auth: ${authMetadata},`)
-  if (envSchema) lines.push(`${indent}  env: ${renderSchema(envSchema, `${indent}  `)},`)
   const optionConfig = capabilityOptionConfig(cap)
-  if (optionConfig) lines.push(`${indent}  optionConfig: ${optionConfig},`)
-  lines.push(`${indent}  options: ${renderSchema(inputSchema, `${indent}  `)},`)
+  lines.push(`${indent}  input: {`)
+  if (envSchema) lines.push(`${indent}    env: ${renderSchema(envSchema, `${indent}    `)},`)
+  if (optionConfig) lines.push(`${indent}    config: ${optionConfig},`)
+  lines.push(`${indent}    options: ${renderSchema(inputSchema, `${indent}    `)},`)
+  lines.push(`${indent}  },`)
   lines.push(`${indent}  output: ${renderSchema(outputSchema, `${indent}  `)},`)
-  lines.push(`${indent}  async run(ctx) {`)
+  lines.push(`${indent}  safety: ${renderSafety(cap)},`)
+  lines.push(`${indent}  async run({ ctx }) {`)
   lines.push(...renderCapabilityRun(`${indent}    `, catalog, cap))
   lines.push(`${indent}  },`)
-  lines.push(`${indent}})`)
+  lines.push(`${indent}}),`)
   return lines
 }
 
 function renderAuthCapability(indent: string, catalog: Catalog, cap: CommandCapability): string[] {
-  const commandName = cap.command[0] ?? cap.id
   const lines: string[] = []
-  lines.push(`${indent}.command(${q(commandName)}, {`)
+  lines.push(`${indent}defineCommand({`)
+  lines.push(`${indent}  path: ${renderStringArray(cap.command)},`)
   lines.push(`${indent}  agent: ${cap.surfaces.agent ? 'true' : 'false'},`)
-  lines.push(`${indent}  description: ${q(cap.summary)},`)
+  lines.push(`${indent}  summary: ${q(cap.summary)},`)
+  if (cap.effects) lines.push(`${indent}  effects: ${renderEffects(cap.effects)},`)
+  if (cap.policy) lines.push(`${indent}  policy: ${renderPolicy(cap.policy)},`)
+  lines.push(`${indent}  safety: ${renderSafety(cap)},`)
+  lines.push(`${indent}  input: {`)
   if (cap.id === 'auth.switch') {
-    lines.push(`${indent}  options: ${renderSwitchOptions(catalog.contexts, `${indent}  `)},`)
+    lines.push(`${indent}    options: ${renderSwitchOptions(catalog.contexts, `${indent}    `)},`)
   } else if (cap.id === 'auth.logout') {
-    lines.push(`${indent}  options: z.object({ profile: z.string().optional(), all: z.boolean().optional() }),`)
+    lines.push(`${indent}    options: z.object({ profile: z.string().optional(), all: z.boolean().optional() }),`)
   } else {
-    lines.push(`${indent}  options: z.object({ profile: z.string().optional() }),`)
+    lines.push(`${indent}    options: z.object({ profile: z.string().optional() }),`)
   }
+  lines.push(`${indent}  },`)
   lines.push(`${indent}  output: ${renderAuthOutputSchema(cap.id)},`)
   if (cap.id === 'auth.whoami') {
     lines.push(`${indent}  auth: { required: false, status: 'requires-runtime-resolution', providerId: AUTH_PROVIDER.id },`)
   }
-  lines.push(`${indent}  async run(ctx) {`)
+  lines.push(`${indent}  async run({ ctx }) {`)
   lines.push(`${indent}    const sessionStore = createFileSessionStore()`)
   lines.push(`${indent}    const profile = typeof ctx.options.profile === 'string' ? ctx.options.profile : undefined`)
   if (cap.id === 'auth.whoami') {
@@ -413,7 +412,7 @@ function renderAuthCapability(indent: string, catalog: Catalog, cap: CommandCapa
   }
   lines.push(`${indent}    return ctx.ok(data, { execution: { mode: 'local', source: 'schema-default' } })`)
   lines.push(`${indent}  },`)
-  lines.push(`${indent}})`)
+  lines.push(`${indent}}),`)
   return lines
 }
 
@@ -744,6 +743,39 @@ function renderCommandAuthMetadata(catalog: Catalog, cap: Capability): string | 
   return `{ ${fields.join(', ')} }`
 }
 
+function renderExamples(examples: NormalizedCapabilityExample[]): string {
+  return `[${examples.map((example) => {
+    const fields = [`command: ${q(example.command)}`]
+    if (example.summary) fields.push(`description: ${q(example.summary)}`)
+    return `{ ${fields.join(', ')} }`
+  }).join(', ')}]`
+}
+
+function renderEffects(effects: NormalizedEffects): string {
+  const fields = [`kind: ${q(effects.kind)}`]
+  if (effects.idempotent !== undefined) fields.push(`idempotent: ${effects.idempotent ? 'true' : 'false'}`)
+  return `{ ${fields.join(', ')} }`
+}
+
+function renderPolicy(policy: NormalizedPolicy): string {
+  return `{ dangerous: ${policy.dangerous ? 'true' : 'false'}, requiresConfirmation: ${policy.requiresConfirmation ? 'true' : 'false'}, conformanceEligible: ${policy.conformanceEligible ? 'true' : 'false'} }`
+}
+
+function renderSafety(cap: Capability): string {
+  const effectKind = cap.effects?.kind
+  const readOnly = effectKind === 'read' || effectKind === 'auth-session-read'
+  const destructive = cap.policy?.dangerous === true || effectKind === 'delete' || effectKind === 'auth-session-delete'
+  const idempotent = cap.effects?.idempotent ?? readOnly
+  const interactive = cap.kind === 'command' && cap.id === 'auth.login' ? 'required' : 'never'
+  const openWorld =
+    hasHttpTransport(cap) ||
+    needsAuthResolution(cap) ||
+    cap.requires.contexts.length > 0 ||
+    effectKind === 'exec'
+  const auth = cap.requires.auth ? 'required' : 'none'
+  return `{ auth: ${q(auth)}, destructive: ${destructive ? 'true' : 'false'}, idempotent: ${idempotent ? 'true' : 'false'}, interactive: ${q(interactive)}, openWorld: ${openWorld ? 'true' : 'false'}, readOnly: ${readOnly ? 'true' : 'false'} }`
+}
+
 function renderSchema(jsonSchema: unknown, indent: string): string {
   return renderSchemaNode(jsonSchema as JsonSchemaNode, indent)
 }
@@ -804,10 +836,4 @@ function q(s: string): string {
 
 function profileEnvVar(productId: string): string {
   return `${productId.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase()}_PROFILE`
-}
-
-function sanitizeIdent(name: string): string {
-  const camel = name.replace(/[-_](\w)/g, (_, c: string) => c.toUpperCase())
-  if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(camel)) return camel
-  throw new Error(`Cannot derive identifier from group name '${name}'`)
 }

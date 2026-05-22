@@ -25,11 +25,11 @@ describe('core-handwritten example', () => {
     ])
   })
 
-  test('keeps gen opt-in enabled while mcp and skills are disabled', async () => {
+  test('keeps agent helper builtins disabled', async () => {
     const help = await runCli(['--help'])
-    expect(help.stdout).toContain('gen')
     expect(help.stdout).not.toContain('mcp add')
     expect(help.stdout).not.toContain('skills add')
+    expect(help.stdout).not.toContain('gen')
   })
 
   test('parses boolean options', async () => {
@@ -61,4 +61,3 @@ async function runCli(
   })
   return { exitCode, stderr, stdout }
 }
-

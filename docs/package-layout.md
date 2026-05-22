@@ -83,8 +83,10 @@ Target root shape:
 
 Owns:
 
-- `Cli.create()`
-- `.command()`
+- `defineCli()`
+- `defineCommand()`
+- `Cli.create()` as the lower-level runtime construction primitive
+- `.command()` as the lower-level runtime registration primitive
 - `.serve()`
 - `.fetch()`
 - middleware

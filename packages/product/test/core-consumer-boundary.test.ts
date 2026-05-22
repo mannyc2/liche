@@ -20,6 +20,8 @@ const FROZEN_PUBLIC_VALUES = [
   'createFileSessionStore',
   'createLocalTelemetrySink',
   'defaultSessionRoot',
+  'defineCli',
+  'defineCommand',
   'isValidProfileName',
   'logoutAuthSession',
   'middleware',

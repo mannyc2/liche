@@ -108,8 +108,11 @@ export type CommandContract = {
   name: string
   optionConfig?: Record<string, string> | undefined
   outputPolicy?: OutputPolicy | undefined
+  path?: readonly string[] | undefined
   policy?: CommandPolicy | undefined
+  safety?: CommandSafety | undefined
   schema?: unknown
+  summary?: string | undefined
   usage?: readonly Usage[] | undefined
 }
 
@@ -133,6 +136,15 @@ export type CommandPolicy = {
   conformanceEligible?: boolean | undefined
   dangerous?: boolean | undefined
   requiresConfirmation?: boolean | undefined
+}
+
+export type CommandSafety = {
+  auth?: 'none' | 'optional' | 'required' | undefined
+  destructive?: boolean | undefined
+  idempotent?: boolean | undefined
+  interactive?: 'never' | 'optional' | 'required' | undefined
+  openWorld?: boolean | undefined
+  readOnly?: boolean | undefined
 }
 
 export type CommandAuthMetadata = {
@@ -294,7 +306,6 @@ export type Usage = string | UsageObject
 export type BuiltinsConfig = {
   completions?: boolean | undefined
   config?: boolean | undefined
-  gen?: boolean | undefined
   mcp?: boolean | undefined
   skills?: boolean | undefined
 }
@@ -329,6 +340,7 @@ export type CommandDefinition<
   output?: Out | undefined
   outputPolicy?: OutputPolicy | undefined
   policy?: CommandPolicy | undefined
+  safety?: CommandSafety | undefined
   run?:
     | ((context: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Record<string, unknown>>) =>
         | unknown
@@ -336,7 +348,57 @@ export type CommandDefinition<
         | Promise<unknown | AsyncGenerator<unknown, unknown, unknown> | void>
         | void)
     | undefined
+  summary?: string | undefined
   usage?: Usage[] | undefined
+}
+
+export type CommandInput<
+  A extends Schema<any> | undefined = Schema<any> | undefined,
+  E extends Schema<any> | undefined = Schema<any> | undefined,
+  O extends Schema<any> | undefined = Schema<any> | undefined,
+> = {
+  args?: A | undefined
+  config?: Record<string, string> | undefined
+  env?: E | undefined
+  options?: O | undefined
+}
+
+export type DeclarativeCommandRunContext<
+  A extends Schema<any> | undefined = Schema<any> | undefined,
+  E extends Schema<any> | undefined = Schema<any> | undefined,
+  O extends Schema<any> | undefined = Schema<any> | undefined,
+> = {
+  ctx: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Record<string, unknown>>
+  input: {
+    args: InferSchema<A>
+    config: Record<string, unknown>
+    env: InferSchema<E>
+    options: InferSchema<O>
+  }
+}
+
+export type DeclarativeCommand<
+  A extends Schema<any> | undefined = Schema<any> | undefined,
+  E extends Schema<any> | undefined = Schema<any> | undefined,
+  O extends Schema<any> | undefined = Schema<any> | undefined,
+  Out extends Schema<any> | undefined = Schema<any> | undefined,
+> = Omit<CommandDefinition<A, E, O, Out>, 'alias' | 'aliases' | 'args' | 'env' | 'optionConfig' | 'options' | 'run'> & {
+  aliases?: readonly (readonly string[])[] | undefined
+  input?: CommandInput<A, E, O> | undefined
+  path: readonly [string, ...string[]]
+  run?:
+    | ((context: DeclarativeCommandRunContext<A, E, O>) =>
+        | unknown
+        | AsyncGenerator<unknown, unknown, unknown>
+        | Promise<unknown | AsyncGenerator<unknown, unknown, unknown> | void>
+        | void)
+    | undefined
+  summary?: string | undefined
+}
+
+export type DefineCliOptions = Omit<CreateOptions, 'name'> & {
+  commands?: readonly DeclarativeCommand[] | undefined
+  name: string
 }
 
 export type CreateOptions<

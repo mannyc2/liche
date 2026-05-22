@@ -76,7 +76,7 @@ const deployments = Cli.create('deployments', {
   })
 
 export const cli = Cli.create('shipyard', {
-  builtins: { completions: true, gen: false, mcp: false, skills: false },
+  builtins: { completions: true, mcp: false, skills: false },
   config: Config.object({
     files: ['shipyard.jsonc'],
     schema: CliConfigSchema,

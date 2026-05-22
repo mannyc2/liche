@@ -9,7 +9,7 @@
  * Do not edit by hand. Regenerate via `li-product generate`.
  */
 
-import { Cli, Config, callHttpOperation, createLocalTelemetrySink, runLocalDoctor, z } from '@lili/core'
+import { Config, callHttpOperation, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@lili/core'
 import { deploy, dev } from './impl/wrangler.js'
 
 const PRODUCT_ID = 'workers'
@@ -533,38 +533,7 @@ const STATIC_NOTICES = {
   ]
 } as const
 
-const script = Cli.create('script')
-  .command('list', {
-    auth: { required: false, status: 'not-required', requiredPermissions: ['workers:read'], requiredScopes: ['workers.read'] },
-    options: z.object({}),
-    output: z.array(z.object({
-      'created_at': z.string().optional(),
-      'id': z.string(),
-      'name': z.string(),
-    })),
-    async run(ctx) {
-      const data = await callHttpOperation({
-        id: 'script.list',
-        baseUrl: ctx.config['apiBaseUrl'] as string,
-        auth: { kind: 'none' },
-        method: 'GET',
-        path: '',
-        bind: { body: false },
-        input: ctx.options as Record<string, unknown>,
-        inputFields: [],
-        output: z.array(z.object({
-          'created_at': z.string().optional(),
-          'id': z.string(),
-          'name': z.string(),
-        })),
-        env: ctx.env as Record<string, string | undefined>,
-        requiredPermissions: ['workers:read'],
-      })
-      return ctx.ok(data, { execution: { mode: 'remote-http', source: 'schema-default' } })
-    },
-  })
-
-const cli = Cli.create({
+const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
   generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
@@ -577,78 +546,140 @@ const cli = Cli.create({
     }),
     scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
   }),
+  commands: [
+    defineCommand({
+      path: ['script', 'list'],
+      agent: false,
+      summary: 'List Worker scripts',
+      examples: [{ command: 'workers script list --json' }],
+      effects: { kind: 'read', idempotent: true },
+      policy: { dangerous: false, requiresConfirmation: false, conformanceEligible: true },
+      auth: { required: false, status: 'not-required', requiredPermissions: ['workers:read'], requiredScopes: ['workers.read'] },
+      input: {
+        options: z.object({}),
+      },
+      output: z.array(z.object({
+        'created_at': z.string().optional(),
+        'id': z.string(),
+        'name': z.string(),
+      })),
+      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: true, readOnly: true },
+      async run({ ctx }) {
+        const data = await callHttpOperation({
+          id: 'script.list',
+          baseUrl: ctx.config['apiBaseUrl'] as string,
+          auth: { kind: 'none' },
+          method: 'GET',
+          path: '',
+          bind: { body: false },
+          input: ctx.options as Record<string, unknown>,
+          inputFields: [],
+          output: z.array(z.object({
+            'created_at': z.string().optional(),
+            'id': z.string(),
+            'name': z.string(),
+          })),
+          env: ctx.env as Record<string, string | undefined>,
+          requiredPermissions: ['workers:read'],
+        })
+        return ctx.ok(data, { execution: { mode: 'remote-http', source: 'schema-default' } })
+      },
+    }),
+    defineCommand({
+      path: ['deploy'],
+      agent: false,
+      summary: 'Deploy a Worker',
+      examples: [{ command: 'workers deploy --entrypoint src/index.ts --environment preview --json' }],
+      effects: { kind: 'exec', idempotent: false },
+      policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: false },
+      auth: { required: false, status: 'not-required', requiredPermissions: ['workers:edit'], requiredScopes: ['workers.edit'] },
+      input: {
+        options: z.object({
+          'entrypoint': z.string(),
+          'environment': z.string().optional(),
+        }),
+      },
+      output: z.object({
+        'deployment_id': z.string(),
+        'url': z.string().optional(),
+      }),
+      safety: { auth: 'none', destructive: true, idempotent: false, interactive: 'never', openWorld: true, readOnly: false },
+      async run({ ctx }) {
+        const data = await deploy(ctx.options)
+        return ctx.ok(data, { execution: { mode: 'hybrid-workflow', source: 'schema-default' } })
+      },
+    }),
+    defineCommand({
+      path: ['dev'],
+      agent: false,
+      summary: 'Run a local development server',
+      input: {
+        options: z.object({
+          'entrypoint': z.string(),
+        }),
+      },
+      output: z.object({
+        'url': z.string(),
+      }),
+      safety: { auth: 'none', destructive: false, idempotent: false, interactive: 'never', openWorld: false, readOnly: false },
+      async run({ ctx }) {
+        const data = await dev(ctx.options)
+        return ctx.ok(data, { execution: { mode: 'local', source: 'schema-default' } })
+      },
+    }),
+    defineCommand({
+      path: ['doctor'],
+      agent: true,
+      summary: 'Run local installation and PATH diagnostics.',
+      input: { env: z.object({ 'PATH': z.string().optional() }) },
+      output: z.unknown(),
+      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
+      async run({ ctx }) {
+        return await runLocalDoctor({
+          cliName: PRODUCT_ID,
+          version: '1.0.0',
+          env: ctx.env as Record<string, string | undefined>,
+          packageManagers: DOCTOR_PACKAGE_MANAGERS,
+        })
+      },
+    }),
+    defineCommand({
+      path: ['catalog'],
+      agent: true,
+      summary: 'Print the generated local catalog artifact.',
+      output: z.unknown(),
+      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
+      run() { return GENERATED_CATALOG },
+    }),
+    defineCommand({
+      path: ['notices'],
+      agent: true,
+      summary: 'Print static update, channel, and yank notices.',
+      output: z.unknown(),
+      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
+      run() { return STATIC_NOTICES },
+    }),
+    defineCommand({
+      path: ['telemetry'],
+      agent: true,
+      summary: 'Show local telemetry sink status.',
+      input: { env: z.object({
+        [TELEMETRY_ENABLED_ENV_VAR]: z.string().optional(),
+        [TELEMETRY_FILE_ENV_VAR]: z.string().optional(),
+      }) },
+      output: z.unknown(),
+      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
+      run({ ctx }) {
+        const raw = ctx.env[TELEMETRY_ENABLED_ENV_VAR]
+        const enabled = raw !== undefined && raw !== '' && raw !== '0' && raw.toLowerCase() !== 'false'
+        return {
+          enabled,
+          sink: ctx.env[TELEMETRY_FILE_ENV_VAR] ? { kind: 'file', path: ctx.env[TELEMETRY_FILE_ENV_VAR] } : undefined,
+          redaction: 'enabled',
+        }
+      },
+    }),
+  ],
 })
-  .command(script)
-  .command('deploy', {
-    auth: { required: false, status: 'not-required', requiredPermissions: ['workers:edit'], requiredScopes: ['workers.edit'] },
-    options: z.object({
-      'entrypoint': z.string(),
-      'environment': z.string().optional(),
-    }),
-    output: z.object({
-      'deployment_id': z.string(),
-      'url': z.string().optional(),
-    }),
-    async run(ctx) {
-      const data = await deploy(ctx.options)
-      return ctx.ok(data, { execution: { mode: 'hybrid-workflow', source: 'schema-default' } })
-    },
-  })
-  .command('dev', {
-    options: z.object({
-      'entrypoint': z.string(),
-    }),
-    output: z.object({
-      'url': z.string(),
-    }),
-    async run(ctx) {
-      const data = await dev(ctx.options)
-      return ctx.ok(data, { execution: { mode: 'local', source: 'schema-default' } })
-    },
-  })
-  .command('doctor', {
-    agent: true,
-    description: 'Run local installation and PATH diagnostics.',
-    env: z.object({ 'PATH': z.string().optional() }),
-    output: z.unknown(),
-    async run(ctx) {
-      return await runLocalDoctor({
-        cliName: PRODUCT_ID,
-        version: '1.0.0',
-        env: ctx.env as Record<string, string | undefined>,
-        packageManagers: DOCTOR_PACKAGE_MANAGERS,
-      })
-    },
-  })
-  .command('catalog', {
-    agent: true,
-    description: 'Print the generated local catalog artifact.',
-    output: z.unknown(),
-    run() { return GENERATED_CATALOG },
-  })
-  .command('notices', {
-    agent: true,
-    description: 'Print static update, channel, and yank notices.',
-    output: z.unknown(),
-    run() { return STATIC_NOTICES },
-  })
-  .command('telemetry', {
-    agent: true,
-    description: 'Show local telemetry sink status.',
-    env: z.object({
-      [TELEMETRY_ENABLED_ENV_VAR]: z.string().optional(),
-      [TELEMETRY_FILE_ENV_VAR]: z.string().optional(),
-    }),
-    output: z.unknown(),
-    run(ctx) {
-      const raw = ctx.env[TELEMETRY_ENABLED_ENV_VAR]
-      const enabled = raw !== undefined && raw !== '' && raw !== '0' && raw.toLowerCase() !== 'false'
-      return {
-        enabled,
-        sink: ctx.env[TELEMETRY_FILE_ENV_VAR] ? { kind: 'file', path: ctx.env[TELEMETRY_FILE_ENV_VAR] } : undefined,
-        redaction: 'enabled',
-      }
-    },
-  })
 
 export default cli

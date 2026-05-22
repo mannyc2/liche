@@ -75,12 +75,12 @@ describe('generateCli — header', () => {
 })
 
 describe('generateCli — imports', () => {
-  test('imports Cli and z from @lili/core exactly once', () => {
+  test('imports defineCli, defineCommand, and z from @lili/core exactly once', () => {
     const source = generate(workersCatalog())
     const coreImports = [...source.matchAll(/from '@lili\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Cli, z')
+    expect(importLine?.[1]).toBe('defineCli, defineCommand, z')
   })
 
   test('local and hybrid-workflow handlers are imported from ./impl/<module>.js, grouped per module', () => {
@@ -120,25 +120,25 @@ describe('generateCli — imports', () => {
 })
 
 describe('generateCli — command tree shape', () => {
-  test('resource operations are registered under a sub-Cli named after the resource id', () => {
+  test('resource operations are declared with explicit nested paths', () => {
     const source = generate(workersCatalog())
-    expect(source).toContain(`const script = Cli.create('script')`)
-    expect(source).toMatch(/\.command\('list', \{/)
-    // The script sub-Cli is .command()-ed into the root.
-    expect(source).toContain(`  .command(script)`)
+    expect(source).toContain(`const cli = defineCli({`)
+    expect(source).toContain(`path: ['script', 'list'],`)
+    expect(source).not.toContain(`Cli.create`)
+    expect(source).not.toContain(`.command(`)
   })
 
-  test('top-level commands chain directly on the root Cli without a sub-Cli wrapper', () => {
+  test('top-level commands are declared in the same command array without sub-Cli wrappers', () => {
     const source = generate(workersCatalog())
-    expect(source).toContain(`  .command('deploy', {`)
-    expect(source).toContain(`  .command('dev', {`)
+    expect(source).toContain(`path: ['deploy'],`)
+    expect(source).toContain(`path: ['dev'],`)
     expect(source).not.toContain(`const deploy = Cli.create('deploy')`)
     expect(source).not.toContain(`const dev = Cli.create('dev')`)
   })
 
-  test('root Cli carries product id+version and the generated envelope/disabledGlobals contract', () => {
+  test('root defineCli carries product id+version and the generated envelope/disabledGlobals contract', () => {
     const source = generate(workersCatalog())
-    expect(source).toContain(`const cli = Cli.create({`)
+    expect(source).toContain(`const cli = defineCli({`)
     expect(source).toContain(`  name: 'workers',`)
     expect(source).toContain(`  version: '1.0.0',`)
     expect(source).toContain(`  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },`)
@@ -163,7 +163,7 @@ describe('generateCli — run bodies by execution mode', () => {
 
   test('resource operation run body is a Phase 4 not-implemented stub, not a fake handler call', () => {
     const source = generate(workersCatalog())
-    const listBlock = extractCommandBlock(source, 'list')
+    const listBlock = extractCommandBlock(source, ['script', 'list'])
     expect(listBlock).toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
     expect(listBlock).toMatch(/resource operations is not implemented yet \(Phase 4\)/)
     expect(listBlock).not.toMatch(/await \w+\(ctx\.options\)/)
@@ -209,10 +209,10 @@ describe('generateCli — run bodies by execution mode', () => {
     )
     const source = generate(cat)
     expect(source.match(/from '@lili\/core'/)?.[0]).toBe("from '@lili/core'")
-    expect(source).toContain(`import { Cli, Config, callHttpOperation, z } from '@lili/core'`)
+    expect(source).toContain(`import { Config, callHttpOperation, defineCli, defineCommand, z } from '@lili/core'`)
     expect(source).toContain(`config: Config.object({`)
     expect(source).toContain(`files: ['p.jsonc'],`)
-    expect(source).toContain(`optionConfig: { 'zone': 'defaultZone' },`)
+    expect(source).toContain(`config: { 'zone': 'defaultZone' },`)
     const purgeBlock = extractCommandBlock(source, 'purge')
     expect(purgeBlock).toContain(`const data = await callHttpOperation({`)
     expect(purgeBlock).toContain(`baseUrl: ctx.config['apiBaseUrl'] as string,`)
@@ -238,7 +238,7 @@ describe('generateCli — run bodies by execution mode', () => {
 describe('generateCli — list output resolution', () => {
   test('Shape.list("script") output renders as z.array(z.object(...)) using the resource fields', () => {
     const source = generate(workersCatalog())
-    const listBlock = extractCommandBlock(source, 'list')
+    const listBlock = extractCommandBlock(source, ['script', 'list'])
     expect(listBlock).toMatch(/output: z\.array\(z\.object\(/)
     expect(listBlock).toContain(`'id':`)
     expect(listBlock).toContain(`'name':`)
@@ -273,29 +273,29 @@ describe('generateCli — dev is not treated as HTTP-capable', () => {
 
   test('deploy renders as a top-level hybrid-workflow command, not a fake resource mutation', () => {
     const source = generate(workersCatalog())
-    // deploy is part of the root Cli.create({...}) chain, not nested in a
-    // sub-Cli. Assert it appears AFTER the root Cli.create block opens.
-    const rootStart = source.indexOf('const cli = Cli.create({')
+    // deploy is part of the root declarative command array, not nested in a
+    // sub-Cli. Assert it appears after the root defineCli block opens.
+    const rootStart = source.indexOf('const cli = defineCli({')
     expect(rootStart).toBeGreaterThan(-1)
-    const deployIdx = source.indexOf(`.command('deploy', {`)
+    const deployIdx = source.indexOf(`path: ['deploy'],`)
     expect(deployIdx).toBeGreaterThan(rootStart)
 
-    // deploy must NOT appear inside the `script` resource sub-Cli block.
-    const scriptBlock = source.slice(
-      source.indexOf(`const script = Cli.create('script')`),
-      rootStart,
-    )
-    expect(scriptBlock).not.toContain(`.command('deploy'`)
+    const scriptListIdx = source.indexOf(`path: ['script', 'list'],`)
+    expect(scriptListIdx).toBeGreaterThan(rootStart)
+    expect(deployIdx).toBeGreaterThan(scriptListIdx)
   })
 })
 
-// Extract one .command('name', { ... }) block by simple brace-balance scan.
-function extractCommandBlock(source: string, commandName: string): string {
-  const marker = `.command('${commandName}', {`
-  const start = source.indexOf(marker)
-  if (start === -1) throw new Error(`Command '${commandName}' not found in generated source`)
+// Extract one defineCommand({ path: [...] }) block by simple brace-balance scan.
+function extractCommandBlock(source: string, commandPath: string | string[]): string {
+  const path = Array.isArray(commandPath) ? commandPath : [commandPath]
+  const marker = `path: ${renderTestStringArray(path)},`
+  const pathStart = source.indexOf(marker)
+  if (pathStart === -1) throw new Error(`Command '${path.join(' ')}' not found in generated source`)
+  const start = source.lastIndexOf('defineCommand({', pathStart)
+  if (start === -1) throw new Error(`Command '${path.join(' ')}' has no defineCommand wrapper`)
   let depth = 0
-  let i = start + marker.length - 1 // pointer at the opening `{`
+  let i = source.indexOf('{', start)
   for (; i < source.length; i++) {
     const ch = source[i]
     if (ch === '{') depth += 1
@@ -308,4 +308,8 @@ function extractCommandBlock(source: string, commandName: string): string {
     }
   }
   return source.slice(start, i)
+}
+
+function renderTestStringArray(values: string[]): string {
+  return `[${values.map((value) => `'${value}'`).join(', ')}]`
 }

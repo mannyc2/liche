@@ -8,8 +8,6 @@ Run commands:
 bun examples/core-handwritten/cli.ts summarize README.md --style brief --json
 bun examples/core-handwritten/cli.ts echo hello --shout --json
 bun examples/core-handwritten/cli.ts completions bash
-bun examples/core-handwritten/cli.ts gen --out examples/core-handwritten/lili.generated.ts --json
 ```
 
-`gen` is enabled explicitly in this example. `mcp` and `skills` remain disabled.
-
+`mcp` and `skills` remain disabled in this example.

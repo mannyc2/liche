@@ -1,8 +1,8 @@
 # Build system requirements
 
-## `gen` placement
+## Type generation placement
 
-`li gen` (typegen) ships in the current core runtime because the reusable build package was not present in the original core implementation. It loads command metadata via `stateSymbol` and emits a `declare module` augmentation on `Cli.Commands`. `gen` is a candidate for `@lili/build` because it is a build-time concern, not runtime command execution. Behavior IDs: `GEN-001`.
+Core no longer ships a `gen` runtime helper. The old `li gen` path only emitted TypeScript module augmentation from command metadata, was not committed as source, and had no runtime or agent-facing consumer outside tests and the handwritten example. If this capability returns, it belongs in a build-time package or extension with an explicit consumer, not in `@lili/core`.
 
 `@lili/build` is an opt-in package for reusable Bun build/compile behavior. It owns the programmatic `Bun.build()` wrapper, compile flag profile, build-time constants, compile entrypoint rendering, and path-independent `compileFlagsDigest`.
 
@@ -111,7 +111,7 @@ Do not infer a broad generator framework from this requirement. The first vertic
 
 The Product API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
 
-The public authoring model is product-shaped, not CLI-program-shaped. `Product.create(...).resource(...).command(...).binding(...)` is the source API. Generated CLIs still lower into `@lili/core` through `Cli.create().command(...)`.
+The public authoring model is product-shaped, not CLI-program-shaped. `Product.create(...).resource(...).command(...).binding(...)` is the source API. Generated CLIs lower into `@lili/core` through declarative `defineCli()` / `defineCommand()` command graphs.
 
 The concrete product schema API, naming, defaults, and refactor path live in `docs/product-schema.md`.
 
@@ -343,7 +343,7 @@ The linter can prove schema shape. Only server conformance can prove that a hand
 
 ## Generated-code seam
 
-Generated command code must be plain TypeScript that imports `@lili/core` and registers commands through the public `Cli.create().command()` API.
+Generated command code must be plain TypeScript that imports `@lili/core` and declares commands through the public `defineCli()` / `defineCommand()` API.
 
 Representative generated file:
 
@@ -354,42 +354,58 @@ Representative generated file:
 // generatorVersion: <version>
 // do not edit by hand
 
-import { Cli, callHttpOperation, z } from "@lili/core";
+import { callHttpOperation, defineCli, defineCommand, z } from "@lili/core";
 
-export const cli = Cli.create({
+export const cli = defineCli({
   name: "workers",
   version: "1.0.0",
-});
-
-cli.command("workers script list", {
-  description: "List Worker scripts",
-  options: z.object({}),
-  output: z.object({
-    scripts: z.array(z.object({
-      id: z.string(),
-      name: z.string(),
-    })),
-  }),
-  async run(ctx) {
-    return await callHttpOperation(ctx, {
-      baseUrl: { envVar: "WORKERS_API_URL" },
-      auth: { kind: "bearer", envVar: "WORKERS_TOKEN" },
-      method: "GET",
-      path: "/workers/scripts",
-      bind: {},
-      input: ctx.options,
+  commands: [
+    defineCommand({
+      path: ["workers", "script", "list"],
+      summary: "List Worker scripts",
+      input: {
+        options: z.object({}),
+      },
       output: z.object({
         scripts: z.array(z.object({
           id: z.string(),
           name: z.string(),
         })),
       }),
-    });
-  },
+      safety: {
+        auth: "required",
+        destructive: false,
+        idempotent: true,
+        interactive: "never",
+        openWorld: true,
+        readOnly: true,
+      },
+      async run({ ctx }) {
+        const data = await callHttpOperation({
+          id: "workers.script.list",
+          baseUrl: { envVar: "WORKERS_API_URL" },
+          auth: { kind: "bearer", envVar: "WORKERS_TOKEN" },
+          method: "GET",
+          path: "/workers/scripts",
+          bind: { body: false },
+          input: ctx.options,
+          inputFields: [],
+          output: z.object({
+            scripts: z.array(z.object({
+              id: z.string(),
+              name: z.string(),
+            })),
+          }),
+          env: ctx.env,
+        });
+        return ctx.ok(data, { execution: { mode: "remote-http", source: "schema-default" } });
+      },
+    }),
+  ],
 });
 ```
 
-That example is not final API syntax. It is the required architectural seam: generated code wires schema metadata into core; core performs runtime behavior.
+The exact generated body may include product-specific constants and auth/context preambles, but the seam is fixed: generated code wires schema metadata into core; core performs runtime behavior.
 
 ## Local implementation imports
 

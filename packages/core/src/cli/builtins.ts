@@ -4,7 +4,6 @@ import { completionScript, shells } from '../completions/shells.js'
 import { format } from '../format/index.js'
 import { loadConfigResolution } from '../parser/config.js'
 import { writeMcp, writeSkill } from '../skills/sync.js'
-import { renderTypegen } from '../command/typegen.js'
 import { builtinCommands, builtinEnabled } from './builtin-metadata.js'
 
 export type BuiltinIo = { out(s: string): void; err(s: string): void }
@@ -78,14 +77,6 @@ export async function runBuiltin(
     return true
   }
 
-  if (command === 'gen') {
-    const sub = parseSubcommandFlags(rest)
-    const out = sub.out ?? './lili.generated.ts'
-    await Bun.write(out, renderTypegen(name, state))
-    emitWrote(io, flags, outputFormat, out)
-    return true
-  }
-
   if ((command === 'config' || command === 'skills' || command === 'mcp') && (flags.help || !subcommand)) {
     const builtin = builtinCommands.find((item) => item.name === command)
     const subcommands = builtin?.subcommands?.map((item) => `  ${name} ${command} ${item.name}  ${item.description}`).join('\n')
@@ -112,7 +103,6 @@ type SubcommandFlags = {
   agent?: string | undefined
   command?: string | undefined
   noGlobal?: boolean | undefined
-  out?: string | undefined
 }
 
 function parseSubcommandFlags(rest: string[]): SubcommandFlags {
@@ -124,8 +114,6 @@ function parseSubcommandFlags(rest: string[]): SubcommandFlags {
     else if (token.startsWith('--agent=')) flags.agent = token.slice('--agent='.length)
     else if (token === '-c' || token === '--command') flags.command = rest[++i]
     else if (token.startsWith('--command=')) flags.command = token.slice('--command='.length)
-    else if (token === '--out' || token === '-o') flags.out = rest[++i]
-    else if (token.startsWith('--out=')) flags.out = token.slice('--out='.length)
   }
   return flags
 }

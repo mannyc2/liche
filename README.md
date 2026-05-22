@@ -14,20 +14,37 @@ The v1 workflow is:
 Use `@lili/core` when the command tree is already clear and you want a normal TypeScript CLI.
 
 ```ts
-import { Cli, z } from "@lili/core";
+import { defineCli, defineCommand, z } from "@lili/core";
 
-export const cli = Cli.create({ name: "shipyard", version: "0.1.0" })
-  .command("deploy", {
-    options: z.object({ entrypoint: z.string() }),
-    run(ctx) {
-      return ctx.ok({ deployment_id: `dep-${ctx.options.entrypoint}` });
-    },
-  });
+export const cli = defineCli({
+  name: "shipyard",
+  version: "0.1.0",
+  commands: [
+    defineCommand({
+      path: ["deploy"],
+      summary: "Deploy the shipyard",
+      input: {
+        options: z.object({ entrypoint: z.string() }),
+      },
+      output: z.object({ deployment_id: z.string() }),
+      safety: {
+        destructive: false,
+        idempotent: false,
+        interactive: "never",
+        openWorld: true,
+        readOnly: false,
+      },
+      run({ input }) {
+        return { deployment_id: `dep-${input.options.entrypoint}` };
+      },
+    }),
+  ],
+});
 
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@lili/core` provides typed args/options/env parsing, config loading, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio, serializable command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor` and telemetry sinks are opt-in; client/vendor installers and nonessential renderers stay outside the required core path.
+`@lili/core` provides declarative command graphs, typed args/options/env parsing, config loading, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor` and telemetry sinks are opt-in; client/vendor installers and nonessential renderers stay outside the required core path.
 
 ## Product Schema
 

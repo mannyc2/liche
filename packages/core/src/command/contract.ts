@@ -13,6 +13,7 @@ export function commandContract(
       description: entry.description,
       name,
       outputPolicy: entry.outputPolicy,
+      path: contractPath(name),
     }
   }
 
@@ -22,6 +23,7 @@ export function commandContract(
       description: entry.description,
       name,
       outputPolicy: entry.outputPolicy,
+      path: contractPath(name),
     }
   }
 
@@ -37,8 +39,15 @@ export function commandContract(
     name,
     ...(definition.optionConfig ? { optionConfig: definition.optionConfig } : undefined),
     ...(definition.outputPolicy ? { outputPolicy: definition.outputPolicy } : undefined),
+    path: contractPath(name),
     ...(definition.policy ? { policy: definition.policy } : undefined),
+    ...(definition.safety ? { safety: definition.safety } : undefined),
     schema: commandSchema(entry),
+    ...(definition.summary ? { summary: definition.summary } : undefined),
     ...(definition.usage ? { usage: definition.usage } : undefined),
   }
+}
+
+function contractPath(name: string): string[] {
+  return name === '(root)' ? [] : name.split(/\s+/).filter(Boolean)
 }
