@@ -2,6 +2,7 @@ import type { Awaitable, CliEvent, CliState, Format } from '../types.js'
 import type { GlobalFlags } from '../parser/globals.js'
 import { completionScript, shells } from '../completions/shells.js'
 import { format } from '../format/index.js'
+import { loadConfigResolution } from '../parser/config.js'
 import { writeMcp, writeSkill } from '../skills/sync.js'
 import { renderTypegen } from '../command/typegen.js'
 import { builtinCommands, builtinEnabled } from './builtin-metadata.js'
@@ -20,7 +21,7 @@ export async function runBuiltin(
 ): Promise<boolean> {
   const [command, subcommand, ...rest] = flags.rest
 
-  if (!builtinEnabled(command ?? '', state.def.builtins)) return false
+  if (!builtinEnabled(command ?? '', state.def.builtins, !!state.def.config)) return false
 
   if (command === 'completions') {
     const shell = subcommand ?? 'bash'
@@ -34,6 +35,18 @@ export async function runBuiltin(
       type: 'completion.generated',
     })
     io.out(`${completionScript(shell, name)}\n`)
+    return true
+  }
+
+  if (command === 'config' && subcommand === 'doctor') {
+    const resolution = await loadConfigResolution(name, state, flags, env)
+    io.out(`${format({
+      config: {
+        enabled: !!state.def.config,
+        loaded: !!resolution,
+        keys: Object.keys(resolution?.values ?? {}).sort(),
+      },
+    }, outputFormat)}\n`)
     return true
   }
 
@@ -73,7 +86,7 @@ export async function runBuiltin(
     return true
   }
 
-  if ((command === 'skills' || command === 'mcp') && (flags.help || !subcommand)) {
+  if ((command === 'config' || command === 'skills' || command === 'mcp') && (flags.help || !subcommand)) {
     const builtin = builtinCommands.find((item) => item.name === command)
     const subcommands = builtin?.subcommands?.map((item) => `  ${name} ${command} ${item.name}  ${item.description}`).join('\n')
     await emitLifecycle?.({

@@ -428,6 +428,26 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(skills.stdout).not.toContain('skills list')
   })
 
+  test('config can expose config doctor without unrelated helper builtins', async () => {
+    const configured = Cli.create('app', { config: Config.object({}) }).command('list', { run: () => ({ command: 'list' }) })
+
+    const help = await runCli(configured, ['--help'])
+    expect(help.stdout).toContain('config doctor')
+    expect(help.stdout).not.toContain('mcp add')
+    expect(help.stdout).not.toContain('skills add')
+
+    const doctor = await runCli(configured, ['config', 'doctor', '--json'])
+    expect(parseJsonOutput(doctor.stdout)).toEqual({
+      config: { enabled: true, loaded: true, keys: [] },
+    })
+
+    const minimal = Cli.create('minimal').command('list', { run: () => ({ command: 'list' }) })
+    const minimalHelp = await runCli(minimal, ['--help'])
+    expect(minimalHelp.stdout).not.toContain('config doctor')
+    expect(minimalHelp.stdout).not.toContain('mcp add')
+    expect(minimalHelp.stdout).not.toContain('skills add')
+  })
+
   test('serve handles version, full output, filters, token limits, and CTA metadata', async () => {
     const cli = Cli.create('app', { version: '2.0.0' }).command('deploy', {
       run: ({ ok }) =>

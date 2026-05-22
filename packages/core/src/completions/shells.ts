@@ -15,7 +15,7 @@ export function complete(state: CliState, words: string[], index: number): strin
   const scopedWords = cleanWords.slice(0, Math.max(index + 1, 1))
 
   return completionCommands(state, scopedWords)
-    .concat(builtinSuggestions(scopedWords, state.def.builtins))
+    .concat(builtinSuggestions(scopedWords, state.def.builtins, !!state.def.config))
     .filter((name): name is string => Boolean(name))
     .filter((name, offset, all) => all.indexOf(name) === offset)
 }

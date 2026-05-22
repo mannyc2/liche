@@ -10,6 +10,7 @@ export type BuiltinName = keyof BuiltinsConfig
 
 export const builtinCommands: readonly BuiltinCommand[] = [
   { description: 'Generate shell completion script', name: 'completions' },
+  { description: 'Config diagnostics', name: 'config', subcommands: [{ description: 'Inspect config loading', name: 'doctor' }] },
   { description: 'Generate typed Cli.Commands declarations', name: 'gen' },
   { description: 'MCP server config', name: 'mcp', subcommands: [{ description: 'Register MCP server config', name: 'add' }] },
   {
@@ -22,21 +23,22 @@ export const builtinCommands: readonly BuiltinCommand[] = [
   },
 ]
 
-export function enabledBuiltins(config: BuiltinsConfig | undefined): BuiltinsConfig {
+export function enabledBuiltins(config: BuiltinsConfig | undefined, hasConfig = false): BuiltinsConfig {
   return {
     completions: config?.completions ?? true,
+    config: config?.config ?? hasConfig,
     gen: config?.gen ?? false,
     mcp: config?.mcp ?? false,
     skills: config?.skills ?? false,
   }
 }
 
-export function builtinEnabled(name: string, config: BuiltinsConfig | undefined): boolean {
-  return enabledBuiltins(config)[name as BuiltinName] === true
+export function builtinEnabled(name: string, config: BuiltinsConfig | undefined, hasConfig = false): boolean {
+  return enabledBuiltins(config, hasConfig)[name as BuiltinName] === true
 }
 
-export function builtinSuggestions(words: string[], config?: BuiltinsConfig | undefined): string[] {
-  const enabled = enabledBuiltins(config)
+export function builtinSuggestions(words: string[], config?: BuiltinsConfig | undefined, hasConfig = false): string[] {
+  const enabled = enabledBuiltins(config, hasConfig)
   const current = words.at(-1) ?? ''
   const completed = words.slice(0, -1)
   const commands = enabledCommands(enabled)
@@ -46,8 +48,8 @@ export function builtinSuggestions(words: string[], config?: BuiltinsConfig | un
   return candidates.map((command) => command.name).filter((name) => name.startsWith(current))
 }
 
-export function builtinHelpLines(config?: BuiltinsConfig | undefined): string[] {
-  return flattenBuiltins(enabledCommands(enabledBuiltins(config))).map(({ description, name }) => `  ${name.padEnd(12)} ${description}`)
+export function builtinHelpLines(config?: BuiltinsConfig | undefined, hasConfig = false): string[] {
+  return flattenBuiltins(enabledCommands(enabledBuiltins(config, hasConfig))).map(({ description, name }) => `  ${name.padEnd(12)} ${description}`)
 }
 
 function enabledCommands(config: BuiltinsConfig): BuiltinCommand[] {

@@ -25,7 +25,7 @@ export function renderHelp(name: string, state: CliState, selected?: SelectedCom
   if (definition?.examples?.length) lines.push('', 'Examples:', ...exampleLines(scopedName, definition.examples))
   if (definition?.hint) lines.push('', definition.hint)
 
-  const builtins = builtinHelpLines(state.def.builtins)
+  const builtins = builtinHelpLines(state.def.builtins, !!state.def.config)
   if (builtins.length) lines.push('', 'Built-in Commands:', ...builtins)
 
   lines.push(

@@ -295,6 +295,7 @@ export type Usage = string | UsageObject
 
 export type BuiltinsConfig = {
   completions?: boolean | undefined
+  config?: boolean | undefined
   gen?: boolean | undefined
   mcp?: boolean | undefined
   skills?: boolean | undefined

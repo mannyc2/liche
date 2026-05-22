@@ -97,6 +97,10 @@ Plugin or separate-package responsibilities:
 - config mutation UX such as `config set`, `config edit`, and comment-preserving writes
 - extended doctor checks, telemetry sinks, release/build helpers, and Product-specific generated surfaces
 
+Narrow core exception:
+
+- `config doctor` is config-owned and acceptable in core when a CLI enables the config primitive. It should inspect config loading and provenance without enabling unrelated helpers such as `mcp add`, `skills add`, TOON output, or broader telemetry/export sinks.
+
 Implementation target:
 
 1. Introduce a serializable `CommandContract` boundary that contains metadata, schemas, config bindings, safety/effects annotations, examples, output contract, and projection hints.
