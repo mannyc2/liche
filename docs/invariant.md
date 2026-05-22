@@ -47,7 +47,7 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@lili/core` | yes | Runtime CLI framework: `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, standard formatter, opt-in config primitive, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs, typed config, direct MCP execution, and the shared remote HTTP transport. |
+| `@lili/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, lower-level `Cli.create()`/`.command()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, standard formatter, opt-in config primitive, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs, typed config, direct MCP execution, and the shared remote HTTP transport. |
 | `@lili/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
 | `@lili/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up lili's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
 | `@lili/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
@@ -76,13 +76,12 @@ A feature belongs in core only when a CLI cannot keep the same basic command sem
 These are optional extensions/adapters, even when they are useful first-party workflows:
 
 - nonessential output renderers and export formats beyond the standard machine/human envelope
-- client-specific `mcp add` config writers
-- `skills add`, agent-skill installers, and vendor-specific agent publishing helpers
+- agent/vendor publishing workflows beyond the opt-in `mcp add` and `skills add` helper built-ins
 - config mutation UX such as `config set`, `config edit`, and comment-preserving writes
 - extended doctor checks, hosted/export telemetry sinks, local support bundles, and hosted ingestion clients
 - release, build, Product surface, server adapter, dashboard, SDK, Terraform, or framework-specific behavior
 
-The narrow core exception is config-owned diagnostics such as `config doctor` when the config primitive is enabled. It may inspect config loading and provenance; it must not pull in unrelated helper commands or vendor adapters.
+The narrow core exceptions are config-owned diagnostics such as `config doctor`, and the explicitly opt-in `mcp add` / `skills add` helper built-ins. They must stay disabled unless requested by the CLI author and must not pull in broader vendor publishing adapters.
 
 ### Belongs in `@lili/product`
 

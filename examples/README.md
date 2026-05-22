@@ -40,7 +40,7 @@ The command still reaches `REMOTE_NOT_IMPLEMENTED` after auth/context resolution
 
 `examples/core-handwritten` shows the runtime framework without product generation:
 
-- `Cli.create()`
+- `defineCli()` / `defineCommand()`
 - typed args/options/env
 - middleware state
 - lifecycle events

@@ -46,6 +46,33 @@ describe('declarative authoring API', () => {
     expect(parseJsonOutput(aliased.stdout)).toEqual({ ok: true })
   })
 
+  test('option aliases and group descriptions are declared as command data', async () => {
+    const cli = defineCli({
+      name: 'app',
+      commands: [
+        defineCommand({
+          path: ['jobs'],
+          summary: 'Manage jobs',
+        }),
+        defineCommand({
+          path: ['jobs', 'run'],
+          input: {
+            aliases: { output: 'o' },
+            options: z.object({ output: z.string() }),
+          },
+          run: ({ input }) => ({ output: input.options.output }),
+        }),
+      ],
+    })
+
+    const result = await runCli(cli, ['jobs', 'run', '-o', 'dist/out.json', '--json'])
+    expect(parseJsonOutput(result.stdout)).toEqual({ output: 'dist/out.json' })
+
+    const help = await runCli(cli, ['--help'])
+    expect(help.stdout).toContain('jobs')
+    expect(help.stdout).toContain('Manage jobs')
+  })
+
   test('manifest and MCP projection read the declarative contract without executing handlers', async () => {
     let executed = false
     const cli = defineCli({

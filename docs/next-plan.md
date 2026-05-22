@@ -94,14 +94,15 @@ Core responsibilities:
 Plugin or separate-package responsibilities:
 
 - nonessential renderers and export formats beyond the standard core set
-- `skills add` and vendor-specific agent skill installers
-- client-specific `mcp add` config writers
+- vendor-specific agent publishing workflows beyond core `skills add`
+- client-specific MCP workflows beyond core `mcp add`
 - config mutation UX such as `config set`, `config edit`, and comment-preserving writes
 - extended doctor checks, hosted/export telemetry sinks, release/build helpers, and Product-specific generated surfaces
 
 Narrow core exception:
 
 - `config doctor` is config-owned and acceptable in core when a CLI enables the config primitive. It should inspect config loading and provenance without enabling unrelated helpers such as `mcp add`, `skills add`, plugin renderers, or broader telemetry/export sinks.
+- `mcp add` and `skills add` stay as explicitly opt-in core helper built-ins. They are not default command surface, and broader provider publishing workflows remain outside core.
 
 Implementation target:
 
@@ -109,7 +110,7 @@ Implementation target:
 2. Make `CommandDefinition` an executable wrapper around `CommandContract` plus `run` or `fetch`; manifest/schema/MCP/help surfaces must consume the contract, not internal `Entry` state.
 3. Make `defineCli()` / `defineCommand()` the canonical handwritten API, with command `path`, aliases, input schemas, output schema, safety metadata, docs metadata, and handler separated in one data-first object.
 4. Remove internal-state fields from public manifest output and keep runtime reflection as compatibility for existing runtime construction.
-5. Convert helper built-ins that are not part of command execution into opt-in plugin/adapters backed by `CommandContract`.
+5. Keep `mcp add` and `skills add` as opt-in core helper built-ins, while pushing broader vendor/provider workflows into adapters backed by `CommandContract`.
 6. Remove nonessential renderers from core; optional renderers belong in plugin packages.
 
 Verification:
@@ -118,7 +119,7 @@ Verification:
 - A declarative fixture can execute direct and aliased nested command paths while manifest and MCP projection read safety metadata without executing the handler.
 - Public manifest JSON contains only serializable contract data and no `Entry`, `CliState`, function, absolute path, timestamp, or runtime handle.
 - Core package dependency and import tests prove `@lili/core` does not depend on plugin packages, Product, Build, or Releases.
-- Disabling optional adapters removes `skills add`, client-specific `mcp add`, nonessential renderers, and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
+- Disabling optional helper built-ins removes `skills add` and `mcp add`; disabling optional adapters removes nonessential renderers and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
 - Generated Product surfaces consume catalog outputs or `CommandContract` artifacts and do not rely on weaker runtime reflection when a canonical generated surface exists.
 
 ## Phase 3: product vertical slice

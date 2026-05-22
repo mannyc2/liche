@@ -151,7 +151,15 @@ function registerDeclarative(cli: InternalCli, command: DeclarativeCommand): voi
   if (!leaf) throw new Error('Declarative command path must contain at least one segment')
 
   const parentCommands = ensureCommandParent(cli[stateSymbol].commands, path.slice(0, -1))
-  setCommandEntry(parentCommands, leaf, normalizeDeclarativeCommand(command))
+  const definition = normalizeDeclarativeCommand(command)
+  const existing = parentCommands.get(leaf)
+  if (existing?._group) {
+    if (definition.description !== undefined) existing.description = definition.description
+    if (definition.outputPolicy !== undefined) existing.outputPolicy = definition.outputPolicy
+    if (definition.run) existing.root = definition
+  } else {
+    setCommandEntry(parentCommands, leaf, definition)
+  }
 
   for (const alias of command.aliases ?? []) registerDeclarativeAlias(cli[stateSymbol].commands, path, [...alias])
 }
@@ -168,6 +176,7 @@ function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefini
 
   return {
     ...definition,
+    ...(input?.aliases ? { alias: input.aliases } : undefined),
     ...(definition.description ?? summary ? { description: definition.description ?? summary } : undefined),
     ...(input?.args ? { args: input.args } : undefined),
     ...(input?.config ? { optionConfig: input.config } : undefined),
@@ -201,7 +210,12 @@ function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<st
       current = existing.commands
       continue
     }
-    if (existing) throw new Error(`Cannot create command group '${segment}' over an existing command`)
+    if (existing) {
+      const group = groupFromExisting(segment, existing)
+      current.set(segment, group)
+      current = group.commands
+      continue
+    }
 
     const group: GroupEntry = {
       _group: true,
@@ -215,6 +229,23 @@ function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<st
     current = group.commands
   }
   return current
+}
+
+function groupFromExisting(segment: string, existing: any): GroupEntry {
+  if (existing?._alias) throw new Error(`Cannot create command group '${segment}' over an existing alias`)
+  if (existing?._fetch) throw new Error(`Cannot create command group '${segment}' over an existing fetch command`)
+
+  return {
+    _group: true,
+    commands: new Map(),
+    description: existing.description,
+    events: [],
+    hooks: { beforeExecute: [] },
+    middlewares: [],
+    name: segment,
+    outputPolicy: existing.outputPolicy,
+    ...(existing.run ? { root: existing } : undefined),
+  }
 }
 
 function registerDeclarativeAlias(commands: Map<string, any>, targetPath: string[], aliasPath: string[]): void {

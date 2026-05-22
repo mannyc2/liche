@@ -19,7 +19,7 @@ Do not force every meaningful product action into a CRUD resource operation. `de
 
 ## Public API
 
-The public API should follow the existing static-class style used by `Cli.create()`:
+The public API should keep the same namespace-style ergonomics as the rest of the package set:
 
 ```ts
 import { Auth, Command, Config, Field, Product, Runtime, Shape } from "@lili/product";

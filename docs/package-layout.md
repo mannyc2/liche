@@ -94,8 +94,8 @@ Owns:
 - parser/config/env validation
 - first-class opt-in config primitive for durable non-secret preferences
 - formatter/output envelope behavior
-- MCP basics (`--mcp` runtime support and direct command-contract execution remain core; client-specific `mcp add` config writers are optional adapters)
-- skills/docs basics (core may expose packaged skill content and runtime reflection for handwritten CLIs; `skills add`, agent-skill installers, and vendor publishing helpers are optional adapters)
+- MCP basics (`--mcp` runtime support, direct command-contract execution, and opt-in `mcp add` config writing remain core)
+- skills/docs basics (core may expose packaged skill content, runtime reflection for handwritten CLIs, and opt-in `skills add`; broader agent installers and vendor publishing helpers are optional adapters)
 - outbound HTTP operation transport
 - auth/session runtime primitives (`SecretString`, auth/context resolution, session store, auth header application)
 

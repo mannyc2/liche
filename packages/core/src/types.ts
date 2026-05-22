@@ -357,6 +357,7 @@ export type CommandInput<
   E extends Schema<any> | undefined = Schema<any> | undefined,
   O extends Schema<any> | undefined = Schema<any> | undefined,
 > = {
+  aliases?: Record<string, string> | undefined
   args?: A | undefined
   config?: Record<string, string> | undefined
   env?: E | undefined

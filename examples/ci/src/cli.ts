@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Cli, Config, z } from '@lili/core'
+import { Config, defineCli, defineCommand, z } from '@lili/core'
 
 const DeploymentSchema = z.object({
   id: z.string(),
@@ -35,55 +35,64 @@ async function apiFetch(ctx: { config: Record<string, unknown> }, path: string, 
   return readJson(response)
 }
 
-const deployments = Cli.create('deployments', {
-  description: 'Manage deployments.',
-})
-  .command('list', {
-    description: 'List deployments',
-    options: z.object({
-      project: z.string().optional(),
-    }),
-    optionConfig: { project: 'defaultProject' },
-    output: z.array(DeploymentSchema),
-    async run(ctx) {
-      const url = new URL('/deployments', config(ctx).apiBaseUrl)
-      if (ctx.options.project) url.searchParams.set('project', ctx.options.project)
-      const body = await apiFetch(ctx, `${url.pathname}${url.search}`)
-      return z.array(DeploymentSchema).parse(body)
-    },
-  })
-  .command('promote', {
-    args: z.object({
-      id: z.string(),
-    }),
-    description: 'Promote a deployment',
-    options: z.object({
-      environment: z.enum(['staging', 'production']).default('staging'),
-    }),
-    output: z.object({
-      deployment_id: z.string(),
-      environment: z.string(),
-      url: z.string().optional(),
-    }),
-    async run(ctx) {
-      const body = await apiFetch(ctx, `/deployments/${ctx.args.id}/promote`, {
-        body: JSON.stringify({ environment: ctx.options.environment }),
-        headers: { 'content-type': 'application/json' },
-        method: 'POST',
-      })
-      return body
-    },
-  })
-
-export const cli = Cli.create('shipyard', {
+export const cli = defineCli({
   builtins: { completions: true, mcp: false, skills: false },
+  commands: [
+    defineCommand({
+      path: ['deployments'],
+      summary: 'Manage deployments.',
+    }),
+    defineCommand({
+      path: ['deployments', 'list'],
+      description: 'List deployments',
+      input: {
+        config: { project: 'defaultProject' },
+        options: z.object({
+          project: z.string().optional(),
+        }),
+      },
+      output: z.array(DeploymentSchema),
+      async run({ ctx, input }) {
+        const url = new URL('/deployments', config(ctx).apiBaseUrl)
+        if (input.options.project) url.searchParams.set('project', input.options.project)
+        const body = await apiFetch(ctx, `${url.pathname}${url.search}`)
+        return z.array(DeploymentSchema).parse(body)
+      },
+    }),
+    defineCommand({
+      path: ['deployments', 'promote'],
+      description: 'Promote a deployment',
+      input: {
+        args: z.object({
+          id: z.string(),
+        }),
+        options: z.object({
+          environment: z.enum(['staging', 'production']).default('staging'),
+        }),
+      },
+      output: z.object({
+        deployment_id: z.string(),
+        environment: z.string(),
+        url: z.string().optional(),
+      }),
+      async run({ ctx, input }) {
+        const body = await apiFetch(ctx, `/deployments/${input.args.id}/promote`, {
+          body: JSON.stringify({ environment: input.options.environment }),
+          headers: { 'content-type': 'application/json' },
+          method: 'POST',
+        })
+        return body
+      },
+    }),
+  ],
   config: Config.object({
     files: ['shipyard.jsonc'],
     schema: CliConfigSchema,
     scopes: { project: { discoverUpwards: true }, user: false },
   }),
   description: 'Inspect and promote application deployments.',
+  name: 'shipyard',
   version: '0.1.0',
-}).command(deployments)
+})
 
 if (import.meta.main) await cli.serve(process.argv.slice(2))

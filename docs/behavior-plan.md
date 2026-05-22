@@ -6,7 +6,7 @@ See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `
 
 ## Goals
 
-- Keep the public API centered on `Cli.create()`, `.command()`, `.serve()`, `.fetch()`, `.use()`, `middleware()`, and `z`.
+- Keep the public authoring API centered on `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, `.use()`, `middleware()`, and `z`. `Cli.create()` and `.command()` remain lower-level runtime construction primitives for compatibility and focused runtime tests.
 - Use Bun-native edges for process/runtime work: `Bun.argv`, `Bun.env`, `Bun.file`, `Bun.write`, Bun Shell, Bun stdin/stdout, and `bun:test`.
 - Use small runtime dependencies where they provide concrete feature parity:
   - `zod` for public schema compatibility and JSON Schema conversion.
