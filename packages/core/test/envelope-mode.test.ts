@@ -17,7 +17,7 @@ function captureRun(argv: string[], options: any, command: { name: string; def: 
 }
 
 describe('envelope mode — generated.machineOutput: "envelope"', () => {
-  test('emits full {ok, data, meta} envelope under --json', async () => {
+  test('emits full {ok, data, error, meta} envelope under --json', async () => {
     const capture = captureRun(['ping', '--json'], {
       generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
     }, {
@@ -33,7 +33,35 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     const parsed = JSON.parse(capture.out)
     expect(parsed.ok).toBe(true)
     expect(parsed.data).toEqual({ message: 'pong' })
+    expect(parsed.error).toBeNull()
     expect(parsed.meta).toEqual({ locality: { mode: 'local', source: 'schema-default' } })
+  })
+
+  test('emits full error envelope under --json', async () => {
+    const capture = captureRun(['fail', '--json'], {
+      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+    }, {
+      name: 'fail',
+      def: {
+        run(ctx: any) {
+          return ctx.error({ code: 'NOPE', message: 'failed' })
+        },
+      },
+    })
+    await capture.promise
+    const parsed = JSON.parse(capture.out)
+    expect(parsed).toEqual({
+      ok: false,
+      data: null,
+      error: {
+        code: 'NOPE',
+        detail: 'failed',
+        exitCode: 1,
+        message: 'failed',
+        title: 'Nope',
+        type: 'urn:lili:error:nope',
+      },
+    })
   })
 
   test('handwritten CLI without `generated` returns bare data under --json (compat)', async () => {
@@ -47,6 +75,36 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     await capture.promise
     const parsed = JSON.parse(capture.out)
     expect(parsed).toEqual({ message: 'pong' })
+  })
+
+  test('raw result-shaped handler returns are domain data, not control envelopes', async () => {
+    const success = captureRun(['raw-success', '--json'], undefined, {
+      name: 'raw-success',
+      def: {
+        run() {
+          return { ok: true, data: { value: 1 }, error: null }
+        },
+      },
+    })
+    await success.promise
+    expect(success.exitCode).toBe(0)
+    expect(JSON.parse(success.out)).toEqual({ ok: true, data: { value: 1 }, error: null })
+
+    const failureShapedData = captureRun(['raw-error', '--json'], undefined, {
+      name: 'raw-error',
+      def: {
+        run() {
+          return { ok: false, data: null, error: { code: 'DOMAIN_ERROR', message: 'domain data' } }
+        },
+      },
+    })
+    await failureShapedData.promise
+    expect(failureShapedData.exitCode).toBe(0)
+    expect(JSON.parse(failureShapedData.out)).toEqual({
+      ok: false,
+      data: null,
+      error: { code: 'DOMAIN_ERROR', message: 'domain data' },
+    })
   })
 })
 
@@ -95,6 +153,7 @@ describe('ResultMeta — arbitrary keys round-trip through ctx.ok', () => {
     await capture.promise
     const parsed = JSON.parse(capture.out)
     expect(parsed.ok).toBe(true)
+    expect(parsed.error).toBeNull()
     expect(parsed.meta).toEqual({ custom: { foo: 1 } })
   })
 })

@@ -109,7 +109,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
           middlewares: state.middlewares.concat(selected.middlewares),
           version: state.def.version,
         })
-      : { ok: false, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }
+      : { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }
 
     await emitMcpLifecycle(binaryName, state, subscriptions, {
       agent: true,

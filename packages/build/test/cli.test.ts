@@ -60,9 +60,9 @@ describe('li-build CLI config', () => {
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
-    expect(body.code).toBe('BUILD_FAILED')
-    expect(body.hint).toContain('made-up-target')
-    expect(body.hint).toContain('TARGET_RESOLUTION_FAILED')
+    expect(body.error.code).toBe('BUILD_FAILED')
+    expect(body.error.hint).toContain('made-up-target')
+    expect(body.error.hint).toContain('TARGET_RESOLUTION_FAILED')
   })
 
   test('build command still requires options that are not provided by config', async () => {
@@ -80,8 +80,8 @@ describe('li-build CLI config', () => {
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
-    expect(body.code).toBe('VALIDATION_ERROR')
-    expect(body.fieldErrors.some((issue: { path: string }) => issue.path === '$.targets')).toBe(true)
-    expect(body.fieldErrors.some((issue: { path: string }) => issue.path === '$.out')).toBe(true)
+    expect(body.error.code).toBe('VALIDATION_ERROR')
+    expect(body.error.fieldErrors.some((issue: { path: string }) => issue.path === '$.targets')).toBe(true)
+    expect(body.error.fieldErrors.some((issue: { path: string }) => issue.path === '$.out')).toBe(true)
   })
 })

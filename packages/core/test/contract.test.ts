@@ -215,8 +215,12 @@ describe('contract: args, flags, config, env, middleware', () => {
     const result = await runCli(cli, ['token', '--json'], { env: {} })
     expect(result.exitCode).toBe(1)
     expect(parseJsonOutput(result.stdout)).toMatchObject({
-      code: 'VALIDATION_ERROR',
-      fieldErrors: [{ path: '$.TOKEN' }],
+      ok: false,
+      data: null,
+      error: {
+        code: 'VALIDATION_ERROR',
+        fieldErrors: [{ path: '$.TOKEN' }],
+      },
     })
   })
 
@@ -250,7 +254,7 @@ describe('contract: fetch and schema', () => {
 
     const response = await cli.fetch(new Request('http://localhost/users/7?active=true&limit=3'))
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, data: { active: true, id: 7, limit: 3 } })
+    expect(await response.json()).toEqual({ ok: true, data: { active: true, id: 7, limit: 3 }, error: null })
   })
 
   test('fetch dispatch merges JSON body options and normalizes not found and validation errors', async () => {
@@ -268,15 +272,15 @@ describe('contract: fetch and schema', () => {
       }),
     )
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, data: { id: 7, options: { active: false, limit: 5 } } })
+    expect(await response.json()).toEqual({ ok: true, data: { id: 7, options: { active: false, limit: 5 } }, error: null })
 
     const missing = await cli.fetch(new Request('http://localhost/missing'))
     expect(missing.status).toBe(404)
-    expect(await missing.json()).toMatchObject({ ok: false, error: { code: 'COMMAND_NOT_FOUND' } })
+    expect(await missing.json()).toMatchObject({ ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND' } })
 
     const invalid = await cli.fetch(new Request('http://localhost/users/not-a-number?active=true&limit=5'))
     expect(invalid.status).toBe(400)
-    expect(await invalid.json()).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } })
+    expect(await invalid.json()).toMatchObject({ ok: false, data: null, error: { code: 'VALIDATION_ERROR' } })
   })
 
   test('fetch exposes MCP endpoint, HEAD behavior, and invalid JSON fallback', async () => {
@@ -303,7 +307,7 @@ describe('contract: fetch and schema', () => {
         method: 'POST',
       }),
     )
-    expect(await invalidJson.json()).toEqual({ ok: true, data: { message: 'empty' } })
+    expect(await invalidJson.json()).toEqual({ ok: true, data: { message: 'empty' }, error: null })
   })
 
   test('schema output is generated from Zod, not hand-written fixtures', async () => {
@@ -328,8 +332,12 @@ describe('contract: fetch and schema', () => {
     const result = await runCli(cli, ['ship', '--json'])
     expect(result.exitCode).toBe(1)
     expect(parseJsonOutput(result.stdout)).toMatchObject({
-      code: 'VALIDATION_ERROR',
-      fieldErrors: [{ path: '$.id' }],
+      ok: false,
+      data: null,
+      error: {
+        code: 'VALIDATION_ERROR',
+        fieldErrors: [{ path: '$.id' }],
+      },
     })
   })
 })
@@ -458,6 +466,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     const full = await runCli(cli, ['deploy', '--json', '--full-output'])
     expect(parseJsonOutput(full.stdout)).toEqual({
       data: { nested: { keep: 'yes', skip: 'no' }, status: 'ready' },
+      error: null,
       meta: { cta: { commands: [{ command: 'status', options: { verbose: true } }], description: 'Next:' } },
       ok: true,
     })
@@ -500,7 +509,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(normal.stdout).toBe('{\n  "hidden": true\n}\n')
 
     const full = await runCli(cli, ['quiet', '--json', '--full-output'])
-    expect(parseJsonOutput(full.stdout)).toEqual({ ok: true, data: { hidden: true } })
+    expect(parseJsonOutput(full.stdout)).toEqual({ ok: true, data: { hidden: true }, error: null })
   })
 
   test('serve normalizes ctx.error exit codes and command-not-runnable errors', async () => {
@@ -525,29 +534,37 @@ describe('contract: mcp, completions, and token behavior', () => {
     const fail = await runCli(cli, ['fail', '--json'])
     expect(fail.exitCode).toBe(7)
     expect(parseJsonOutput(fail.stdout)).toMatchObject({
-      code: 'NOPE',
-      code_actions: [{ title: 'Inspect', argv: ['status'] }],
-      detail: 'full failure detail',
-      details: { id: 'err_1' },
-      exitCode: 7,
-      fieldErrors: [{ path: '$.name', message: 'Required' }],
-      message: 'failed',
-      retry_after: 5,
-      retryable: true,
-      status: 409,
-      suggested_fix: 'Choose another name.',
-      title: 'Nope',
-      type: 'urn:test:nope',
+      ok: false,
+      data: null,
+      error: {
+        code: 'NOPE',
+        code_actions: [{ title: 'Inspect', argv: ['status'] }],
+        detail: 'full failure detail',
+        details: { id: 'err_1' },
+        exitCode: 7,
+        fieldErrors: [{ path: '$.name', message: 'Required' }],
+        message: 'failed',
+        retry_after: 5,
+        retryable: true,
+        status: 409,
+        suggested_fix: 'Choose another name.',
+        title: 'Nope',
+        type: 'urn:test:nope',
+      },
     })
 
     const empty = await runCli(cli, ['empty', '--json'])
     expect(empty.exitCode).toBe(1)
     expect(parseJsonOutput(empty.stdout)).toMatchObject({
-      code: 'COMMAND_NOT_RUNNABLE',
-      detail: 'Command has no run handler',
-      message: 'Command has no run handler',
-      title: 'Command Not Runnable',
-      type: 'urn:lili:error:command-not-runnable',
+      ok: false,
+      data: null,
+      error: {
+        code: 'COMMAND_NOT_RUNNABLE',
+        detail: 'Command has no run handler',
+        message: 'Command has no run handler',
+        title: 'Command Not Runnable',
+        type: 'urn:lili:error:command-not-runnable',
+      },
     })
   })
 

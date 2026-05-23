@@ -23,7 +23,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
       type: 'command.not_found',
     }))
     return Response.json(
-      { ok: false, error: { code: 'COMMAND_NOT_FOUND', message: `No command for ${url.pathname}` } },
+      { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No command for ${url.pathname}` } },
       { status: 404 },
     )
   }

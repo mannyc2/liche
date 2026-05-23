@@ -4,7 +4,7 @@
 
 ## NDJSON streaming for async generators
 
-When a command's `run()` is an async generator and the client requests `Accept: application/x-ndjson`, the response is `Content-Type: application/x-ndjson`. Each yield becomes a JSON line of the form `{"type":"chunk","data":<value>}`. After the iterator completes, a final compact-JSON line containing the result envelope (`{ok, data, meta}`) is appended. CLI mode emits one stdout line per yield, formatted in the chosen output format (jsonl wraps each chunk in the same `{type,data}` envelope).
+When a command's `run()` is an async generator and the client requests `Accept: application/x-ndjson`, the response is `Content-Type: application/x-ndjson`. Each yield becomes a JSON line of the form `{"type":"chunk","data":<value>}`. After the iterator completes, a final compact-JSON line containing the result envelope (`{ok, data, error, meta}`) is appended. CLI mode emits one stdout line per yield, formatted in the chosen output format (jsonl wraps each chunk in the same `{type,data}` envelope).
 
 Behavior IDs: `STREAM-001`.
 

@@ -45,6 +45,17 @@ Deliberate, narrow widening to support generated CLIs:
 - `DefineCliOptions.builtins?: { completions?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `mcp` and `skills` default off. `config doctor` is exposed when config is declared unless explicitly disabled.
 - New public type `DisabledGlobal` (currently `'format'`).
 
+## Result envelope hard cutover
+
+`Result` is now a stable machine envelope, not a discriminated pair with missing branches:
+
+- Success: `{ ok: true, data, error: null, meta? }`.
+- Failure: `{ ok: false, data: null, error, meta? }`.
+
+Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, fetch-backed commands, `cli.fetch()`, generated envelope mode, and write-side helper built-ins) must populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs, so agents and scripts can always find `error` without guessing whether stdout is a bare error object. Handwritten success output remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
+
+The `isResult` guard intentionally rejects old-shape raw objects such as `{ ok: true, data }` and `{ ok: false, error }`. Command handlers that want to finish early must use `ctx.ok(...)` or `ctx.error(...)`; otherwise those objects are treated as ordinary domain data.
+
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
 
 ## Auth/session re-freeze target

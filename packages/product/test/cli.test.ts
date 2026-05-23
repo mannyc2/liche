@@ -68,12 +68,16 @@ describe('li-product CLI', () => {
     expect(result.exitCode).toBe(1)
     const error = JSON.parse(result.stdout)
     expect(error).toMatchObject({
-      code: 'GENERATED_SURFACE_DRIFT',
-      code_actions: [{ title: 'Regenerate surfaces', command: `li-product generate ${productPath}` }],
-      message: 'Generated artifacts are out of sync',
-      suggested_fix: 'Run generation without --check and commit the updated artifacts.',
+      ok: false,
+      data: null,
+      error: {
+        code: 'GENERATED_SURFACE_DRIFT',
+        code_actions: [{ title: 'Regenerate surfaces', command: `li-product generate ${productPath}` }],
+        message: 'Generated artifacts are out of sync',
+        suggested_fix: 'Run generation without --check and commit the updated artifacts.',
+      },
     })
-    expect(error.hint).toContain('generated file missing')
+    expect(error.error.hint).toContain('generated file missing')
   })
 
   test('conform runs fixture-server conformance and writes a report', async () => {
@@ -113,7 +117,7 @@ describe('li-product CLI', () => {
     const result = await runCli(['skills', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout)
-    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-product/SKILL.md') } })
+    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-product/SKILL.md') }, error: null })
     const content = await Bun.file(body.data.path).text()
     expect(content).toContain('description: Author and maintain lili product schemas')
     expect(content).toContain('defineProduct({')
@@ -124,7 +128,7 @@ describe('li-product CLI', () => {
     const result = await runCli(['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout)
-    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude.json') } })
+    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude.json') }, error: null })
     const config = await Bun.file(body.data.path).json()
     expect(config.mcpServers['li-product']).toEqual({ args: ['--mcp'], command: 'li-product' })
   })

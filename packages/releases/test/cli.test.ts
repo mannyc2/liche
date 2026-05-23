@@ -281,8 +281,8 @@ describe('li-release CLI', () => {
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
-    expect(body.code).toBe('PUBLISH_PREFLIGHT_FAILED')
-    expect(body.hint).toContain('pypi/CREDENTIAL_MISSING')
+    expect(body.error.code).toBe('PUBLISH_PREFLIGHT_FAILED')
+    expect(body.error.hint).toContain('pypi/CREDENTIAL_MISSING')
   })
 
   test('publish requires repository config for git-backed publishers', async () => {
@@ -297,8 +297,8 @@ describe('li-release CLI', () => {
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
-    expect(body.code).toBe('PUBLISH_PLAN_FAILED')
-    expect(body.hint).toContain('homebrew/PUBLISHER_CONFIG_MISSING')
+    expect(body.error.code).toBe('PUBLISH_PLAN_FAILED')
+    expect(body.error.hint).toContain('homebrew/PUBLISHER_CONFIG_MISSING')
   })
 
   test('publish rechecks artifact bytes before any executor can mutate', async () => {
@@ -313,8 +313,8 @@ describe('li-release CLI', () => {
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
-    expect(body.code).toBe('PUBLISH_EXECUTION_FAILED')
-    expect(body.hint).toContain('ARTIFACT_TAMPERED')
+    expect(body.error.code).toBe('PUBLISH_EXECUTION_FAILED')
+    expect(body.error.hint).toContain('ARTIFACT_TAMPERED')
   })
 
   test('ship orchestrates product generate, build, package, and dry-run publish', async () => {

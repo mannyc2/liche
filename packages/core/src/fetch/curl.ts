@@ -10,9 +10,10 @@ export async function callFetch(entry: FetchEntry, args: string[]): Promise<Resu
   const response = await entry.fetch(new Request(`http://lili.local/${joinedPath}`, requestInit))
   const data = await responseData(response)
 
-  if (response.ok) return { ok: true, data }
+  if (response.ok) return { ok: true, data, error: null }
   return {
     ok: false,
+    data: null,
     error: {
       code: 'FETCH_ERROR',
       message: typeof data === 'string' ? data : JSON.stringify(data),

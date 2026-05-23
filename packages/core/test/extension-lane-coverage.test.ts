@@ -71,8 +71,12 @@ describe('extension lane coverage', () => {
     const blocked = await runCli(cli, ['delete', '--non-interactive', '--json'])
     expect(blocked.exitCode).toBe(1)
     expect(JSON.parse(blocked.stdout)).toMatchObject({
-      code: 'EXTENSION_CONFIRMATION_REQUIRED',
-      suggested_fix: 'Pass --confirm or run interactively.',
+      ok: false,
+      data: null,
+      error: {
+        code: 'EXTENSION_CONFIRMATION_REQUIRED',
+        suggested_fix: 'Pass --confirm or run interactively.',
+      },
     })
 
     const confirmed = await runCli(cli, ['delete', '--non-interactive', '--confirm', '--json'])

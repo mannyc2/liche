@@ -18,8 +18,10 @@ export function isFetch(entry: unknown): entry is FetchEntry {
 
 export function isResult(value: unknown): value is Result {
   if (!value || typeof value !== 'object' || typeof (value as any).ok !== 'boolean') return false
-  if ((value as any).ok === true) return Object.prototype.hasOwnProperty.call(value, 'data')
-  return !!(value as any).error && typeof (value as any).error === 'object'
+  if ((value as any).ok === true) {
+    return Object.prototype.hasOwnProperty.call(value, 'data') && (value as any).error === null
+  }
+  return (value as any).data === null && !!(value as any).error && typeof (value as any).error === 'object'
 }
 
 export function resolveAlias(commands: Map<string, Entry>, entry: Entry | undefined): Entry | undefined {

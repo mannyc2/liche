@@ -126,6 +126,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
       expect(env).toEqual({
         ok: true,
         data: [{ id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' }],
+        error: null,
         meta: { execution: { mode: 'remote-http', source: 'config' } },
       })
     } finally {

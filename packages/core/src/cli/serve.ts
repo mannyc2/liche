@@ -215,7 +215,8 @@ export async function serveCli(
 
   const exitCode = result.ok ? 0 : Number(result.error.exitCode ?? 1)
   const envelopeMode = state.def.generated?.machineOutput === 'envelope' && formatExplicit
-  let data: unknown = flags.fullOutput || envelopeMode ? result : result.ok ? result.data : result.error
+  const machineErrorEnvelope = !result.ok && !human
+  let data: unknown = flags.fullOutput || envelopeMode || machineErrorEnvelope ? result : result.ok ? result.data : result.error
   if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
 
   let text = flags.tokenCount ? String(tokenCount(format(data, outputFormat))) : format(data, outputFormat)

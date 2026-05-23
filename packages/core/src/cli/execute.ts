@@ -19,7 +19,7 @@ import { LiliError, errorToObject, normalizeCommandError } from '../errors/error
 import { callFetch } from '../fetch/curl.js'
 import type { LoadedConfig } from '../parser/config.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
-import { isCommand, isFetch, isResult } from '../command/guards.js'
+import { isCommand, isFetch } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
 import { parseSchema } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
@@ -84,6 +84,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       error(error) {
         throw new Done({
           ok: false,
+          data: null,
           error: normalizeCommandError(error),
           meta: error.cta ? { cta: error.cta } : undefined,
         })
@@ -95,7 +96,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       isTty: input.isTty ?? false,
       name: binaryName,
       ok(data, meta) {
-        throw new Done({ ok: true, data, ...(meta && Object.keys(meta).length > 0 ? { meta } : {}) })
+        throw new Done({ ok: true, data: data ?? null, error: null, ...(meta && Object.keys(meta).length > 0 ? { meta } : {}) })
       },
       options: options as Dict,
       set(key, value) {
@@ -133,25 +134,20 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
           collected.push(chunk)
           await input.onChunk(chunk)
         }
-        const completed = { ok: true, data: collected } satisfies Result
+        const completed = { ok: true, data: collected, error: null } satisfies Result
         await emitResultEvent(binaryName, input, command, startedAt, completed)
         return completed
       }
-      const completed = { ok: true, data: await collectAsync(result) } satisfies Result
+      const completed = { ok: true, data: await collectAsync(result), error: null } satisfies Result
       await emitResultEvent(binaryName, input, command, startedAt, completed)
       return completed
     }
-    if (isResult(result)) {
-      await emitResultEvent(binaryName, input, command, startedAt, result)
-      return result
-    }
-
     const data = parseSchema(runtime.output, result, result)
-    const completed = { ok: true, data } satisfies Result
+    const completed = { ok: true, data: data ?? null, error: null } satisfies Result
     await emitResultEvent(binaryName, input, command, startedAt, completed)
     return completed
   } catch (error) {
-    const result: Result = error instanceof Done ? error.result : { ok: false, error: errorToObject(error) }
+    const result: Result = error instanceof Done ? error.result : { ok: false, data: null, error: errorToObject(error) }
     if (!result.ok && result.error.code === 'VALIDATION_ERROR') {
       await emitCommandEvent(binaryName, input, command, 'validation.failed', { error: eventError(result.error) })
     }

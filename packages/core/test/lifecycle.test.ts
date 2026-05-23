@@ -143,8 +143,12 @@ describe('lifecycle events and hooks', () => {
 
     expect(result.exitCode).toBe(1)
     expect(parseJsonOutput(result.stdout)).toMatchObject({
-      code: 'HOOK_FAILED',
-      message: 'policy denied',
+      ok: false,
+      data: null,
+      error: {
+        code: 'HOOK_FAILED',
+        message: 'policy denied',
+      },
     })
     expect(events.map((event) => event.type)).toEqual([
       'command.selected',

@@ -93,7 +93,7 @@ export async function runBuiltin(
 
 function emitWrote(io: BuiltinIo, flags: GlobalFlags, outputFormat: Format, path: string): void {
   if (flags.formatExplicit) {
-    io.out(`${format({ ok: true, data: { path } }, outputFormat)}\n`)
+    io.out(`${format({ ok: true, data: { path }, error: null }, outputFormat)}\n`)
   } else {
     io.out(`wrote ${path}\n`)
   }

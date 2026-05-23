@@ -45,7 +45,7 @@ describe('parity: streaming async generators', () => {
     const lines = (await response.text()).trim().split('\n').map((line) => JSON.parse(line))
     expect(lines[0]).toEqual({ type: 'chunk', data: { step: 1 } })
     expect(lines[1]).toEqual({ type: 'chunk', data: { step: 2 } })
-    expect(lines[2]).toMatchObject({ ok: true, data: [{ step: 1 }, { step: 2 }] })
+    expect(lines[2]).toMatchObject({ ok: true, data: [{ step: 1 }, { step: 2 }], error: null })
   })
 })
 
@@ -136,14 +136,14 @@ describe('parity: mcp add and skills add flag handling', () => {
     const cli = testCli('app', { builtins: { skills: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor', '--json'], { env: { HOME: home } })
-    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.cursor/skills/app/SKILL.md` } })
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.cursor/skills/app/SKILL.md` }, error: null })
   })
 
   test('mcp add --json emits an envelope instead of plain text', async () => {
     const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: home } })
-    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.claude.json` } })
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.claude.json` }, error: null })
   })
 })
 

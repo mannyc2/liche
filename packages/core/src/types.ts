@@ -106,8 +106,8 @@ export type ResultMeta = Record<string, unknown> & {
 }
 
 export type Result =
-  | { ok: true; data: unknown; meta?: ResultMeta | undefined }
-  | { ok: false; error: CommandError; meta?: ResultMeta | undefined }
+  | { ok: true; data: unknown; error: null; meta?: ResultMeta | undefined }
+  | { ok: false; data: null; error: CommandError; meta?: ResultMeta | undefined }
 
 export type CommandContract = {
   agent?: boolean | undefined
@@ -203,11 +203,11 @@ export type RunContext<
   var: V
 }
 
-export type MiddlewareContext = RunContext & { result?: Result | undefined }
+export type MiddlewareContext = RunContext
 export type MiddlewareHandler = (
   context: MiddlewareContext,
   next: () => Promise<void>,
-) => Awaitable<void | Result | unknown>
+) => Awaitable<unknown>
 
 export type CliEventType =
   | 'command.selected'

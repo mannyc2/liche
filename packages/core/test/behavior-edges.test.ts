@@ -57,7 +57,7 @@ describe('fetch command proxy behavior', () => {
     )
 
     expect(seen).toEqual(['GET /v1/users Bearer token'])
-    expect(json).toEqual({ ok: true, data: { ok: true } })
+    expect(json).toEqual({ ok: true, data: { ok: true }, error: null })
 
     const text = await Fetch.callFetch(
       {
@@ -67,7 +67,7 @@ describe('fetch command proxy behavior', () => {
       },
       [],
     )
-    expect(text).toEqual({ ok: false, error: { code: 'FETCH_ERROR', message: 'nope', status: 418 } })
+    expect(text).toEqual({ ok: false, data: null, error: { code: 'FETCH_ERROR', message: 'nope', status: 418 } })
 
     const objectError = await Fetch.callFetch(
       {
@@ -77,7 +77,7 @@ describe('fetch command proxy behavior', () => {
       },
       [],
     )
-    expect(objectError).toEqual({ ok: false, error: { code: 'FETCH_ERROR', message: '{"reason":"bad"}', status: 400 } })
+    expect(objectError).toEqual({ ok: false, data: null, error: { code: 'FETCH_ERROR', message: '{"reason":"bad"}', status: 400 } })
   })
 
   test('fetch ignores request bodies for GET and HEAD', async () => {
@@ -87,7 +87,7 @@ describe('fetch command proxy behavior', () => {
     })])
 
     const getWithBody = await cli.fetch(new Request('http://localhost/echo?message=query', { method: 'GET' }))
-    expect(await getWithBody.json()).toEqual({ ok: true, data: { message: 'query' } })
+    expect(await getWithBody.json()).toEqual({ ok: true, data: { message: 'query' }, error: null })
 
     const headWithBody = await cli.fetch(new Request('http://localhost/echo?message=head', { method: 'HEAD' }))
     expect(headWithBody.status).toBe(200)
@@ -101,13 +101,13 @@ describe('fetch command proxy behavior', () => {
 
     const missing = await cli.fetch(new Request('http://localhost/nope'))
     expect(missing.status).toBe(404)
-    expect(await missing.json()).toEqual({ ok: false, error: { code: 'COMMAND_NOT_FOUND', message: 'No command for /nope' } })
+    expect(await missing.json()).toEqual({ ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: 'No command for /nope' } })
 
     const invalidBody = await cli.fetch(new Request('http://localhost/ctx?message=query', { body: 'not json', method: 'POST' }))
-    expect(await invalidBody.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'query' } })
+    expect(await invalidBody.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'query' }, error: null })
 
     const body = await cli.fetch(new Request('http://localhost/ctx', { body: '{"message":"body"}', method: 'POST' }))
-    expect(await body.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'body' } })
+    expect(await body.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'body' }, error: null })
   })
 })
 
@@ -236,9 +236,11 @@ describe('command registry and guards behavior', () => {
     expect(isGroup(null)).toBe(false)
     expect(isFetch({ _fetch: true, fetch: async () => new Response() })).toBe(true)
     expect(isFetch('fetch')).toBe(false)
-    expect(isResult({ ok: true, data: 1 })).toBe(true)
+    expect(isResult({ ok: true, data: 1, error: null })).toBe(true)
+    expect(isResult({ ok: true, data: 1 })).toBe(false)
     expect(isResult({ ok: true })).toBe(false)
-    expect(isResult({ ok: false, error: { code: 'BROKEN', message: 'failed' } })).toBe(true)
+    expect(isResult({ ok: false, data: null, error: { code: 'BROKEN', message: 'failed' } })).toBe(true)
+    expect(isResult({ ok: false, error: { code: 'BROKEN', message: 'failed' } })).toBe(false)
     expect(isResult({ ok: 'true' })).toBe(false)
     expect(isResult(null)).toBe(false)
   })
