@@ -15,7 +15,7 @@ import type {
   ConfigValueSource,
   OptionValueSource,
 } from '../types.js'
-import { LiliError, errorToObject } from '../errors/error.js'
+import { LiliError, errorToObject, normalizeCommandError } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
 import type { LoadedConfig } from '../parser/config.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
@@ -84,13 +84,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       error(error) {
         throw new Done({
           ok: false,
-          error: {
-            code: error.code,
-            exitCode: error.exitCode ?? 1,
-            ...(error.hint !== undefined ? { hint: error.hint } : undefined),
-            message: error.message,
-            retryable: error.retryable,
-          },
+          error: normalizeCommandError(error),
           meta: error.cta ? { cta: error.cta } : undefined,
         })
       },

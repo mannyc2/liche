@@ -108,6 +108,29 @@ describe('LiliError', () => {
     expect(err.exitCode).toBe(7)
   })
 
+  test('preserves problem-details and code-action fields', () => {
+    const err = new LiliError({
+      code: 'AUTH_MISSING',
+      message: 'auth required',
+      code_actions: [{ title: 'Login', command: 'app login' }],
+      detail: 'Set a token or log in.',
+      instance: 'urn:lili:command:deploy',
+      retry_after: 30,
+      status: 401,
+      suggested_fix: 'Run app login.',
+      title: 'Authentication required',
+      type: 'urn:problem:auth-missing',
+    })
+    expect(err.code_actions).toEqual([{ title: 'Login', command: 'app login' }])
+    expect(err.detail).toBe('Set a token or log in.')
+    expect(err.instance).toBe('urn:lili:command:deploy')
+    expect(err.retry_after).toBe(30)
+    expect(err.status).toBe(401)
+    expect(err.suggested_fix).toBe('Run app login.')
+    expect(err.title).toBe('Authentication required')
+    expect(err.type).toBe('urn:problem:auth-missing')
+  })
+
   test('preserves cause', () => {
     const cause = new Error('root')
     const err = new LiliError({ code: 'X', message: 'y', cause })
@@ -146,9 +169,12 @@ describe('errorToObject', () => {
     })
     expect(errorToObject(err)).toEqual({
       code: 'VALIDATION_ERROR',
+      detail: 'bad',
       exitCode: 1,
       fieldErrors: [{ path: '$.a', message: 'required' }],
       message: 'bad',
+      title: 'Validation Error',
+      type: 'urn:lili:error:validation-error',
     })
   })
 
@@ -156,8 +182,11 @@ describe('errorToObject', () => {
     const err = new ParseError({ message: 'bad config' })
     expect(errorToObject(err)).toEqual({
       code: 'PARSE_ERROR',
+      detail: 'bad config',
       exitCode: 1,
       message: 'bad config',
+      title: 'Parse Error',
+      type: 'urn:lili:error:parse-error',
     })
   })
 
@@ -177,10 +206,45 @@ describe('errorToObject', () => {
     const err = new LiliError({ code: 'BOOM', message: 'm', hint: 'h', retryable: true, exitCode: 2 })
     expect(errorToObject(err)).toEqual({
       code: 'BOOM',
+      detail: 'm',
       exitCode: 2,
       hint: 'h',
       message: 'm',
       retryable: true,
+      title: 'Boom',
+      type: 'urn:lili:error:boom',
+    })
+  })
+
+  test('LiliError envelope carries problem details and recovery actions', () => {
+    const err = new LiliError({
+      code: 'REMOTE_TIMEOUT',
+      message: 'Timed out.',
+      code_actions: [{ title: 'Retry', command: 'app deploy --retry' }],
+      detail: 'The deployment API timed out after 10 seconds.',
+      details: { timeoutMs: 10_000 },
+      instance: 'urn:lili:command:deploy',
+      retry_after: 10,
+      retryable: true,
+      status: 504,
+      suggested_fix: 'Retry the command after the service recovers.',
+      title: 'Remote timeout',
+      type: 'https://lili.dev/problems/remote-timeout',
+    })
+    expect(errorToObject(err)).toEqual({
+      code: 'REMOTE_TIMEOUT',
+      code_actions: [{ title: 'Retry', command: 'app deploy --retry' }],
+      detail: 'The deployment API timed out after 10 seconds.',
+      details: { timeoutMs: 10_000 },
+      exitCode: 1,
+      instance: 'urn:lili:command:deploy',
+      message: 'Timed out.',
+      retry_after: 10,
+      retryable: true,
+      status: 504,
+      suggested_fix: 'Retry the command after the service recovers.',
+      title: 'Remote timeout',
+      type: 'https://lili.dev/problems/remote-timeout',
     })
   })
 
@@ -194,8 +258,11 @@ describe('errorToObject', () => {
   ])('non-lili %s → UNKNOWN envelope with stringified message', (_label, input, expectedMessage) => {
     expect(errorToObject(input)).toEqual({
       code: 'UNKNOWN',
+      detail: expectedMessage,
       exitCode: 1,
       message: expectedMessage,
+      title: 'Unknown',
+      type: 'urn:lili:error:unknown',
     })
   })
 })

@@ -505,16 +505,50 @@ describe('contract: mcp, completions, and token behavior', () => {
 
   test('serve normalizes ctx.error exit codes and command-not-runnable errors', async () => {
     const cli = testCli('app', [testCommand('fail', {
-        run: ({ error }) => error({ code: 'NOPE', exitCode: 7, message: 'failed', retryable: true }),
+        run: ({ error }) => error({
+          code: 'NOPE',
+          code_actions: [{ title: 'Inspect', argv: ['status'] }],
+          detail: 'full failure detail',
+          details: { id: 'err_1' },
+          exitCode: 7,
+          fieldErrors: [{ path: '$.name', message: 'Required' }],
+          message: 'failed',
+          retry_after: 5,
+          retryable: true,
+          status: 409,
+          suggested_fix: 'Choose another name.',
+          title: 'Nope',
+          type: 'urn:test:nope',
+        }),
       }), testCommand('empty', {})])
 
     const fail = await runCli(cli, ['fail', '--json'])
     expect(fail.exitCode).toBe(7)
-    expect(parseJsonOutput(fail.stdout)).toMatchObject({ code: 'NOPE', exitCode: 7, message: 'failed', retryable: true })
+    expect(parseJsonOutput(fail.stdout)).toMatchObject({
+      code: 'NOPE',
+      code_actions: [{ title: 'Inspect', argv: ['status'] }],
+      detail: 'full failure detail',
+      details: { id: 'err_1' },
+      exitCode: 7,
+      fieldErrors: [{ path: '$.name', message: 'Required' }],
+      message: 'failed',
+      retry_after: 5,
+      retryable: true,
+      status: 409,
+      suggested_fix: 'Choose another name.',
+      title: 'Nope',
+      type: 'urn:test:nope',
+    })
 
     const empty = await runCli(cli, ['empty', '--json'])
     expect(empty.exitCode).toBe(1)
-    expect(parseJsonOutput(empty.stdout)).toMatchObject({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
+    expect(parseJsonOutput(empty.stdout)).toMatchObject({
+      code: 'COMMAND_NOT_RUNNABLE',
+      detail: 'Command has no run handler',
+      message: 'Command has no run handler',
+      title: 'Command Not Runnable',
+      type: 'urn:lili:error:command-not-runnable',
+    })
   })
 
   test('token count and token limit use tokenx semantics instead of character length', () => {

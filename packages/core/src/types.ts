@@ -80,13 +80,25 @@ export type FieldError = {
 
 export type CommandError = {
   code: string
+  code_actions?: Array<{
+    argv?: readonly string[] | undefined
+    command?: string | undefined
+    description?: string | undefined
+    title: string
+  }> | undefined
+  detail?: string | undefined
   details?: Record<string, unknown> | undefined
   exitCode?: number | undefined
   fieldErrors?: FieldError[] | undefined
   hint?: string | undefined
+  instance?: string | undefined
   message: string
+  retry_after?: number | string | undefined
   retryable?: boolean | undefined
+  suggested_fix?: string | undefined
   status?: number | undefined
+  title?: string | undefined
+  type?: string | undefined
 }
 
 export type ResultMeta = Record<string, unknown> & {
@@ -175,13 +187,8 @@ export type RunContext<
   config: Record<string, unknown>
   displayName: string
   env: E
-  error(input: {
-    code: string
+  error(input: CommandError & {
     cta?: CtaBlock | undefined
-    exitCode?: number | undefined
-    hint?: string | undefined
-    message: string
-    retryable?: boolean | undefined
   }): never
   format: Format
   formatExplicit: boolean

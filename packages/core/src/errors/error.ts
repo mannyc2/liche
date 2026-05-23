@@ -25,17 +25,33 @@ export declare namespace BaseError {
 export class LiliError extends BaseError {
   override name = 'Lili.LiliError'
   code: string
+  code_actions: CommandError['code_actions']
+  detail: string | undefined
   override details: Record<string, unknown> | undefined
   hint: string | undefined
+  instance: string | undefined
   retryable: boolean
+  retry_after: number | string | undefined
+  status: number | undefined
+  suggested_fix: string | undefined
+  title: string | undefined
+  type: string | undefined
   exitCode: number | undefined
 
   constructor(options: LiliError.Options) {
     super(options.message, { cause: options.cause })
     this.code = options.code
+    this.code_actions = options.code_actions
+    this.detail = options.detail
     this.details = options.details
     this.hint = options.hint
+    this.instance = options.instance
     this.retryable = options.retryable ?? false
+    this.retry_after = options.retry_after
+    this.status = options.status
+    this.suggested_fix = options.suggested_fix
+    this.title = options.title
+    this.type = options.type
     this.exitCode = options.exitCode
   }
 }
@@ -44,9 +60,17 @@ export declare namespace LiliError {
   type Options = {
     code: string
     message: string
+    code_actions?: CommandError['code_actions']
+    detail?: string | undefined
     details?: Record<string, unknown> | undefined
     hint?: string | undefined
+    instance?: string | undefined
+    retry_after?: number | string | undefined
     retryable?: boolean | undefined
+    status?: number | undefined
+    suggested_fix?: string | undefined
+    title?: string | undefined
+    type?: string | undefined
     exitCode?: number | undefined
     cause?: Error | undefined
   }
@@ -87,38 +111,78 @@ export declare namespace ParseError {
 
 export function errorToObject(error: unknown): CommandError {
   if (error instanceof ValidationError) {
-    return {
+    return normalizeCommandError({
       code: 'VALIDATION_ERROR',
       exitCode: 1,
       fieldErrors: error.fieldErrors,
       message: error.shortMessage,
-    }
+    })
   }
 
   if (error instanceof ParseError) {
-    return {
+    return normalizeCommandError({
       code: 'PARSE_ERROR',
       exitCode: 1,
       message: error.shortMessage,
-    }
+    })
   }
 
   if (error instanceof LiliError) {
-    return {
+    const status = error.status ?? statusFromDetails(error.details)
+    return normalizeCommandError({
       code: error.code,
+      ...(error.code_actions !== undefined ? { code_actions: error.code_actions } : undefined),
+      ...(error.detail !== undefined ? { detail: error.detail } : undefined),
       details: error.details,
       exitCode: error.exitCode ?? 1,
       hint: error.hint,
+      ...(error.instance !== undefined ? { instance: error.instance } : undefined),
       message: error.shortMessage,
+      ...(error.retry_after !== undefined ? { retry_after: error.retry_after } : undefined),
       retryable: error.retryable,
-    }
+      ...(status !== undefined ? { status } : undefined),
+      ...(error.suggested_fix !== undefined ? { suggested_fix: error.suggested_fix } : undefined),
+      ...(error.title !== undefined ? { title: error.title } : undefined),
+      ...(error.type !== undefined ? { type: error.type } : undefined),
+    })
   }
 
-  return {
+  return normalizeCommandError({
     code: 'UNKNOWN',
     exitCode: 1,
     message: error instanceof Error ? error.message : String(error),
+  })
+}
+
+export function normalizeCommandError(error: CommandError): CommandError {
+  const code = error.code || 'UNKNOWN'
+  const message = error.message || code
+  return {
+    ...error,
+    code,
+    detail: error.detail ?? message,
+    exitCode: error.exitCode ?? 1,
+    message,
+    title: error.title ?? titleFromCode(code),
+    type: error.type ?? problemType(code),
   }
+}
+
+function problemType(code: string): string {
+  return `urn:lili:error:${code.toLowerCase().replace(/_/g, '-')}`
+}
+
+function titleFromCode(code: string): string {
+  return code
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ') || 'Unknown'
+}
+
+function statusFromDetails(details: Record<string, unknown> | undefined): number | undefined {
+  return typeof details?.['status'] === 'number' ? details['status'] : undefined
 }
 
 function walk(error: unknown, fn?: ((error: unknown) => boolean) | undefined): unknown {
