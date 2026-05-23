@@ -34,7 +34,7 @@ export type ProductMetadata = {
   vocabulary?: Vocabulary
 }
 
-export type ResourceInit = {
+export type ResourceMetadata = {
   label: string
   path: string
   doc?: string
@@ -70,13 +70,13 @@ export type ProductCommandEntry = {
   spec: CommandSpec
 }
 
-export type ProductResource = ResourceInit & {
+export type ProductResource = ResourceMetadata & {
   id: string
   fields: Readonly<Record<string, FieldBuilder>>
   operations: readonly ResourceOperationEntry[]
 }
 
-export type ProductResourceDefinition = ResourceInit & {
+export type ProductResourceDefinition = ResourceMetadata & {
   fields?: Readonly<Record<string, FieldBuilder>>
   operations?: Readonly<Record<string, ResourceOperationSpec>> | readonly ResourceOperationEntry[]
 }

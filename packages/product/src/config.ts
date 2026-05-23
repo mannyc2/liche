@@ -19,20 +19,20 @@ export type ProductConfigSpec = {
   scopes?: ConfigScopesSpec | undefined
 }
 
-export type ProductConfigObjectInit = {
+export type ProductConfigDefinition = {
   files?: readonly string[] | undefined
   fields: Shape
   scopes?: ConfigScopesSpec | undefined
 }
 
 export const Config = {
-  object(init: ProductConfigObjectInit): ProductConfigSpec {
+  object(definition: ProductConfigDefinition): ProductConfigSpec {
     const out: ProductConfigSpec = {
       kind: 'lili.product.config.object',
-      fields: init.fields,
+      fields: definition.fields,
     }
-    if (init.files) out.files = [...init.files]
-    if (init.scopes) out.scopes = { ...init.scopes }
+    if (definition.files) out.files = [...definition.files]
+    if (definition.scopes) out.scopes = { ...definition.scopes }
     return out
   },
 } as const

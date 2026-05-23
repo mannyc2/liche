@@ -1,6 +1,6 @@
 import type { ConfigObjectDefinition, ConfigScopesDeclaration, Schema } from '../types.js'
 
-export type ConfigObjectInit<T = Record<string, unknown>> = {
+export type ConfigObjectOptions<T = Record<string, unknown>> = {
   files?: readonly string[] | undefined
   flag?: string | undefined
   schema?: Schema<T> | undefined
@@ -8,12 +8,12 @@ export type ConfigObjectInit<T = Record<string, unknown>> = {
 }
 
 export const Config = {
-  object<T = Record<string, unknown>>(init: ConfigObjectInit<T>): ConfigObjectDefinition<T> {
+  object<T = Record<string, unknown>>(options: ConfigObjectOptions<T>): ConfigObjectDefinition<T> {
     const out: ConfigObjectDefinition<T> = { kind: 'lili.config.object' }
-    if (init.files) out.files = [...init.files]
-    if (init.flag) out.flag = init.flag
-    if (init.schema) out.schema = init.schema
-    if (init.scopes) out.scopes = { ...init.scopes }
+    if (options.files) out.files = [...options.files]
+    if (options.flag) out.flag = options.flag
+    if (options.schema) out.schema = options.schema
+    if (options.scopes) out.scopes = { ...options.scopes }
     return out
   },
 } as const

@@ -108,41 +108,41 @@ type CommandShared = {
   surfaces?: SurfaceHints
 }
 
-export type WorkflowInit = CommandShared & {
+export type WorkflowCommandDefinition = CommandShared & {
   family?: CommandFamily
   handler: string
   http?: HttpSpec
   steps?: readonly WorkflowStep[]
 }
 
-export type LocalInit = CommandShared & {
+export type LocalCommandDefinition = CommandShared & {
   family?: CommandFamily
   handler: string
   needs?: readonly LocalNeed[]
 }
 
-export type RemoteHttpInit = CommandShared & {
+export type RemoteHttpCommandDefinition = CommandShared & {
   family?: CommandFamily
   http: HttpSpec
   handler?: string
 }
 
 export const Command = {
-  workflow(init: WorkflowInit): CommandSpec {
-    const execution: HybridWorkflowExecution = { mode: 'hybrid-workflow', handler: init.handler }
-    if (init.http) execution.http = init.http
-    if (init.steps) execution.steps = init.steps
-    return buildCommandSpec(init, init.family ?? 'workflow', execution)
+  workflow(definition: WorkflowCommandDefinition): CommandSpec {
+    const execution: HybridWorkflowExecution = { mode: 'hybrid-workflow', handler: definition.handler }
+    if (definition.http) execution.http = definition.http
+    if (definition.steps) execution.steps = definition.steps
+    return buildCommandSpec(definition, definition.family ?? 'workflow', execution)
   },
-  local(init: LocalInit): CommandSpec {
-    const execution: LocalExecution = { mode: 'local', handler: init.handler }
-    if (init.needs) execution.needs = init.needs
-    return buildCommandSpec(init, init.family ?? 'dev', execution)
+  local(definition: LocalCommandDefinition): CommandSpec {
+    const execution: LocalExecution = { mode: 'local', handler: definition.handler }
+    if (definition.needs) execution.needs = definition.needs
+    return buildCommandSpec(definition, definition.family ?? 'dev', execution)
   },
-  remoteHttp(init: RemoteHttpInit): CommandSpec {
-    const execution: RemoteHttpExecution = { mode: 'remote-http', http: init.http }
-    if (init.handler) execution.handler = init.handler
-    return buildCommandSpec(init, init.family ?? 'workflow', execution)
+  remoteHttp(definition: RemoteHttpCommandDefinition): CommandSpec {
+    const execution: RemoteHttpExecution = { mode: 'remote-http', http: definition.http }
+    if (definition.handler) execution.handler = definition.handler
+    return buildCommandSpec(definition, definition.family ?? 'workflow', execution)
   },
 } as const
 

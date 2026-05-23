@@ -75,13 +75,13 @@ export type {
   HttpSpec,
   HybridWorkflowExecution,
   LocalExecution,
-  LocalInit,
+  LocalCommandDefinition,
   LocalNeed,
   PolicySpec,
   RemoteHttpExecution,
-  RemoteHttpInit,
+  RemoteHttpCommandDefinition,
   SurfaceHints,
-  WorkflowInit,
+  WorkflowCommandDefinition,
   WorkflowStep,
 } from './command.js'
 
@@ -89,7 +89,7 @@ export { Config } from './config.js'
 export type {
   ConfigScopeSpec,
   ConfigScopesSpec,
-  ProductConfigObjectInit,
+  ProductConfigDefinition,
   ProductConfigSpec,
 } from './config.js'
 
@@ -109,7 +109,7 @@ export type {
   ProductResourceDefinition,
   ProductResourceDefinitionEntry,
   ProductScope,
-  ResourceInit,
+  ResourceMetadata,
   ResourceOperationEntry,
   ResourceOperationSpec,
   RuntimeProduct,
