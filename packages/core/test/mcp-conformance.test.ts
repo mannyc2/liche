@@ -8,9 +8,9 @@ import {
   ListToolsResultSchema,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from '@modelcontextprotocol/sdk/types.js'
-import { Cli, z } from '../src/index.js'
+import { z } from '../src/index.js'
 import * as Mcp from '../src/mcp/index.js'
-import { stateOf } from './helpers.js'
+import { stateOf, testCli, testCommand } from './helpers.js'
 
 function request(id: string | number, method: string, params?: Record<string, unknown>) {
   return { jsonrpc: '2.0', id, method, ...(params === undefined ? undefined : { params }) }
@@ -23,7 +23,7 @@ function expectSchema(schema: { safeParse: (value: unknown) => { success: boolea
 
 describe('MCP conformance against the official TypeScript SDK schemas', () => {
   test('initialize returns a JSON-RPC result with a current supported InitializeResult', async () => {
-    const cli = Cli.create('app', { version: '1.2.3' }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { version: '1.2.3' }, [testCommand('run', { run: () => ({ ok: true }) })])
     const response: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'initialize', {
       capabilities: {},
       clientInfo: { name: 'test-client', version: '0.0.0' },
@@ -37,12 +37,11 @@ describe('MCP conformance against the official TypeScript SDK schemas', () => {
   })
 
   test('tools/list returns an official ListToolsResult with JSON Schema object inputs', async () => {
-    const cli = Cli.create('app')
-      .command('build', {
+    const cli = testCli('app', [testCommand('build', {
         args: z.object({ target: z.string() }),
         options: z.object({ dryRun: z.boolean().default(false) }),
         run: () => ({ ok: true }),
-      })
+      })])
     const response: any = await Mcp.mcpMessage('app', stateOf(cli), request(2, 'tools/list'))
 
     expectSchema(JSONRPCResultResponseSchema, response)
@@ -61,9 +60,7 @@ describe('MCP conformance against the official TypeScript SDK schemas', () => {
   })
 
   test('tools/call returns an official CallToolResult for successful and command-error calls', async () => {
-    const cli = Cli.create('app')
-      .command('ok', { run: () => ({ value: 1 }) })
-      .command('fail', { run: ({ error }) => error({ code: 'FAIL', message: 'nope' }) })
+    const cli = testCli('app', [testCommand('ok', { run: () => ({ value: 1 }) }), testCommand('fail', { run: ({ error }) => error({ code: 'FAIL', message: 'nope' }) })])
     const state = stateOf(cli)
 
     const ok: any = await Mcp.mcpMessage('app', state, request(3, 'tools/call', { name: 'ok', arguments: {} }))
@@ -78,7 +75,7 @@ describe('MCP conformance against the official TypeScript SDK schemas', () => {
   })
 
   test('malformed requests return JSON-RPC errors and notifications produce no response', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({ ok: true }) })])
     const state = stateOf(cli)
 
     const missingVersion: any = await Mcp.mcpMessage('app', state, { id: 1, method: 'tools/list' })

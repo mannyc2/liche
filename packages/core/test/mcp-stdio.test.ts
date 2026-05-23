@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli } from '../src/index.js'
+
 import * as Mcp from '../src/mcp/index.js'
-import { stateOf } from './helpers.js'
+import { stateOf, testCli, testCommand } from './helpers.js'
 
 function request(id: string | number, method: string) {
   return { jsonrpc: '2.0', id, method }
@@ -24,7 +24,7 @@ async function runMcp(cli: any, ...chunks: string[]) {
 
 describe('serveMcp', () => {
   test('emits one JSON response per newline-terminated request', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({ ok: true }) })])
     const out = await runMcp(cli, JSON.stringify(request(1, 'initialize')) + '\n')
     const lines = out.trim().split('\n')
     expect(lines.length).toBe(1)
@@ -34,7 +34,7 @@ describe('serveMcp', () => {
   })
 
   test('skips blank lines (does not emit empty responses)', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const out = await runMcp(
       cli,
       '\n\n  \n' + JSON.stringify(request(5, 'initialize')) + '\n\n',
@@ -45,7 +45,7 @@ describe('serveMcp', () => {
   })
 
   test('processes multiple requests across separate chunks', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const out = await runMcp(
       cli,
       JSON.stringify(request(1, 'initialize')) + '\n',
@@ -56,20 +56,20 @@ describe('serveMcp', () => {
   })
 
   test('handles request split across two chunks (buffer preserves partial)', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const full = JSON.stringify(request(1, 'initialize'))
     const out = await runMcp(cli, full.slice(0, 10), full.slice(10) + '\n')
     expect(JSON.parse(out.trim()).id).toBe(1)
   })
 
   test('processes trailing request without final newline', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const out = await runMcp(cli, JSON.stringify(request(99, 'initialize')))
     expect(JSON.parse(out.trim()).id).toBe(99)
   })
 
   test('accepts Uint8Array chunks via TextDecoder', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const bytes = new TextEncoder().encode(JSON.stringify(request(7, 'initialize')) + '\n')
     let stdout = ''
     async function* feedBytes(): AsyncIterable<Uint8Array> {

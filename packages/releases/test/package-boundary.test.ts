@@ -9,7 +9,7 @@ type PackageJson = {
   exports?: Record<string, unknown>
 }
 
-// @lili/releases depends on @lili/core for the shared CLI framework (Cli.create)
+// @lili/releases depends on @lili/core for the shared declarative CLI framework
 // used by li-release. It must still stay clear of @lili/build and @lili/product
 // so it can be consumed standalone as a library by anyone authoring releases.
 const FORBIDDEN_RUNTIME_DEPS = ['@lili/build', '@lili/product'] as const

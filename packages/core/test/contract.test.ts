@@ -2,15 +2,15 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli, Config, Formatter, middleware, z } from '../src/index.js'
+import { Config, Formatter, middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '../src/mcp/index.js'
-import { parseJsonOutput, runCli } from './helpers.js'
+import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 
 describe('contract: command resolution and execution', () => {
   test('runs a root command when no subcommand matches', async () => {
-    const cli = Cli.create('hello', {
+    const cli = testCli('hello', {
       args: z.object({ name: z.string() }),
       run: ({ args }) => ({ message: `hello ${args.name}` }),
     })
@@ -20,41 +20,43 @@ describe('contract: command resolution and execution', () => {
   })
 
   test('subcommands take precedence over root commands', async () => {
-    const cli = Cli.create('app', {
+    const cli = testCli('app', {
       args: z.object({ fallback: z.string().optional() }),
       run: () => ({ command: 'root' }),
-    }).command('user', {
+    }, [testCommand('user', {
       args: z.object({ path: z.string() }),
       run: ({ args }) => ({ command: 'user', path: args.path }),
-    })
+    })])
 
     const result = await runCli(cli, ['user', '42', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ command: 'user', path: '42' })
   })
 
   test('aliases resolve to the target command', async () => {
-    const cli = Cli.create('app').command('inspect', {
+    const cli = testCli('app', [testCommand('inspect', {
       aliases: ['i'],
       args: z.object({ id: z.coerce.number() }),
       run: ({ args }) => ({ id: args.id }),
-    })
+    })])
 
     const result = await runCli(cli, ['i', '123', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ id: 123 })
   })
 
-  test('mounting child CLIs preserves group commands and root-only children', async () => {
-    const rootOnly = Cli.create('rooted', {
-      description: 'root command child',
-      run: () => ({ command: 'rooted' }),
-    })
-    const grouped = Cli.create('admin', {
-      description: 'admin group',
-      run: () => ({ command: 'admin-root' }),
-    }).command('audit', {
-      run: () => ({ command: 'audit' }),
-    })
-    const cli = Cli.create('app').command(rootOnly).command(grouped)
+  test('nested declarative paths preserve group commands and root-like children', async () => {
+    const cli = testCli('app', [
+      testCommand('rooted', {
+        description: 'root command child',
+        run: () => ({ command: 'rooted' }),
+      }),
+      testCommand('admin', {
+        description: 'admin group',
+        run: () => ({ command: 'admin-root' }),
+      }),
+      testCommand(['admin', 'audit'], {
+        run: () => ({ command: 'audit' }),
+      }),
+    ])
 
     expect(parseJsonOutput((await runCli(cli, ['rooted', '--json'])).stdout)).toEqual({ command: 'rooted' })
     expect(parseJsonOutput((await runCli(cli, ['admin', '--json'])).stdout)).toEqual({ command: 'admin-root' })
@@ -62,7 +64,7 @@ describe('contract: command resolution and execution', () => {
   })
 
   test('fetch-only command registration proxies requests from the CLI path', async () => {
-    const cli = Cli.create('app').command('remote', {
+    const cli = testCli('app', [testCommand('remote', {
       basePath: '/api',
       fetch: async (request) =>
         Response.json({
@@ -70,7 +72,7 @@ describe('contract: command resolution and execution', () => {
           method: request.method,
           path: new URL(request.url).pathname,
         }),
-    })
+    })])
 
     const result = await runCli(cli, ['remote', 'users', '-X', 'post', '--data', '{"name":"Ada"}', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({
@@ -83,7 +85,7 @@ describe('contract: command resolution and execution', () => {
 
 describe('contract: args, flags, config, env, middleware', () => {
   test('parses positionals, aliases, booleans, --no flags, and -- literal boundary', async () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = testCli('app', [testCommand('build', {
       alias: { count: 'c' },
       args: z.object({ name: z.string(), literal: z.string().optional() }),
       options: z.object({
@@ -93,7 +95,7 @@ describe('contract: args, flags, config, env, middleware', () => {
         saveDev: z.boolean().default(false),
       }),
       run: ({ args, options }) => ({ args, options }),
-    })
+    })])
 
     const result = await runCli(cli, ['build', 'app', '-c', '2', '--enabled', '--no-cache', '--', '--save-dev', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({
@@ -103,13 +105,13 @@ describe('contract: args, flags, config, env, middleware', () => {
   })
 
   test('preserves explicit boolean false and numeric zero option values', async () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = testCli('app', [testCommand('run', {
       options: z.object({
         count: z.coerce.number().default(1),
         enabled: z.boolean().default(true),
       }),
       run: ({ options }) => options,
-    })
+    })])
 
     const result = await runCli(cli, ['run', '--enabled=false', '--count=0', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ count: 0, enabled: false })
@@ -117,16 +119,16 @@ describe('contract: args, flags, config, env, middleware', () => {
 
   test('optionEnv populates option defaults from env (argv > env > config > default)', async () => {
     const make = () =>
-      Cli.create('app', {
+      testCli('app', {
         config: Config.object({
           schema: z.object({ tokenDefault: z.string().default('fromconfig') }),
         }),
-      }).command('run', {
+      }, [testCommand('run', {
         options: z.object({ token: z.string().default('default') }),
         optionEnv: { token: 'MYAPP_TOKEN' },
         optionConfig: { token: 'tokenDefault' },
         run: ({ options }) => options,
-      })
+      })])
 
     const fromEnv = await runCli(make(), ['run', '--json'], { env: { MYAPP_TOKEN: 'fromenv' } })
     expect(parseJsonOutput(fromEnv.stdout)).toEqual({ token: 'fromenv' })
@@ -148,7 +150,7 @@ describe('contract: args, flags, config, env, middleware', () => {
         "defaultOrg": "org_config",
         "timeoutMs": 2500
       }`)
-      const cli = Cli.create('app', {
+      const cli = testCli('app', {
         config: Config.object({
           files: [path],
           schema: z.strictObject({
@@ -157,7 +159,7 @@ describe('contract: args, flags, config, env, middleware', () => {
             timeoutMs: z.coerce.number().default(1000),
           }),
         }),
-      }).command('deploy', {
+      }, [testCommand('deploy', {
         options: z.object({
           org: z.string(),
           timeoutMs: z.coerce.number(),
@@ -175,7 +177,7 @@ describe('contract: args, flags, config, env, middleware', () => {
           orgSource: ctx.sources.option('org'),
           timeoutMs: ctx.options.timeoutMs,
         }),
-      })
+      })])
 
       const configFallback = await runCli(cli, ['deploy', '--json'])
       expect(parseJsonOutput(configFallback.stdout)).toEqual({
@@ -195,20 +197,20 @@ describe('contract: args, flags, config, env, middleware', () => {
   })
 
   test('validates command env from the supplied serve env', async () => {
-    const cli = Cli.create('app').command('token', {
+    const cli = testCli('app', [testCommand('token', {
       env: z.object({ TOKEN: z.string() }),
       run: ({ env }) => ({ token: env.TOKEN }),
-    })
+    })])
 
     const result = await runCli(cli, ['token', '--json'], { env: { TOKEN: 'secret' } })
     expect(parseJsonOutput(result.stdout)).toEqual({ token: 'secret' })
   })
 
   test('returns a validation error when required env is missing', async () => {
-    const cli = Cli.create('app').command('token', {
+    const cli = testCli('app', [testCommand('token', {
       env: z.object({ TOKEN: z.string() }),
       run: ({ env }) => ({ token: env.TOKEN }),
-    })
+    })])
 
     const result = await runCli(cli, ['token', '--json'], { env: {} })
     expect(result.exitCode).toBe(1)
@@ -219,20 +221,19 @@ describe('contract: args, flags, config, env, middleware', () => {
   })
 
   test('runs middleware around command handlers and exposes vars', async () => {
-    const cli = Cli.create('app', {
-      vars: z.object({ trace: z.array(z.string()).default([]) }),
-    })
-      .use(middleware(async (ctx, next) => {
+    const cli = testCli('app', {
+      middleware: [middleware(async (ctx, next) => {
         ;(ctx.var['trace'] as string[]).push('before')
         await next()
         ;(ctx.var['trace'] as string[]).push('after')
-      }))
-      .command('trace', {
+      })],
+      vars: z.object({ trace: z.array(z.string()).default([]) }),
+    }, [testCommand('trace', {
         run: ({ var: vars }) => {
           ;(vars['trace'] as string[]).push('run')
           return { trace: vars['trace'] }
         },
-      })
+      })])
 
     const result = await runCli(cli, ['trace', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ trace: ['before', 'run', 'after'] })
@@ -241,11 +242,11 @@ describe('contract: args, flags, config, env, middleware', () => {
 
 describe('contract: fetch and schema', () => {
   test('fetch dispatches HTTP paths to commands and returns an envelope', async () => {
-    const cli = Cli.create('api').command('users', {
+    const cli = testCli('api', [testCommand('users', {
       args: z.object({ id: z.coerce.number() }),
       options: z.object({ active: z.coerce.boolean().default(false), limit: z.coerce.number().default(10) }),
       run: ({ args, options }) => ({ active: options.active, id: args.id, limit: options.limit }),
-    })
+    })])
 
     const response = await cli.fetch(new Request('http://localhost/users/7?active=true&limit=3'))
     expect(response.status).toBe(200)
@@ -253,11 +254,11 @@ describe('contract: fetch and schema', () => {
   })
 
   test('fetch dispatch merges JSON body options and normalizes not found and validation errors', async () => {
-    const cli = Cli.create('api').command('users', {
+    const cli = testCli('api', [testCommand('users', {
       args: z.object({ id: z.coerce.number() }),
       options: z.object({ active: z.boolean(), limit: z.number() }),
       run: ({ args, options }) => ({ id: args.id, options }),
-    })
+    })])
 
     const response = await cli.fetch(
       new Request('http://localhost/users/7', {
@@ -279,10 +280,10 @@ describe('contract: fetch and schema', () => {
   })
 
   test('fetch exposes MCP endpoint, HEAD behavior, and invalid JSON fallback', async () => {
-    const cli = Cli.create('api', { version: '3.0.0' }).command('echo', {
+    const cli = testCli('api', { version: '3.0.0' }, [testCommand('echo', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ options }) => ({ message: options.message }),
-    })
+    })])
 
     const mcp = await cli.fetch(
       new Request('http://localhost/mcp', {
@@ -306,11 +307,11 @@ describe('contract: fetch and schema', () => {
   })
 
   test('schema output is generated from Zod, not hand-written fixtures', async () => {
-    const cli = Cli.create('app').command('ship', {
+    const cli = testCli('app', [testCommand('ship', {
       args: z.object({ version: z.string().describe('release version') }),
       options: z.object({ dryRun: z.boolean().default(false).describe('do not publish') }),
       run: () => ({ ok: true }),
-    })
+    })])
 
     const result = await runCli(cli, ['ship', '--schema', '--json'])
     const schema = parseJsonOutput(result.stdout)
@@ -319,10 +320,10 @@ describe('contract: fetch and schema', () => {
   })
 
   test('output validation rejects handler results that do not match the output schema', async () => {
-    const cli = Cli.create('app').command('ship', {
+    const cli = testCli('app', [testCommand('ship', {
       output: z.object({ id: z.number() }),
       run: () => ({ id: 'not-a-number' }),
-    })
+    })])
 
     const result = await runCli(cli, ['ship', '--json'])
     expect(result.exitCode).toBe(1)
@@ -335,10 +336,10 @@ describe('contract: fetch and schema', () => {
 
 describe('contract: mcp, completions, and token behavior', () => {
   test('mcp initialize, tools/list, tools/call, and unknown method use JSON-RPC envelopes', async () => {
-    const cli = Cli.create('app', { version: '1.2.3' }).command('echo', {
+    const cli = testCli('app', { version: '1.2.3' }, [testCommand('echo', {
       args: z.object({ message: z.string() }),
       run: ({ args }) => ({ message: args.message }),
-    })
+    })])
     const state = (cli as InternalCli)[stateSymbol]
 
     await expect(Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'initialize' })).resolves.toMatchObject({
@@ -364,18 +365,14 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('completions include commands and aliases without duplicates', () => {
-    const cli = Cli.create('app')
-      .command('inspect', { aliases: ['i'], run: () => ({ ok: true }) })
-      .command('install', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('inspect', { aliases: ['i'], run: () => ({ ok: true }) }), testCommand('install', { run: () => ({ ok: true }) })])
     const state = (cli as InternalCli)[stateSymbol]
 
     expect(Completions.complete(state, ['i'], 0)).toEqual(['inspect', 'install', 'i'])
   })
 
   test('completion requests are served through the public CLI path', async () => {
-    const cli = Cli.create('app')
-      .command('inspect', { aliases: ['i'], run: () => ({ ok: true }) })
-      .command('install', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('inspect', { aliases: ['i'], run: () => ({ ok: true }) }), testCommand('install', { run: () => ({ ok: true }) })])
 
     const result = await runCli(cli, ['--', 'i'], { env: { COMPLETE: 'bash' } })
     expect(result.stdout.trim().split('\n')).toEqual(['inspect', 'install', 'i'])
@@ -383,16 +380,14 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('completion requests include top-level builtins', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({ ok: true }) })])
 
     const result = await runCli(cli, ['--'], { env: { COMPLETE: 'bash' } })
     expect(result.stdout.trim().split('\n')).toEqual(['run', 'completions'])
   })
 
   test('agent helper builtins are opt-in through public CLI behavior', async () => {
-    const cli = Cli.create('app', { builtins: { mcp: true, skills: true } })
-      .command('list', { run: () => ({ command: 'list' }) })
-      .command('add', { run: () => ({ command: 'add' }) })
+    const cli = testCli('app', { builtins: { mcp: true, skills: true } }, [testCommand('list', { run: () => ({ command: 'list' }) }), testCommand('add', { run: () => ({ command: 'add' }) })])
 
     const list = await runCli(cli, ['skills', 'list', '--json'])
     expect(parseJsonOutput(list.stdout)).toEqual({ skills: [{ installed: false, name: 'app' }] })
@@ -421,7 +416,7 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('agent helper builtins are not available unless enabled', async () => {
-    const cli = Cli.create('app').command('list', { run: () => ({ command: 'list' }) })
+    const cli = testCli('app', [testCommand('list', { run: () => ({ command: 'list' }) })])
 
     const skills = await runCli(cli, ['skills', 'list', '--json'])
     expect(skills.stdout).toContain('Usage: app <command>')
@@ -429,7 +424,7 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('config can expose config doctor without unrelated helper builtins', async () => {
-    const configured = Cli.create('app', { config: Config.object({}) }).command('list', { run: () => ({ command: 'list' }) })
+    const configured = testCli('app', { config: Config.object({}) }, [testCommand('list', { run: () => ({ command: 'list' }) })])
 
     const help = await runCli(configured, ['--help'])
     expect(help.stdout).toContain('config doctor')
@@ -441,7 +436,7 @@ describe('contract: mcp, completions, and token behavior', () => {
       config: { enabled: true, loaded: true, keys: [] },
     })
 
-    const minimal = Cli.create('minimal').command('list', { run: () => ({ command: 'list' }) })
+    const minimal = testCli('minimal', [testCommand('list', { run: () => ({ command: 'list' }) })])
     const minimalHelp = await runCli(minimal, ['--help'])
     expect(minimalHelp.stdout).not.toContain('config doctor')
     expect(minimalHelp.stdout).not.toContain('mcp add')
@@ -449,13 +444,13 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('serve handles version, full output, filters, token limits, and CTA metadata', async () => {
-    const cli = Cli.create('app', { version: '2.0.0' }).command('deploy', {
+    const cli = testCli('app', { version: '2.0.0' }, [testCommand('deploy', {
       run: ({ ok }) =>
         ok(
           { nested: { keep: 'yes', skip: 'no' }, status: 'ready' },
           { cta: { commands: [{ command: 'status', options: { verbose: true } }], description: 'Next:' } },
         ),
-    })
+    })])
 
     const version = await runCli(cli, ['--version'])
     expect(version.stdout).toBe('2.0.0\n')
@@ -482,7 +477,7 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('serve handles completion errors, empty completions, default version, and MCP mode', async () => {
-    const cli = Cli.create('app')
+    const cli = testCli('app')
 
     const badCompletion = await runCli(cli, ['--'], { env: { COMPLETE: 'powershell' } })
     expect(badCompletion.stdout).toBe('')
@@ -496,10 +491,10 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('serve honors agent-only output policy unless full output is requested', async () => {
-    const cli = Cli.create('app').command('quiet', {
+    const cli = testCli('app', [testCommand('quiet', {
       outputPolicy: 'agent-only',
       run: () => ({ hidden: true }),
-    })
+    })])
 
     const normal = await runCli(cli, ['quiet', '--json'])
     expect(normal.stdout).toBe('{\n  "hidden": true\n}\n')
@@ -509,11 +504,9 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('serve normalizes ctx.error exit codes and command-not-runnable errors', async () => {
-    const cli = Cli.create('app')
-      .command('fail', {
+    const cli = testCli('app', [testCommand('fail', {
         run: ({ error }) => error({ code: 'NOPE', exitCode: 7, message: 'failed', retryable: true }),
-      })
-      .command('empty', {})
+      }), testCommand('empty', {})])
 
     const fail = await runCli(cli, ['fail', '--json'])
     expect(fail.exitCode).toBe(7)

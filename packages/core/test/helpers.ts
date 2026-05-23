@@ -1,5 +1,7 @@
-import type { CliInstance, ServeOptions } from '../src/index.js'
+import { defineCli, defineCommand } from '../src/index.js'
+import type { CliInstance, DeclarativeCommand, ServeOptions } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
+import type { CommandDefinition, CreateOptions } from '../src/types.js'
 
 export function stateOf(cli: CliInstance) {
   return (cli as InternalCli)[stateSymbol]
@@ -32,4 +34,43 @@ export async function runCli(
 
 export function parseJsonOutput(stdout: string): any {
   return JSON.parse(stdout.trim())
+}
+
+export function testCommand(path: string | readonly [string, ...string[]], definition: CommandDefinition = {}): DeclarativeCommand {
+  const {
+    alias,
+    aliases,
+    args,
+    env,
+    optionConfig,
+    options,
+    run,
+    ...contract
+  } = definition
+  return defineCommand({
+    ...contract,
+    ...(aliases ? { aliases: aliases.map((item) => [item]) } : undefined),
+    input: {
+      ...(alias ? { aliases: alias } : undefined),
+      ...(args ? { args } : undefined),
+      ...(optionConfig ? { config: optionConfig } : undefined),
+      ...(env ? { env } : undefined),
+      ...(options ? { options } : undefined),
+    },
+    path: Array.isArray(path) ? path : [path],
+    ...(run ? { run: (context: any) => run(context.ctx as any) } : undefined),
+  } as any)
+}
+
+export function testCli(
+  nameOrDefinition: string | (CreateOptions & { name: string }),
+  definitionOrCommands: CreateOptions | readonly DeclarativeCommand[] = {},
+  maybeCommands: readonly DeclarativeCommand[] = [],
+): CliInstance {
+  const commands = Array.isArray(definitionOrCommands) ? definitionOrCommands : maybeCommands
+  const definition = Array.isArray(definitionOrCommands) ? {} : definitionOrCommands
+  if (typeof nameOrDefinition === 'string') {
+    return defineCli({ ...definition, commands, name: nameOrDefinition })
+  }
+  return defineCli({ ...nameOrDefinition, commands })
 }

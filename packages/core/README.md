@@ -38,7 +38,6 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ## Runtime Surfaces
 
 - `defineCli()` and `defineCommand()` define serializable command graphs for CLI, JSON, MCP, and command-contract surfaces.
-- `Cli.create()` remains the lower-level runtime construction primitive used by compatibility tests and specialized runtime adapters.
 - `Config.object()` loads typed project/user config files.
 - `resolveAuth()`, `createFileSessionStore()`, and OAuth device helpers support generated and handwritten auth flows.
 - `callHttpOperation()` is the shared outbound HTTP transport for remote commands.

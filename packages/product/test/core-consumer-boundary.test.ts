@@ -6,7 +6,6 @@ import * as Core from '@lili/core'
 // imports) so generated code in @lili/product can only depend on the approved API.
 const FROZEN_PUBLIC_VALUES = [
   'BaseError',
-  'Cli',
   'Config',
   'Formatter',
   'LiliError',

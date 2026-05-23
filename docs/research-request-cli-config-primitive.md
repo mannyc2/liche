@@ -17,7 +17,7 @@ We are revisiting config as a first-class primitive.
 
 Current state:
 
-- `@lili/core` already has a low-level `CreateOptions.config` hook with `files`, `flag`, and `loader`.
+- `@lili/core` already has a low-level config hook with `files`, `flag`, and `loader`.
 - Core accepts global `--config <path>` and `--no-config`.
 - Core can load JSON/YAML config and merge command options using the current precedence:
 
@@ -151,7 +151,8 @@ For each, answer:
 Compare at least these candidate APIs:
 
 ```ts
-Cli.create("acme", {
+defineCli({
+  name: "acme",
   config: {
     files: ["acme.json", "acme.yaml"],
     schema: z.object({
@@ -159,11 +160,13 @@ Cli.create("acme", {
       timeoutMs: z.number().default(30000),
     }),
   },
+  commands: [],
 })
 ```
 
 ```ts
-Cli.create("acme", {
+defineCli({
+  name: "acme",
   config: Config.object({
     files: ["acme.json", "acme.yaml"],
     schema: z.object({
@@ -171,18 +174,22 @@ Cli.create("acme", {
       timeoutMs: z.number().default(30000),
     }),
   }),
+  commands: [],
 })
 ```
 
 ```ts
-Cli.create("acme")
-  .config(Config.object({
+defineCli({
+  name: "acme",
+  config: Config.object({
     files: ["acme.json", "acme.yaml"],
     schema: z.object({
       baseUrl: z.string().url().default("https://api.acme.dev"),
       timeoutMs: z.number().default(30000),
     }),
-  }))
+  }),
+  commands: [],
+})
 ```
 
 Questions:

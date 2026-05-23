@@ -38,7 +38,7 @@ Verification:
 
 Lock down the public runtime surface before adding generator behavior:
 
-- `Cli.create()`, `.command()`, `.serve()`, `.fetch()`
+- `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`
 - parser/config/env validation (core behavior, not a public helper namespace)
 - formatter and output envelopes
 - MCP basics (core behavior; reachable through `cli.fetch()`/`cli.serve()`)
@@ -109,7 +109,7 @@ Implementation target:
 1. `CommandContract` is the serializable boundary for metadata, schemas, config bindings, safety/effects annotations, examples, output contract, and projection hints.
 2. Runtime entries are `CommandContract + runtime`; `run`, `fetch`, raw Zod handles, and middleware stay outside the serialized projection contract.
 3. `defineCli()` / `defineCommand()` are the canonical handwritten API, with command `path`, aliases, input schemas, output schema, safety metadata, docs metadata, and handler separated in one data-first object.
-4. Public manifest output excludes internal-state fields; `Cli.create().command()` remains only a lower-level compatibility adapter that lowers definitions into the same runtime entry shape.
+4. Public manifest output excludes internal-state fields; the old fluent command builder is removed rather than kept as a compatibility adapter.
 5. Keep `mcp add` and `skills add` as opt-in core helper built-ins, while pushing broader vendor/provider workflows into adapters backed by `CommandContract`.
 6. Remove nonessential renderers from core; optional renderers belong in plugin packages.
 

@@ -11,13 +11,13 @@ The first hard-cutover slice for the declarative core direction has shipped. The
 - `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` are public because the helpers expose them.
 - `CommandContract.path`, `CommandContract.summary`, and `CommandContract.safety` are public serializable metadata used by manifest and MCP projection.
 
-`Cli.create()` remains public as the lower-level runtime construction primitive and compatibility adapter for focused runtime tests or direct programmatic assembly. It is not the canonical handwritten or generated authoring API. New handwritten examples and generated CLI output should use `defineCli()` and `defineCommand()`.
+The hard cutover removes the fluent command builder from the public API. New handwritten examples, generated CLI output, and package-consumer tests must use `defineCli()` and `defineCommand()`.
 
 ## Phase 3 re-freeze (packaged skills)
 
 Deliberate, narrow widening to let tool CLIs ship authored agent guidance without making generated product CLI surfaces depend on core reflection:
 
-- `CreateOptions.skill?: { markdown?: string; index?: string }` lets a CLI provide packaged skill content for `--llms` and opt-in skill installers. If `markdown` is omitted, core keeps the reflection-generated skill body. Client-specific install paths must stay adapter-bound rather than becoming required core behavior.
+- `DefineCliOptions.skill?: { markdown?: string; index?: string }` lets a CLI provide packaged skill content for `--llms` and opt-in skill installers. If `markdown` is omitted, core keeps the reflection-generated skill body. Client-specific install paths must stay adapter-bound rather than becoming required core behavior.
 - New public type `SkillDefinition`.
 
 ## V1 supportability re-freeze (lifecycle events and hooks)
@@ -26,7 +26,7 @@ Deliberate, narrow widening for local observability and framework extension:
 
 - `CliInstance.on(event, subscriber)` registers observe-only lifecycle subscribers.
 - `CliInstance.hook(name, handler)` registers typed mutation hooks.
-- `CreateOptions.events` and `CreateOptions.hooks` seed the same lanes at construction time for generated CLIs.
+- `DefineCliOptions.events` and `DefineCliOptions.hooks` seed the same lanes at construction time for generated CLIs.
 - New public types: `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, `CliEventSurface`, `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook`.
 
 The public guarantee is the lane split, not a hosted telemetry product: event subscribers receive redacted snapshots and cannot affect command results; hooks are explicit mutation points and may fail commands.
@@ -39,8 +39,8 @@ Deliberate, narrow widening to support generated CLIs:
 
 - `ResultMeta` widened to `Record<string, unknown> & { cta?: CtaBlock }`. Arbitrary meta keys round-trip through `ctx.ok(data, meta)` to the result envelope.
 - `RunContext.ok` signature now accepts `meta?: ResultMeta` (was `meta?: { cta?: CtaBlock }`).
-- `CreateOptions.generated?: { machineOutput: 'envelope'; disabledGlobals?: readonly DisabledGlobal[] }` opts a CLI into envelope output under `--json` and global-flag rejection.
-- `CreateOptions.builtins?: { completions?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `mcp` and `skills` default off. `config doctor` is exposed when config is declared unless explicitly disabled.
+- `DefineCliOptions.generated?: { machineOutput: 'envelope'; disabledGlobals?: readonly DisabledGlobal[] }` opts a CLI into envelope output under `--json` and global-flag rejection.
+- `DefineCliOptions.builtins?: { completions?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `mcp` and `skills` default off. `config doctor` is exposed when config is declared unless explicitly disabled.
 - New public type `DisabledGlobal` (currently `'format'`).
 
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
@@ -100,7 +100,7 @@ The next deliberate widening for generated remote wiring is the first-class conf
 Planned top-level public additions:
 
 - `Config.object(...)` — public declaration helper for opt-in typed config.
-- Config declaration and provenance types exposed by `CreateOptions.config`, `RunContext.config`, and `RunContext.sources`.
+- Config declaration and provenance types exposed by `DefineCliOptions.config`, `RunContext.config`, and `RunContext.sources`.
 - Explicit option-to-config bindings so config never satisfies command options by automatic name matching.
 
 Runtime guarantees:
@@ -110,7 +110,7 @@ Runtime guarantees:
 - `--no-config` disables project and user discovery.
 - Project/user config, session/profile defaults, option env defaults, argv, and schema defaults keep distinct provenance.
 
-This re-freeze must replace the current low-level loader-shaped `CreateOptions.config` compatibility hook with a declarative public contract. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@lili/core` APIs.
+This re-freeze must replace the current low-level loader-shaped config compatibility hook with a declarative public contract on `DefineCliOptions`. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@lili/core` APIs.
 
 Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
@@ -124,7 +124,6 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 
 ## Keep public
 
-- `Cli` (`packages/core/src/cli/create.ts`) — lower-level runtime construction primitive and compatibility adapter. It lowers `.command()` definitions into `CommandContract + runtime` entries at registration time.
 - `defineCli` — canonical handwritten CLI authoring helper for data-first command graphs.
 - `defineCommand` — canonical command declaration helper for analyzable command metadata plus a handler.
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
@@ -135,15 +134,13 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `ParseError` (`packages/core/src/errors/error.ts:70`) — imported through index by `parser-config.test.ts`; public parse failure type.
 - `ValidationError` (`packages/core/src/errors/error.ts:52`) — direct schema/error test coverage; public validation failure type.
 - `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
-- `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `CreateOptions.builtins` exposes it.
-- `CliInstance` (`packages/core/src/types.ts:203`) — imported through index by `helpers.ts`; public return type for `Cli.create()`.
-- `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `.on()` and `CreateOptions.events` expose the observe-only lifecycle event contract.
-- `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook` — public because `.hook()` and `CreateOptions.hooks` expose typed mutation points.
+- `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `DefineCliOptions.builtins` exposes it.
+- `CliInstance` (`packages/core/src/types.ts:203`) — public return type for `defineCli()`.
+- `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `.on()` and `DefineCliOptions.events` expose the observe-only lifecycle event contract.
+- `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook` — public because `.hook()` and `DefineCliOptions.hooks` expose typed mutation points.
 - `CommandContract` — public serializable command metadata contract for manifest/schema/help/MCP projections. It must not expose `Entry`, `CliState`, handlers, or runtime registry handles.
-- `CommandDefinition` (`packages/core/src/types.ts:108`) — public `.command()` input type.
-- `CommandEffectKind`, `CommandEffects`, and `CommandPolicy` — public because `CommandDefinition` and `CommandContract` expose safety metadata for command manifests and MCP annotations.
+- `CommandEffectKind`, `CommandEffects`, and `CommandPolicy` — public because `DeclarativeCommand` and `CommandContract` expose safety metadata for command manifests and MCP annotations.
 - `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` — public because `defineCli()` / `defineCommand()` expose the declarative authoring contract.
-- `CreateOptions` (`packages/core/src/types.ts:138`) — must be exported because `Cli.create()` signatures expose it.
 - `Cta` (`packages/core/src/types.ts:10`) — public CTA metadata used by result envelopes.
 - `CtaBlock` (`packages/core/src/types.ts:19`) — public CTA metadata used by `ctx.ok()` and `ctx.error()`.
 - `Example` (`packages/core/src/types.ts:99`) — public command help/docs metadata.
@@ -154,7 +151,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `OutputPolicy` (`packages/core/src/types.ts:6`) — command definition/output envelope contract.
 - `Result` (`packages/core/src/types.ts:47`) — public execution envelope type after its helper types are exported.
 - `RunContext` (`packages/core/src/types.ts:70`) — public command handler context type.
-- `SkillDefinition` (`packages/core/src/types.ts`) — public because `CreateOptions.skill` exposes it.
+- `SkillDefinition` (`packages/core/src/types.ts`) — public because `DefineCliOptions.skill` exposes it.
 - `Schema` (`packages/core/src/types.ts:7`) — export under this exact type name before freeze; current `ZodSchema` alias does not match public signatures.
 - `ServeOptions` (`packages/core/src/types.ts:194`) — imported through index by `helpers.ts`; public `.serve()` configuration.
 - `Usage` (`packages/core/src/types.ts:106`) — public help metadata.
@@ -177,7 +174,7 @@ The config primitive additions above join this keep-public list only when their 
 ## Remove from the public index
 
 - `default` (`packages/core/src/cli/context.ts:7`) — no test, docs, or source caller; delete this default export before freeze.
-- `create` (`packages/core/src/cli/create.ts:18`) — keep the implementation for `Cli.create`, but do not freeze a duplicate top-level `create()` API.
+- legacy builder types such as `CommandDefinition` and `CreateOptions` — internal normalized runtime shapes only; they are not exported from `@lili/core`.
 
 ## Rename or reshape
 

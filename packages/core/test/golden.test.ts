@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, z } from '../src/index.js'
-import { runCli } from './helpers.js'
+import { z } from '../src/index.js'
+import { runCli, testCli, testCommand } from './helpers.js'
 
 describe('golden behavior fixtures', () => {
   test('help output keeps the public command/help shape stable', async () => {
-    const cli = Cli.create('ship', { description: 'release helper', version: '1.0.0' }).command('publish', {
+    const cli = testCli('ship', { description: 'release helper', version: '1.0.0' }, [testCommand('publish', {
       args: z.object({ tag: z.string().describe('release tag') }),
       description: 'publish a release',
       options: z.object({ dryRun: z.boolean().default(false).describe('skip side effects') }),
       run: () => ({ ok: true }),
-    })
+    })])
 
     const result = await runCli(cli, ['publish', '--help'])
     expect(result.stdout).toBe(`ship publish - publish a release
@@ -42,17 +42,18 @@ Global Options:
   })
 
   test('root and group help are scoped to the selected command graph node', async () => {
-    const admin = Cli.create('admin', { description: 'admin tools' })
-      .command('audit', {
+    const cli = testCli('ship', { description: 'release helper' }, [
+      testCommand('admin', { description: 'admin tools' }),
+      testCommand(['admin', 'audit'], {
         description: 'inspect events',
         run: () => ({ ok: true }),
-      })
-      .command('ban', {
+      }),
+      testCommand(['admin', 'ban'], {
         aliases: ['block'],
         description: 'ban a user',
         run: () => ({ ok: true }),
-      })
-    const cli = Cli.create('ship', { description: 'release helper' }).command(admin)
+      }),
+    ])
 
     const root = await runCli(cli, ['--help'])
     expect(root.stdout).toBe(`ship - release helper
@@ -109,10 +110,10 @@ Global Options:
   })
 
   test('--llms emits a markdown command index by default', async () => {
-    const cli = Cli.create('ship', { description: 'release helper' }).command('publish', {
+    const cli = testCli('ship', { description: 'release helper' }, [testCommand('publish', {
       description: 'publish a release',
       run: () => ({ ok: true }),
-    })
+    })])
 
     const result = await runCli(cli, ['--llms'])
     expect(result.stdout).toBe('# ship\nrelease helper\n\n- publish: publish a release\n')

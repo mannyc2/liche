@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, z } from '../src/index.js'
+import { z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { formatHumanValidationError } from '../src/cli/format-error.js'
 import type { SelectedCommand } from '../src/types.js'
+import { testCli, testCommand } from './helpers.js'
 
 function build(commandName: string, def: any) {
-  const cli = Cli.create('app').command(commandName, { run: () => ({ ok: true }), ...def })
+  const cli = testCli('app', [testCommand(commandName, { run: () => ({ ok: true }), ...def })])
   const state = (cli as InternalCli)[stateSymbol]
   const entry = state.commands.get(commandName) as any
   const selected: SelectedCommand = {

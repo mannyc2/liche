@@ -1,4 +1,4 @@
-export { Cli, defineCli, defineCommand } from './cli/create.js'
+export { defineCli, defineCommand } from './cli/create.js'
 export { Config } from './config/index.js'
 export { middleware } from './cli/context.js'
 export { z } from './schema/zod.js'
@@ -64,7 +64,6 @@ export type {
   CommandEffectKind,
   CommandEffects,
   CliInstance,
-  CommandDefinition,
   CommandError,
   CommandPolicy,
   CommandSafety,
@@ -74,7 +73,6 @@ export type {
   ConfigScopeDeclaration,
   ConfigScopesDeclaration,
   ConfigValueSource,
-  CreateOptions,
   Cta,
   CtaBlock,
   DeclarativeCommand,

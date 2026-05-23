@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli } from '../src/index.js'
+
 import * as Skill from '../src/skills/index.js'
-import { stateOf } from './helpers.js'
+import { stateOf, testCli, testCommand } from './helpers.js'
 
 describe('writeSkill — agent-specific target dirs', () => {
   let home: string
@@ -19,37 +19,37 @@ describe('writeSkill — agent-specific target dirs', () => {
   })
 
   test('claude-code global → $HOME/.claude/skills/<name>/SKILL.md', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'claude-code', env: { HOME: home }, cwd })
     expect(path).toBe(`${home}/.claude/skills/app/SKILL.md`)
   })
 
   test('claude-code local → $CWD/.claude/skills/<name>/SKILL.md', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'claude-code', env: { HOME: home }, cwd, global: false })
     expect(path).toBe(`${cwd}/.claude/skills/app/SKILL.md`)
   })
 
   test('cursor global → $HOME/.cursor/skills/<name>/SKILL.md', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'cursor', env: { HOME: home }, cwd })
     expect(path).toBe(`${home}/.cursor/skills/app/SKILL.md`)
   })
 
   test('cursor local → $CWD/.cursor/skills/<name>/SKILL.md', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'cursor', env: { HOME: home }, cwd, global: false })
     expect(path).toBe(`${cwd}/.cursor/skills/app/SKILL.md`)
   })
 
   test('unknown agent falls back to $HOME/.config/lili/skills/<name>/SKILL.md', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'unknown', env: { HOME: home }, cwd })
     expect(path).toBe(`${home}/.config/lili/skills/app/SKILL.md`)
   })
 
   test('writes the actual SKILL.md content', async () => {
-    const cli = Cli.create('app', { description: 'the app' }).command('run', { run: () => ({}) })
+    const cli = testCli('app', { description: 'the app' }, [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'claude-code', env: { HOME: home }, cwd })
     const content = await Bun.file(path).text()
     expect(content).toContain('# app')

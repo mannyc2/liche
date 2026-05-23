@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
+import { testCli, testCommand } from './helpers.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli, Config, Formatter, z } from '../src/index.js'
+import { Config, Formatter, z, type CliInstance } from '../src/index.js'
 import * as Fetch from '../src/fetch/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import * as Parser from '../src/parser/index.js'
@@ -80,10 +81,10 @@ describe('fetch command proxy behavior', () => {
   })
 
   test('fetch ignores request bodies for GET and HEAD', async () => {
-    const cli = Cli.create('api').command('echo', {
+    const cli = testCli('api', [testCommand('echo', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ options }) => options,
-    })
+    })])
 
     const getWithBody = await cli.fetch(new Request('http://localhost/echo?message=query', { method: 'GET' }))
     expect(await getWithBody.json()).toEqual({ ok: true, data: { message: 'query' } })
@@ -93,10 +94,10 @@ describe('fetch command proxy behavior', () => {
   })
 
   test('fetch envelopes preserve not-found messages, body parsing fallback, and explicit JSON format context', async () => {
-    const cli = Cli.create('api').command('ctx', {
+    const cli = testCli('api', [testCommand('ctx', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ format, formatExplicit, options }) => ({ format, formatExplicit, message: options.message }),
-    })
+    })])
 
     const missing = await cli.fetch(new Request('http://localhost/nope'))
     expect(missing.status).toBe(404)
@@ -207,8 +208,8 @@ describe('runtime and config behavior', () => {
     await Bun.write(yamlPath, 'mode: yaml\n')
 
     try {
-      const jsonCli = Cli.create('app', { config: Config.object({ files: [jsonPath] }) })
-      const yamlCli = Cli.create('app', { config: Config.object({ files: [yamlPath] }) })
+      const jsonCli = testCli('app', { config: Config.object({ files: [jsonPath] }) })
+      const yamlCli = testCli('app', { config: Config.object({ files: [yamlPath] }) })
 
       expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({
         mode: 'json',
@@ -243,14 +244,15 @@ describe('command registry and guards behavior', () => {
   })
 
   test('registry scopes aliases, group roots, completions, policies, and collected command names', () => {
-    const admin = Cli.create('admin', {
-      description: 'admin root',
-      outputPolicy: 'agent-only',
-      run: () => ({ root: true }),
-    })
-      .command('audit', { aliases: ['a'], description: 'audit logs', run: () => ({ ok: true }) })
-      .command('remote', { fetch: async () => Response.json({ ok: true }) })
-    const cli = Cli.create('app', { description: 'root app' }).command(admin)
+    const cli = testCli('app', { description: 'root app' }, [
+      testCommand('admin', {
+        description: 'admin root',
+        outputPolicy: 'agent-only',
+        run: () => ({ root: true }),
+      }),
+      testCommand(['admin', 'audit'], { aliases: ['a'], description: 'audit logs', run: () => ({ ok: true }) }),
+      testCommand(['admin', 'remote'], { fetch: async () => Response.json({ ok: true }) }),
+    ])
     const state = (cli as InternalCli)[stateSymbol]
 
     const rootScope = commandScope(state)
@@ -307,13 +309,13 @@ describe('builtin metadata and skill sync behavior', () => {
   })
 
   test('skill markdown and index preserve frontmatter, descriptions, root commands, and command examples', () => {
-    const cli = Cli.create('ship', {
+    const cli = testCli('ship', {
       description: 'release helper',
       run: () => ({ ok: true }),
-    }).command('publish', {
+    }, [testCommand('publish', {
       description: 'publish a release',
       run: () => ({ ok: true }),
-    })
+    })])
     const state = (cli as InternalCli)[stateSymbol]
 
     expect(Skill.skillIndex('ship', state)).toBe('# ship\nrelease helper\n\n- (root): release helper\n- publish: publish a release')
@@ -322,7 +324,7 @@ describe('builtin metadata and skill sync behavior', () => {
     expect(Skill.skillMarkdown('ship', state)).toContain('### (root)\nrelease helper\n\n`$ ship`')
     expect(Skill.skillMarkdown('ship', state)).toContain('### publish\npublish a release\n\n`$ ship publish`')
 
-    const unnamed = Cli.create('tool').command('run', { run: () => ({ ok: true }) })
+    const unnamed = testCli('tool', [testCommand('run', { run: () => ({ ok: true }) })])
     const unnamedState = (unnamed as InternalCli)[stateSymbol]
     expect(Skill.skillMarkdown('tool', unnamedState)).toContain('description: tool CLI')
     expect(Skill.skillIndex('tool', unnamedState)).toContain('- run: ')
@@ -334,10 +336,10 @@ describe('builtin metadata and skill sync behavior', () => {
     Bun.env['HOME'] = root
 
     try {
-      const cli = Cli.create('ship', { builtins: { mcp: true, skills: true }, description: 'release helper', mcp: { command: 'ship-cli' } }).command('publish', {
+      const cli = testCli('ship', { builtins: { mcp: true, skills: true }, description: 'release helper', mcp: { command: 'ship-cli' } }, [testCommand('publish', {
         description: 'publish a release',
         run: () => ({ ok: true }),
-      })
+      })])
 
       const skill = await runCliWithLocalImport(cli, ['skills', 'add'])
       const skillPath = join(root, '.claude/skills/ship/SKILL.md')
@@ -438,7 +440,7 @@ describe('parser globals and internal helpers', () => {
   })
 
   test('MCP HTTP handler wraps protocol responses as JSON', async () => {
-    const cli = Cli.create('app', { version: '1.0.0' })
+    const cli = testCli('app', { version: '1.0.0' })
     const response = await handleMcpHttp('app', (cli as InternalCli)[stateSymbol], new Request('http://localhost/mcp', {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' }),
       method: 'POST',
@@ -449,13 +451,13 @@ describe('parser globals and internal helpers', () => {
   })
 
   test('MCP protocol exposes root tools, tool schemas, error content, and missing tool envelopes', async () => {
-    const cli = Cli.create('app', {
+    const cli = testCli('app', {
       description: 'root tool',
       options: z.object({ shout: z.boolean().default(false) }),
       run: ({ options }) => ({ shout: options.shout }),
-    }).command('fail', {
+    }, [testCommand('fail', {
       run: ({ error }) => error({ code: 'FAIL', message: 'nope' }),
-    })
+    })])
     const state = (cli as InternalCli)[stateSymbol]
 
     const tools = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })) as any
@@ -484,18 +486,18 @@ describe('parser globals and internal helpers', () => {
   })
 })
 
-async function runCliWithLocalImport(cli: ReturnType<typeof Cli.create>, argv: string[]) {
+async function runCliWithLocalImport(cli: Pick<CliInstance, 'serve'>, argv: string[]) {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
   await cli.serve(argv, {
-    exit(code) {
+    exit(code: number) {
       exitCode = code
     },
-    stderr(chunk) {
+    stderr(chunk: string) {
       stderr += chunk
     },
-    stdout(chunk) {
+    stdout(chunk: string) {
       stdout += chunk
     },
   })

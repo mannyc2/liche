@@ -28,6 +28,13 @@ describe('declarative authoring API', () => {
     expect(parseJsonOutput(result.stdout)).toEqual({ dryRun: true, target: 'api' })
   })
 
+  test('defineCli does not expose the legacy command registration builder', () => {
+    const cli = defineCli({ name: 'app', commands: [] })
+
+    expect('command' in cli).toBe(false)
+    expect((cli as any).command).toBeUndefined()
+  })
+
   test('nested paths and same-parent aliases are declared as data', async () => {
     const cli = defineCli({
       name: 'app',

@@ -495,16 +495,6 @@ export type ServeOptions = {
 }
 
 export type CliInstance = {
-  command<
-    A extends Schema<any> | undefined = undefined,
-    E extends Schema<any> | undefined = undefined,
-    O extends Schema<any> | undefined = undefined,
-    Out extends Schema<any> | undefined = undefined,
-  >(
-    name: string,
-    definition: CommandDefinition<A, E, O, Out>,
-  ): CliInstance
-  command(cli: CliInstance): CliInstance
   description?: string | undefined
   env?: Schema<any> | undefined
   fetch(request: Request): Promise<Response>

@@ -90,7 +90,7 @@ describe('public package readiness', () => {
       run('bun', ['install'], consumerDir)
 
       writeFileSync(join(consumerDir, 'smoke.ts'), `
-import { Cli, createLocalTelemetrySink, runLocalDoctor, z } from '@lili/core'
+import { createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@lili/core'
 import { createCompilePlan } from '@lili/build'
 import { Auth, Command, Field, Product, Runtime, Shape, generateCli, normalizeProduct } from '@lili/product'
 import { parseCliReleaseManifest } from '@lili/releases'
@@ -107,9 +107,15 @@ import { homebrewRenderer } from '@lili/releases/renderers/homebrew'
 import { scoopRenderer } from '@lili/releases/renderers/scoop'
 import { planReleasePublish } from '@lili/releases/publishers'
 
-const cli = Cli.create('consumer').command('ping', {
-  output: z.object({ ok: z.boolean() }),
-  run() { return { ok: true } },
+const cli = defineCli({
+  name: 'consumer',
+  commands: [
+    defineCommand({
+      path: ['ping'],
+      output: z.object({ ok: z.boolean() }),
+      run() { return { ok: true } },
+    }),
+  ],
 })
 const doctor = await runLocalDoctor({ cliName: 'consumer', env: { PATH: '' }, packageManagers: ['bun'] })
 const sink = createLocalTelemetrySink({ env: {}, append() {} })

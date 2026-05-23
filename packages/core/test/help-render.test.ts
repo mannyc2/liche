@@ -1,38 +1,40 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, z } from '../src/index.js'
+import { z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { renderHelp } from '../src/help/render.js'
+import { testCli, testCommand } from './helpers.js'
 
 const stateOf = (cli: any) => (cli as InternalCli)[stateSymbol]
+const cliWith = (name: string, definition: any = {}, root: any = {}) => testCli('app', root, [testCommand(name, definition)])
 
 describe('renderHelp — title and usage', () => {
   test('renders bare name when CLI has no description', () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help.split('\n')[0]).toBe('app')
   })
 
   test('renders "name - description" when CLI has a description', () => {
-    const cli = Cli.create('app', { description: 'the thing' }).command('run', { run: () => ({}) })
+    const cli = cliWith('run', { run: () => ({}) }, { description: 'the thing' })
     const help = renderHelp('app', stateOf(cli))
     expect(help.split('\n')[0]).toBe('app - the thing')
   })
 
   test('root usage includes "<command>" when CLI has subcommands', () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).toContain('Usage: app <command>')
   })
 
   test('root usage omits "<command>" when CLI has only a root run', () => {
-    const cli = Cli.create('app', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { run: () => ({ ok: true }) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).toContain('Usage: app\n')
     expect(help).not.toContain('Usage: app <command>')
   })
 
   test('command-level help scopes name with the command path', () => {
-    const cli = Cli.create('app').command('run', { description: 'do it', run: () => ({}) })
+    const cli = cliWith('run', { description: 'do it', run: () => ({}) })
     const help = renderHelp('app', stateOf(cli), undefined, ['run'])
     expect(help.split('\n')[0]).toBe('app run - do it')
     expect(help).toContain('Usage: app run')
@@ -41,7 +43,7 @@ describe('renderHelp — title and usage', () => {
 
 describe('renderHelp — arguments', () => {
   test('required args render as <name>', () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = cliWith('build', {
       args: z.object({ target: z.string() }),
       run: () => ({}),
     })
@@ -50,7 +52,7 @@ describe('renderHelp — arguments', () => {
   })
 
   test('optional args render as [name]', () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = cliWith('build', {
       args: z.object({ target: z.string().optional() }),
       run: () => ({}),
     })
@@ -59,7 +61,7 @@ describe('renderHelp — arguments', () => {
   })
 
   test('mixed required + optional args render in declared order', () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = cliWith('build', {
       args: z.object({ name: z.string(), version: z.string().optional() }),
       run: () => ({}),
     })
@@ -70,7 +72,7 @@ describe('renderHelp — arguments', () => {
 
 describe('renderHelp — options', () => {
   test('single-char option keys render as -x (no kebab, no --)', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ x: z.string() }),
       run: () => ({}),
     })
@@ -80,7 +82,7 @@ describe('renderHelp — options', () => {
   })
 
   test('multi-char keys render as --kebab-case', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ dryRun: z.boolean().default(false) }),
       run: () => ({}),
     })
@@ -90,7 +92,7 @@ describe('renderHelp — options', () => {
   })
 
   test('alias renders as "-a, --long"', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ format: z.string() }),
       alias: { format: 'f' },
       run: () => ({}),
@@ -100,7 +102,7 @@ describe('renderHelp — options', () => {
   })
 
   test('default value renders as "(default: <value>)" suffix', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ count: z.number().default(7) }),
       run: () => ({}),
     })
@@ -109,7 +111,7 @@ describe('renderHelp — options', () => {
   })
 
   test('no default → no "(default:)" suffix', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ count: z.number() }),
       run: () => ({}),
     })
@@ -118,7 +120,7 @@ describe('renderHelp — options', () => {
   })
 
   test('optionEnv mapping renders "(env: NAME)" suffix', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ token: z.string() }),
       optionEnv: { token: 'APP_TOKEN' },
       run: () => ({}),
@@ -128,7 +130,7 @@ describe('renderHelp — options', () => {
   })
 
   test('deprecated option gets "[deprecated]" suffix', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ legacy: z.boolean().meta({ deprecated: true }).default(false) }),
       run: () => ({}),
     })
@@ -138,7 +140,7 @@ describe('renderHelp — options', () => {
   })
 
   test('non-deprecated option has no "[deprecated]" suffix', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ modern: z.boolean().default(false) }),
       run: () => ({}),
     })
@@ -147,7 +149,7 @@ describe('renderHelp — options', () => {
   })
 
   test('description from .describe() renders in option row', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ mode: z.string().describe('which mode to run in') }),
       run: () => ({}),
     })
@@ -158,9 +160,10 @@ describe('renderHelp — options', () => {
 
 describe('renderHelp — commands listing', () => {
   test('lists child commands under "Commands:"', () => {
-    const cli = Cli.create('app')
-      .command('build', { description: 'build it', run: () => ({}) })
-      .command('publish', { description: 'ship it', run: () => ({}) })
+    const cli = testCli('app', [
+      testCommand('build', { description: 'build it', run: () => ({}) }),
+      testCommand('publish', { description: 'ship it', run: () => ({}) }),
+    ])
     const help = renderHelp('app', stateOf(cli))
     expect(help).toContain('Commands:')
     expect(help).toContain('build')
@@ -170,15 +173,15 @@ describe('renderHelp — commands listing', () => {
   })
 
   test('aliases appear in parentheses after command description', () => {
-    const cli = Cli.create('app')
-      .command('build', { description: 'build it', run: () => ({}) })
-      .command('b', { _alias: true, target: 'build' } as any)
+    const cli = testCli('app', [
+      testCommand('build', { aliases: ['b'], description: 'build it', run: () => ({}) }),
+    ])
     const help = renderHelp('app', stateOf(cli))
     expect(help).toMatch(/build\s+build it \(b\)/)
   })
 
   test('no commands → no top-level "Commands:" section (only "Built-in Commands:")', () => {
-    const cli = Cli.create('app', { run: () => ({}) })
+    const cli = testCli('app', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).not.toMatch(/^Commands:$/m)
     expect(help).toContain('Built-in Commands:')
@@ -187,7 +190,7 @@ describe('renderHelp — commands listing', () => {
 
 describe('renderHelp — examples', () => {
   test('string example renders verbatim under "Examples:"', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       examples: ['app run --watch'],
       run: () => ({}),
     })
@@ -197,7 +200,7 @@ describe('renderHelp — examples', () => {
   })
 
   test('object example with description renders "<rendered> - <desc>"', () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = cliWith('build', {
       examples: [{ args: { name: 'foo' }, description: 'happy path' }],
       args: z.object({ name: z.string() }),
       run: () => ({}),
@@ -207,7 +210,7 @@ describe('renderHelp — examples', () => {
   })
 
   test('object example with boolean=true option emits flag without value', () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = cliWith('build', {
       examples: [{ options: { dryRun: true, mode: 'fast' } }],
       options: z.object({ dryRun: z.boolean().default(false), mode: z.string().optional() }),
       run: () => ({}),
@@ -218,7 +221,7 @@ describe('renderHelp — examples', () => {
   })
 
   test('no examples → no "Examples:" section', () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli), undefined, ['run'])
     expect(help).not.toContain('Examples:')
   })
@@ -226,7 +229,7 @@ describe('renderHelp — examples', () => {
 
 describe('renderHelp — hint and usage blocks', () => {
   test('hint renders after Examples', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       examples: ['app run'],
       hint: 'Tip: pass --watch',
       run: () => ({}),
@@ -239,7 +242,7 @@ describe('renderHelp — hint and usage blocks', () => {
   })
 
   test('usage prefix/suffix wrap the binary line', () => {
-    const cli = Cli.create('app').command('fetch', {
+    const cli = cliWith('fetch', {
       args: z.object({ url: z.string() }),
       usage: [{ args: { url: true }, prefix: 'cat in.txt | ', suffix: ' > out.txt' }],
       run: () => ({}),
@@ -249,7 +252,7 @@ describe('renderHelp — hint and usage blocks', () => {
   })
 
   test('usage entries can be raw strings', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       usage: ['raw usage line here'],
       run: () => ({}),
     })
@@ -258,7 +261,7 @@ describe('renderHelp — hint and usage blocks', () => {
   })
 
   test('usage options token includes alias prefix when option has alias', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ format: z.string() }),
       alias: { format: 'f' },
       usage: [{ options: { format: true } }],
@@ -269,7 +272,7 @@ describe('renderHelp — hint and usage blocks', () => {
   })
 
   test('boolean option in usage emits no value placeholder', () => {
-    const cli = Cli.create('app').command('run', {
+    const cli = cliWith('run', {
       options: z.object({ dry: z.boolean().default(false) }),
       usage: [{ options: { dry: true } }],
       run: () => ({}),
@@ -282,13 +285,13 @@ describe('renderHelp — hint and usage blocks', () => {
 
 describe('renderHelp — global sections always present', () => {
   test('includes "Built-in Commands:" section', () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).toContain('Built-in Commands:')
   })
 
   test('includes "Global Options:" section with format/help/version', () => {
-    const cli = Cli.create('app').command('run', { run: () => ({}) })
+    const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).toContain('Global Options:')
     expect(help).toContain('--format <json|yaml|md|jsonl>')

@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, z } from '../src/index.js'
+import { z } from '../src/index.js'
+import { testCli, testCommand } from './helpers.js'
 
 function captureRun(argv: string[], options: any, command: { name: string; def: any }) {
   let out = ''
   let err = ''
   let exitCode = 0
-  const cli = Cli.create('app', options).command(command.name, command.def)
+  const cli = testCli('app', options ?? {}, [testCommand(command.name, command.def)])
   const promise = cli.serve(argv, {
     stdout: (s) => { out += s },
     stderr: (s) => { err += s },

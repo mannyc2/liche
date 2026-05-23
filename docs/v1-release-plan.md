@@ -131,7 +131,7 @@ Telemetry itself remains opt-in and narrower than the event stream. The default 
 
 ### Telemetry config integration
 
-Core already has a thin config loader for CLI authors: `CreateOptions.config` can read JSON/YAML files, use a custom loader, support a custom config flag, and return any plain object. Runtime command execution currently consumes only `commands.<path>.options` from that object, merging config before env-derived options and argv. Other top-level keys are effectively caller-owned today; there is no first-class `ctx.config`, config validation schema, or generic plugin namespace yet.
+Core already has a thin config loader for CLI authors: the current config hook can read JSON/YAML files, use a custom loader, support a custom config flag, and return any plain object. Runtime command execution currently consumes only `commands.<path>.options` from that object, merging config before env-derived options and argv. Other top-level keys are effectively caller-owned today; there is no first-class `ctx.config`, config validation schema, or generic plugin namespace yet.
 
 Telemetry should use a reserved framework namespace in that same loaded config object, not command options:
 

@@ -1,22 +1,23 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, LiliError, middleware, z } from '../src/index.js'
+import { LiliError, middleware, z } from '../src/index.js'
 import type { CliEvent } from '../src/index.js'
 import * as Mcp from '../src/mcp/index.js'
-import { parseJsonOutput, runCli, stateOf } from './helpers.js'
+import { parseJsonOutput, runCli, stateOf, testCli, testCommand } from './helpers.js'
 
 describe('lifecycle events and hooks', () => {
   test('emits redacted command lifecycle events to observe-only subscribers', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create('app', { version: '1.2.3' })
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      events: [(event) => {
         events.push(event as CliEvent)
-      })
-      .command('deploy', {
+      }],
+      version: '1.2.3',
+    }, [testCommand('deploy', {
         args: z.object({ target: z.string() }),
         env: z.object({ SECRET_TOKEN: z.string() }),
         options: z.object({ token: z.string() }),
         run: () => ({ value: true }),
-      })
+      })])
 
     const result = await runCli(cli, ['deploy', 'prod', '--token', 'tok_123', '--json'], {
       env: { SECRET_TOKEN: 'env_secret' },
@@ -44,13 +45,13 @@ describe('lifecycle events and hooks', () => {
   })
 
   test('subscriber failures never change command results', async () => {
-    const cli = Cli.create('app')
-      .on('command.started', () => {
+    const cli = testCli('app', {
+      events: [{ target: 'command.started', subscriber: () => {
         throw new Error('sink down')
-      })
-      .command('ok', {
+      } }],
+    }, [testCommand('ok', {
         run: () => ({ value: true }),
-      })
+      })])
 
     const result = await runCli(cli, ['ok', '--json'])
 
@@ -60,23 +61,24 @@ describe('lifecycle events and hooks', () => {
   })
 
   test('beforeExecute hooks run before middleware and handlers', async () => {
-    const cli = Cli.create('app', {
-      vars: z.object({ trace: z.array(z.string()).default([]) }),
-    })
-      .hook('beforeExecute', (ctx) => {
-        ;(ctx.var['trace'] as string[]).push('hook')
-      })
-      .use(middleware(async (ctx, next) => {
+    const cli = testCli('app', {
+      hooks: {
+        beforeExecute: (ctx) => {
+          ;(ctx.var['trace'] as string[]).push('hook')
+        },
+      },
+      middleware: [middleware(async (ctx, next) => {
         ;(ctx.var['trace'] as string[]).push('middleware-before')
         await next()
         ;(ctx.var['trace'] as string[]).push('middleware-after')
-      }))
-      .command('trace', {
-        run: ({ var: vars }) => {
-          ;(vars['trace'] as string[]).push('handler')
-          return { trace: vars['trace'] }
-        },
-      })
+      })],
+      vars: z.object({ trace: z.array(z.string()).default([]) }),
+    }, [testCommand('trace', {
+      run: ({ var: vars }) => {
+        ;(vars['trace'] as string[]).push('handler')
+        return { trace: vars['trace'] }
+      },
+    })])
 
     const result = await runCli(cli, ['trace', '--json'])
 
@@ -88,7 +90,7 @@ describe('lifecycle events and hooks', () => {
 
   test('construction-time events and hooks seed the same lifecycle lanes', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create({
+    const cli = testCli({
       name: 'app',
       events: [(event) => {
         events.push(event as CliEvent)
@@ -97,9 +99,9 @@ describe('lifecycle events and hooks', () => {
         beforeExecute: (ctx) => ctx.set('fromHook', true),
       },
       vars: z.object({ fromHook: z.boolean().default(false) }),
-    }).command('show', {
+    }, [testCommand('show', {
       run: ({ var: vars }) => ({ fromHook: vars['fromHook'] }),
-    })
+    })])
 
     const result = await runCli(cli, ['show', '--json'])
 
@@ -114,16 +116,18 @@ describe('lifecycle events and hooks', () => {
 
   test('hook failures normalize as command failures', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create('app')
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      events: [(event) => {
         events.push(event as CliEvent)
-      })
-      .hook('beforeExecute', () => {
-        throw new LiliError({ code: 'HOOK_FAILED', message: 'policy denied' })
-      })
-      .command('blocked', {
+      }],
+      hooks: {
+        beforeExecute: () => {
+          throw new LiliError({ code: 'HOOK_FAILED', message: 'policy denied' })
+        },
+      },
+    }, [testCommand('blocked', {
         run: () => ({ shouldNotRun: true }),
-      })
+      })])
 
     const result = await runCli(cli, ['blocked', '--json'])
 
@@ -143,14 +147,14 @@ describe('lifecycle events and hooks', () => {
 
   test('validation failure events omit raw field errors and messages', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create('app')
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      events: [(event) => {
         events.push(event as CliEvent)
-      })
-      .command('token', {
+      }],
+    }, [testCommand('token', {
         env: z.object({ TOKEN: z.string() }),
         run: ({ env }) => ({ token: env.TOKEN }),
-      })
+      })])
 
     const result = await runCli(cli, ['token', '--json'], { env: {} })
 
@@ -169,13 +173,15 @@ describe('lifecycle events and hooks', () => {
 
   test('emits local-only lifecycle events for pre-execution surfaces', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create('app', { builtins: { completions: true }, version: '1.2.3' })
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      builtins: { completions: true },
+      events: [(event) => {
         events.push(event as CliEvent)
-      })
-      .command('show', {
+      }],
+      version: '1.2.3',
+    }, [testCommand('show', {
         run: () => ({ value: true }),
-      })
+      })])
 
     await runCli(cli, ['show', '--help'])
     await runCli(cli, ['--version'])
@@ -203,13 +209,13 @@ describe('lifecycle events and hooks', () => {
 
   test('parse failure events omit raw global flag values', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create('app')
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      events: [(event) => {
         events.push(event as CliEvent)
-      })
-      .command('show', {
+      }],
+    }, [testCommand('show', {
         run: () => ({ value: true }),
-      })
+      })])
 
     const result = await runCli(cli, ['--format', 'secret-format'])
 
@@ -221,15 +227,15 @@ describe('lifecycle events and hooks', () => {
 
   test('MCP lifecycle events omit request arguments and unknown tool names', async () => {
     const events: CliEvent[] = []
-    const cli = Cli.create('app')
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      events: [(event) => {
         events.push(event as CliEvent)
-      })
-      .command('echo', {
+      }],
+    }, [testCommand('echo', {
         args: z.object({ secret: z.string().optional() }),
         options: z.object({ token: z.string().optional() }),
         run: () => ({ ok: true }),
-      })
+      })])
 
     await Mcp.mcpMessage('app', stateOf(cli), { jsonrpc: '2.0', id: 1, method: 'initialize' })
     await Mcp.mcpMessage('app', stateOf(cli), { jsonrpc: '2.0', id: 2, method: 'tools/list' })
@@ -282,14 +288,14 @@ describe('lifecycle events and hooks', () => {
       'command.failed',
       'validation.failed',
     ])
-    const cli = Cli.create('app')
-      .on('*', (event) => {
+    const cli = testCli('app', {
+      events: [(event) => {
         localEvents.push(event as CliEvent)
         if (telemetryAllowlist.has(event.type)) telemetryEvents.push(event as CliEvent)
-      })
-      .command('ok', {
+      }],
+    }, [testCommand('ok', {
         run: () => ({ ok: true }),
-      })
+      })])
 
     await runCli(cli, ['ok', '--help'])
     await runCli(cli, ['ok', '--json'])

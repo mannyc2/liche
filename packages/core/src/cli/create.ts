@@ -27,28 +27,15 @@ import { serveCli } from './serve.js'
 export const stateSymbol: unique symbol = Symbol('lili.cli.state')
 export type InternalCli = CliInstance & { [stateSymbol]: CliState }
 
-export function create<
-  A extends Schema<any> | undefined = undefined,
-  E extends Schema<any> | undefined = undefined,
-  O extends Schema<any> | undefined = undefined,
-  Out extends Schema<any> | undefined = undefined,
->(name: string, definition?: CreateOptions<A, E, O, Out>): CliInstance
-export function create<
-  A extends Schema<any> | undefined = undefined,
-  E extends Schema<any> | undefined = undefined,
-  O extends Schema<any> | undefined = undefined,
-  Out extends Schema<any> | undefined = undefined,
->(definition: CreateOptions<A, E, O, Out> & { name: string }): CliInstance
-export function create(nameOrDefinition: string | (CreateOptions & { name: string }), maybeDefinition: CreateOptions = {}): CliInstance {
-  const name = typeof nameOrDefinition === 'string' ? nameOrDefinition : nameOrDefinition.name
-  const definition = typeof nameOrDefinition === 'string' ? maybeDefinition : nameOrDefinition
+function create(definition: CreateOptions & { name: string }): CliInstance {
+  const name = definition.name
   const root = definition.run || definition.fetch ? createRuntimeEntry('(root)', definition) : undefined
   const state: CliState = {
     commands: new Map(),
     def: definition,
     events: normalizeEvents(definition.events),
     hooks: normalizeHooks(definition.hooks),
-    middlewares: [],
+    middlewares: definition.middleware ? [...definition.middleware] : [],
     root,
   }
 
@@ -58,11 +45,6 @@ export function create(nameOrDefinition: string | (CreateOptions & { name: strin
     description: definition.description,
     env: definition.env,
     vars: definition.vars,
-
-    command(nameOrCli: string | CliInstance, commandDefinition?: CommandDefinition) {
-      if (typeof nameOrCli !== 'string') return mount(cli, nameOrCli as InternalCli)
-      return register(cli, nameOrCli, commandDefinition ?? {})
-    },
 
     fetch(request: Request) {
       return fetchCli(name, state, request)
@@ -111,43 +93,8 @@ export function defineCli(definition: DefineCliOptions): CliInstance {
   return cli
 }
 
-export const Cli = { create }
-
-function register(cli: InternalCli, name: string, definition: CommandDefinition): CliInstance {
-  const state = cli[stateSymbol]
-  setCommandEntry(state.commands, name, definition)
-  for (const alias of definition.aliases ?? []) state.commands.set(alias, { _alias: true, target: name })
-  return cli
-}
-
 function setCommandEntry(commands: Map<string, any>, name: string, definition: CommandDefinition): void {
-  if ((definition as any)._alias === true) {
-    commands.set(name, definition as any)
-    return
-  }
   commands.set(name, createRuntimeEntry(name, definition))
-}
-
-function mount(parent: InternalCli, child: InternalCli): CliInstance {
-  const childState = child[stateSymbol]
-  const group: GroupEntry = {
-    _group: true,
-    commands: childState.commands,
-    contract: groupContract(child.name, {
-      description: child.description,
-      outputPolicy: childState.def.outputPolicy,
-    }),
-    description: child.description,
-    events: childState.events,
-    hooks: childState.hooks,
-    middlewares: childState.middlewares,
-    name: child.name,
-    outputPolicy: childState.def.outputPolicy,
-    root: childState.root,
-  }
-
-  parent[stateSymbol].commands.set(child.name, childState.root && childState.commands.size === 0 ? childState.root : group)
-  return parent
 }
 
 function registerDeclarative(cli: InternalCli, command: DeclarativeCommand): void {

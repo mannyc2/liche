@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { Cli, z } from '../src/index.js'
+import { testCli, testCommand } from './helpers.js'
+import { z } from '../src/index.js'
 
 const encoder = new TextEncoder()
 
@@ -15,13 +16,13 @@ describe('ServeOptions injection boundary', () => {
     const stdout: string[] = []
     const stderr: string[] = []
 
-    const cli = Cli.create('app').command('show', {
+    const cli = testCli('app', [testCommand('show', {
       outputPolicy: 'agent-only',
       run: ({ agent }) => {
         captured.agent = agent
         return { hidden: true }
       },
-    })
+    })])
 
     await cli.serve(['show'], {
       isTty: true,
@@ -38,13 +39,13 @@ describe('ServeOptions injection boundary', () => {
     let captured: { agent?: boolean } = {}
     const stdout: string[] = []
 
-    const cli = Cli.create('app').command('show', {
+    const cli = testCli('app', [testCommand('show', {
       outputPolicy: 'agent-only',
       run: ({ agent }) => {
         captured.agent = agent
         return { hidden: true }
       },
-    })
+    })])
 
     await cli.serve(['show'], {
       isTty: false,
@@ -57,10 +58,10 @@ describe('ServeOptions injection boundary', () => {
 
   test('--full-output overrides agent-only policy regardless of TTY', async () => {
     const stdout: string[] = []
-    const cli = Cli.create('app').command('show', {
+    const cli = testCli('app', [testCommand('show', {
       outputPolicy: 'agent-only',
       run: () => ({ hidden: true }),
-    })
+    })])
 
     await cli.serve(['show', '--full-output'], {
       isTty: true,
@@ -75,9 +76,9 @@ describe('ServeOptions injection boundary', () => {
     const stderr: string[] = []
     let exitCode = 0
 
-    const cli = Cli.create('app').command('fail', {
+    const cli = testCli('app', [testCommand('fail', {
       run: ({ error }) => error({ code: 'NOPE', message: 'failed' }),
-    })
+    })])
 
     await cli.serve(['fail'], {
       isTty: true,
@@ -95,14 +96,14 @@ describe('ServeOptions injection boundary', () => {
 
   test('env option overrides Bun.env without mutating globals', async () => {
     let observed: string | undefined
-    const cli = Cli.create('app').command('show', {
+    const cli = testCli('app', [testCommand('show', {
       options: z.object({ token: z.string().default('fallback') }),
       optionEnv: { token: 'INJECTED_TOKEN' },
       run: ({ options }) => {
         observed = options.token
         return { ok: true }
       },
-    })
+    })])
 
     await cli.serve(['show'], {
       env: { INJECTED_TOKEN: 'value-from-options' },
@@ -117,7 +118,7 @@ describe('ServeOptions injection boundary', () => {
     const stdout: string[] = []
     const initialize = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })
 
-    const cli = Cli.create('app').command('noop', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
 
     await cli.serve(['--mcp'], {
       isTty: false,
@@ -135,7 +136,7 @@ describe('ServeOptions injection boundary', () => {
 
   test('stdin accepts an AsyncIterable<string>', async () => {
     const stdout: string[] = []
-    const cli = Cli.create('app').command('noop', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
 
     async function* stringChunks() {
       yield `${JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'initialize' })}\n`
@@ -153,7 +154,7 @@ describe('ServeOptions injection boundary', () => {
 
   test('stdin accepts a ReadableStream<Uint8Array>', async () => {
     const stdout: string[] = []
-    const cli = Cli.create('app').command('noop', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -174,7 +175,7 @@ describe('ServeOptions injection boundary', () => {
 
   test('stdin splits across chunk boundaries', async () => {
     const stdout: string[] = []
-    const cli = Cli.create('app').command('noop', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
 
     const msg1 = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })
     const msg2 = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' })

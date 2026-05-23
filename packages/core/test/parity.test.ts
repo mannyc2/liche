@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Cli, Config, middleware, z } from '../src/index.js'
-import { parseJsonOutput, runCli } from './helpers.js'
+import { Config, middleware, z } from '../src/index.js'
+import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import * as Mcp from '../src/mcp/index.js'
@@ -13,13 +13,13 @@ import * as Mcp from '../src/mcp/index.js'
 
 describe('parity: streaming async generators', () => {
   test('each yield writes one stdout line in jsonl mode', async () => {
-    const cli = Cli.create('app').command('stream', {
+    const cli = testCli('app', [testCommand('stream', {
       run: async function* () {
         yield { step: 1 }
         yield { step: 2 }
         yield { step: 3 }
       },
-    })
+    })])
 
     const result = await runCli(cli, ['stream', '--format', 'jsonl'])
     const lines = result.stdout.trim().split('\n')
@@ -32,12 +32,12 @@ describe('parity: streaming async generators', () => {
   })
 
   test('NDJSON streaming over fetch when accept header opts in', async () => {
-    const cli = Cli.create('api').command('stream', {
+    const cli = testCli('api', [testCommand('stream', {
       run: async function* () {
         yield { step: 1 }
         yield { step: 2 }
       },
-    })
+    })])
     const response = await cli.fetch(
       new Request('http://localhost/stream', { headers: { accept: 'application/x-ndjson' } }),
     )
@@ -51,29 +51,29 @@ describe('parity: streaming async generators', () => {
 
 describe('parity: deprecated option metadata', () => {
   test('manifest schema captures deprecated keys', async () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = testCli('app', [testCommand('build', {
       options: z.object({ legacy: z.boolean().meta({ deprecated: true }).default(false) }),
       run: () => ({ ok: true }),
-    })
+    })])
     const result = await runCli(cli, ['build', '--schema', '--json'])
     expect(parseJsonOutput(result.stdout)).toMatchObject({ deprecated: ['legacy'] })
   })
 
   test('--help shows [deprecated] suffix on the option row', async () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = testCli('app', [testCommand('build', {
       options: z.object({ legacy: z.boolean().meta({ deprecated: true }).default(false) }),
       run: () => ({ ok: true }),
-    })
+    })])
     const result = await runCli(cli, ['build', '--help'])
     expect(result.stdout).toContain('--legacy')
     expect(result.stdout).toContain('[deprecated]')
   })
 
   test('deprecation warning fires on TTY only', async () => {
-    const cli = Cli.create('app').command('build', {
+    const cli = testCli('app', [testCommand('build', {
       options: z.object({ legacy: z.boolean().meta({ deprecated: true }).default(false) }),
       run: () => ({ done: true }),
-    })
+    })])
 
     const piped = await runCli(cli, ['build', '--legacy', '--json'], { isTty: false })
     expect(piped.stderr).toBe('')
@@ -99,7 +99,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('mcp add --agent claude-code writes ~/.claude.json by default', async () => {
-    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code'], { env: { HOME: home } })
     expect(result.stdout.trim()).toBe(`wrote ${home}/.claude.json`)
@@ -108,7 +108,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('mcp add --agent claude-code --no-global writes ./.mcp.json', async () => {
-    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--no-global'], { env: { HOME: home } })
     expect(result.stdout.trim()).toBe(`wrote ${cwd}/.mcp.json`)
@@ -117,7 +117,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('mcp add --command override is used as the spawn command', async () => {
-    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '-c', 'bunx app-binary'], { env: { HOME: home } })
     const config = await Bun.file(`${home}/.claude.json`).json()
@@ -125,7 +125,7 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('skills add --agent cursor writes under ~/.cursor/skills', async () => {
-    const cli = Cli.create('app', { builtins: { skills: true } }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { builtins: { skills: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor'], { env: { HOME: home } })
     expect(result.stdout.trim()).toBe(`wrote ${home}/.cursor/skills/app/SKILL.md`)
@@ -133,14 +133,14 @@ describe('parity: mcp add and skills add flag handling', () => {
   })
 
   test('skills add --json emits an envelope instead of plain text', async () => {
-    const cli = Cli.create('app', { builtins: { skills: true } }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { builtins: { skills: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor', '--json'], { env: { HOME: home } })
     expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.cursor/skills/app/SKILL.md` } })
   })
 
   test('mcp add --json emits an envelope instead of plain text', async () => {
-    const cli = Cli.create('app', { builtins: { mcp: true } }).command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
     process.chdir(cwd)
     const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: home } })
     expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.claude.json` } })
@@ -155,8 +155,10 @@ describe('parity: MCP tool naming uses underscores', () => {
   })
 
   test('tools/list returns underscored names; tools/call accepts them', async () => {
-    const pr = Cli.create('pr').command('list', { run: () => ({ ok: true }) }).command('view', { run: () => ({ ok: true }) })
-    const cli = Cli.create('app').command(pr)
+    const cli = testCli('app', [
+      testCommand(['pr', 'list'], { run: () => ({ ok: true }) }),
+      testCommand(['pr', 'view'], { run: () => ({ ok: true }) }),
+    ])
     const state = (cli as InternalCli)[stateSymbol]
 
     const list = await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
@@ -175,17 +177,17 @@ describe('parity: MCP tool naming uses underscores', () => {
 
 describe('parity: --json flips agent on a TTY', () => {
   test('agent is true when explicit format is requested on a TTY', async () => {
-    const cli = Cli.create('app').command('show', {
+    const cli = testCli('app', [testCommand('show', {
       run: ({ agent }) => ({ agent }),
-    })
+    })])
     const result = await runCli(cli, ['show', '--json'], { isTty: true })
     expect(parseJsonOutput(result.stdout)).toEqual({ agent: true })
   })
 
   test('agent is false on a TTY without explicit format', async () => {
-    const cli = Cli.create('app').command('show', {
+    const cli = testCli('app', [testCommand('show', {
       run: ({ agent }) => ({ agent }),
-    })
+    })])
     const result = await runCli(cli, ['show'], { isTty: true })
     expect(result.stdout).toContain('false')
   })
@@ -193,14 +195,13 @@ describe('parity: --json flips agent on a TTY', () => {
 
 describe('parity: --llms shape', () => {
   test('--llms with --format json returns the lili.v1 envelope', async () => {
-    const cli = Cli.create('app', { description: 'app cli', version: '1.0.0' })
-      .command('publish', {
+    const cli = testCli('app', { description: 'app cli', version: '1.0.0' }, [testCommand('publish', {
         description: 'ship a release',
         examples: ['app publish v1'],
         hint: 'idempotent with respect to the release tag',
         options: z.object({ dryRun: z.boolean().default(false) }),
         run: () => ({ ok: true }),
-      })
+      })])
     const result = await runCli(cli, ['--llms', '--format', 'json'])
     const envelope = parseJsonOutput(result.stdout)
     expect(envelope.manifestVersion).toBe('lili.v1')
@@ -214,7 +215,7 @@ describe('parity: --llms shape', () => {
   })
 
   test('manifestEnvelope helper is callable directly', () => {
-    const cli = Cli.create('app').command('echo', { run: () => ({}) })
+    const cli = testCli('app', [testCommand('echo', { run: () => ({}) })])
     const state = (cli as InternalCli)[stateSymbol]
     const envelope = manifestEnvelope('app', state)
     expect(envelope.manifestVersion).toBe('lili.v1')
@@ -223,14 +224,14 @@ describe('parity: --llms shape', () => {
 
   test('manifest and MCP tools are derived from serializable command contracts without executing handlers', async () => {
     let executed = false
-    const cli = Cli.create('app').command('danger', {
+    const cli = testCli('app', [testCommand('danger', {
       description: 'contract only',
       options: z.object({ force: z.boolean().default(false) }),
       run: () => {
         executed = true
         throw new Error('manifest must not execute command handlers')
       },
-    })
+    })])
     const state = (cli as InternalCli)[stateSymbol]
 
     const envelope = manifestEnvelope('app', state)
@@ -247,12 +248,12 @@ describe('parity: --llms shape', () => {
   })
 
   test('command contracts carry safety metadata into manifest and MCP annotations', async () => {
-    const cli = Cli.create('app').command('delete', {
+    const cli = testCli('app', [testCommand('delete', {
       description: 'delete a thing',
       effects: { kind: 'delete', idempotent: false },
       policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
       run: () => ({}),
-    })
+    })])
     const state = (cli as InternalCli)[stateSymbol]
 
     const envelope = manifestEnvelope('app', state)
@@ -274,12 +275,12 @@ describe('parity: --llms shape', () => {
 
 describe('parity: command hint and usage prefix/suffix', () => {
   test('hint renders after examples in --help', async () => {
-    const cli = Cli.create('app').command('do', {
+    const cli = testCli('app', [testCommand('do', {
       description: 'do things',
       examples: ['app do thing'],
       hint: 'Tip: combine with --watch for live updates.',
       run: () => ({ ok: true }),
-    })
+    })])
     const result = await runCli(cli, ['do', '--help'])
     const examplesIndex = result.stdout.indexOf('Examples:')
     const hintIndex = result.stdout.indexOf('Tip: combine')
@@ -288,11 +289,11 @@ describe('parity: command hint and usage prefix/suffix', () => {
   })
 
   test('usage prefix/suffix render around the binary line', async () => {
-    const cli = Cli.create('curl.md').command('fetch', {
+    const cli = testCli('curl.md', [testCommand('fetch', {
       args: z.object({ url: z.string() }),
       run: () => ({ ok: true }),
       usage: [{ args: { url: true }, prefix: 'cat file.txt | ', suffix: ' | head' }],
-    })
+    })])
     const result = await runCli(cli, ['fetch', '--help'])
     expect(result.stdout).toContain('cat file.txt | curl.md fetch <url> | head')
   })
@@ -300,16 +301,15 @@ describe('parity: command hint and usage prefix/suffix', () => {
 
 describe('parity: vars defaults layering', () => {
   test('middleware set() overrides Zod default vars', async () => {
-    const cli = Cli.create('app', {
-      vars: z.object({ tier: z.string().default('free') }),
-    })
-      .use(middleware(async (ctx, next) => {
+    const cli = testCli('app', {
+      middleware: [middleware(async (ctx, next) => {
         ctx.set('tier', 'pro')
         await next()
-      }))
-      .command('whoami', {
+      })],
+      vars: z.object({ tier: z.string().default('free') }),
+    }, [testCommand('whoami', {
         run: ({ var: vars }) => ({ tier: vars['tier'] }),
-      })
+      })])
     const result = await runCli(cli, ['whoami', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ tier: 'pro' })
   })
@@ -317,22 +317,22 @@ describe('parity: vars defaults layering', () => {
 
 describe('parity: config object defaults', () => {
   test('--config without a configured schema raises ParseError', async () => {
-    const cli = Cli.create('app').command('run', { run: () => ({ ok: true }) })
+    const cli = testCli('app', [testCommand('run', { run: () => ({ ok: true }) })])
     const result = await runCli(cli, ['run', '--config', './nope.json', '--json'])
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toContain('--config has no effect')
   })
 
   test('--no-config disables config loading even when files exist', async () => {
-    const cli = Cli.create('app', {
+    const cli = testCli('app', {
       config: Config.object({
         schema: z.object({ modeDefault: z.string().default('from-config') }),
       }),
-    }).command('run', {
+    }, [testCommand('run', {
       options: z.object({ mode: z.string().default('default') }),
       optionConfig: { mode: 'modeDefault' },
       run: ({ options }) => options,
-    })
+    })])
     const result = await runCli(cli, ['run', '--no-config', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ mode: 'default' })
   })

@@ -2,7 +2,7 @@
 
 Config is an opt-in core CLI primitive, not a product-only binding surface and not a loose application loader convention.
 
-The current core runtime already accepts `--config`, `--no-config`, a low-level `CreateOptions.config` hook, JSON/YAML file loading, and command-shaped option defaults. That is useful compatibility behavior, but it is not the target public model. The target model is a declared config contract that produces one typed `ctx.config`, explicit config-to-option bindings, and source provenance.
+The current core runtime already accepts `--config`, `--no-config`, a low-level config hook, JSON/YAML file loading, and command-shaped option defaults. That is useful compatibility behavior, but it is not the target public model. The target model is a declared config contract that produces one typed `ctx.config`, explicit config-to-option bindings, and source provenance.
 
 ## Success criteria
 
@@ -18,9 +18,10 @@ The current core runtime already accepts `--config`, `--no-config`, a low-level 
 Use a public `Config` helper:
 
 ```ts
-import { Cli, Config, z } from "@lili/core";
+import { Config, defineCli, defineCommand, z } from "@lili/core";
 
-const cli = Cli.create("acme", {
+const cli = defineCli({
+  name: "acme",
   config: Config.object({
     files: ["acme.json", "acme.jsonc", "acme.yaml", "acme.yml", "acme.toml"],
     schema: z.object({
@@ -40,6 +41,26 @@ const cli = Cli.create("acme", {
       user: { xdg: true },
     },
   }),
+  commands: [
+    defineCommand({
+      path: ["deploy"],
+      input: {
+        config: {
+          org: "defaultOrg",
+          timeoutMs: "timeoutMs",
+        },
+        options: z.object({
+          org: z.string().optional(),
+          timeoutMs: z.number().int().positive().default(30_000),
+        }),
+      },
+      run({ ctx }) {
+        ctx.config.baseUrl;
+        ctx.sources.config("baseUrl");
+        ctx.sources.option("timeoutMs");
+      },
+    }),
+  ],
 });
 ```
 
@@ -47,23 +68,7 @@ const cli = Cli.create("acme", {
 
 Handlers receive `ctx.config` and source inspection separately:
 
-```ts
-cli.command("deploy", {
-  options: z.object({
-    org: z.string().optional(),
-    timeoutMs: z.number().int().positive().default(30_000),
-  }),
-  optionConfig: {
-    org: "defaultOrg",
-    timeoutMs: "timeoutMs",
-  },
-  run(ctx) {
-    ctx.config.baseUrl;
-    ctx.sources.config("baseUrl");
-    ctx.sources.option("timeoutMs");
-  },
-});
-```
+The command example above uses `input.config` for explicit option-to-config bindings.
 
 Config must not satisfy command options by automatic name matching. An option reads config only when the command explicitly binds that option to a config path.
 
@@ -248,7 +253,7 @@ Config participates in the catalog digest because it changes generated runtime b
 ### Slice A: core primitive
 
 - Add public `Config.object(...)`.
-- Replace the low-level `CreateOptions.config` shape with a typed declaration while preserving testable behavior through the new API.
+- Replace the low-level config hook shape with a typed declaration while preserving testable behavior through the new API.
 - Add `RunContext.config` and `RunContext.sources`.
 - Add explicit option config bindings.
 - Add JSONC and TOML parsing.
