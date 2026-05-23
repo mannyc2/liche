@@ -26,4 +26,4 @@ Run with CI-only token and env context:
 CI=true ACME_API_BASE_URL=https://api.acme.example.test ACME_CI_TOKEN=tok_ci ACME_ORG_ID=acme bun examples/product-auth-context/run-generated.ts purge --zone zone-a --json
 ```
 
-The command resolves auth and org context before calling the HTTP transport. `ACME_API_BASE_URL` is required because generated remote commands no longer emit placeholder transport stubs.
+The command resolves auth and org context before calling the HTTP transport. `ACME_API_BASE_URL` is required because generated remote commands require an explicit remote base URL source.

@@ -270,6 +270,8 @@ import * as ReleaseRendererPypi from '@lili/releases/renderers/pypi'
 import * as ReleaseRendererHomebrew from '@lili/releases/renderers/homebrew'
 import * as ReleaseRendererScoop from '@lili/releases/renderers/scoop'
 import * as ReleasePublishers from '@lili/releases/publishers'
+import { mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 
 const expectedPublicValues = ${JSON.stringify(EXPECTED_PUBLIC_VALUES, null, 2)}
 const modules = {
@@ -325,26 +327,119 @@ const plan = Build.createCompilePlan({
   },
 })
 
-const product = Product.defineProduct({
-  id: 'consumer',
-  name: 'Consumer',
-  version: '0.1.0',
-  auth: Product.Auth.none(),
-  remote: { baseUrl: Product.Runtime.literal('https://api.example.test') },
-  commands: {
-    deploy: Product.Command.remoteHttp({
-      summary: 'Deploy',
-      input: Product.Shape.object({ name: Product.Field.string('Name') }),
-      output: Product.Shape.object({ id: Product.Field.string('ID') }),
-      http: { method: 'POST', path: '/deployments', bind: { body: true } },
-    }),
+const server = Bun.serve({
+  port: 0,
+  async fetch(request) {
+    if (request.method !== 'POST') return Response.json({ error: 'method' }, { status: 405 })
+    if (new URL(request.url).pathname !== '/deployments') {
+      return Response.json({ error: 'path' }, { status: 404 })
+    }
+    const body = await request.json()
+    if (body.name !== 'Ada') return Response.json({ error: 'body' }, { status: 400 })
+    return Response.json({ id: 'dep-Ada' })
   },
 })
-const generated = Product.generateCli(Product.normalizeProduct(product), {
-  generatorVersion: 'consumer',
-  canonicalIrDigest: 'sha256:catalog',
-  generationOptionsDigest: 'sha256:options',
-})
+
+const generatedDir = join(process.cwd(), 'generated-consumer')
+rmSync(generatedDir, { force: true, recursive: true })
+mkdirSync(generatedDir, { recursive: true })
+
+let generated
+let generatedResult
+try {
+  const product = Product.defineProduct({
+    id: 'consumer',
+    name: 'Consumer',
+    version: '0.1.0',
+    auth: Product.Auth.none(),
+    config: Product.createConfig({
+      fields: Product.Shape.object({
+        apiBaseUrl: Product.Field.string('API base URL').default('https://api.example.test'),
+      }),
+    }),
+    remote: { baseUrl: Product.Runtime.literal(server.url.origin) },
+    commands: {
+      deploy: Product.Command.remoteHttp({
+        summary: 'Deploy',
+        effects: { kind: 'write', idempotent: false },
+        policy: { dangerous: false, requiresConfirmation: false, conformanceEligible: true },
+        examples: [{ command: 'consumer deploy --name Ada --json' }],
+        input: Product.Shape.object({ name: Product.Field.string('Name') }),
+        output: Product.Shape.object({ id: Product.Field.string('ID') }),
+        http: { method: 'POST', path: '/deployments', bind: { body: true } },
+        surfaces: { agent: true },
+      }),
+    },
+  })
+  const catalog = Product.normalizeProduct(product)
+  generated = Product.generateCli(catalog, {
+    generatorVersion: 'consumer',
+    canonicalIrDigest: 'sha256:catalog',
+    generationOptionsDigest: 'sha256:options',
+  })
+  generatedResult = await Product.generateToDir(product, {
+    outDir: generatedDir,
+    generatorVersion: 'consumer',
+  })
+  const expectedArtifactIds = [
+    'agent-reference',
+    'catalog',
+    'cli',
+    'command-manifest',
+    'config-schema',
+    'discovery',
+    'docs-reference',
+    'mcp-tools',
+    'openapi',
+  ]
+  const actualArtifactIds = Object.keys(generatedResult.artifacts).sort()
+  if (JSON.stringify(actualArtifactIds) !== JSON.stringify(expectedArtifactIds)) {
+    throw new Error('generated artifact ids drifted: ' + JSON.stringify(actualArtifactIds))
+  }
+  const surfaceIds = generatedResult.manifest.surfaces.map((surface) => surface.id).sort()
+  if (JSON.stringify(surfaceIds) !== JSON.stringify(expectedArtifactIds)) {
+    throw new Error('generated surface manifest drifted: ' + JSON.stringify(surfaceIds))
+  }
+  const check = await Product.checkAgainstDir(product, { outDir: generatedDir, generatorVersion: 'consumer' })
+  if (!check.ok) throw new Error('generated surfaces were not check-clean: ' + check.drift.join('\\n'))
+
+  const commandManifest = JSON.parse(readFileSync(generatedResult.artifacts['command-manifest'].path, 'utf8'))
+  const mcpTools = JSON.parse(readFileSync(generatedResult.artifacts['mcp-tools'].path, 'utf8'))
+  const configSchema = JSON.parse(readFileSync(generatedResult.artifacts['config-schema'].path, 'utf8'))
+  const agentReference = readFileSync(generatedResult.artifacts['agent-reference'].path, 'utf8')
+  const docsReference = readFileSync(generatedResult.artifacts['docs-reference'].path, 'utf8')
+  if (commandManifest.commands[0].id !== 'deploy') throw new Error('command manifest missing deploy')
+  if (mcpTools.tools[0].name !== 'deploy') throw new Error('MCP tools missing deploy')
+  if (configSchema.properties.apiBaseUrl.description !== 'API base URL') {
+    throw new Error('config schema missing Product config field')
+  }
+  if (!agentReference.includes('consumer deploy --name Ada --json')) {
+    throw new Error('agent reference missing example command')
+  }
+  if (!docsReference.includes('### deploy')) throw new Error('docs reference missing deploy')
+
+  const generatedModule = await import(generatedResult.generatedPath + '?t=' + Date.now())
+  let generatedStdout = ''
+  let generatedStderr = ''
+  let generatedExitCode = 0
+  await generatedModule.default.serve(['deploy', '--name', 'Ada', '--json'], {
+    stdout: (chunk) => { generatedStdout += chunk },
+    stderr: (chunk) => { generatedStderr += chunk },
+    exit: (code) => { generatedExitCode = code },
+    isTty: false,
+    env: {},
+  })
+  if (generatedExitCode !== 0) {
+    throw new Error('generated CLI failed: ' + generatedStdout + generatedStderr)
+  }
+  const generatedBody = JSON.parse(generatedStdout)
+  if (generatedBody.data.id !== 'dep-Ada') {
+    throw new Error('generated CLI returned wrong data: ' + generatedStdout)
+  }
+} finally {
+  server.stop(true)
+  rmSync(generatedDir, { force: true, recursive: true })
+}
 
 const parsed = Releases.parseCliReleaseManifest({
   manifestVersion: 1,
@@ -367,6 +462,7 @@ const refs = [
   doctor,
   plan,
   generated,
+  generatedResult,
   parsed,
   ReleaseManifest.CliReleaseManifestSchema,
   ReleaseBinary.verifyReleaseBinaries,

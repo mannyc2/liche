@@ -113,6 +113,45 @@ describe('li-product CLI', () => {
     }
   })
 
+  test('conform failure returns structured recovery actions', async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return Response.json({ error: 'nope' }, { status: 500 })
+      },
+    })
+    const reportPath = join(dir, 'failed-conformance.json')
+    try {
+      const result = await runCli([
+        'conform',
+        productPath,
+        '--base-url',
+        server.url.origin,
+        '--capability',
+        'script.list',
+        '--report',
+        reportPath,
+        '--json',
+      ])
+      expect(result.exitCode).toBe(1)
+      const body = JSON.parse(result.stdout)
+      expect(body).toMatchObject({
+        ok: false,
+        data: null,
+        error: {
+          code: 'CONFORMANCE_FAILED',
+          code_actions: [{ title: 'Inspect conformance report', command: `cat ${reportPath}` }],
+          message: '1 conformance case(s) failed',
+          suggested_fix: `Inspect ${reportPath}, fix the failing cases, and rerun conformance.`,
+        },
+      })
+      const report = await Bun.file(reportPath).json()
+      expect(report.summary).toEqual({ passed: 0, failed: 1, skipped: 0, total: 1 })
+    } finally {
+      server.stop(true)
+    }
+  })
+
   test('skills add installs authored li-product guidance', async () => {
     const result = await runCli(['skills', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)

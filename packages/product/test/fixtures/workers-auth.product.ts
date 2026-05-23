@@ -5,7 +5,7 @@ import { Auth, Command, Runtime, defineProduct } from '../../src/index.js'
 // requires both auth and the org context. Used to lock in:
 //   - generator emits AUTH_PROVIDER + CONTEXTS constants when needed
 //   - context flags appear as required options on the generated command
-//   - the run body resolves auth + context before any (still-stub) transport
+//   - the run body resolves auth + context before core HTTP transport
 //   - credentials never leak as raw strings in generated source
 export default defineProduct({
   id: 'workers-auth',

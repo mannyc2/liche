@@ -688,7 +688,7 @@ function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): 
   }
   if (needsAuthResolution(cap)) {
   }
-  // Mark intentionally-unused locals so stubs don't blow up under noUnusedLocals.
+  // Mark intentionally-unused auth/context locals for non-HTTP commands.
   if (!hasHttpTransport(cap) && needsAuthResolution(cap)) lines.push(`${indent}void credential`)
   if (!hasHttpTransport(cap) && neededContexts(cap).length > 0) lines.push(`${indent}void context`)
   return lines
