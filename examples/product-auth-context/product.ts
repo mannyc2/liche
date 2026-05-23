@@ -1,13 +1,11 @@
-import { Auth, Command, Field, Product, Shape } from '@lili/product'
+import { Auth, Command, Field, Shape, defineProduct } from '@lili/product'
 
-export default Product.create({
+export default defineProduct({
   id: 'acme-cache',
   name: 'Acme Cache',
   version: '0.1.0',
   description: 'Cache operations with bearer auth and org context.',
-})
-  .auth(
-    Auth.bearer({
+  auth: Auth.bearer({
       id: 'acme',
       sources: [
         Auth.token.env('ACME_TOKEN', {
@@ -20,21 +18,18 @@ export default Product.create({
           scopes: ['cache.write'],
         }),
       ],
-    }),
-  )
-  .permissions({
+  }),
+  permissions: {
     'cache:write': Auth.permission.scope('cache.write'),
-  })
-  .context(
-    'org',
-    Auth.context.env({
+  },
+  contexts: {
+    org: Auth.context.env({
       label: 'Organization',
       select: { flag: 'org', env: 'ACME_ORG_ID' },
     }),
-  )
-  .command(
-    'purge',
-    Command.remoteHttp({
+  },
+  commands: {
+    purge: Command.remoteHttp({
       summary: 'Purge a cache zone',
       input: Shape.object({
         zone: Field.string('Cache zone'),
@@ -55,5 +50,5 @@ export default Product.create({
       },
       surfaces: { agent: true },
     }),
-  )
-
+  },
+})

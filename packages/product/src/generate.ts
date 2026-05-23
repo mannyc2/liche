@@ -14,7 +14,7 @@ import {
   hashString,
   manifestEqualForSurface,
 } from './manifest.js'
-import type { Product } from './product.js'
+import type { RuntimeProduct } from './product.js'
 
 export type GenerateToDirOptions = {
   outDir: string
@@ -76,7 +76,7 @@ type Prepared = {
   surfaces: PreparedSurface[]
 }
 
-function prepareGeneration(product: Product, options: GenerateToDirOptions): Prepared {
+function prepareGeneration(product: RuntimeProduct, options: GenerateToDirOptions): Prepared {
   const generatorVersion = options.generatorVersion
   const cliSurfaceId = options.surfaceId ?? 'cli'
   const cliFileName = options.generatedFileName ?? 'lili.generated.ts'
@@ -343,7 +343,7 @@ function assertDistinctSurfaceConfig(surfaces: PreparedSurface[], compileEntryFi
 }
 
 export async function generateToDir(
-  product: Product,
+  product: RuntimeProduct,
   options: GenerateToDirOptions,
 ): Promise<GenerateResult> {
   const { compileEntrypoint, manifest, manifestPath, surfaces } = prepareGeneration(product, options)
@@ -370,7 +370,7 @@ export async function generateToDir(
 }
 
 export async function checkAgainstDir(
-  product: Product,
+  product: RuntimeProduct,
   options: GenerateToDirOptions,
 ): Promise<CheckResult> {
   const { compileEntrypoint, manifest: expectedManifest, manifestPath, surfaces } = prepareGeneration(product, options)

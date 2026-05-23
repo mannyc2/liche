@@ -92,7 +92,7 @@ describe('public package readiness', () => {
       writeFileSync(join(consumerDir, 'smoke.ts'), `
 import { createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@lili/core'
 import { createCompilePlan } from '@lili/build'
-import { Auth, Command, Field, Product, Runtime, Shape, generateCli, normalizeProduct } from '@lili/product'
+import { Auth, Command, Field, Runtime, Shape, defineProduct, generateCli, normalizeProduct } from '@lili/product'
 import { parseCliReleaseManifest } from '@lili/releases'
 import { CliReleaseManifestSchema } from '@lili/releases/manifest'
 import { verifyReleaseBinaries } from '@lili/releases/binary'
@@ -133,15 +133,21 @@ const plan = createCompilePlan({
   },
 })
 
-const product = Product.create({ id: 'consumer', name: 'Consumer', version: '0.1.0' })
-  .auth(Auth.none())
-  .remote({ baseUrl: Runtime.literal('https://api.example.test') })
-  .command('deploy', Command.remoteHttp({
-    summary: 'Deploy',
-    input: Shape.object({ name: Field.string('Name') }),
-    output: Shape.object({ id: Field.string('ID') }),
-    http: { method: 'POST', path: '/deployments', bind: { body: true } },
-  }))
+const product = defineProduct({
+  id: 'consumer',
+  name: 'Consumer',
+  version: '0.1.0',
+  auth: Auth.none(),
+  remote: { baseUrl: Runtime.literal('https://api.example.test') },
+  commands: {
+    deploy: Command.remoteHttp({
+      summary: 'Deploy',
+      input: Shape.object({ name: Field.string('Name') }),
+      output: Shape.object({ id: Field.string('ID') }),
+      http: { method: 'POST', path: '/deployments', bind: { body: true } },
+    }),
+  },
+})
 const generated = generateCli(normalizeProduct(product), {
   generatorVersion: 'consumer',
   canonicalIrDigest: 'sha256:catalog',

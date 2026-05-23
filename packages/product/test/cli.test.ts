@@ -114,7 +114,7 @@ describe('li-product CLI', () => {
     expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-product/SKILL.md') } })
     const content = await Bun.file(body.data.path).text()
     expect(content).toContain('description: Author and maintain lili product schemas')
-    expect(content).toContain('Product.create(')
+    expect(content).toContain('defineProduct({')
     expect(content).toContain('li-product generate <product.ts> --check')
   })
 

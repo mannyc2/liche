@@ -111,7 +111,7 @@ Do not infer a broad generator framework from this requirement. The first vertic
 
 The Product API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
 
-The public authoring model is product-shaped, not CLI-program-shaped. `Product.create(...).resource(...).command(...).binding(...)` is the source API. Generated CLIs lower into `@lili/core` through declarative `defineCli()` / `defineCommand()` command graphs.
+The public authoring model is product-shaped, not CLI-program-shaped. `defineProduct({ resources, commands, bindings })` is the source API. Generated CLIs lower into `@lili/core` through declarative `defineCli()` / `defineCommand()` command graphs.
 
 The concrete product schema API, naming, defaults, and refactor path live in `docs/product-schema.md`.
 

@@ -12,33 +12,42 @@ Use this skill when authoring or maintaining a lili product schema and its gener
 \`@lili/product\` is a product-schema compiler. Author products with sibling resources, commands, and bindings; the product package normalizes them into a canonical capability catalog and projects that catalog into generated surfaces.
 
 \`\`\`ts
-import { Command, Field, Product, Shape } from '@lili/product'
+import { Command, Field, Shape, defineProduct } from '@lili/product'
 
-export default Product.create({
+export default defineProduct({
   id: 'workers',
   name: 'Workers',
   version: '1.0.0',
+  resources: {
+    script: {
+      label: 'Worker script',
+      path: '/workers/scripts',
+      fields: {
+        id: Field.string('Script ID').identifier().immutable(),
+        name: Field.string('Script name').humanLabel(),
+      },
+      operations: {
+        list: {
+          summary: 'List Worker scripts',
+          http: { method: 'GET', path: '' },
+          output: Shape.list('script'),
+        },
+      },
+    },
+  },
+  commands: {
+    deploy: Command.workflow({
+      summary: 'Deploy a Worker',
+      input: Shape.object({ entrypoint: Field.string('Entrypoint file') }),
+      output: Shape.object({ deployment_id: Field.string('Deployment ID') }),
+      handler: 'wrangler.deploy',
+    }),
+    dev: Command.local({
+      summary: 'Run a local development server',
+      handler: 'wrangler.dev',
+    }),
+  },
 })
-  .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (resource) =>
-    resource
-      .field('id', Field.string('Script ID').identifier().immutable())
-      .field('name', Field.string('Script name').humanLabel())
-      .operation('list', {
-        summary: 'List Worker scripts',
-        http: { method: 'GET', path: '' },
-        output: Shape.list('script'),
-      }),
-  )
-  .command('deploy', Command.workflow({
-    summary: 'Deploy a Worker',
-    input: Shape.object({ entrypoint: Field.string('Entrypoint file') }),
-    output: Shape.object({ deployment_id: Field.string('Deployment ID') }),
-    handler: 'wrangler.deploy',
-  }))
-  .command('dev', Command.local({
-    summary: 'Run a local development server',
-    handler: 'wrangler.dev',
-  }))
 \`\`\`
 
 The verb on a resource operation must be in the product vocabulary. Defaults are \`get\`, \`list\`, \`create\`, \`update\`, \`delete\`, \`run\`. Extend with \`vocabulary({ verbs: [...] })\` for resource-scoped actions such as \`purge\`, \`rotate\`, \`rollback\`. Top-level commands like \`deploy\` and \`dev\` are not subject to the verb allowlist; they live as their own capability kind.
@@ -64,6 +73,6 @@ Prefer \`--json\` when another tool or agent will read the result.
 export const LI_PRODUCT_SKILL_INDEX = `# li-product
 Author and maintain lili product schemas.
 
-- Define product schemas with Product.create(...).resource(...).command(...).binding(...).
+- Define product schemas with defineProduct({ resources, commands, bindings }).
 - Generate and check surfaces with li-product generate.
 - Pick the right capability kind: resources for CRUD, commands for workflows.`

@@ -7,11 +7,11 @@ import {
   Field,
   lintCatalog,
   normalizeProduct,
-  Product,
   Runtime,
   Shape,
   vocabulary,
 } from '../src/index.js'
+import { Product } from '../src/product.js'
 
 function lintProductInput(product: Product) {
   // Lints are auth-agnostic. Default to Auth.none() so each test stays focused
@@ -383,7 +383,7 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
     expect(issue?.path).toBe('capabilities[0].output')
     expect(issue?.message).toBe("Shape.list references unknown resource 'ghost'")
     expect(issue?.recommendation).toBe(
-      'declare the resource with Product.create(...).resource(id, ...) or fix the reference',
+      'declare the resource in defineProduct({ resources }) or fix the reference',
     )
   })
 })

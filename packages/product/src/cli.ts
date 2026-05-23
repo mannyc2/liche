@@ -5,17 +5,17 @@ import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
 import { conformProduct, type ConformanceCase } from './conformance.js'
 import { checkAgainstDir, generateToDir } from './generate.js'
-import { Product } from './product.js'
+import type { RuntimeProduct } from './product.js'
 import { LI_PRODUCT_SKILL_INDEX, LI_PRODUCT_SKILL_MARKDOWN } from './skill.js'
 
 const GENERATOR_VERSION = '0.0.0'
 
-async function loadProduct(productPath: string): Promise<Product> {
+async function loadProduct(productPath: string): Promise<RuntimeProduct> {
   const absolute = isAbsolute(productPath) ? productPath : resolve(process.cwd(), productPath)
   const mod = await import(absolute)
-  const product = mod.default as Product | undefined
+  const product = mod.default as RuntimeProduct | undefined
   if (!product || product.kind !== 'lili.product') {
-    throw new Error(`Module at ${absolute} does not default-export a Product.create() result`)
+    throw new Error(`Module at ${absolute} does not default-export a defineProduct() result`)
   }
   return product
 }

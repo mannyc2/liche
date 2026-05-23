@@ -227,7 +227,7 @@ function lintShapeReferences(
       code: 'shape/unknown-resource-ref',
       path,
       message: `Shape.list references unknown resource '${shape.resourceId}'`,
-      recommendation: 'declare the resource with Product.create(...).resource(id, ...) or fix the reference',
+      recommendation: 'declare the resource in defineProduct({ resources }) or fix the reference',
     })
   }
 }

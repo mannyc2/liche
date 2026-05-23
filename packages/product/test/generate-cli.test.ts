@@ -4,35 +4,40 @@ import {
   Command,
   Config,
   Field,
-  Product,
   Runtime,
   Shape,
   canonicalDigest,
+  defineProduct,
   generateCli,
   normalizeProduct,
 } from '../src/index.js'
 import type { Catalog } from '../src/index.js'
 
 function workersCatalog(): Catalog {
-  const product = Product.create({
+  const product = defineProduct({
     id: 'workers',
     name: 'Workers',
     version: '1.0.0',
-  })
-    .auth(Auth.none())
-    .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (r) =>
-      r
-        .field('id', Field.string('Script ID').identifier().immutable())
-        .field('name', Field.string('Script name').humanLabel())
-        .operation('list', {
+    auth: Auth.none(),
+    resources: {
+      script: {
+        label: 'Worker script',
+        path: '/workers/scripts',
+        fields: {
+          id: Field.string('Script ID').identifier().immutable(),
+          name: Field.string('Script name').humanLabel(),
+        },
+        operations: {
+          list: {
           summary: 'List Worker scripts',
           http: { method: 'GET', path: '' },
           output: Shape.list('script'),
-        }),
-    )
-    .command(
-      'deploy',
-      Command.workflow({
+          },
+        },
+      },
+    },
+    commands: {
+      deploy: Command.workflow({
         summary: 'Deploy a Worker',
         input: Shape.object({
           entrypoint: Field.string('Entrypoint file'),
@@ -41,16 +46,14 @@ function workersCatalog(): Catalog {
         output: Shape.object({ deployment_id: Field.string('Deployment ID') }),
         handler: 'wrangler.deploy',
       }),
-    )
-    .command(
-      'dev',
-      Command.local({
+      dev: Command.local({
         summary: 'Run a local development server',
         input: Shape.object({ entrypoint: Field.string('Entrypoint file') }),
         output: Shape.object({ url: Field.string('Local URL') }),
         handler: 'wrangler.dev',
       }),
-    )
+    },
+  })
   return normalizeProduct(product)
 }
 
@@ -95,10 +98,16 @@ describe('generateCli — imports', () => {
 
   test('two distinct handler modules emit two grouped import lines in module-sorted order', () => {
     const cat = normalizeProduct(
-      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
-        .auth(Auth.none())
-        .command('login', Command.local({ summary: 'login', handler: 'auth.login' }))
-        .command('dev', Command.local({ summary: 'dev', handler: 'wrangler.dev' })),
+      defineProduct({
+        id: 'p',
+        name: 'P',
+        version: '0.1.0',
+        auth: Auth.none(),
+        commands: {
+          login: Command.local({ summary: 'login', handler: 'auth.login' }),
+          dev: Command.local({ summary: 'dev', handler: 'wrangler.dev' }),
+        },
+      }),
     )
     const source = generate(cat)
     const authIdx = source.indexOf(`from './impl/auth.js'`)
@@ -109,10 +118,15 @@ describe('generateCli — imports', () => {
   })
 
   test('handler strings must be of the form module.export; bare strings fail loudly', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
-      'dev',
-      Command.local({ summary: 'dev', handler: 'broken' }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      commands: {
+        dev: Command.local({ summary: 'dev', handler: 'broken' }),
+      },
+    })
     expect(() => generate(normalizeProduct(product))).toThrow(
       /Handler 'broken' must be of the form 'module\.export'/,
     )
@@ -171,10 +185,15 @@ describe('generateCli — run bodies by execution mode', () => {
 
   test('remote-http command run body is a Phase 4 not-implemented stub', () => {
     const cat = normalizeProduct(
-      Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
-        'purge',
-        Command.remoteHttp({ summary: 'Purge', http: { method: 'POST', path: '/purge' } }),
-      ),
+      defineProduct({
+        id: 'p',
+        name: 'P',
+        version: '0.1.0',
+        auth: Auth.none(),
+        commands: {
+          purge: Command.remoteHttp({ summary: 'Purge', http: { method: 'POST', path: '/purge' } }),
+        },
+      }),
     )
     const source = generate(cat)
     const purgeBlock = extractCommandBlock(source, 'purge')
@@ -184,20 +203,22 @@ describe('generateCli — run bodies by execution mode', () => {
 
   test('remote-http command with product remote config calls core HTTP transport', () => {
     const cat = normalizeProduct(
-      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
-        .auth(Auth.none())
-        .config(Config.object({
+      defineProduct({
+        id: 'p',
+        name: 'P',
+        version: '0.1.0',
+        auth: Auth.none(),
+        config: Config.object({
           files: ['p.jsonc'],
           fields: Shape.object({
             apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
             defaultZone: Field.string('Default zone').optional(),
           }),
           scopes: { project: { discoverUpwards: true }, user: false },
-        }))
-        .remote({ baseUrl: Runtime.config('apiBaseUrl') })
-        .command(
-          'purge',
-          Command.remoteHttp({
+        }),
+        remote: { baseUrl: Runtime.config('apiBaseUrl') },
+        commands: {
+          purge: Command.remoteHttp({
             summary: 'Purge',
             input: Shape.object({
               zone: Field.string('Zone').fromConfig('defaultZone'),
@@ -205,7 +226,8 @@ describe('generateCli — run bodies by execution mode', () => {
             output: Shape.object({ purge_id: Field.string('Purge ID') }),
             http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'] } },
           }),
-        ),
+        },
+      }),
     )
     const source = generate(cat)
     expect(source.match(/from '@lili\/core'/)?.[0]).toBe("from '@lili/core'")
@@ -228,10 +250,16 @@ describe('generateCli — run bodies by execution mode', () => {
 
   test('local handlers from the same module deduplicate to one import per export', () => {
     const cat = normalizeProduct(
-      Product.create({ id: 'p', name: 'P', version: '0.1.0' })
-        .auth(Auth.none())
-        .command('a', Command.local({ summary: 'a', handler: 'm.run' }))
-        .command('b', Command.local({ summary: 'b', handler: 'm.run' })),
+      defineProduct({
+        id: 'p',
+        name: 'P',
+        version: '0.1.0',
+        auth: Auth.none(),
+        commands: {
+          a: Command.local({ summary: 'a', handler: 'm.run' }),
+          b: Command.local({ summary: 'b', handler: 'm.run' }),
+        },
+      }),
     )
     const source = generate(cat)
     expect(source.match(/from '\.\/impl\/m\.js'/g)).toHaveLength(1)
@@ -249,17 +277,26 @@ describe('generateCli — list output resolution', () => {
   })
 
   test('broken list-shape resource reference is reported by the generator, not silently emitted', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'orphan',
-      { label: 'o', path: '/o' },
-      (r) =>
-        r.operation('list', {
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        orphan: {
+          label: 'o',
+          path: '/o',
+          operations: {
+            list: {
           summary: 'List',
           http: { method: 'GET', path: '' },
           // points at a resource that does not exist in this catalog
           output: Shape.list('ghost'),
-        }),
-    )
+            },
+          },
+        },
+      },
+    })
     expect(() => generate(normalizeProduct(product))).toThrow(
       /resource 'ghost' is not declared in this catalog/,
     )

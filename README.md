@@ -51,17 +51,23 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 Use `@lili/product` when a product needs multiple generated surfaces from one catalog.
 
 ```ts
-import { Auth, Command, Field, Product, Runtime, Shape } from "@lili/product";
+import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
-export default Product.create({ id: "workers", name: "Workers", version: "1.0.0" })
-  .auth(Auth.none())
-  .remote({ baseUrl: Runtime.env("WORKERS_API_BASE_URL") })
-  .command("deploy", Command.remoteHttp({
-    summary: "Deploy a Worker",
-    input: Shape.object({ name: Field.string("Worker name") }),
-    output: Shape.object({ id: Field.string("Deployment ID") }),
-    http: { method: "POST", path: "/deployments", bind: { body: true } },
-  }));
+export default defineProduct({
+  id: "workers",
+  name: "Workers",
+  version: "1.0.0",
+  auth: Auth.none(),
+  remote: { baseUrl: Runtime.env("WORKERS_API_BASE_URL") },
+  commands: {
+    deploy: Command.remoteHttp({
+      summary: "Deploy a Worker",
+      input: Shape.object({ name: Field.string("Worker name") }),
+      output: Shape.object({ id: Field.string("Deployment ID") }),
+      http: { method: "POST", path: "/deployments", bind: { body: true } },
+    }),
+  },
+});
 ```
 
 Generate and check surfaces:

@@ -11,7 +11,7 @@ import {
   type NormalizedRuntimeValue,
   type NormalizedShape,
 } from './catalog.js'
-import type { Product } from './product.js'
+import type { RuntimeProduct } from './product.js'
 import type { JsonSchemaNode } from './types.js'
 
 export type ConformanceCase = {
@@ -112,7 +112,7 @@ type PreparedCase = {
   runnable: RunnableCapability
 }
 
-export async function conformProduct(product: Product, options: ConformProductOptions = {}): Promise<ConformanceReport> {
+export async function conformProduct(product: RuntimeProduct, options: ConformProductOptions = {}): Promise<ConformanceReport> {
   const catalog = normalizeProduct(product)
   const started = (options.now ?? (() => new Date()))()
   const startedAt = started.toISOString()

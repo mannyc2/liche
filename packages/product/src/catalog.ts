@@ -23,10 +23,10 @@ import type {
 import type { FieldBuilder, NormalizedField } from './field.js'
 import type {
   BindingSpec,
-  Product,
+  ProductResource,
   ProductScope,
-  ResourceBuilder,
   ResourceOperationSpec,
+  RuntimeProduct,
 } from './product.js'
 import type { ProductConfigSpec } from './config.js'
 import type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
@@ -304,7 +304,7 @@ export type Catalog = {
   capabilities: Capability[]
 }
 
-export function normalizeProduct(product: Product): Catalog {
+export function normalizeProduct(product: RuntimeProduct): Catalog {
   const auth = normalizeAuth(product.authSpec ?? { kind: 'none' })
   const permissions = normalizePermissions(product.permissionSpecs)
   const permissionIds = new Set(permissions.map((p) => p.id))
@@ -563,7 +563,7 @@ function normalizeVocabulary(vocab: Vocabulary): NormalizedVocabulary {
   }
 }
 
-function normalizeProductHeader(product: Product): Catalog['product'] {
+function normalizeProductHeader(product: RuntimeProduct): Catalog['product'] {
   const out: Catalog['product'] = {
     id: product.id,
     name: product.name,
@@ -578,7 +578,7 @@ function normalizeProductScope(scope: ProductScope): NormalizedProductScope {
   return { kind: scope.kind, param: scope.param }
 }
 
-function normalizeResource(resource: ResourceBuilder): NormalizedResource {
+function normalizeResource(resource: ProductResource): NormalizedResource {
   const out: NormalizedResource = {
     id: resource.id,
     label: resource.label,

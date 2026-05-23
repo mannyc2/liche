@@ -22,17 +22,16 @@ Do not force every meaningful product action into a CRUD resource operation. `de
 The public API should keep the same namespace-style ergonomics as the rest of the package set:
 
 ```ts
-import { Auth, Command, Config, Field, Product, Runtime, Shape } from "@lili/product";
+import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
-export default Product.create({
+export default defineProduct({
   id: "workers",
   name: "Workers",
   version: "1.0.0",
   description: "Build and deploy serverless applications.",
   scope: { kind: "account", param: "account_id" },
-})
-  .auth(Auth.none())
-  .config(Config.object({
+  auth: Auth.none(),
+  config: Config.object({
     files: ["workers.jsonc", "workers.yaml", "workers.toml"],
     fields: Shape.object({
       accountId: Field.string("Default account ID").optional(),
@@ -40,84 +39,92 @@ export default Product.create({
         .default("https://api.cloudflare.com/client/v4"),
       outputFormat: Field.enum(["text", "json"]).default("text"),
     }),
-  }))
-  .remote({ baseUrl: Runtime.config("apiBaseUrl") })
-  .resource("script", {
-    label: "Worker script",
-    path: "/workers/scripts",
-    doc: "A deployed Worker script.",
-    scope: "account",
-  }, (resource) =>
-    resource
-      .field("id", Field.string("Script ID").identifier().immutable())
-      .field("name", Field.string("Script name").humanLabel())
-      .field("created_at", Field.datetime("Creation time").immutable().optional())
-      .operation("list", {
+  }),
+  remote: { baseUrl: Runtime.config("apiBaseUrl") },
+  resources: {
+    script: {
+      label: "Worker script",
+      path: "/workers/scripts",
+      doc: "A deployed Worker script.",
+      scope: "account",
+      fields: {
+        id: Field.string("Script ID").identifier().immutable(),
+        name: Field.string("Script name").humanLabel(),
+        created_at: Field.datetime("Creation time").immutable().optional(),
+      },
+      operations: {
+        list: {
         summary: "List Worker scripts",
         http: { method: "GET", path: "" },
         output: Shape.list("script"),
-        permission: "workers:read",
+        requires: { permissions: ["workers:read"] },
         surfaces: {
           cli: { command: "workers script list" },
           docs: true,
           dashboard: { view: "table" },
           agent: true,
         },
-      })
-  )
-  .command("deploy", Command.workflow({
-    summary: "Deploy a Worker",
-    input: Shape.object({
-      entrypoint: Field.string("Entrypoint file").required(),
-      environment: Field.string("Environment").optional(),
-      dry_run: Field.boolean("Validate without publishing").optional(),
-    }),
-    output: Shape.object({
-      deployment_id: Field.string("Deployment ID").required(),
-      url: Field.string("Deployment URL").optional(),
-    }),
-    handler: "wrangler.deploy",
-    steps: [
-      { id: "bundle", label: "Bundle local source", uses: "local" },
-      { id: "upload", label: "Upload assets", uses: "api" },
-      { id: "activate", label: "Activate deployment", uses: "api" },
-    ],
-    permission: "workers:edit",
-    surfaces: {
-      cli: { command: "deploy <entrypoint>" },
-      docs: true,
-      agent: true,
-      dashboard: { view: "action", placement: "page" },
-      openapi: false,
+        },
+      },
     },
-  }))
-  .command("dev", Command.local({
-    family: "dev",
-    summary: "Run a local development server",
-    input: Shape.object({
-      entrypoint: Field.string("Entrypoint file").required(),
+  },
+  commands: {
+    deploy: Command.workflow({
+      summary: "Deploy a Worker",
+      input: Shape.object({
+        entrypoint: Field.string("Entrypoint file").required(),
+        environment: Field.string("Environment").optional(),
+        dry_run: Field.boolean("Validate without publishing").optional(),
+      }),
+      output: Shape.object({
+        deployment_id: Field.string("Deployment ID").required(),
+        url: Field.string("Deployment URL").optional(),
+      }),
+      handler: "wrangler.deploy",
+      steps: [
+        { id: "bundle", label: "Bundle local source", uses: "local" },
+        { id: "upload", label: "Upload assets", uses: "api" },
+        { id: "activate", label: "Activate deployment", uses: "api" },
+      ],
+      requires: { permissions: ["workers:edit"] },
+      surfaces: {
+        cli: { command: "deploy <entrypoint>" },
+        docs: true,
+        agent: true,
+        dashboard: { view: "action", placement: "page" },
+        openapi: false,
+      },
     }),
-    handler: "wrangler.dev",
-    needs: ["filesystem", "runtime"],
-    surfaces: {
-      cli: { command: "dev <entrypoint>" },
-      docs: true,
-      agent: false,
-      dashboard: false,
-      openapi: false,
+    dev: Command.local({
+      family: "dev",
+      summary: "Run a local development server",
+      input: Shape.object({
+        entrypoint: Field.string("Entrypoint file").required(),
+      }),
+      handler: "wrangler.dev",
+      needs: ["filesystem", "runtime"],
+      surfaces: {
+        cli: { command: "dev <entrypoint>" },
+        docs: true,
+        agent: false,
+        dashboard: false,
+        openapi: false,
+      },
+    }),
+  },
+  bindings: {
+    kv_namespaces: {
+      doc: "KV namespaces bound to the Worker.",
+      fields: Shape.object({
+        binding: Field.string("Variable name in code").required(),
+        id: Field.string("KV namespace id").required(),
+      }),
     },
-  }))
-  .binding({
-    key: "kv_namespaces",
-    doc: "KV namespaces bound to the Worker.",
-    fields: Shape.object({
-      binding: Field.string("Variable name in code").required(),
-      id: Field.string("KV namespace id").required(),
-    }),
-  });
+  },
+});
 ```
 
-The class API is authoring sugar. `@lili/product` must normalize it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
+The authoring API is data-first. `@lili/product` normalizes `defineProduct(...)` into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
 General config and bindings are separate authoring concepts. Config fields such as `apiBaseUrl`, `accountId`, output preferences, telemetry posture, update channel, or release defaults are durable non-secret product preferences that lower into the core config primitive. Bindings such as `kv_namespaces` are product-specific structured declarations that may project to deployment config, docs, command manifests, and later platform adapters. Both can appear in the generated config JSON Schema, but they are not the same catalog node.
 

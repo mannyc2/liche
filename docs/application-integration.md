@@ -95,40 +95,41 @@ Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`,
 ## Example schema
 
 ```ts
-import { Auth, Command, Config, Field, Product, Runtime, Shape } from "@lili/product";
+import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
-export default Product.create({
+export default defineProduct({
   id: "myapp",
   name: "My App",
   version: "1.0.0",
   description: "Project deployment and operations.",
-})
-  .auth(Auth.bearer({
+  auth: Auth.bearer({
     id: "myapp",
     sources: [Auth.token.env("MYAPP_TOKEN")],
-  }))
-  .config(Config.object({
+  }),
+  config: Config.object({
     files: ["myapp.jsonc", "myapp.yaml", "myapp.toml"],
     fields: Shape.object({
       apiBaseUrl: Field.url("API base URL").default("https://api.myapp.dev"),
       defaultProject: Field.string("Default project ID").optional(),
     }),
-  }))
-  .remote({ baseUrl: Runtime.config("apiBaseUrl") })
-  .permissions({
+  }),
+  remote: { baseUrl: Runtime.config("apiBaseUrl") },
+  permissions: {
     "projects:read": Auth.permission.scope("projects.read"),
     "projects:deploy": Auth.permission.scope("projects.deploy"),
-  })
-  .resource("project", {
-    label: "Project",
-    path: "/api/projects",
-    doc: "A deployed project.",
-    scope: "account",
-  }, (resource) =>
-    resource
-      .field("id", Field.string("Project ID").identifier().immutable())
-      .field("name", Field.string("Project name").humanLabel())
-      .operation("list", {
+  },
+  resources: {
+    project: {
+      label: "Project",
+      path: "/api/projects",
+      doc: "A deployed project.",
+      scope: "account",
+      fields: {
+        id: Field.string("Project ID").identifier().immutable(),
+        name: Field.string("Project name").humanLabel(),
+      },
+      operations: {
+        list: {
         summary: "List projects",
         http: { method: "GET", path: "" },
         output: Shape.list("project"),
@@ -138,26 +139,31 @@ export default Product.create({
           docs: true,
           openapi: true,
         },
-      })
-  )
-  .command("deploy", Command.workflow({
-    summary: "Deploy a project",
-    input: Shape.object({
-      projectId: Field.string("Project ID").required(),
-      target: Field.string("Deploy target").optional(),
-    }),
-    output: Shape.object({
-      deploymentId: Field.string("Deployment ID").required(),
-    }),
-    handler: "myapp.deploy",
-    requires: { auth: true, permissions: ["projects:deploy"] },
-    surfaces: {
-      cli: { command: "deploy <projectId>" },
-      docs: true,
-      agent: true,
-      openapi: false,
+        },
+      },
     },
-  }));
+  },
+  commands: {
+    deploy: Command.workflow({
+      summary: "Deploy a project",
+      input: Shape.object({
+        projectId: Field.string("Project ID").required(),
+        target: Field.string("Deploy target").optional(),
+      }),
+      output: Shape.object({
+        deploymentId: Field.string("Deployment ID").required(),
+      }),
+      handler: "myapp.deploy",
+      requires: { auth: true, permissions: ["projects:deploy"] },
+      surfaces: {
+        cli: { command: "deploy <projectId>" },
+        docs: true,
+        agent: true,
+        openapi: false,
+      },
+    }),
+  },
+});
 ```
 
 The app implements `GET /api/projects` and the `myapp.deploy` handler manually in MVP. The implementation must conform to the schema.

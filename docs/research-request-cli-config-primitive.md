@@ -228,25 +228,27 @@ Research and recommend the higher-level `@lili/product` API.
 Candidate:
 
 ```ts
-Product.create({
+defineProduct({
   id: "workers",
   name: "Workers",
   version: "1.0.0",
-})
-  .config(Config.object({
+  config: Config.object({
     files: ["workers.json", "workers.yaml", "wrangler.jsonc"],
     fields: Shape.object({
       accountId: Field.string("Default account ID").optional(),
       apiBaseUrl: Field.url("API base URL").default("https://api.cloudflare.com/client/v4"),
     }),
-  }))
-  .binding(Config.list("kv_namespaces", {
-    doc: "KV namespaces bound to the Worker.",
-    fields: Shape.object({
-      binding: Field.string("Variable name in code"),
-      id: Field.string("KV namespace ID"),
-    }),
-  }));
+  }),
+  bindings: {
+    kv_namespaces: {
+      doc: "KV namespaces bound to the Worker.",
+      fields: Shape.object({
+        binding: Field.string("Variable name in code"),
+        id: Field.string("KV namespace ID"),
+      }),
+    },
+  },
+})
 ```
 
 Questions:

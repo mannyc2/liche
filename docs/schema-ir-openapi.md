@@ -243,32 +243,43 @@ The manifest supports drift checks and later release provenance. It must not con
 ## Example product capability
 
 ```ts
-Product.create({
+defineProduct({
   id: "workers",
   name: "Workers",
   version: "1.0.0",
   description: "Build and deploy serverless applications.",
-})
-  .resource("script", { label: "Worker script", path: "/workers/scripts", doc: "A deployed Worker script.", scope: "account" }, (resource) =>
-    resource
-      .field("id", Field.string("Script ID").identifier().immutable())
-      .field("name", Field.string("Script name").humanLabel())
-      .operation("list", {
+  resources: {
+    script: {
+      label: "Worker script",
+      path: "/workers/scripts",
+      doc: "A deployed Worker script.",
+      scope: "account",
+      fields: {
+        id: Field.string("Script ID").identifier().immutable(),
+        name: Field.string("Script name").humanLabel(),
+      },
+      operations: {
+        list: {
         summary: "List Worker scripts",
         http: { method: "GET", path: "" },
         output: Shape.list("script"),
-        permission: "workers:read",
+        requires: { permissions: ["workers:read"] },
         surfaces: { cli: { command: "workers script list" }, openapi: true, docs: true },
-      })
-  )
-  .command("dev", Command.local({
-    family: "dev",
-    summary: "Run a local development server",
-    input: Shape.object({ entrypoint: Field.string("Entrypoint file").required() }),
-    handler: "wrangler.dev",
-    needs: ["filesystem", "runtime"],
-    surfaces: { cli: { command: "dev <entrypoint>" }, docs: true, openapi: false, agent: false },
-  }));
+        },
+      },
+    },
+  },
+  commands: {
+    dev: Command.local({
+      family: "dev",
+      summary: "Run a local development server",
+      input: Shape.object({ entrypoint: Field.string("Entrypoint file").required() }),
+      handler: "wrangler.dev",
+      needs: ["filesystem", "runtime"],
+      surfaces: { cli: { command: "dev <entrypoint>" }, docs: true, openapi: false, agent: false },
+    }),
+  },
+});
 ```
 
 ## Canonical digest rules

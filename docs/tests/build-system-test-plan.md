@@ -31,7 +31,7 @@ Do not start with OpenAPI, package rendering, or a broad generator framework.
 
 Before implementing OpenAPI, refactor `@lili/product` around product-schema authoring:
 
-- `Product.create()` with sibling resources, commands, and bindings
+- `defineProduct()` with sibling resources, commands, and bindings
 - static class helpers for `Field`, `Shape`, and `Command`
 - normalized `Catalog` and flattened `Capability[]`
 - first-class field metadata in shape projections

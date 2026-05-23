@@ -4,7 +4,6 @@ import {
   Command,
   Config,
   Field,
-  Product,
   Runtime,
   Shape,
   buildAuthManifest,
@@ -14,6 +13,7 @@ import {
   resolveListShape,
 } from '../src/index.js'
 import type { CommandCapability, ResourceOperationCapability } from '../src/index.js'
+import { Product } from '../src/product.js'
 
 function workersProduct() {
   return Product.create({

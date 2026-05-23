@@ -3,13 +3,13 @@ import {
   Auth,
   Command,
   Field,
-  Product,
   Shape,
   canonicalDigest,
   generateOpenapi,
   normalizeProduct,
 } from '../src/index.js'
 import type { Catalog } from '../src/index.js'
+import { Product } from '../src/product.js'
 import workersProduct from './fixtures/workers.product.js'
 
 function generate(catalog: Catalog, surfaceId = 'openapi'): string {

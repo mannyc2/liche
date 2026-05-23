@@ -4,9 +4,9 @@ import {
   Command,
   Config,
   Field,
-  Product,
   Shape,
   canonicalDigest,
+  defineProduct,
   generateAgentReference,
   generateCommandManifest,
   generateConfigSchema,
@@ -18,13 +18,12 @@ import {
 import workersProduct from './fixtures/workers.product.js'
 
 function agentProduct() {
-  return Product.create({
+  return defineProduct({
     id: 'acme',
     name: 'Acme',
     version: '1.0.0',
     description: 'Acme operations.',
-  })
-    .auth(Auth.bearer({
+    auth: Auth.bearer({
       id: 'acme',
       sources: [
         Auth.token.env('ACME_TOKEN', {
@@ -32,17 +31,18 @@ function agentProduct() {
           scopes: ['deployments.write'],
         }),
       ],
-    }))
-    .permissions({
+    }),
+    permissions: {
       'deployments:write': Auth.permission.scope('deployments.write'),
-    })
-    .context('org', Auth.context.env({
-      label: 'Organization',
-      select: { flag: 'org', env: 'ACME_ORG_ID' },
-    }))
-    .command(
-      'deploy',
-      Command.remoteHttp({
+    },
+    contexts: {
+      org: Auth.context.env({
+        label: 'Organization',
+        select: { flag: 'org', env: 'ACME_ORG_ID' },
+      }),
+    },
+    commands: {
+      deploy: Command.remoteHttp({
         summary: 'Deploy a project',
         effects: { kind: 'write', idempotent: false },
         policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
@@ -65,15 +65,13 @@ function agentProduct() {
         },
         surfaces: { agent: true },
       }),
-    )
-    .command(
-      'dev',
-      Command.local({
+      dev: Command.local({
         summary: 'Start dev server',
         input: Shape.object({ port: Field.int('Port').optional() }),
         handler: 'dev.run',
       }),
-    )
+    },
+  })
 }
 
 function options(catalog: ReturnType<typeof normalizeProduct>) {
@@ -188,15 +186,19 @@ describe('generated config schema', () => {
     expect(schema.properties.kv_namespaces.items.properties.id.description).toBe('KV namespace id')
 
     const configOnly = normalizeProduct(
-      Product.create({ id: 'cfg', name: 'Cfg', version: '1.0.0' })
-        .auth(Auth.none())
-        .config(Config.object({
+      defineProduct({
+        id: 'cfg',
+        name: 'Cfg',
+        version: '1.0.0',
+        auth: Auth.none(),
+        config: Config.object({
           fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
-        })),
+        }),
+      }),
     )
     expect(shouldGenerateConfigSchema(configOnly)).toBe(true)
 
-    const noBindings = normalizeProduct(Product.create({ id: 'p', name: 'P', version: '1.0.0' }).auth(Auth.none()))
+    const noBindings = normalizeProduct(defineProduct({ id: 'p', name: 'P', version: '1.0.0', auth: Auth.none() }))
     expect(shouldGenerateConfigSchema(noBindings)).toBe(false)
   })
 })

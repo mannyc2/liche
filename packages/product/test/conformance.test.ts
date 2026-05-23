@@ -1,26 +1,35 @@
 import { describe, expect, test } from 'bun:test'
-import { Auth, Command, Field, Product, Runtime, Shape, conformProduct } from '../src/index.js'
+import { Auth, Command, Field, Runtime, Shape, conformProduct, defineProduct } from '../src/index.js'
 
 function remoteProduct() {
-  return Product.create({ id: 'remote-fixture', name: 'Remote Fixture', version: '1.0.0' })
-    .auth(Auth.none())
-    .remote({ baseUrl: Runtime.env('REMOTE_FIXTURE_URL') })
-    .resource('script', { label: 'Script', path: '/scripts' }, (script) =>
-      script
-        .field('id', Field.string('Script ID').identifier())
-        .field('name', Field.string('Script name'))
-        .operation('list', {
+  return defineProduct({
+    id: 'remote-fixture',
+    name: 'Remote Fixture',
+    version: '1.0.0',
+    auth: Auth.none(),
+    remote: { baseUrl: Runtime.env('REMOTE_FIXTURE_URL') },
+    resources: {
+      script: {
+        label: 'Script',
+        path: '/scripts',
+        fields: {
+          id: Field.string('Script ID').identifier(),
+          name: Field.string('Script name'),
+        },
+        operations: {
+          list: {
           summary: 'List scripts',
           effects: { kind: 'read', idempotent: true },
           policy: { conformanceEligible: true },
           examples: [{ command: 'remote-fixture script list --json' }],
           http: { method: 'GET', path: '/scripts' },
           output: Shape.list('script'),
-        }),
-    )
-    .command(
-      'delete',
-      Command.remoteHttp({
+          },
+        },
+      },
+    },
+    commands: {
+      delete: Command.remoteHttp({
         summary: 'Delete script',
         effects: { kind: 'delete', idempotent: false },
         policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
@@ -29,16 +38,19 @@ function remoteProduct() {
         output: Shape.object({ deleted: Field.boolean('Deleted') }),
         http: { method: 'DELETE', path: '/scripts/{id}', bind: { path: ['id'] } },
       }),
-    )
+    },
+  })
 }
 
 function authProduct() {
-  return Product.create({ id: 'auth-fixture', name: 'Auth Fixture', version: '1.0.0' })
-    .remote({ baseUrl: Runtime.env('AUTH_FIXTURE_URL') })
-    .auth(Auth.bearer({ id: 'acme', sources: [Auth.token.env('ACME_TOKEN')] }))
-    .command(
-      'purge',
-      Command.remoteHttp({
+  return defineProduct({
+    id: 'auth-fixture',
+    name: 'Auth Fixture',
+    version: '1.0.0',
+    remote: { baseUrl: Runtime.env('AUTH_FIXTURE_URL') },
+    auth: Auth.bearer({ id: 'acme', sources: [Auth.token.env('ACME_TOKEN')] }),
+    commands: {
+      purge: Command.remoteHttp({
         summary: 'Purge',
         effects: { kind: 'write', idempotent: false },
         policy: { conformanceEligible: true },
@@ -47,7 +59,8 @@ function authProduct() {
         requires: { auth: true },
         http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'], body: [] } },
       }),
-    )
+    },
+  })
 }
 
 describe('product conformance', () => {

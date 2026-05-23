@@ -7,22 +7,24 @@ import {
   Auth,
   Command,
   Field,
-  Product,
   Shape,
   canonicalDigest,
+  defineProduct,
   generateMcpTools,
   normalizeProduct,
 } from '../src/index.js'
 
 function productWithAgentTool() {
-  return Product.create({ id: 'acme', name: 'Acme', version: '1.0.0' })
-    .auth(Auth.bearer({
+  return defineProduct({
+    id: 'acme',
+    name: 'Acme',
+    version: '1.0.0',
+    auth: Auth.bearer({
       id: 'acme',
       sources: [Auth.token.env('ACME_TOKEN', { label: 'Bearer token' })],
-    }))
-    .command(
-      'deploy project',
-      Command.remoteHttp({
+    }),
+    commands: {
+      'deploy project': Command.remoteHttp({
         summary: 'Deploy a project',
         http: {
           method: 'POST',
@@ -34,7 +36,8 @@ function productWithAgentTool() {
         requires: { auth: true },
         surfaces: { agent: true },
       }),
-    )
+    },
+  })
 }
 
 function expectSchema(schema: { safeParse: (value: unknown) => { success: boolean; error?: unknown } }, value: unknown) {

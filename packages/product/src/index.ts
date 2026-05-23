@@ -98,13 +98,17 @@ export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
 
 export type { ProductNotice, ProductOpsSpec, ProductPackageManager } from './ops.js'
 
-export { Product, ResourceBuilder } from './product.js'
+export { defineProduct } from './product.js'
 export type {
   BindingSpec,
+  DefinedProduct,
+  ProductDefinition,
   ProductCommandEntry,
   ProductInit,
+  ProductResource,
+  ProductResourceDefinition,
+  ProductResourceDefinitionEntry,
   ProductScope,
-  ResourceBuilderFn,
   ResourceInit,
   ResourceOperationEntry,
   ResourceOperationSpec,

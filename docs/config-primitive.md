@@ -174,43 +174,46 @@ Secrets and stored sessions belong to auth/session primitives. Cache and machine
 
 ## Product API target
 
-Product exposes both `.config(...)` and `.binding(...)`.
+Product exposes config and bindings as sibling fields on `defineProduct(...)`.
 
 ```ts
-import { Auth, Command, Config, Field, Product, Runtime, Shape } from "@lili/product";
+import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
-export default Product.create({
+export default defineProduct({
   id: "workers",
   name: "Workers",
   version: "1.0.0",
-})
-  .auth(Auth.none())
-  .config(Config.object({
+  auth: Auth.none(),
+  config: Config.object({
     files: ["workers.jsonc", "workers.yaml", "workers.toml"],
     fields: Shape.object({
       accountId: Field.string("Default account ID").optional(),
       apiBaseUrl: Field.url("API base URL").default("https://api.example.com"),
       outputFormat: Field.enum(["text", "json"]).default("text"),
     }),
-  }))
-  .remote({
+  }),
+  remote: {
     baseUrl: Runtime.config("apiBaseUrl"),
-  })
-  .binding({
-    key: "kv_namespaces",
-    doc: "KV namespaces bound to the Worker.",
-    fields: Shape.object({
-      binding: Field.string("Variable name in code").required(),
-      id: Field.string("KV namespace ID").required(),
+  },
+  bindings: {
+    kv_namespaces: {
+      doc: "KV namespaces bound to the Worker.",
+      fields: Shape.object({
+        binding: Field.string("Variable name in code").required(),
+        id: Field.string("KV namespace ID").required(),
+      }),
+    },
+  },
+  commands: {
+    deploy: Command.remoteHttp({
+      summary: "Deploy a Worker",
+      http: { method: "POST", path: "/deployments" },
+      input: Shape.object({
+        accountId: Field.string("Account ID").fromConfig("accountId").required(),
+      }),
     }),
-  })
-  .command("deploy", Command.remoteHttp({
-    summary: "Deploy a Worker",
-    http: { method: "POST", path: "/deployments" },
-    input: Shape.object({
-      accountId: Field.string("Account ID").fromConfig("accountId").required(),
-    }),
-  }));
+  },
+});
 ```
 
 Bindings are not folded into generic config. A binding such as `kv_namespaces` may project to deployment config, reference docs, command manifests, or platform adapters. A general config field such as `apiBaseUrl` or `defaultOrg` is a durable CLI/product preference. They share generated schema and discovery machinery, but they are not the same catalog node.
@@ -273,7 +276,7 @@ Verification:
 ### Slice B: Product config catalog
 
 - Add `Config` export in `@lili/product`.
-- Add `Product.config(...)`.
+- Add `defineProduct({ config })`.
 - Normalize config separately from bindings.
 - Generate config JSON Schema from general config and bindings.
 - Add config field docs/reference output.

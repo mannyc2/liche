@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Auth, Command, Config, Field, Product, Runtime, Shape, canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
+import { Auth, Command, Config, Field, Runtime, Shape, canonicalDigest, defineProduct, generateCli, normalizeProduct } from '../src/index.js'
 import type { RuntimeProduct } from '../src/index.js'
 import workersAuthProduct from './fixtures/workers-auth.product.js'
 import workersProduct from './fixtures/workers.product.js'
@@ -23,14 +23,13 @@ function generate(product: RuntimeProduct): string {
 }
 
 function oauthProduct(): RuntimeProduct {
-  return Product.create({
+  return defineProduct({
     id: 'workers-oauth',
     name: 'Workers OAuth',
     version: '1.0.0',
     description: 'Workers fixture with OAuth device login and file sessions.',
-  })
-    .remote({ baseUrl: Runtime.literal('https://api.example.test') })
-    .auth(Auth.oauthDevice({
+    remote: { baseUrl: Runtime.literal('https://api.example.test') },
+    auth: Auth.oauthDevice({
       id: 'acme',
       token: { kind: 'bearer' },
       clientId: 'acme-cli',
@@ -45,38 +44,45 @@ function oauthProduct(): RuntimeProduct {
       ],
       identity: Auth.identity({ http: { method: 'GET', path: '/me' }, subject: 'id', label: 'email' }),
       commands: Auth.commands({ login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' }),
-    }))
-    .permissions({
+    }),
+    permissions: {
       'cache:write': Auth.permission.scope('cache.write'),
-    })
-    .context('org', Auth.context.env({ label: 'Organization', select: { flag: 'org', env: 'ACME_ORG_ID' } }))
-    .command('purge', Command.remoteHttp({
-      summary: 'Purge cache for an org',
-      http: { method: 'POST', path: '/orgs/{org_id}/purge_cache' },
-      requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
-      surfaces: { agent: true },
-    }))
+    },
+    contexts: {
+      org: Auth.context.env({ label: 'Organization', select: { flag: 'org', env: 'ACME_ORG_ID' } }),
+    },
+    commands: {
+      purge: Command.remoteHttp({
+        summary: 'Purge cache for an org',
+        http: { method: 'POST', path: '/orgs/{org_id}/purge_cache' },
+        requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
+        surfaces: { agent: true },
+      }),
+    },
+  })
 }
 
 function optionalConfigRemoteProduct(): RuntimeProduct {
-  return Product.create({
+  return defineProduct({
     id: 'config-remote',
     name: 'Config Remote',
     version: '1.0.0',
-  })
-    .auth(Auth.none())
-    .config(Config.object({
+    auth: Auth.none(),
+    config: Config.object({
       files: ['config-remote.jsonc'],
       fields: Shape.object({
         apiBaseUrl: Field.string('API base URL').optional(),
       }),
       scopes: { project: { discoverUpwards: true }, user: false },
-    }))
-    .remote({ baseUrl: Runtime.config('apiBaseUrl') })
-    .command('ping', Command.remoteHttp({
-      summary: 'Ping the remote API',
-      http: { method: 'GET', path: '/ping' },
-    }))
+    }),
+    remote: { baseUrl: Runtime.config('apiBaseUrl') },
+    commands: {
+      ping: Command.remoteHttp({
+        summary: 'Ping the remote API',
+        http: { method: 'GET', path: '/ping' },
+      }),
+    },
+  })
 }
 
 describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertions', () => {

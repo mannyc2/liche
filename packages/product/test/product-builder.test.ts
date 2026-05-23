@@ -5,10 +5,9 @@ import {
   Config,
   Field,
   FieldBuilder,
-  Product,
-  ResourceBuilder,
   Runtime,
   Shape,
+  defineProduct,
 } from '../src/index.js'
 
 describe('Field builder', () => {
@@ -169,9 +168,9 @@ describe('Command factories', () => {
   })
 })
 
-describe('Product builder', () => {
-  test('Product.create returns a Product with kind="lili.product"', () => {
-    const product = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+describe('defineProduct', () => {
+  test('returns a declarative product record with kind="lili.product"', () => {
+    const product = defineProduct({ id: 'workers', name: 'Workers', version: '1.0.0' })
     expect(product.kind).toBe('lili.product')
     expect(product.id).toBe('workers')
     expect(product.name).toBe('Workers')
@@ -181,22 +180,32 @@ describe('Product builder', () => {
     expect(product.bindings).toEqual([])
   })
 
-  test('resource() registers a resource and invokes the builder callback', () => {
-    const product = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (r) =>
-        r
-          .field('id', Field.string('Script ID').identifier().immutable())
-          .field('name', Field.string('Script name').humanLabel())
-          .operation('list', {
-            summary: 'List Worker scripts',
-            http: { method: 'GET', path: '' },
-            output: Shape.list('script'),
-          }),
-      )
+  test('resources are declared as object data, not builder callbacks', () => {
+    const product = defineProduct({
+      id: 'workers',
+      name: 'Workers',
+      version: '1.0.0',
+      resources: {
+        script: {
+          label: 'Worker script',
+          path: '/workers/scripts',
+          fields: {
+            id: Field.string('Script ID').identifier().immutable(),
+            name: Field.string('Script name').humanLabel(),
+          },
+          operations: {
+            list: {
+              summary: 'List Worker scripts',
+              http: { method: 'GET', path: '' },
+              output: Shape.list('script'),
+            },
+          },
+        },
+      },
+    })
 
     expect(product.resources).toHaveLength(1)
     const resource = product.resources[0]!
-    expect(resource).toBeInstanceOf(ResourceBuilder)
     expect(resource.id).toBe('script')
     expect(resource.label).toBe('Worker script')
     expect(resource.path).toBe('/workers/scripts')
@@ -207,18 +216,25 @@ describe('Product builder', () => {
     expect(resource.operations[0]!.spec.output).toEqual({ kind: 'list', resourceId: 'script' })
   })
 
-  test('command() and binding() chain alongside resources, preserving declaration order', () => {
-    const product = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .command('deploy', Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }))
-      .command('dev', Command.local({ summary: 'Dev server', handler: 'wrangler.dev' }))
-      .binding({
-        key: 'kv_namespaces',
-        doc: 'KV namespaces bound to the Worker.',
-        fields: Shape.object({
-          binding: Field.string('Variable name in code'),
-          id: Field.string('KV namespace id'),
-        }),
-      })
+  test('commands and bindings are declared as sibling maps, preserving object order', () => {
+    const product = defineProduct({
+      id: 'workers',
+      name: 'Workers',
+      version: '1.0.0',
+      commands: {
+        deploy: Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }),
+        dev: Command.local({ summary: 'Dev server', handler: 'wrangler.dev' }),
+      },
+      bindings: {
+        kv_namespaces: {
+          doc: 'KV namespaces bound to the Worker.',
+          fields: Shape.object({
+            binding: Field.string('Variable name in code'),
+            id: Field.string('KV namespace id'),
+          }),
+        },
+      },
+    })
 
     expect(product.commands.map((c) => c.id)).toEqual(['deploy', 'dev'])
     expect(product.commands[0]!.spec.execution.mode).toBe('hybrid-workflow')
@@ -228,13 +244,13 @@ describe('Product builder', () => {
   })
 
   test('optional product init fields read as undefined when not provided', () => {
-    const product = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
+    const product = defineProduct({ id: 'workers', name: 'Workers', version: '1.0.0' })
     expect(product.description).toBeUndefined()
     expect(product.scope).toBeUndefined()
   })
 
   test('scope and description flow through when provided', () => {
-    const product = Product.create({
+    const product = defineProduct({
       id: 'workers',
       name: 'Workers',
       version: '1.0.0',
@@ -254,9 +270,13 @@ describe('Product builder', () => {
       scopes: { project: { discoverUpwards: true }, user: false },
     })
     const remote = { baseUrl: Runtime.config('apiBaseUrl') }
-    const product = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .config(config)
-      .remote(remote)
+    const product = defineProduct({
+      id: 'workers',
+      name: 'Workers',
+      version: '1.0.0',
+      config,
+      remote,
+    })
 
     expect(product.configSpec).toBe(config)
     expect(product.remoteSpec).toBe(remote)
@@ -389,32 +409,36 @@ describe('Auth authoring API', () => {
     })
   })
 
-  test('Product.auth() stores the spec and rejects a second call', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' }).auth(Auth.none())
+  test('defineProduct auth stores the spec', () => {
+    const product = defineProduct({ id: 'p', name: 'P', version: '1.0.0', auth: Auth.none() })
     expect(product.authSpec).toEqual({ kind: 'none' })
-    expect(() => product.auth(Auth.bearer({ id: 'x', sources: [Auth.token.env('Y')] }))).toThrow(/already declared auth/)
   })
 
-  test('Product.context() preserves declaration order and rejects duplicate ids', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' })
-      .context('org', Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }))
-      .context('project', Auth.context.env({ select: { flag: 'project', env: 'ACME_PROJECT_ID' } }))
+  test('defineProduct contexts preserve declaration order', () => {
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '1.0.0',
+      contexts: {
+        org: Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }),
+        project: Auth.context.env({ select: { flag: 'project', env: 'ACME_PROJECT_ID' } }),
+      },
+    })
     expect(product.contexts.map((c) => c.id)).toEqual(['org', 'project'])
-    expect(() =>
-      product.context('org', Auth.context.env({ select: { flag: 'org', env: 'X' } })),
-    ).toThrow(/already declared context/)
   })
 
-  test('Product.permissions() stores product permissions and rejects duplicate ids', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' }).permissions({
-      read: Auth.permission.scope('read.scope'),
+  test('defineProduct permissions stores product permissions', () => {
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '1.0.0',
+      permissions: { read: Auth.permission.scope('read.scope') },
     })
     expect(product.permissionSpecs).toEqual({ read: { kind: 'scope', scope: 'read.scope' } })
-    expect(() => product.permissions({ read: Auth.permission.scope('read.again') })).toThrow(/already declared permission/)
   })
 
-  test('Product without .auth() leaves authSpec undefined (Commit 3 does not enforce)', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '1.0.0' })
+  test('product without auth leaves authSpec undefined', () => {
+    const product = defineProduct({ id: 'p', name: 'P', version: '1.0.0' })
     expect(product.authSpec).toBeUndefined()
     expect(product.contexts).toEqual([])
     expect(product.permissionSpecs).toEqual({})

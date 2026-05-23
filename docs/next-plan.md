@@ -160,13 +160,16 @@ Verification:
 
 Hard-cut `@lili/product` from operation-contract authoring to product-schema authoring before adding OpenAPI.
 
+Status: public Product authoring now starts from `defineProduct({ ... })`, with resources, commands, config, remote, auth, contexts, permissions, ops, and bindings declared as sibling data fields. The old `Product.create(...).resource(...).command(...)` builder is no longer exported from the package root; remaining internal tests that still use it are compatibility scaffolding to delete in the follow-up cleanup.
+
 Public API:
 
 ```txt
-Product.create(...)
-  .resource(...)
-  .command(...)
-  .binding(...)
+defineProduct({
+  resources,
+  commands,
+  bindings
+})
 
 Field.*
 Shape.*
@@ -186,7 +189,7 @@ Runtime product schema classes
 
 Implementation requirements:
 
-- replace the old `Contract.create(...).operation(...)` fixture path with `Product.create(...).resource(...).command(...)`
+- replace the old `Contract.create(...).operation(...)` fixture path with `defineProduct({ resources, commands })`
 - model resources, commands, and bindings as siblings
 - preserve field metadata in normalized shape projections
 - normalize surface defaults once (`cli`, `docs`, `dashboard`, `agent`, `openapi`)
@@ -355,7 +358,7 @@ Core requirements:
 Product requirements:
 
 - public `@lili/product` `Config` helper
-- `Product.config(...)` as a sibling of `.binding(...)`
+- `defineProduct({ config })` as a sibling of `bindings`
 - normalized catalog config node
 - generated config JSON Schema containing general config fields and bindings
 - config lints that reject secret fields in general config

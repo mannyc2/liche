@@ -9,7 +9,7 @@ import type {
   CompileTarget,
 } from '@lili/build'
 import { generateToDir, type GenerateResult, type GenerateToDirOptions } from './generate.js'
-import type { Product } from './product.js'
+import type { RuntimeProduct } from './product.js'
 
 export type { BunBuildFn, CompilePlan, CompileTarget } from '@lili/build'
 
@@ -42,7 +42,7 @@ export type CompileProductFailure = {
 export type CompileProductResult = CompileProductSuccess | CompileProductFailure
 
 export async function compileProduct(
-  product: Product,
+  product: RuntimeProduct,
   options: CompileProductOptions,
   build?: BunBuildFn,
 ): Promise<CompileProductResult> {
