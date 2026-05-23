@@ -5,237 +5,304 @@ import {
   Config,
   DEFAULT_GENERATED_VOCABULARY,
   Field,
+  defineProduct,
   lintCatalog,
   normalizeProduct,
   Runtime,
   Shape,
   vocabulary,
 } from '../src/index.js'
-import { Product } from '../src/product.js'
+import type { ProductDefinition } from '../src/index.js'
 
-function lintProductInput(product: Product) {
+type ProductOverrides = Omit<ProductDefinition, 'id' | 'name' | 'version'> &
+  Partial<Pick<ProductDefinition, 'id' | 'name' | 'version'>>
+
+function testProduct(init: ProductOverrides = {}) {
   // Lints are auth-agnostic. Default to Auth.none() so each test stays focused
   // on its lint rule rather than the unrelated Phase 3D-A auth posture.
-  if (product.authSpec === undefined) product.auth(Auth.none())
-  return lintCatalog(normalizeProduct(product))
+  return defineProduct({
+    id: 'workers',
+    name: 'Workers',
+    version: '1.0.0',
+    auth: Auth.none(),
+    ...init,
+  })
+}
+
+function lintProductInput(init: ProductOverrides = {}) {
+  return lintCatalog(normalizeProduct(testProduct(init)))
 }
 
 describe('lintCatalog — vocabulary/verb', () => {
   test("resource operation verb 'info' fails vocabulary/verb when not in the active vocabulary", () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) =>
-        r.operation('info', {
-          summary: 'Info',
-          output: Shape.object({ id: Field.string('id') }),
-        }),
-    )
-    const issues = lintProductInput(p)
+    const issues = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '/scripts',
+          operations: {
+            info: {
+              summary: 'Info',
+              output: Shape.object({ id: Field.string('id') }),
+            },
+          },
+        },
+      },
+    })
     const issue = issues.find((i) => i.code === 'vocabulary/verb')
     expect(issue).toBeDefined()
     expect(issue?.recommendation).toContain("add 'info'")
   })
 
   test("default vocabulary verbs ('list','get','create','update','delete','run') are accepted", () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) =>
-        r.operation('list', {
-          summary: 'List',
-          output: Shape.list('script'),
-        }),
-    )
-    const issues = lintProductInput(p)
+    const issues = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '/scripts',
+          operations: {
+            list: {
+              summary: 'List',
+              output: Shape.list('script'),
+            },
+          },
+        },
+      },
+    })
     expect(issues.find((i) => i.code === 'vocabulary/verb')).toBeUndefined()
   })
 
   test('product vocabulary can extend the verb allowlist for resource operations', () => {
-    const p = Product.create({
-      id: 'workers',
-      name: 'Workers',
-      version: '1.0.0',
-      vocabulary: vocabulary({ verbs: ['purge'] }),
-    }).resource('script', { label: 'Script', path: '/scripts' }, (r) =>
-      r.operation('purge', {
-        summary: 'Purge',
-        output: Shape.object({ purged: Field.boolean('purged') }),
-      }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'vocabulary/verb')).toBeUndefined()
+    expect(
+      lintProductInput({
+        vocabulary: vocabulary({ verbs: ['purge'] }),
+        resources: {
+          script: {
+            label: 'Script',
+            path: '/scripts',
+            operations: {
+              purge: {
+                summary: 'Purge',
+                output: Shape.object({ purged: Field.boolean('purged') }),
+              },
+            },
+          },
+        },
+      }).find((i) => i.code === 'vocabulary/verb'),
+    ).toBeUndefined()
   })
 
   test('top-level commands are not subject to the verb allowlist', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'deploy',
-      Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'vocabulary/verb')).toBeUndefined()
+    expect(
+      lintProductInput({
+        commands: {
+          deploy: Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }),
+        },
+      }).find((i) => i.code === 'vocabulary/verb'),
+    ).toBeUndefined()
   })
 })
 
 describe('lintCatalog — product/id', () => {
   test('product id violating the stable-id pattern fails product/id-stable', () => {
-    const p = Product.create({ id: 'Workers!', name: 'Workers', version: '1.0.0' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/id-stable')).toBeDefined()
+    expect(
+      lintProductInput({ id: 'Workers!' }).find((i) => i.code === 'product/id-stable'),
+    ).toBeDefined()
   })
 
   test('empty product version fails product/version-required', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/version-required')).toBeDefined()
+    expect(
+      lintProductInput({ version: '' }).find((i) => i.code === 'product/version-required'),
+    ).toBeDefined()
   })
 })
 
 describe('lintCatalog — resource/path', () => {
   test('resource with empty path fails resource/path-required', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '' },
-      (r) =>
-        r.operation('list', {
-          summary: 'List',
-          output: Shape.list('script'),
-        }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'resource/path-required')).toBeDefined()
+    expect(
+      lintProductInput({
+        resources: {
+          script: {
+            label: 'Script',
+            path: '',
+            operations: {
+              list: {
+                summary: 'List',
+                output: Shape.list('script'),
+              },
+            },
+          },
+        },
+      }).find((i) => i.code === 'resource/path-required'),
+    ).toBeDefined()
   })
 })
 
 describe('lintCatalog — surface/openapi-on-local', () => {
   test('local command opted into surfaces.openapi fails the lint', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'dev',
-      Command.local({
-        summary: 'Dev',
-        handler: 'wrangler.dev',
-        surfaces: { openapi: true },
-      }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'surface/openapi-on-local')).toBeDefined()
+    expect(
+      lintProductInput({
+        commands: {
+          dev: Command.local({
+            summary: 'Dev',
+            handler: 'wrangler.dev',
+            surfaces: { openapi: true },
+          }),
+        },
+      }).find((i) => i.code === 'surface/openapi-on-local'),
+    ).toBeDefined()
   })
 
   test('local command without surfaces.openapi passes', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'dev',
-      Command.local({ summary: 'Dev', handler: 'wrangler.dev' }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'surface/openapi-on-local'),
+      lintProductInput({
+        commands: {
+          dev: Command.local({ summary: 'Dev', handler: 'wrangler.dev' }),
+        },
+      }).find((i) => i.code === 'surface/openapi-on-local'),
     ).toBeUndefined()
   })
 })
 
 describe('lintCatalog — command/execution-coherent', () => {
   test('hybrid-workflow opted into OpenAPI without an http trigger fails', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'deploy',
-      Command.workflow({
-        summary: 'Deploy',
-        handler: 'wrangler.deploy',
-        surfaces: { openapi: true },
-      }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'command/execution-coherent')).toBeDefined()
+    expect(
+      lintProductInput({
+        commands: {
+          deploy: Command.workflow({
+            summary: 'Deploy',
+            handler: 'wrangler.deploy',
+            surfaces: { openapi: true },
+          }),
+        },
+      }).find((i) => i.code === 'command/execution-coherent'),
+    ).toBeDefined()
   })
 
   test('hybrid-workflow with http trigger and surfaces.openapi=true passes', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'deploy',
-      Command.workflow({
-        summary: 'Deploy',
-        handler: 'wrangler.deploy',
-        http: { method: 'POST', path: '/deploy' },
-        surfaces: { openapi: true },
-      }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'command/execution-coherent'),
+      lintProductInput({
+        commands: {
+          deploy: Command.workflow({
+            summary: 'Deploy',
+            handler: 'wrangler.deploy',
+            http: { method: 'POST', path: '/deploy' },
+            surfaces: { openapi: true },
+          }),
+        },
+      }).find((i) => i.code === 'command/execution-coherent'),
     ).toBeUndefined()
   })
 })
 
 describe('lintCatalog — shape/unknown-resource-ref', () => {
   test('Shape.list pointing at an undeclared resource fails the lint', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) =>
-        r.operation('list', {
-          summary: 'List',
-          output: Shape.list('ghost'),
-        }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'shape/unknown-resource-ref')).toBeDefined()
+    expect(
+      lintProductInput({
+        resources: {
+          script: {
+            label: 'Script',
+            path: '/scripts',
+            operations: {
+              list: {
+                summary: 'List',
+                output: Shape.list('ghost'),
+              },
+            },
+          },
+        },
+      }).find((i) => i.code === 'shape/unknown-resource-ref'),
+    ).toBeDefined()
   })
 
   test('Shape.list pointing at a declared resource passes', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) =>
-        r.operation('list', {
-          summary: 'List',
-          output: Shape.list('script'),
-        }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'shape/unknown-resource-ref'),
+      lintProductInput({
+        resources: {
+          script: {
+            label: 'Script',
+            path: '/scripts',
+            operations: {
+              list: {
+                summary: 'List',
+                output: Shape.list('script'),
+              },
+            },
+          },
+        },
+      }).find((i) => i.code === 'shape/unknown-resource-ref'),
     ).toBeUndefined()
   })
 })
 
 describe('lintCatalog — config/runtime', () => {
   test('secret fields in general config fail config/no-secret-fields', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .config(Config.object({
-        fields: Shape.object({ apiToken: Field.string('API token').secret() }),
-      }))
-    expect(lintProductInput(p).find((i) => i.code === 'config/no-secret-fields')).toBeDefined()
+    expect(
+      lintProductInput({
+        config: Config.object({
+          fields: Shape.object({ apiToken: Field.string('API token').secret() }),
+        }),
+      }).find((i) => i.code === 'config/no-secret-fields'),
+    ).toBeDefined()
   })
 
   test('remote baseUrl must reference a declared config field when config-backed', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .config(Config.object({
+    const issue = lintProductInput({
+      config: Config.object({
         fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
-      }))
-      .remote({ baseUrl: Runtime.config('missingBaseUrl') })
-    const issue = lintProductInput(p).find((i) => i.code === 'catalog/remote-base-url')
+      }),
+      remote: { baseUrl: Runtime.config('missingBaseUrl') },
+    }).find((i) => i.code === 'catalog/remote-base-url')
     expect(issue?.message).toContain("unknown config field 'missingBaseUrl'")
   })
 })
 
 describe('lintCatalog — clean product', () => {
   test('workers-style product with resource + workflow + local command produces no issues', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .resource('script', { label: 'Worker script', path: '/workers/scripts' }, (r) =>
-        r
-          .field('id', Field.string('Script ID').identifier().immutable())
-          .field('name', Field.string('Script name').humanLabel())
-          .operation('list', {
-            summary: 'List Worker scripts',
-            effects: { kind: 'read', idempotent: true },
-            policy: { conformanceEligible: true },
-            examples: [{ command: 'workers script list --json' }],
-            http: { method: 'GET', path: '' },
-            output: Shape.list('script'),
-          }),
-      )
-      .command('deploy', Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }))
-      .command('dev', Command.local({ summary: 'Dev', handler: 'wrangler.dev' }))
-    expect(lintProductInput(p)).toEqual([])
+    expect(
+      lintProductInput({
+        resources: {
+          script: {
+            label: 'Worker script',
+            path: '/workers/scripts',
+            fields: {
+              id: Field.string('Script ID').identifier().immutable(),
+              name: Field.string('Script name').humanLabel(),
+            },
+            operations: {
+              list: {
+                summary: 'List Worker scripts',
+                effects: { kind: 'read', idempotent: true },
+                policy: { conformanceEligible: true },
+                examples: [{ command: 'workers script list --json' }],
+                http: { method: 'GET', path: '' },
+                output: Shape.list('script'),
+              },
+            },
+          },
+        },
+        commands: {
+          deploy: Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }),
+          dev: Command.local({ summary: 'Dev', handler: 'wrangler.dev' }),
+        },
+      }),
+    ).toEqual([])
   })
 })
 
 describe('lintCatalog — capability safety metadata', () => {
   test('agent or conformance visible capabilities must declare effects, policy, and examples', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .command('deploy', Command.remoteHttp({
-        summary: 'Deploy',
-        http: { method: 'POST', path: '/deploy' },
-        surfaces: { agent: true },
-      }))
-    expect(lintProductInput(p).map((issue) => issue.code)).toEqual([
+    expect(
+      lintProductInput({
+        commands: {
+          deploy: Command.remoteHttp({
+            summary: 'Deploy',
+            http: { method: 'POST', path: '/deploy' },
+            surfaces: { agent: true },
+          }),
+        },
+      }).map((issue) => issue.code),
+    ).toEqual([
       'capability/effects-required',
       'capability/policy-required',
       'capability/examples-required',
@@ -243,16 +310,20 @@ describe('lintCatalog — capability safety metadata', () => {
   })
 
   test('dangerous and delete capabilities require consistent policy flags', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' })
-      .command('deleteCache', Command.remoteHttp({
-        summary: 'Delete cache',
-        effects: { kind: 'delete' },
-        policy: { dangerous: false, requiresConfirmation: false, conformanceEligible: true },
-        examples: [{ command: 'workers delete-cache --json' }],
-        http: { method: 'DELETE', path: '/cache' },
-        surfaces: { agent: true },
-      }))
-    expect(lintProductInput(p).filter((issue) => issue.code === 'capability/policy-inconsistent')).toEqual([
+    expect(
+      lintProductInput({
+        commands: {
+          deleteCache: Command.remoteHttp({
+            summary: 'Delete cache',
+            effects: { kind: 'delete' },
+            policy: { dangerous: false, requiresConfirmation: false, conformanceEligible: true },
+            examples: [{ command: 'workers delete-cache --json' }],
+            http: { method: 'DELETE', path: '/cache' },
+            surfaces: { agent: true },
+          }),
+        },
+      }).filter((issue) => issue.code === 'capability/policy-inconsistent'),
+    ).toEqual([
       {
         code: 'capability/policy-inconsistent',
         path: 'capabilities[0].policy.dangerous',
@@ -264,8 +335,7 @@ describe('lintCatalog — capability safety metadata', () => {
 
 describe('lintCatalog — issue shape (code, path, message, recommendation)', () => {
   test('product/id-required has the expected code, path, and message', () => {
-    const p = Product.create({ id: '', name: 'Workers', version: '1.0.0' })
-    const issue = lintProductInput(p).find((i) => i.code === 'product/id-required')
+    const issue = lintProductInput({ id: '' }).find((i) => i.code === 'product/id-required')
     expect(issue).toEqual({
       code: 'product/id-required',
       path: 'product.id',
@@ -274,8 +344,9 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
   })
 
   test('product/version-required has the expected code, path, and message', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '' })
-    const issue = lintProductInput(p).find((i) => i.code === 'product/version-required')
+    const issue = lintProductInput({ version: '' }).find(
+      (i) => i.code === 'product/version-required',
+    )
     expect(issue).toEqual({
       code: 'product/version-required',
       path: 'product.version',
@@ -284,60 +355,71 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
   })
 
   test('product/id-stable mentions the offending id in the message', () => {
-    const p = Product.create({ id: 'Workers!', name: 'Workers', version: '1.0.0' })
-    const issue = lintProductInput(p).find((i) => i.code === 'product/id-stable')
+    const issue = lintProductInput({ id: 'Workers!' }).find((i) => i.code === 'product/id-stable')
     expect(issue?.path).toBe('product.id')
     expect(issue?.message).toBe("Product id 'Workers!' does not match the stable id pattern")
   })
 
   test('resource/path-required has the expected code, path, and message', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '' },
-      (r) => r.operation('list', { summary: 'List', output: Shape.list('script') }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'resource/path-required')
+    const issue = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '',
+          operations: { list: { summary: 'List', output: Shape.list('script') } },
+        },
+      },
+    }).find((i) => i.code === 'resource/path-required')
     expect(issue?.path).toBe('resources[0].path')
     expect(issue?.message).toBe("Resource 'script' must declare a non-empty path")
   })
 
   test('resource/id-stable fires for invalid resource ids and includes the id', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'Bad!',
-      { label: 'Bad', path: '/bad' },
-      (r) => r.operation('list', { summary: 'List', output: Shape.list('Bad!') }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'resource/id-stable')
+    const issue = lintProductInput({
+      resources: {
+        'Bad!': {
+          label: 'Bad',
+          path: '/bad',
+          operations: { list: { summary: 'List', output: Shape.list('Bad!') } },
+        },
+      },
+    }).find((i) => i.code === 'resource/id-stable')
     expect(issue?.path).toBe('resources[0].id')
     expect(issue?.message).toBe("Resource id 'Bad!' does not match the stable id pattern")
   })
 
   test('vocabulary/verb issue includes recommendation listing the active verbs', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) =>
-        r.operation('info', {
-          summary: 'Info',
-          output: Shape.list('script'),
-        }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'vocabulary/verb')
+    const issue = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '/scripts',
+          operations: {
+            info: {
+              summary: 'Info',
+              output: Shape.list('script'),
+            },
+          },
+        },
+      },
+    }).find((i) => i.code === 'vocabulary/verb')
     expect(issue?.path).toBe('capabilities[0].verb')
-    expect(issue?.message).toBe(
-      "Resource operation verb 'info' is not in the product vocabulary",
-    )
+    expect(issue?.message).toBe("Resource operation verb 'info' is not in the product vocabulary")
     expect(issue?.recommendation).toBe(
       "add 'info' to vocabulary({ verbs: [...] }) or use one of: get, list, create, update, delete, run",
     )
   })
 
   test('surface/openapi-on-local has the expected path and message', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'dev',
-      Command.local({ summary: 'Dev', handler: 'wrangler.dev', surfaces: { openapi: true } }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'surface/openapi-on-local')
+    const issue = lintProductInput({
+      commands: {
+        dev: Command.local({
+          summary: 'Dev',
+          handler: 'wrangler.dev',
+          surfaces: { openapi: true },
+        }),
+      },
+    }).find((i) => i.code === 'surface/openapi-on-local')
     expect(issue?.path).toBe('capabilities[0].surfaces.openapi')
     expect(issue?.message).toBe(
       "Local command 'dev' must not appear in OpenAPI; remove surfaces.openapi or change execution mode",
@@ -345,15 +427,15 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
   })
 
   test('command/execution-coherent has the expected path, message, and recommendation', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'deploy',
-      Command.workflow({
-        summary: 'Deploy',
-        handler: 'wrangler.deploy',
-        surfaces: { openapi: true },
-      }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'command/execution-coherent')
+    const issue = lintProductInput({
+      commands: {
+        deploy: Command.workflow({
+          summary: 'Deploy',
+          handler: 'wrangler.deploy',
+          surfaces: { openapi: true },
+        }),
+      },
+    }).find((i) => i.code === 'command/execution-coherent')
     expect(issue?.path).toBe('capabilities[0].execution.http')
     expect(issue?.message).toBe(
       "Hybrid-workflow command 'deploy' opted into OpenAPI but has no http trigger",
@@ -364,22 +446,25 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
   })
 
   test('command/id-stable fires for invalid command ids and includes the id', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).command(
-      'Bad-Id!',
-      Command.local({ summary: 'Bad', handler: 'wrangler.bad' }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'command/id-stable')
+    const issue = lintProductInput({
+      commands: {
+        'Bad-Id!': Command.local({ summary: 'Bad', handler: 'wrangler.bad' }),
+      },
+    }).find((i) => i.code === 'command/id-stable')
     expect(issue?.path).toBe('capabilities[0].id')
     expect(issue?.message).toBe("Command id 'Bad-Id!' does not match the stable id pattern")
   })
 
   test('shape/unknown-resource-ref has the expected path, message, and recommendation', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) => r.operation('list', { summary: 'List', output: Shape.list('ghost') }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'shape/unknown-resource-ref')
+    const issue = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '/scripts',
+          operations: { list: { summary: 'List', output: Shape.list('ghost') } },
+        },
+      },
+    }).find((i) => i.code === 'shape/unknown-resource-ref')
     expect(issue?.path).toBe('capabilities[0].output')
     expect(issue?.message).toBe("Shape.list references unknown resource 'ghost'")
     expect(issue?.recommendation).toBe(
@@ -390,89 +475,117 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
 
 describe('lintCatalog — hasText whitespace handling', () => {
   test('product id with only whitespace fails product/id-required (trim is not skipped)', () => {
-    const p = Product.create({ id: '   ', name: 'W', version: '1.0.0' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/id-required')).toBeDefined()
+    expect(
+      lintProductInput({ id: '   ', name: 'W' }).find((i) => i.code === 'product/id-required'),
+    ).toBeDefined()
   })
 
   test('product version with only whitespace fails product/version-required', () => {
-    const p = Product.create({ id: 'workers', name: 'W', version: '   ' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/version-required')).toBeDefined()
+    expect(
+      lintProductInput({ name: 'W', version: '   ' }).find(
+        (i) => i.code === 'product/version-required',
+      ),
+    ).toBeDefined()
   })
 
   test('resource path with only whitespace fails resource/path-required', () => {
-    const p = Product.create({ id: 'workers', name: 'W', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '   ' },
-      (r) => r.operation('list', { summary: 'List', output: Shape.list('script') }),
-    )
-    expect(lintProductInput(p).find((i) => i.code === 'resource/path-required')).toBeDefined()
+    expect(
+      lintProductInput({
+        name: 'W',
+        resources: {
+          script: {
+            label: 'Script',
+            path: '   ',
+            operations: { list: { summary: 'List', output: Shape.list('script') } },
+          },
+        },
+      }).find((i) => i.code === 'resource/path-required'),
+    ).toBeDefined()
   })
 })
 
 describe('lintCatalog — surface/openapi-on-local is local-mode-only', () => {
   test('workflow command with openapi=true does NOT trip surface/openapi-on-local (only local-mode does)', () => {
-    const p = Product.create({ id: 'workers', name: 'W', version: '1.0.0' }).command(
-      'deploy',
-      Command.workflow({
-        summary: 'Deploy',
-        handler: 'wrangler.deploy',
-        http: { method: 'POST', path: '/deploy' },
-        surfaces: { openapi: true },
-      }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'surface/openapi-on-local'),
+      lintProductInput({
+        name: 'W',
+        commands: {
+          deploy: Command.workflow({
+            summary: 'Deploy',
+            handler: 'wrangler.deploy',
+            http: { method: 'POST', path: '/deploy' },
+            surfaces: { openapi: true },
+          }),
+        },
+      }).find((i) => i.code === 'surface/openapi-on-local'),
     ).toBeUndefined()
   })
 
   test('workflow command without openapi opt-in does NOT trip surface/openapi-on-local', () => {
-    const p = Product.create({ id: 'workers', name: 'W', version: '1.0.0' }).command(
-      'deploy',
-      Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'surface/openapi-on-local'),
+      lintProductInput({
+        name: 'W',
+        commands: {
+          deploy: Command.workflow({ summary: 'Deploy', handler: 'wrangler.deploy' }),
+        },
+      }).find((i) => i.code === 'surface/openapi-on-local'),
     ).toBeUndefined()
   })
 })
 
 describe('lintCatalog — ID_PATTERN edge cases', () => {
   test('uppercase-start ids fail (anchors on ^)', () => {
-    const p = Product.create({ id: 'Workers', name: 'W', version: '1.0.0' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/id-stable')).toBeDefined()
+    expect(
+      lintProductInput({ id: 'Workers', name: 'W' }).find((i) => i.code === 'product/id-stable'),
+    ).toBeDefined()
   })
 
   test('ids with trailing junk fail (anchors on $)', () => {
-    const p = Product.create({ id: 'workers!', name: 'W', version: '1.0.0' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/id-stable')).toBeDefined()
+    expect(
+      lintProductInput({ id: 'workers!', name: 'W' }).find((i) => i.code === 'product/id-stable'),
+    ).toBeDefined()
   })
 
   test('valid ids with dot or dash separators and multi-char segments pass', () => {
-    const p = Product.create({ id: 'workers.platform', name: 'W', version: '1.0.0' })
-      .resource('cli-tool', { label: 'CLI', path: '/cli' }, (r) =>
-        r.operation('list', { summary: 'List', output: Shape.list('cli-tool') }),
-      )
-      .command('sub.command', Command.local({ summary: 'Sub', handler: 'h' }))
-    const issues = lintProductInput(p)
+    const issues = lintProductInput({
+      id: 'workers.platform',
+      name: 'W',
+      resources: {
+        'cli-tool': {
+          label: 'CLI',
+          path: '/cli',
+          operations: { list: { summary: 'List', output: Shape.list('cli-tool') } },
+        },
+      },
+      commands: {
+        'sub.command': Command.local({ summary: 'Sub', handler: 'h' }),
+      },
+    })
     expect(issues.find((i) => i.code === 'product/id-stable')).toBeUndefined()
     expect(issues.find((i) => i.code === 'resource/id-stable')).toBeUndefined()
     expect(issues.find((i) => i.code === 'command/id-stable')).toBeUndefined()
   })
 
   test('ids with consecutive separators (no segment in between) fail', () => {
-    const p = Product.create({ id: 'workers..platform', name: 'W', version: '1.0.0' })
-    expect(lintProductInput(p).find((i) => i.code === 'product/id-stable')).toBeDefined()
+    expect(
+      lintProductInput({ id: 'workers..platform', name: 'W' }).find(
+        (i) => i.code === 'product/id-stable',
+      ),
+    ).toBeDefined()
   })
 })
 
 describe('lintCatalog — operation/output-required and isNonEmptyShape', () => {
   test('operation with an object output that has zero properties fails operation/output-required', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) => r.operation('list', { summary: 'List', output: Shape.object({}) }),
-    )
-    const issue = lintProductInput(p).find((i) => i.code === 'operation/output-required')
+    const issue = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '/scripts',
+          operations: { list: { summary: 'List', output: Shape.object({}) } },
+        },
+      },
+    }).find((i) => i.code === 'operation/output-required')
     expect(issue?.path).toBe('capabilities[0].output')
     expect(issue?.message).toBe(
       "Resource operation 'script.list' must declare a non-empty output schema",
@@ -480,28 +593,35 @@ describe('lintCatalog — operation/output-required and isNonEmptyShape', () => 
   })
 
   test('operation with a non-empty object output does NOT fail operation/output-required', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) =>
-        r.operation('list', {
-          summary: 'List',
-          output: Shape.object({ id: Field.string('id') }),
-        }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'operation/output-required'),
+      lintProductInput({
+        resources: {
+          script: {
+            label: 'Script',
+            path: '/scripts',
+            operations: {
+              list: {
+                summary: 'List',
+                output: Shape.object({ id: Field.string('id') }),
+              },
+            },
+          },
+        },
+      }).find((i) => i.code === 'operation/output-required'),
     ).toBeUndefined()
   })
 
   test('operation with a list output is treated as non-empty (kind === "list" short-circuit)', () => {
-    const p = Product.create({ id: 'workers', name: 'Workers', version: '1.0.0' }).resource(
-      'script',
-      { label: 'Script', path: '/scripts' },
-      (r) => r.operation('list', { summary: 'List', output: Shape.list('script') }),
-    )
     expect(
-      lintProductInput(p).find((i) => i.code === 'operation/output-required'),
+      lintProductInput({
+        resources: {
+          script: {
+            label: 'Script',
+            path: '/scripts',
+            operations: { list: { summary: 'List', output: Shape.list('script') } },
+          },
+        },
+      }).find((i) => i.code === 'operation/output-required'),
     ).toBeUndefined()
   })
 })

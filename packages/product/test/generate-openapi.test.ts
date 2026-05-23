@@ -5,11 +5,11 @@ import {
   Field,
   Shape,
   canonicalDigest,
+  defineProduct,
   generateOpenapi,
   normalizeProduct,
 } from '../src/index.js'
 import type { Catalog } from '../src/index.js'
-import { Product } from '../src/product.js'
 import workersProduct from './fixtures/workers.product.js'
 
 function generate(catalog: Catalog, surfaceId = 'openapi'): string {
@@ -53,18 +53,26 @@ describe('generateOpenapi — document shape', () => {
   })
 
   test('omits info.description when the product has none', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('list', {
-            summary: 'List',
-            http: { method: 'GET', path: '' },
-            output: Shape.list('thing'),
-          }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            list: {
+              summary: 'List',
+              http: { method: 'GET', path: '' },
+              output: Shape.list('thing'),
+            },
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     expect(doc.info.description).toBeUndefined()
   })
@@ -76,41 +84,56 @@ describe('generateOpenapi — capability filter', () => {
     const paths = Object.keys(doc.paths)
     expect(paths).toEqual(['/workers/scripts'])
     const operationIds = Object.values(doc.paths).flatMap((byMethod) =>
-      Object.values(byMethod as Record<string, { operationId: string }>).map((op) => op.operationId),
+      Object.values(byMethod as Record<string, { operationId: string }>).map(
+        (op) => op.operationId,
+      ),
     )
     expect(operationIds).toEqual(['script.list'])
     expect(Object.keys(doc.components.schemas)).toEqual(['script'])
   })
 
   test('hybrid-workflow command with an HTTP trigger is still excluded in this phase', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).command(
-      'deploy',
-      Command.workflow({
-        summary: 'Deploy',
-        handler: 'wrangler.deploy',
-        http: { method: 'POST', path: '/deploy' },
-        surfaces: { openapi: true },
-        steps: [{ id: 'bundle', label: 'Bundle', uses: 'local' }],
-      }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      commands: {
+        deploy: Command.workflow({
+          summary: 'Deploy',
+          handler: 'wrangler.deploy',
+          http: { method: 'POST', path: '/deploy' },
+          surfaces: { openapi: true },
+          steps: [{ id: 'bundle', label: 'Bundle', uses: 'local' }],
+        }),
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     expect(doc.paths).toEqual({})
   })
 
   test('resource operations with surfaces.openapi=false do not appear in paths', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('list', {
-            summary: 'List',
-            http: { method: 'GET', path: '' },
-            output: Shape.list('thing'),
-            surfaces: { openapi: false },
-          }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            list: {
+              summary: 'List',
+              http: { method: 'GET', path: '' },
+              output: Shape.list('thing'),
+              surfaces: { openapi: false },
+            },
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     expect(doc.paths).toEqual({})
   })
@@ -138,18 +161,26 @@ describe('generateOpenapi — list output schemas', () => {
   })
 
   test('list shape pointing at an undeclared resource throws loudly', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('list', {
-            summary: 'List',
-            http: { method: 'GET', path: '' },
-            output: Shape.list('ghost'),
-          }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            list: {
+              summary: 'List',
+              http: { method: 'GET', path: '' },
+              output: Shape.list('ghost'),
+            },
+          },
+        },
+      },
+    })
     expect(() => generate(normalizeProduct(product))).toThrow(
       /resource 'ghost' is not declared in this catalog/,
     )
@@ -158,24 +189,34 @@ describe('generateOpenapi — list output schemas', () => {
 
 describe('generateOpenapi — path, query, header, body binding', () => {
   test('path params become parameters with required:true and schema from input', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'script',
-      { label: 's', path: '/workers/scripts' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .field('name', Field.string('Name').humanLabel())
-          .operation('get', {
-            summary: 'Get one',
-            http: {
-              method: 'GET',
-              path: '/{id}',
-              bind: { path: ['id'] },
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        script: {
+          label: 's',
+          path: '/workers/scripts',
+          fields: {
+            id: Field.string('ID').identifier(),
+            name: Field.string('Name').humanLabel(),
+          },
+          operations: {
+            get: {
+              summary: 'Get one',
+              http: {
+                method: 'GET',
+                path: '/{id}',
+                bind: { path: ['id'] },
+              },
+              input: Shape.object({ id: Field.string('ID') }),
+              output: Shape.object({ id: Field.string('ID'), name: Field.string('Name') }),
             },
-            input: Shape.object({ id: Field.string('ID') }),
-            output: Shape.object({ id: Field.string('ID'), name: Field.string('Name') }),
-          }),
-    )
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     const op = doc.paths['/workers/scripts/{id}'].get
     expect(op.parameters).toEqual([
@@ -184,23 +225,31 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('query and header params project with their respective `in` values; headers carry const schemas', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('list', {
-            summary: 'List',
-            http: {
-              method: 'GET',
-              path: '',
-              bind: { query: ['cursor'], headers: { 'X-Api-Version': '2025-01-01' } },
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            list: {
+              summary: 'List',
+              http: {
+                method: 'GET',
+                path: '',
+                bind: { query: ['cursor'], headers: { 'X-Api-Version': '2025-01-01' } },
+              },
+              input: Shape.object({ cursor: Field.string('Cursor').optional() }),
+              output: Shape.list('thing'),
             },
-            input: Shape.object({ cursor: Field.string('Cursor').optional() }),
-            output: Shape.list('thing'),
-          }),
-    )
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     const op = doc.paths['/things'].get
     expect(op.parameters).toEqual([
@@ -215,22 +264,30 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('body=true projects all non-path/query input fields under application/json', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('create', {
-            summary: 'Create',
-            http: { method: 'POST', path: '', bind: { body: true } },
-            input: Shape.object({
-              name: Field.string('Name'),
-              note: Field.string('Note').optional(),
-            }),
-            output: Shape.object({ id: Field.string('ID') }),
-          }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            create: {
+              summary: 'Create',
+              http: { method: 'POST', path: '', bind: { body: true } },
+              input: Shape.object({
+                name: Field.string('Name'),
+                note: Field.string('Note').optional(),
+              }),
+              output: Shape.object({ id: Field.string('ID') }),
+            },
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     const body = doc.paths['/things'].post.requestBody
     expect(body.required).toBe(true)
@@ -240,49 +297,66 @@ describe('generateOpenapi — path, query, header, body binding', () => {
   })
 
   test('body=string[] picks an explicit subset and excludes the rest', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('create', {
-            summary: 'Create',
-            http: { method: 'POST', path: '', bind: { body: ['name'] } },
-            input: Shape.object({
-              name: Field.string('Name'),
-              note: Field.string('Note').optional(),
-            }),
-            output: Shape.object({ id: Field.string('ID') }),
-          }),
-    )
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            create: {
+              summary: 'Create',
+              http: { method: 'POST', path: '', bind: { body: ['name'] } },
+              input: Shape.object({
+                name: Field.string('Name'),
+                note: Field.string('Note').optional(),
+              }),
+              output: Shape.object({ id: Field.string('ID') }),
+            },
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
-    const props = doc.paths['/things'].post.requestBody.content['application/json'].schema.properties
+    const props =
+      doc.paths['/things'].post.requestBody.content['application/json'].schema.properties
     expect(Object.keys(props)).toEqual(['name'])
   })
 
   test('body=string[] does not duplicate fields already consumed by path or query bindings', () => {
-    const product = Product.create({ id: 'p', name: 'P', version: '0.1.0' }).auth(Auth.none()).resource(
-      'thing',
-      { label: 't', path: '/things' },
-      (r) =>
-        r
-          .field('id', Field.string('ID').identifier())
-          .operation('update', {
-            summary: 'Update',
-            http: {
-              method: 'PATCH',
-              path: '/{id}',
-              bind: { path: ['id'], query: ['dry_run'], body: ['id', 'dry_run', 'name'] },
+    const product = defineProduct({
+      id: 'p',
+      name: 'P',
+      version: '0.1.0',
+      auth: Auth.none(),
+      resources: {
+        thing: {
+          label: 't',
+          path: '/things',
+          fields: { id: Field.string('ID').identifier() },
+          operations: {
+            update: {
+              summary: 'Update',
+              http: {
+                method: 'PATCH',
+                path: '/{id}',
+                bind: { path: ['id'], query: ['dry_run'], body: ['id', 'dry_run', 'name'] },
+              },
+              input: Shape.object({
+                id: Field.string('ID'),
+                dry_run: Field.boolean('Dry run').optional(),
+                name: Field.string('Name'),
+              }),
+              output: Shape.object({ id: Field.string('ID') }),
             },
-            input: Shape.object({
-              id: Field.string('ID'),
-              dry_run: Field.boolean('Dry run').optional(),
-              name: Field.string('Name'),
-            }),
-            output: Shape.object({ id: Field.string('ID') }),
-          }),
-    )
+          },
+        },
+      },
+    })
     const doc = JSON.parse(generate(normalizeProduct(product)))
     const props =
       doc.paths['/things/{id}'].patch.requestBody.content['application/json'].schema.properties

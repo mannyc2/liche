@@ -160,7 +160,7 @@ Verification:
 
 Hard-cut `@lili/product` from operation-contract authoring to product-schema authoring before adding OpenAPI.
 
-Status: public Product authoring now starts from `defineProduct({ ... })`, with resources, commands, config, remote, auth, contexts, permissions, ops, and bindings declared as sibling data fields. The old `Product.create(...).resource(...).command(...)` builder is no longer exported from the package root; remaining internal tests that still use it are compatibility scaffolding to delete in the follow-up cleanup.
+Status: Product authoring now starts from `defineProduct({ ... })`, with resources, commands, config, remote, auth, contexts, permissions, ops, and bindings declared as sibling data fields. The old chained Product builder has been removed from the package root, internal tests, and `packages/product/src/product.ts`.
 
 Public API:
 
