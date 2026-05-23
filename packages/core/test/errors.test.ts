@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { BaseError, LiliError, ParseError, ValidationError, errorToObject } from '../src/errors/error.js'
+import { BaseError, LiliError, ParseError, ValidationError, toCommandError } from '../src/errors/error.js'
 
 describe('error class names', () => {
   test.each([
@@ -161,13 +161,13 @@ describe('ParseError', () => {
   })
 })
 
-describe('errorToObject', () => {
-  test('ValidationError → VALIDATION_ERROR envelope with fieldErrors and exitCode=1', () => {
+describe('toCommandError', () => {
+  test('ValidationError → VALIDATION_ERROR object with fieldErrors and exitCode=1', () => {
     const err = new ValidationError({
       message: 'bad',
       fieldErrors: [{ path: '$.a', message: 'required' }],
     })
-    expect(errorToObject(err)).toEqual({
+    expect(toCommandError(err)).toEqual({
       code: 'VALIDATION_ERROR',
       detail: 'bad',
       exitCode: 1,
@@ -178,9 +178,9 @@ describe('errorToObject', () => {
     })
   })
 
-  test('ParseError → PARSE_ERROR envelope with exitCode=1', () => {
+  test('ParseError → PARSE_ERROR object with exitCode=1', () => {
     const err = new ParseError({ message: 'bad config' })
-    expect(errorToObject(err)).toEqual({
+    expect(toCommandError(err)).toEqual({
       code: 'PARSE_ERROR',
       detail: 'bad config',
       exitCode: 1,
@@ -192,19 +192,19 @@ describe('errorToObject', () => {
 
   test('LiliError default exitCode is 1', () => {
     const err = new LiliError({ code: 'X', message: 'y' })
-    const obj = errorToObject(err)
+    const obj = toCommandError(err)
     expect(obj.exitCode).toBe(1)
   })
 
   test('LiliError preserves custom exitCode (does NOT coerce to 1)', () => {
     const err = new LiliError({ code: 'X', message: 'y', exitCode: 7 })
-    const obj = errorToObject(err)
+    const obj = toCommandError(err)
     expect(obj.exitCode).toBe(7)
   })
 
-  test('LiliError envelope carries code, hint, retryable, message', () => {
+  test('LiliError object carries code, hint, retryable, message', () => {
     const err = new LiliError({ code: 'BOOM', message: 'm', hint: 'h', retryable: true, exitCode: 2 })
-    expect(errorToObject(err)).toEqual({
+    expect(toCommandError(err)).toEqual({
       code: 'BOOM',
       detail: 'm',
       exitCode: 2,
@@ -216,7 +216,7 @@ describe('errorToObject', () => {
     })
   })
 
-  test('LiliError envelope carries problem details and recovery actions', () => {
+  test('LiliError object carries problem details and recovery actions', () => {
     const err = new LiliError({
       code: 'REMOTE_TIMEOUT',
       message: 'Timed out.',
@@ -231,7 +231,7 @@ describe('errorToObject', () => {
       title: 'Remote timeout',
       type: 'https://lili.dev/problems/remote-timeout',
     })
-    expect(errorToObject(err)).toEqual({
+    expect(toCommandError(err)).toEqual({
       code: 'REMOTE_TIMEOUT',
       code_actions: [{ title: 'Retry', command: 'app deploy --retry' }],
       detail: 'The deployment API timed out after 10 seconds.',
@@ -255,8 +255,8 @@ describe('errorToObject', () => {
     ['null', null, 'null'],
     ['undefined', undefined, 'undefined'],
     ['object', { x: 1 }, '[object Object]'],
-  ])('non-lili %s → UNKNOWN envelope with stringified message', (_label, input, expectedMessage) => {
-    expect(errorToObject(input)).toEqual({
+  ])('non-lili %s → UNKNOWN object with stringified message', (_label, input, expectedMessage) => {
+    expect(toCommandError(input)).toEqual({
       code: 'UNKNOWN',
       detail: expectedMessage,
       exitCode: 1,

@@ -84,7 +84,7 @@ Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStor
 
 `RunContext` gained `invocation: 'cli' | 'ci' | 'agent' | 'mcp'` so generated command code can pass the real invocation posture into `resolveAuth`. Plain CLI invocations infer `ci` from common CI env vars; MCP and fetch-backed agent calls pass `mcp` / `agent` explicitly.
 
-`LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` envelope gained the matching optional `details` field. `errorToObject` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
+`LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` gained the matching optional `details` field. `toCommandError` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
 
 ### Agent recovery error widening landed
 
@@ -203,7 +203,7 @@ Re-promoting any private helper now requires a package-root consumer fixture or 
 
 ## Mark internal
 
-- `Errors` (`packages/core/src/errors/index.ts:1`) — no test imports the namespace from index. Keep top-level error classes public; keep `errorToObject` internal.
+- `Errors` (`packages/core/src/errors/index.ts:1`) — no test imports the namespace from index. Keep top-level error classes public; keep `toCommandError` internal.
 - `Help` (`packages/core/src/help/index.ts:1`) — direct tests cover `renderHelp`, but the signature requires `CliState`; do not expose the state-shaped renderer.
 - `Parser` (`packages/core/src/parser/index.ts:1`) — `behavior-edges.test.ts` imports it through index, but generated code should not parse argv itself. Parser/config/env validation is core behavior, not a public helper namespace.
 - `Filter` (`packages/core/src/format/filter.ts:3`) — no direct index test import; `Formatter.pick` is enough.

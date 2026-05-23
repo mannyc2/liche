@@ -13,7 +13,7 @@ import {
   authSessionLocked,
   authScopeMissing,
 } from '../../src/auth/errors.js'
-import { LiliError, errorToObject } from '../../src/errors/error.js'
+import { LiliError, toCommandError } from '../../src/errors/error.js'
 
 const detailsOf = (e: LiliError) => e.details as AuthErrorDetails | undefined
 
@@ -115,19 +115,19 @@ describe('AUTH_* error factories', () => {
     expect(detailsOf(e)?.status).toBe(401)
   })
 
-  test('errorToObject propagates AUTH_* details into CommandError envelope', () => {
+  test('toCommandError propagates AUTH_* details into CommandError object', () => {
     const e = authMissing({ providerId: 'acme', envVars: ['ACME_TOKEN'], loginCommand: 'acme login' })
-    const envelope = errorToObject(e)
-    expect(envelope.code).toBe('AUTH_MISSING')
-    expect(envelope.exitCode).toBe(1)
-    expect(envelope.details).toEqual({
+    const error = toCommandError(e)
+    expect(error.code).toBe('AUTH_MISSING')
+    expect(error.exitCode).toBe(1)
+    expect(error.details).toEqual({
       providerId: 'acme',
       envVars: ['ACME_TOKEN'],
       loginCommand: 'acme login',
       requiredPermissions: undefined,
     })
-    expect(envelope.suggested_fix).toContain('acme login')
-    expect(envelope.code_actions).toEqual([
+    expect(error.suggested_fix).toContain('acme login')
+    expect(error.code_actions).toEqual([
       { title: 'Log in', command: 'acme login' },
       { title: 'Set auth environment', description: 'Set ACME_TOKEN before retrying.' },
     ])

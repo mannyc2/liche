@@ -109,7 +109,7 @@ export declare namespace ParseError {
   }
 }
 
-export function errorToObject(error: unknown): CommandError {
+export function toCommandError(error: unknown): CommandError {
   if (error instanceof ValidationError) {
     return normalizeCommandError({
       code: 'VALIDATION_ERROR',

@@ -15,7 +15,7 @@ import type {
   ConfigValueSource,
   OptionValueSource,
 } from '../types.js'
-import { LiliError, errorToObject, normalizeCommandError } from '../errors/error.js'
+import { LiliError, normalizeCommandError, toCommandError } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
 import type { LoadedConfig } from '../parser/config.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
@@ -117,7 +117,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       try {
         await hook(context)
       } catch (error) {
-        await emitCommandEvent(binaryName, input, command, 'hook.failed', { error: eventError(errorToObject(error)) })
+        await emitCommandEvent(binaryName, input, command, 'hook.failed', { error: eventError(toCommandError(error)) })
         throw error
       }
     }
@@ -147,7 +147,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
     await emitResultEvent(binaryName, input, command, startedAt, completed)
     return completed
   } catch (error) {
-    const result: Result = error instanceof Done ? error.result : { ok: false, data: null, error: errorToObject(error) }
+    const result: Result = error instanceof Done ? error.result : { ok: false, data: null, error: toCommandError(error) }
     if (!result.ok && result.error.code === 'VALIDATION_ERROR') {
       await emitCommandEvent(binaryName, input, command, 'validation.failed', { error: eventError(result.error) })
     }
