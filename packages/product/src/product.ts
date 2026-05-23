@@ -25,7 +25,7 @@ export type ProductScope = {
   param: string
 }
 
-export type ProductInit = {
+export type ProductMetadata = {
   id: string
   name: string
   version: string
@@ -85,7 +85,7 @@ export type ProductResourceDefinitionEntry = ProductResourceDefinition & {
   id: string
 }
 
-export type ProductDefinition = ProductInit & {
+export type ProductDefinition = ProductMetadata & {
   auth?: AuthSpec
   contexts?: Readonly<Record<string, ContextSpec>> | readonly ProductContextEntry[]
   permissions?: Readonly<Record<string, PermissionSpec>>

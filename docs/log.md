@@ -1,5 +1,9 @@
 # Docs log
 
+## 2026-05-23
+
+- Finished the Product declarative authoring cutover. `@lili/product` now exposes `defineProduct({ ... })` as the Product authoring root, with product resources, commands, bindings, config, remote, auth, contexts, permissions, and ops declared as sibling data fields. The old `Product` / `ResourceBuilder` compatibility path is gone from the package root, source, tests, examples, docs, and generated fixtures.
+
 ## 2026-05-22
 
 - Finished the hard contract cutover in `@lili/core`. Runtime command registration now lowers definitions into `CommandContract + runtime` entries, with handlers/fetchers kept out of the serializable contract. Manifest, schema, help, MCP, and skill projections read the contract boundary, and a regression proves those projections can run without executing handlers or serializing runtime fields. `defineCli()` / `defineCommand()` are the canonical authoring path.

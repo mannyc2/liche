@@ -104,7 +104,7 @@ export type {
   DefinedProduct,
   ProductDefinition,
   ProductCommandEntry,
-  ProductInit,
+  ProductMetadata,
   ProductResource,
   ProductResourceDefinition,
   ProductResourceDefinitionEntry,
