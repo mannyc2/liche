@@ -8,19 +8,16 @@ export * as Formatter from './format/index.js'
 export { BaseError, LiliError, ParseError, ValidationError } from './errors/error.js'
 
 export { secret } from './auth/secret.js'
-export { applyAuth, authMetaFromCredential, resolveAuth, resolveContext } from './auth/resolve.js'
+export { applyAuth, resolveAuth, resolveContext } from './auth/resolve.js'
 export {
   authSwitch,
   authWhoami,
   createFileSessionStore,
-  defaultSessionRoot,
-  isValidProfileName,
   logoutAuthSession,
   oauthDeviceLogin,
-  probeIdentity,
 } from './auth/index.js'
 export { callHttpOperation, serializeHttpOperationRequest } from './http/index.js'
-export { createLocalTelemetrySink, redactTelemetryValue, runLocalDoctor } from './ops/local.js'
+export { createLocalTelemetrySink, runLocalDoctor } from './ops/local.js'
 export type { AuthRuntimeInput, FileSessionStoreOptions } from './auth/index.js'
 export type { SecretString } from './auth/secret.js'
 export type {

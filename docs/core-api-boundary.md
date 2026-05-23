@@ -66,7 +66,7 @@ This re-freeze does not make auth a separate package. The authoritative behavior
 
 The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
-- Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`, `authMetaFromCredential`.
+- Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`.
 - Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `ResolvedAuthMeta`, `CommandAuthMetadata`.
 
 Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, and resolved account/session status metadata.
@@ -83,7 +83,7 @@ Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStor
 
 The session and OAuth slices from `docs/auth-session.md` have shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
-- Values: `createFileSessionStore`, `defaultSessionRoot`, `isValidProfileName`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`, `probeIdentity`.
+- Values: `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`.
 - Types: `SessionStore`, `StoredProfile`, `AuthCommandRuntime`, `AuthGlobalOptions`, `AuthIdentityProbeInput`, `AuthRuntimeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`, `FileSessionStoreOptions`, and `GlobalOptions`.
 
 `RunContext` now carries `global: { profile?, nonInteractive?, noSession? }` and `isTty` so generated auth commands can distinguish explicit login from CI/agent/MCP/noninteractive calls. Core parses `--profile`, `--non-interactive`, and `--no-session` as generated-global inputs; normal commands still call `resolveAuth` and never start OAuth device login implicitly.
@@ -171,6 +171,18 @@ Also export `CommandError` (`packages/core/src/types.ts:33`), `FieldError` (`pac
 The auth/session additions above are now part of the keep-public list and are guarded by both source-local and package-consumer API snapshot tests.
 
 The config primitive additions above are now part of the keep-public list and are guarded by implementation tests plus the package API snapshot.
+
+## Internalized Before V1
+
+The public-surface minimization pass after `docs/research/public-surface-audit.md` removed these weakly justified root exports from `@lili/core` while keeping their source implementations available to core internals and white-box tests:
+
+- `authMetaFromCredential`
+- `defaultSessionRoot`
+- `isValidProfileName`
+- `probeIdentity`
+- `redactTelemetryValue`
+
+These were not generated-code dependencies and did not have package-root consumer fixtures beyond boundary snapshots. Re-promoting any of them now requires a package-root consumer fixture or an extension-lane test that cannot be written through the remaining public APIs.
 
 ## Mark internal
 

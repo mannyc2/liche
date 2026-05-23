@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { createLocalTelemetrySink, redactTelemetryValue, runLocalDoctor } from '../src/index.js'
+import { createLocalTelemetrySink, runLocalDoctor } from '../src/index.js'
+import { redactTelemetryValue } from '../src/ops/local.js'
 
 describe('local ops doctor', () => {
   test('reports PATH and package-manager checks as structured diagnostics', async () => {
