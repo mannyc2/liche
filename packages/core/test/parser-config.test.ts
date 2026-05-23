@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Config, z } from '../src/index.js'
+import { Config, ValidationError, z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { loadConfig, loadConfigResolution } from '../src/parser/config.js'
 import { testCli, testCommand } from './helpers.js'
@@ -111,6 +111,30 @@ describe('loadConfig', () => {
     }, [testCommand('run', { run: () => ({}) })])
     const result = await loadConfigResolution('app', stateOf(cli), { configPath: undefined, configDisabled: false } as any)
     expect(result?.values).toEqual({ mode: 'default' })
+  })
+
+  test('strict config schemas reject unknown keys', async () => {
+    const path = join(dir, 'app.json')
+    writeFileSync(path, JSON.stringify({ mode: 'ok', typo: true }))
+    const cli = testCli('app', {
+      config: Config.object({
+        files: [path],
+        schema: z.strictObject({ mode: z.string() }),
+      }),
+    }, [testCommand('run', { run: () => ({}) })])
+
+    let error: unknown
+    try {
+      await loadConfigResolution('app', stateOf(cli), { configPath: undefined, configDisabled: false } as any)
+    } catch (err) {
+      error = err
+    }
+
+    expect(error).toBeInstanceOf(ValidationError)
+    expect((error as ValidationError).fieldErrors[0]).toMatchObject({
+      code: 'unrecognized_keys',
+      path: '$',
+    })
   })
 
   test('tracks provenance for resolved config fields', async () => {

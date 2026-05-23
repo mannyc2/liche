@@ -13,6 +13,8 @@ The first hard-cutover slice for the declarative core direction has shipped. The
 
 The hard cutover removes the fluent command builder from the public API. New handwritten examples, generated CLI output, and package-consumer tests must use `defineCli()` and `defineCommand()`.
 
+Direct core MCP projection now uses the same command contract boundary for both input and output metadata. `tools/list` wraps declared args/options as the MCP input schema, includes a command `outputSchema` when the command declares output, and derives MCP hint annotations from `CommandSafety`, `CommandEffects`, and `CommandPolicy`.
+
 ## Phase 3 re-freeze (packaged skills)
 
 Deliberate, narrow widening to let tool CLIs ship authored agent guidance without making generated product CLI surfaces depend on core reflection:
@@ -73,6 +75,10 @@ Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStor
 
 `LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` envelope gained the matching optional `details` field. `errorToObject` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
 
+### Agent recovery error widening landed
+
+`CommandError` now also carries RFC-9457-shaped Problem Details fields (`type`, `title`, `status`, `detail`, `instance`) and agent recovery extensions (`retry_after`, `suggested_fix`, `code_actions`). The existing `message`, `code`, `details`, `fieldErrors`, `hint`, `retryable`, and `exitCode` fields remain for CLI compatibility. `RunContext.error(...)` accepts the full `CommandError` shape plus optional CTA metadata, so generated and handwritten commands can emit structured recovery actions without throwing a separate error class.
+
 ### Phase 3D-B/C landed (sessions, generated auth commands, OAuth device)
 
 The session and OAuth slices from `docs/auth-session.md` have shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
@@ -93,11 +99,11 @@ The first outbound remote transport slice has shipped. The following are now rea
 
 This slice covers pure request serialization, env/literal base URL resolution, env or resolved auth application, timeout/network/status/response/schema error normalization, and output validation. Generated Product remote command wiring remains deferred because Product `HttpSpec` currently has no base URL or config source; generated `remote-http` and resource-operation commands should keep the explicit Phase 4 `REMOTE_NOT_IMPLEMENTED` stub until the config primitive and catalog base URL contract are defined.
 
-## Config primitive re-freeze target
+## Config primitive re-freeze (landed)
 
-The next deliberate widening for generated remote wiring is the first-class config primitive described in `docs/config-primitive.md`.
+The deliberate widening for generated remote wiring has shipped as the first-class config primitive described in `docs/config-primitive.md`.
 
-Planned top-level public additions:
+Top-level public additions:
 
 - `Config.object(...)` — public declaration helper for opt-in typed config.
 - Config declaration and provenance types exposed by `DefineCliOptions.config`, `RunContext.config`, and `RunContext.sources`.
@@ -110,7 +116,7 @@ Runtime guarantees:
 - `--no-config` disables project and user discovery.
 - Project/user config, session/profile defaults, option env defaults, argv, and schema defaults keep distinct provenance.
 
-This re-freeze must replace the current low-level loader-shaped config compatibility hook with a declarative public contract on `DefineCliOptions`. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@lili/core` APIs.
+This re-freeze replaced the low-level loader-shaped config compatibility hook with a declarative public contract on `DefineCliOptions`. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@lili/core` APIs.
 
 Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
@@ -121,6 +127,9 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - Generated code must not import `stateSymbol`, `InternalCli`, `CliState`, parser helpers, command registry helpers, command guards, help renderers, or schema-adapter internals.
 - Runtime reflection in core is backed by serializable `CommandContract` records, not raw `Entry` / `CliState` inspection. Product-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces still belong to `@lili/product` when the Product catalog is the source of truth.
 - Remove or reshape current index exports before freezing. Do not keep duplicate or state-shaped exports just because tests currently reach them.
+- Widen the public surface only when an extension cannot be implemented through public lanes without importing internals, mutating hidden runtime state, eagerly importing implementation modules, or duplicating parser/executor/security/provenance behavior. The widening must add a reusable lane, not a one-off helper.
+
+`packages/core/test/extension-lane-coverage.test.ts` is the mechanical check for that last rule. It builds representative optional features using only package-root imports: a command-registration/config-provenance extension, an observe-only lifecycle subscriber, and a non-interactive policy hook. The fixture also proves disabled extensions leave baseline command output unchanged. A future core widening should first add or update a failing extension-lane case that demonstrates the missing public lane.
 
 ## Keep public
 
@@ -161,7 +170,7 @@ Also export `CommandError` (`packages/core/src/types.ts:33`), `FieldError` (`pac
 
 The auth/session additions above are now part of the keep-public list and are guarded by both source-local and package-consumer API snapshot tests.
 
-The config primitive additions above join this keep-public list only when their implementation and API snapshot tests land. Until then they are planned public surface, not current exports.
+The config primitive additions above are now part of the keep-public list and are guarded by implementation tests plus the package API snapshot.
 
 ## Mark internal
 

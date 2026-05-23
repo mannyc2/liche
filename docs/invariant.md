@@ -109,6 +109,8 @@ Extensions must not import package internals, inspect raw schema source, read ge
 
 Extensions also need a disabled-state test: turning the extension off must leave command execution, JSON/JSONL output, config provenance, structured errors, auth/session resolution, and outbound HTTP transport semantics unchanged.
 
+The core extension-lane property test makes this standard executable for core-level proposals. If the test can express the candidate as a package-root extension, the candidate stays outside core. If it cannot, the public API widening must be framed as a reusable lane rather than a one-off helper.
+
 Do not create a catch-all package unless its opt-in sentence is concrete. "Official optional adapters over stable lili contracts" is a valid package thesis; "miscellaneous things not in core" is not.
 
 ## Execution direction invariant
