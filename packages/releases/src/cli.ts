@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Config, defineCli, defineCommand, z } from '@lili/core'
+import { createConfig, defineCli, defineCommand, z } from '@lili/core'
 import {
   PublisherCredentialEnvSchema,
   runPackageCommand,
@@ -45,7 +45,7 @@ export const cli = defineCli({
       run: ({ ctx }) => runShipCommand(ctx),
     }),
   ],
-  config: Config.object({
+  config: createConfig({
     files: ['lili.releases.json', 'lili.releases.jsonc'],
     schema: ReleasesConfigSchema,
     scopes: { project: { discoverUpwards: true }, user: false },

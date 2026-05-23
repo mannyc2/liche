@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  Config,
+  createConfig,
   LiliError,
   defineCli,
   defineCommand,
@@ -129,7 +129,7 @@ function appWithExtensions(
 ): CliInstance {
   return defineCli({
     name: 'app',
-    config: Config.object({
+    config: createConfig({
       schema: z.strictObject({
         apiBaseUrl: z.string().url().default('https://default.example.test'),
         defaultRegion: z.string().default('iad'),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Config, defineCli, defineCommand, z } from '@lili/core'
+import { createConfig, defineCli, defineCommand, z } from '@lili/core'
 
 const DeploymentSchema = z.object({
   id: z.string(),
@@ -85,7 +85,7 @@ export const cli = defineCli({
       },
     }),
   ],
-  config: Config.object({
+  config: createConfig({
     files: ['shipyard.jsonc'],
     schema: CliConfigSchema,
     scopes: { project: { discoverUpwards: true }, user: false },

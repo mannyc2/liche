@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Config, Formatter, middleware, z } from '../src/index.js'
+import { createConfig, Formatter, middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
@@ -120,7 +120,7 @@ describe('contract: args, flags, config, env, middleware', () => {
   test('optionEnv populates option defaults from env (argv > env > config > default)', async () => {
     const make = () =>
       testCli('app', {
-        config: Config.object({
+        config: createConfig({
           schema: z.object({ tokenDefault: z.string().default('fromconfig') }),
         }),
       }, [testCommand('run', {
@@ -151,7 +151,7 @@ describe('contract: args, flags, config, env, middleware', () => {
         "timeoutMs": 2500
       }`)
       const cli = testCli('app', {
-        config: Config.object({
+        config: createConfig({
           files: [path],
           schema: z.strictObject({
             baseUrl: z.string().url().default('https://default.example.test'),
@@ -424,7 +424,7 @@ describe('contract: mcp, completions, and token behavior', () => {
   })
 
   test('config can expose config doctor without unrelated helper builtins', async () => {
-    const configured = testCli('app', { config: Config.object({}) }, [testCommand('list', { run: () => ({ command: 'list' }) })])
+    const configured = testCli('app', { config: createConfig({}) }, [testCommand('list', { run: () => ({ command: 'list' }) })])
 
     const help = await runCli(configured, ['--help'])
     expect(help.stdout).toContain('config doctor')

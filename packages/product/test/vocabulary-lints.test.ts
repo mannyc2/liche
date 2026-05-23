@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
-  Config,
+  createConfig,
   DEFAULT_GENERATED_VOCABULARY,
   Field,
   defineProduct,
@@ -239,7 +239,7 @@ describe('lintCatalog — config/runtime', () => {
   test('secret fields in general config fail config/no-secret-fields', () => {
     expect(
       lintProductInput({
-        config: Config.object({
+        config: createConfig({
           fields: Shape.object({ apiToken: Field.string('API token').secret() }),
         }),
       }).find((i) => i.code === 'config/no-secret-fields'),
@@ -248,7 +248,7 @@ describe('lintCatalog — config/runtime', () => {
 
   test('remote baseUrl must reference a declared config field when config-backed', () => {
     const issue = lintProductInput({
-      config: Config.object({
+      config: createConfig({
         fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
       }),
       remote: { baseUrl: Runtime.config('missingBaseUrl') },

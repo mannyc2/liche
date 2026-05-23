@@ -105,7 +105,7 @@ The deliberate widening for generated remote wiring has shipped as the first-cla
 
 Top-level public additions:
 
-- `Config.object(...)` — public declaration helper for opt-in typed config.
+- `createConfig(...)` — public declaration helper for opt-in typed config.
 - Config declaration and provenance types exposed by `DefineCliOptions.config`, `RunContext.config`, and `RunContext.sources`.
 - Explicit option-to-config bindings so config never satisfies command options by automatic name matching.
 

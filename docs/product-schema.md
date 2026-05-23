@@ -22,7 +22,7 @@ Do not force every meaningful product action into a CRUD resource operation. `de
 The public API should keep the same namespace-style ergonomics as the rest of the package set:
 
 ```ts
-import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
 export default defineProduct({
   id: "workers",
@@ -31,7 +31,7 @@ export default defineProduct({
   description: "Build and deploy serverless applications.",
   scope: { kind: "account", param: "account_id" },
   auth: Auth.none(),
-  config: Config.object({
+  config: createConfig({
     files: ["workers.jsonc", "workers.yaml", "workers.toml"],
     fields: Shape.object({
       accountId: Field.string("Default account ID").optional(),

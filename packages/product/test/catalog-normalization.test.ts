@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
-  Config,
+  createConfig,
   Field,
   Runtime,
   Shape,
@@ -387,7 +387,7 @@ describe('Product config and remote runtime values', () => {
         id: 'workers',
         name: 'Workers',
         version: '1.0.0',
-        config: Config.object({
+        config: createConfig({
           files: ['workers.jsonc', 'workers.toml'],
           fields: Shape.object({
             apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
@@ -433,7 +433,7 @@ describe('Product config and remote runtime values', () => {
 
     const config = normalizeProduct(
       testProduct({
-        config: Config.object({
+        config: createConfig({
           fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
         }),
         remote: { baseUrl: Runtime.config('apiBaseUrl') },

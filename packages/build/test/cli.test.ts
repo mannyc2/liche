@@ -33,7 +33,7 @@ describe('li-build CLI config', () => {
     rmSync(dir, { force: true, recursive: true })
   })
 
-  test('build command consumes explicit Config.object option bindings', async () => {
+  test('build command consumes explicit createConfig option bindings', async () => {
     const configPath = join(dir, 'li-build.jsonc')
     writeFileSync(configPath, `{
       // Config backs durable build defaults, not release identity.

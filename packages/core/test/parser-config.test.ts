@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Config, ValidationError, z } from '../src/index.js'
+import { createConfig, ValidationError, z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { loadConfig, loadConfigResolution } from '../src/parser/config.js'
 import { testCli, testCommand } from './helpers.js'
@@ -36,7 +36,7 @@ describe('loadConfig', () => {
   })
 
   test('returns undefined when configDisabled is true even with config schema', async () => {
-    const cli = testCli('app', { config: Config.object({}) }, [testCommand('run', { run: () => ({}) })])
+    const cli = testCli('app', { config: createConfig({}) }, [testCommand('run', { run: () => ({}) })])
     const result = await loadConfig('app', stateOf(cli), { configPath: undefined, configDisabled: true } as any)
     expect(result).toBeUndefined()
   })
@@ -51,7 +51,7 @@ describe('loadConfig', () => {
     writeFileSync(yamlPath, 'mode: yaml\n')
     writeFileSync(tomlPath, 'mode = "toml"\n')
 
-    const cli = testCli('app', { config: Config.object({}) }, [testCommand('run', { run: () => ({}) })])
+    const cli = testCli('app', { config: createConfig({}) }, [testCommand('run', { run: () => ({}) })])
     for (const [path, mode] of [
       [jsonPath, 'json'],
       [jsoncPath, 'jsonc'],
@@ -63,7 +63,7 @@ describe('loadConfig', () => {
   })
 
   test('throws ParseError with the path when explicit --config file does not exist', async () => {
-    const cli = testCli('app', { config: Config.object({}) }, [testCommand('run', { run: () => ({}) })])
+    const cli = testCli('app', { config: createConfig({}) }, [testCommand('run', { run: () => ({}) })])
     await expect(
       loadConfig('app', stateOf(cli), { configPath: `${dir}/missing.json`, configDisabled: false } as any),
     ).rejects.toThrow(`Config file not found: ${dir}/missing.json`)
@@ -83,7 +83,7 @@ describe('loadConfig', () => {
     process.chdir(projectRoot)
     try {
       const cli = testCli('app', {
-        config: Config.object({
+        config: createConfig({
           files: ['app.json'],
           scopes: { project: true, user: { xdg: true } },
         }),
@@ -104,7 +104,7 @@ describe('loadConfig', () => {
 
   test('returns schema defaults when no declared file exists', async () => {
     const cli = testCli('app', {
-      config: Config.object({
+      config: createConfig({
         files: [join(dir, 'missing.json')],
         schema: z.object({ mode: z.string().default('default') }),
       }),
@@ -117,7 +117,7 @@ describe('loadConfig', () => {
     const path = join(dir, 'app.json')
     writeFileSync(path, JSON.stringify({ mode: 'ok', typo: true }))
     const cli = testCli('app', {
-      config: Config.object({
+      config: createConfig({
         files: [path],
         schema: z.strictObject({ mode: z.string() }),
       }),
@@ -140,7 +140,7 @@ describe('loadConfig', () => {
   test('tracks provenance for resolved config fields', async () => {
     const path = join(dir, 'app.json')
     writeFileSync(path, JSON.stringify({ mode: 'json', nested: { value: true } }))
-    const cli = testCli('app', { config: Config.object({ files: [path] }) }, [testCommand('run', { run: () => ({}) })])
+    const cli = testCli('app', { config: createConfig({ files: [path] }) }, [testCommand('run', { run: () => ({}) })])
     const result = await loadConfigResolution('app', stateOf(cli), { configPath: undefined, configDisabled: false } as any)
     expect(result?.sources.get('mode')).toEqual({ kind: 'project-file', path })
     expect(result?.sources.get('nested.value')).toEqual({ kind: 'project-file', path })

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Config, middleware, z } from '../src/index.js'
+import { createConfig, middleware, z } from '../src/index.js'
 import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
@@ -336,7 +336,7 @@ describe('parity: config object defaults', () => {
 
   test('--no-config disables config loading even when files exist', async () => {
     const cli = testCli('app', {
-      config: Config.object({
+      config: createConfig({
         schema: z.object({ modeDefault: z.string().default('from-config') }),
       }),
     }, [testCommand('run', {

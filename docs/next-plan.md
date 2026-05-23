@@ -346,7 +346,7 @@ Status: the core config primitive, Product config catalog, and generated base UR
 
 Core requirements:
 
-- public `Config.object(...)`
+- public `createConfig(...)`
 - typed `RunContext.config`
 - `RunContext.sources` for config and option provenance
 - explicit option-to-config bindings
@@ -357,7 +357,7 @@ Core requirements:
 
 Product requirements:
 
-- public `@lili/product` `Config` helper
+- public `@lili/product` `createConfig` helper
 - `defineProduct({ config })` as a sibling of `bindings`
 - normalized catalog config node
 - generated config JSON Schema containing general config fields and bindings
@@ -371,7 +371,7 @@ Verification:
 - a handwritten CLI with config receives typed `ctx.config` and provenance
 - a handwritten CLI without config rejects `--config` and `--no-config`
 - config-to-option binding is explicit; matching option names do not bind automatically
-- handwritten tool CLIs use the primitive: `li-build` binds `build.*` and `compileEntry.*` defaults through `Config.object(...)`; `li-release` binds `package.*` and `publish.*` defaults through `Config.object(...)`
+- handwritten tool CLIs use the primitive: `li-build` binds `build.*` and `compileEntry.*` defaults through `createConfig(...)`; `li-release` binds `package.*` and `publish.*` defaults through `createConfig(...)`
 - a Product with config but no bindings still emits a config schema
 - a generated Product remote command with a config-backed base URL calls the core HTTP transport and reports `meta.execution.source: "config"`
 - a generated Product remote command with an env-backed base URL calls the core HTTP transport and reports `meta.execution.source: "env"`

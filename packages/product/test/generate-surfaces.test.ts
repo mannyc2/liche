@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
-  Config,
+  createConfig,
   Field,
   Shape,
   canonicalDigest,
@@ -195,7 +195,7 @@ describe('generated config schema', () => {
         name: 'Cfg',
         version: '1.0.0',
         auth: Auth.none(),
-        config: Config.object({
+        config: createConfig({
           fields: Shape.object({ apiBaseUrl: Field.string('API base URL') }),
         }),
       }),

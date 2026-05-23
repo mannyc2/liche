@@ -15,14 +15,14 @@ The current core runtime already accepts `--config`, `--no-config`, a low-level 
 
 ## Public core API target
 
-Use a public `Config` helper:
+Use the public `createConfig` helper:
 
 ```ts
-import { Config, defineCli, defineCommand, z } from "@lili/core";
+import { createConfig, defineCli, defineCommand, z } from "@lili/core";
 
 const cli = defineCli({
   name: "acme",
-  config: Config.object({
+  config: createConfig({
     files: ["acme.json", "acme.jsonc", "acme.yaml", "acme.yml", "acme.toml"],
     schema: z.object({
       baseUrl: z.string().url().default("https://api.acme.dev"),
@@ -64,7 +64,7 @@ const cli = defineCli({
 });
 ```
 
-`schema` is typed as core's public `Schema<T>` contract. The example uses the current public `z` authoring helper, but config must not grow a config-only Zod coupling. If core later adds a value-level `Schema.object(...)` builder, `Config.object(...)` should accept it through the same `Schema<T>` boundary.
+`schema` is typed as core's public `Schema<T>` contract. The example uses the current public `z` authoring helper, but config must not grow a config-only Zod coupling. If core later adds a value-level `Schema.object(...)` builder, `createConfig(...)` should accept it through the same `Schema<T>` boundary.
 
 Handlers receive `ctx.config` and source inspection separately:
 
@@ -177,14 +177,14 @@ Secrets and stored sessions belong to auth/session primitives. Cache and machine
 Product exposes config and bindings as sibling fields on `defineProduct(...)`.
 
 ```ts
-import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
 export default defineProduct({
   id: "workers",
   name: "Workers",
   version: "1.0.0",
   auth: Auth.none(),
-  config: Config.object({
+  config: createConfig({
     files: ["workers.jsonc", "workers.yaml", "workers.toml"],
     fields: Shape.object({
       accountId: Field.string("Default account ID").optional(),
@@ -255,7 +255,7 @@ Config participates in the catalog digest because it changes generated runtime b
 
 ### Slice A: core primitive
 
-- Add public `Config.object(...)`.
+- Add public `createConfig(...)`.
 - Replace the low-level config hook shape with a typed declaration while preserving testable behavior through the new API.
 - Add `RunContext.config` and `RunContext.sources`.
 - Add explicit option config bindings.
@@ -275,7 +275,7 @@ Verification:
 
 ### Slice B: Product config catalog
 
-- Add `Config` export in `@lili/product`.
+- Add `createConfig` export in `@lili/product`.
 - Add `defineProduct({ config })`.
 - Normalize config separately from bindings.
 - Generate config JSON Schema from general config and bindings.

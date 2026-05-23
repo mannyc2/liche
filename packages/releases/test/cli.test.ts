@@ -187,7 +187,7 @@ describe('li-release CLI', () => {
     expect(JSON.parse(readFileSync(body.manifest, 'utf8')).packages).toEqual([])
   })
 
-  test('package command consumes explicit Config.object release config', async () => {
+  test('package command consumes explicit createConfig release config', async () => {
     const buildRecordPath = writeBuildRecordFixture(dir)
     const outDir = join(dir, 'dist-config')
     const configPath = join(dir, 'lili.releases.jsonc')
@@ -238,7 +238,7 @@ describe('li-release CLI', () => {
     ])
   })
 
-  test('publish command consumes explicit Config.object release config', async () => {
+  test('publish command consumes explicit createConfig release config', async () => {
     const fixture = writePublishFixture(dir)
     const configPath = join(dir, 'lili.releases.json')
     writeFileSync(configPath, `${JSON.stringify({

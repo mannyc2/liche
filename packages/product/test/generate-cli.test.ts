@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
-  Config,
+  createConfig,
   Field,
   Runtime,
   Shape,
@@ -208,7 +208,7 @@ describe('generateCli — run bodies by execution mode', () => {
         name: 'P',
         version: '0.1.0',
         auth: Auth.none(),
-        config: Config.object({
+        config: createConfig({
           files: ['p.jsonc'],
           fields: Shape.object({
             apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
@@ -231,8 +231,8 @@ describe('generateCli — run bodies by execution mode', () => {
     )
     const source = generate(cat)
     expect(source.match(/from '@lili\/core'/)?.[0]).toBe("from '@lili/core'")
-    expect(source).toContain(`import { Config, callHttpOperation, defineCli, defineCommand, z } from '@lili/core'`)
-    expect(source).toContain(`config: Config.object({`)
+    expect(source).toContain(`import { callHttpOperation, createConfig, defineCli, defineCommand, z } from '@lili/core'`)
+    expect(source).toContain(`config: createConfig({`)
     expect(source).toContain(`files: ['p.jsonc'],`)
     expect(source).toContain(`config: { 'zone': 'defaultZone' },`)
     const purgeBlock = extractCommandBlock(source, 'purge')

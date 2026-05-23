@@ -85,7 +85,7 @@ export type {
   WorkflowStep,
 } from './command.js'
 
-export { Config } from './config.js'
+export { createConfig } from './config.js'
 export type {
   ConfigScopeSpec,
   ConfigScopesSpec,

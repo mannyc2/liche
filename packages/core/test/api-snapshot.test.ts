@@ -181,7 +181,7 @@ export type _PublicTypeBag = [
 
 const FROZEN_PUBLIC_VALUES = [
   'BaseError',
-  'Config',
+  'createConfig',
   'Formatter',
   'LiliError',
   'ParseError',

@@ -72,7 +72,7 @@ Before adding rewrite tests:
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
-| CONFIG-PRIM-001 | Core exposes opt-in `Config.object(...)` for handwritten CLIs. | `docs/config-primitive.md` | Package consumer imports `Config` from `@lili/core`, declares config, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook or Product-only feature. |
+| CONFIG-PRIM-001 | Core exposes opt-in `createConfig(...)` for handwritten CLIs. | `docs/config-primitive.md` | Package consumer imports `createConfig` from `@lili/core`, declares config, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook or Product-only feature. |
 | CONFIG-PRIM-002 | CLIs without config reject `--config` and `--no-config`. | `docs/config-primitive.md` | Invoke no-config CLI with each flag and assert parse errors. | CLI parser | Config flags silently no-op or become positionals. |
 | CONFIG-PRIM-003 | Explicit config path and disabled config behavior are exclusive and source-aware. | `docs/config-primitive.md` | `--config` loads only one file; `--no-config` disables discovery; both together fail. | Temp filesystem fixture | Explicit files are merged with discovered files or conflicting flags are accepted. |
 | CONFIG-PRIM-004 | Project/user discovery follows documented precedence. | `docs/config-primitive.md` | Create user and nested project config files, run from a child cwd, and inspect resolved values/provenance. | Temp filesystem fixture | User config beats project config or upward discovery misses the nearest project file. |

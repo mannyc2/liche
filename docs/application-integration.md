@@ -95,7 +95,7 @@ Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`,
 ## Example schema
 
 ```ts
-import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@lili/product";
 
 export default defineProduct({
   id: "myapp",
@@ -106,7 +106,7 @@ export default defineProduct({
     id: "myapp",
     sources: [Auth.token.env("MYAPP_TOKEN")],
   }),
-  config: Config.object({
+  config: createConfig({
     files: ["myapp.jsonc", "myapp.yaml", "myapp.toml"],
     fields: Shape.object({
       apiBaseUrl: Field.url("API base URL").default("https://api.myapp.dev"),

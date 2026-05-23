@@ -138,7 +138,7 @@ Telemetry itself remains opt-in and narrower than the event stream. The default 
 
 ### Telemetry config integration
 
-Core now has a first-class opt-in config primitive for CLI authors: `Config.object(...)` declares a typed config contract, accepts JSON/JSONC/YAML/TOML files, exposes values through `ctx.config`, preserves provenance through `ctx.sources`, and feeds command options only through explicit `optionConfig` bindings. Runtime command execution keeps argv above option env and config, while auth/session state remains outside the durable config ladder.
+Core now has a first-class opt-in config primitive for CLI authors: `createConfig(...)` declares a typed config contract, accepts JSON/JSONC/YAML/TOML files, exposes values through `ctx.config`, preserves provenance through `ctx.sources`, and feeds command options only through explicit `optionConfig` bindings. Runtime command execution keeps argv above option env and config, while auth/session state remains outside the durable config ladder.
 
 Telemetry should use a reserved framework namespace in that same loaded config object, not command options:
 

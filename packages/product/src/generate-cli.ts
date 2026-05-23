@@ -201,7 +201,7 @@ function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
 
 function renderImports(catalog: Catalog): string[] {
   const coreNames = new Set(['defineCli', 'defineCommand', 'z'])
-  if (catalog.config) coreNames.add('Config')
+  if (catalog.config) coreNames.add('createConfig')
   if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) coreNames.add('createLocalTelemetrySink')
   if (catalog.ops.enabled && catalog.ops.doctor !== false) coreNames.add('runLocalDoctor')
@@ -685,7 +685,7 @@ function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): 
 
 function renderConfigDeclaration(indent: string, catalog: Catalog): string[] {
   const config = catalog.config!
-  const lines = [`${indent}config: Config.object({`]
+  const lines = [`${indent}config: createConfig({`]
   if (config.files.length > 0) lines.push(`${indent}  files: ${renderStringArray(config.files)},`)
   lines.push(`${indent}  schema: ${renderStrictObjectSchema(config.fields, `${indent}  `)},`)
   lines.push(`${indent}  scopes: ${renderConfigScopes(config.scopes)},`)

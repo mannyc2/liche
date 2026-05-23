@@ -56,7 +56,7 @@ describe('generated CLI — boundary discipline', () => {
     const coreImports = [...source.matchAll(/from '@lili\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Config, callHttpOperation, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
   })
 
   test('generated source does not import from @lili/core subpaths or internals', () => {

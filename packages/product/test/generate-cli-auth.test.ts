@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Auth, Command, Config, Field, Runtime, Shape, canonicalDigest, defineProduct, generateCli, normalizeProduct } from '../src/index.js'
+import { Auth, Command, createConfig, Field, Runtime, Shape, canonicalDigest, defineProduct, generateCli, normalizeProduct } from '../src/index.js'
 import type { RuntimeProduct } from '../src/index.js'
 import workersAuthProduct from './fixtures/workers-auth.product.js'
 import workersProduct from './fixtures/workers.product.js'
@@ -68,7 +68,7 @@ function optionalConfigRemoteProduct(): RuntimeProduct {
     name: 'Config Remote',
     version: '1.0.0',
     auth: Auth.none(),
-    config: Config.object({
+    config: createConfig({
       files: ['config-remote.jsonc'],
       fields: Shape.object({
         apiBaseUrl: Field.string('API base URL').optional(),
@@ -170,7 +170,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('resolveAuth')
     expect(source).not.toContain('applyAuth')
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('Config, callHttpOperation, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
   })
 
   test('OAuth/session product emits file-session auth commands and OAuth runtime metadata', () => {

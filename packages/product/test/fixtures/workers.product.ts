@@ -1,4 +1,4 @@
-import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from '../../src/index.js'
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from '../../src/index.js'
 
 // Canonical Phase 3B fixture: a Workers-shaped product with one resource
 // operation, one hybrid-workflow command, one local command, and one binding.
@@ -10,7 +10,7 @@ export default defineProduct({
   version: '1.0.0',
   description: 'Build and deploy serverless applications.',
   auth: Auth.none(),
-  config: Config.object({
+  config: createConfig({
     files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
     fields: Shape.object({
       apiBaseUrl: Field.string('API base URL').default('https://api.cloudflare.test'),

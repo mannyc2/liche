@@ -38,7 +38,7 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ## Runtime Surfaces
 
 - `defineCli()` and `defineCommand()` define serializable command graphs for CLI, JSON, MCP, and command-contract surfaces.
-- `Config.object()` loads typed project/user config files.
+- `createConfig()` loads typed project/user config files.
 - `resolveAuth()`, `createFileSessionStore()`, and OAuth device helpers support generated and handwritten auth flows.
 - `callHttpOperation()` is the shared outbound HTTP transport for remote commands.
 - `runLocalDoctor()` reports local PATH and package-manager diagnostics.

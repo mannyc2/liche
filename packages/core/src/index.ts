@@ -1,5 +1,5 @@
 export { defineCli, defineCommand } from './cli/create.js'
-export { Config } from './config/index.js'
+export { createConfig } from './config/index.js'
 export { middleware } from './cli/context.js'
 export { z } from './schema/zod.js'
 

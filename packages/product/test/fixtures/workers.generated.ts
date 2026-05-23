@@ -9,7 +9,7 @@
  * Do not edit by hand. Regenerate via `li-product generate`.
  */
 
-import { Config, callHttpOperation, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@lili/core'
+import { callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@lili/core'
 import { deploy, dev } from './impl/wrangler.js'
 
 const PRODUCT_ID = 'workers'
@@ -538,7 +538,7 @@ const cli = defineCli({
   version: '1.0.0',
   generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
   events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],
-  config: Config.object({
+  config: createConfig({
     files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
     schema: z.strictObject({
       'accountId': z.string().optional(),

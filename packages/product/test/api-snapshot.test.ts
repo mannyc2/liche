@@ -4,7 +4,7 @@ import * as Api from '../src/index.js'
 const FROZEN_PUBLIC_VALUES = [
   'Auth',
   'Command',
-  'Config',
+  'createConfig',
   'DEFAULT_GENERATED_VOCABULARY',
   'Field',
   'FieldBuilder',

@@ -25,7 +25,7 @@ These exports have clear non-test consumers or are required to type the main aut
 | Export group | Evidence | Decision |
 |---|---|---|
 | `defineCli`, `defineCommand`, `z` | Used by Product generation, build/release CLIs, examples, docs, and generated fixtures. | Core authoring surface. Keep. |
-| `Config` plus config/provenance types | Used by build/release CLIs, examples, generated fixtures, and config docs. | Core primitive. Keep. |
+| `createConfig` plus config/provenance types | Used by build/release CLIs, examples, generated fixtures, and config docs. | Core primitive. Keep. |
 | `middleware`, lifecycle event types, hook types | Used by examples and the extension-lane property test; required for opt-in extension lanes. | Extension lane. Keep. |
 | `CliInstance`, `ServeOptions`, `RunContext`, handler/result/error/helper types | Used by package tests, release/product command wrappers, and public handler signatures. | Public type support. Keep unless signatures are reshaped. |
 | `callHttpOperation`, `serializeHttpOperationRequest`, HTTP operation types | Used by Product conformance and generated remote command fixtures. | Shared generated/runtime transport primitive. Keep. |

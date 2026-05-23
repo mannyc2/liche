@@ -3,7 +3,7 @@ import { testCli, testCommand } from './helpers.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Config, Formatter, z, type CliInstance } from '../src/index.js'
+import { createConfig, Formatter, z, type CliInstance } from '../src/index.js'
 import * as Fetch from '../src/fetch/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import * as Parser from '../src/parser/index.js'
@@ -208,8 +208,8 @@ describe('runtime and config behavior', () => {
     await Bun.write(yamlPath, 'mode: yaml\n')
 
     try {
-      const jsonCli = testCli('app', { config: Config.object({ files: [jsonPath] }) })
-      const yamlCli = testCli('app', { config: Config.object({ files: [yamlPath] }) })
+      const jsonCli = testCli('app', { config: createConfig({ files: [jsonPath] }) })
+      const yamlCli = testCli('app', { config: createConfig({ files: [yamlPath] }) })
 
       expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({
         mode: 'json',

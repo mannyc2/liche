@@ -167,7 +167,7 @@ defineCli({
 ```ts
 defineCli({
   name: "acme",
-  config: Config.object({
+  config: createConfig({
     files: ["acme.json", "acme.yaml"],
     schema: z.object({
       baseUrl: z.string().url().default("https://api.acme.dev"),
@@ -181,7 +181,7 @@ defineCli({
 ```ts
 defineCli({
   name: "acme",
-  config: Config.object({
+  config: createConfig({
     files: ["acme.json", "acme.yaml"],
     schema: z.object({
       baseUrl: z.string().url().default("https://api.acme.dev"),
@@ -194,7 +194,7 @@ defineCli({
 
 Questions:
 
-1. Is a `Config` static-class API consistent with how successful CLI frameworks expose first-class concepts, or is a plain object better?
+1. Is a `createConfig` function API consistent with how successful CLI frameworks expose first-class concepts, or is a plain object better?
 2. Should config schema be Zod in core, or should config use the same `Schema` abstraction as command args/options/env?
 3. Should handlers receive `ctx.config`, or should config only feed command options?
 4. Should core expose value provenance, such as `ctx.sources.config.baseUrl === "project-file"`?
@@ -232,7 +232,7 @@ defineProduct({
   id: "workers",
   name: "Workers",
   version: "1.0.0",
-  config: Config.object({
+  config: createConfig({
     files: ["workers.json", "workers.yaml", "wrangler.jsonc"],
     fields: Shape.object({
       accountId: Field.string("Default account ID").optional(),
@@ -324,8 +324,8 @@ The ideal output is one document, 3000-6000 words, containing:
 
 The research is successful if it lets us make a hard design call on:
 
-- whether `Config` is public `@lili/core` API
-- whether `Config` is also re-exported or mirrored by `@lili/product`
+- whether `createConfig` is public `@lili/core` API
+- whether `createConfig` is also exported by `@lili/product`
 - whether config can feed `ctx.config`, command options, or both
 - which file formats and search scopes are MVP
 - whether config mutation commands are MVP or deferred

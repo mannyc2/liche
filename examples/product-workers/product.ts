@@ -1,4 +1,4 @@
-import { Auth, Command, Config, Field, Runtime, Shape, defineProduct } from '@lili/product'
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from '@lili/product'
 
 export default defineProduct({
   id: 'workers',
@@ -7,7 +7,7 @@ export default defineProduct({
   description: 'Build and deploy serverless applications.',
   scope: { kind: 'account', param: 'account_id' },
   auth: Auth.none(),
-  config: Config.object({
+  config: createConfig({
     files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
     fields: Shape.object({
       apiBaseUrl: Field.string('API base URL').default('https://api.workers.example.test'),

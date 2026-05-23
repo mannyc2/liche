@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   Auth,
   Command,
-  Config,
+  createConfig,
   Field,
   FieldBuilder,
   Runtime,
@@ -262,7 +262,7 @@ describe('defineProduct', () => {
   })
 
   test('config() and remote() store product-level runtime declarations', () => {
-    const config = Config.object({
+    const config = createConfig({
       files: ['workers.jsonc'],
       fields: Shape.object({
         apiBaseUrl: Field.string('API base URL').default('https://api.example.test'),
