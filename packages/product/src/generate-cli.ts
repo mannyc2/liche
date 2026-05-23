@@ -50,6 +50,7 @@ export type GenerateOptions = {
 }
 
 export function generateCli(catalog: Catalog, options: GenerateOptions): string {
+  assertRemoteTransportReady(catalog)
   const lines: string[] = []
   lines.push(...renderHeader(catalog, options))
   lines.push('')
@@ -66,6 +67,27 @@ export function generateCli(catalog: Catalog, options: GenerateOptions): string 
   lines.push(...renderCli(catalog))
   lines.push('')
   return lines.join('\n')
+}
+
+function assertRemoteTransportReady(catalog: Catalog): void {
+  for (const cap of catalog.capabilities) {
+    if (cap.kind === 'resource-operation') {
+      if (!cap.http) {
+        throw new Error(
+          `Generated CLI cannot render resource operation '${cap.id}' because it has no HTTP transport.`,
+        )
+      }
+      if (!catalog.remote) throw missingRemoteError(cap.id)
+      continue
+    }
+    if (cap.execution.mode === 'remote-http' && !catalog.remote) throw missingRemoteError(cap.id)
+  }
+}
+
+function missingRemoteError(capabilityId: string): Error {
+  return new Error(
+    `Generated CLI cannot render HTTP capability '${capabilityId}' without defineProduct({ remote: { baseUrl } }).`,
+  )
 }
 
 function renderRuntimeConstants(catalog: Catalog): string[] {
@@ -535,25 +557,14 @@ function shapeToJsonSchema(catalog: Catalog, shape: NormalizedShape): JsonSchema
 function renderCapabilityRun(indent: string, catalog: Catalog, cap: Capability): string[] {
   const preamble = renderAuthPreamble(indent, catalog, cap)
   if (cap.kind === 'resource-operation') {
-    if (cap.http && catalog.remote) return renderRemoteCall(indent, catalog, cap, cap.http, preamble)
-    return [
-      ...preamble,
-      `${indent}return ctx.error({`,
-      `${indent}  code: 'REMOTE_NOT_IMPLEMENTED',`,
-      `${indent}  message: 'Remote transport for resource operations is not implemented yet (Phase 4)',`,
-      `${indent}})`,
-    ]
+    if (!cap.http) throw new Error(`Generated CLI cannot render resource operation '${cap.id}' because it has no HTTP transport.`)
+    if (!catalog.remote) throw missingRemoteError(cap.id)
+    return renderRemoteCall(indent, catalog, cap, cap.http, preamble)
   }
   const mode = cap.execution.mode
   if (mode === 'remote-http') {
-    if (catalog.remote) return renderRemoteCall(indent, catalog, cap, cap.execution.http, preamble)
-    return [
-      ...preamble,
-      `${indent}return ctx.error({`,
-      `${indent}  code: 'REMOTE_NOT_IMPLEMENTED',`,
-      `${indent}  message: 'Remote transport for remote-http commands is not implemented yet (Phase 4)',`,
-      `${indent}})`,
-    ]
+    if (!catalog.remote) throw missingRemoteError(cap.id)
+    return renderRemoteCall(indent, catalog, cap, cap.execution.http, preamble)
   }
   const parsed = parseHandler(cap.execution.handler)
   return [

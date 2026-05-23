@@ -19,6 +19,7 @@ function workersCatalog(): Catalog {
     name: 'Workers',
     version: '1.0.0',
     auth: Auth.none(),
+    remote: { baseUrl: Runtime.literal('https://api.example.test') },
     resources: {
       script: {
         label: 'Worker script',
@@ -83,7 +84,7 @@ describe('generateCli — imports', () => {
     const coreImports = [...source.matchAll(/from '@lili\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
-    expect(importLine?.[1]).toBe('defineCli, defineCommand, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, z')
   })
 
   test('local and hybrid-workflow handlers are imported from ./impl/<module>.js, grouped per module', () => {
@@ -175,15 +176,20 @@ describe('generateCli — run bodies by execution mode', () => {
     expect(deployBlock).toMatch(/execution: \{ mode: 'hybrid-workflow', source: 'schema-default' \}/)
   })
 
-  test('resource operation run body is a Phase 4 not-implemented stub, not a fake handler call', () => {
+  test('resource operation run body calls core HTTP transport', () => {
     const source = generate(workersCatalog())
     const listBlock = extractCommandBlock(source, ['script', 'list'])
-    expect(listBlock).toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
-    expect(listBlock).toMatch(/resource operations is not implemented yet \(Phase 4\)/)
+    expect(listBlock).toContain(`const data = await callHttpOperation({`)
+    expect(listBlock).toContain(`baseUrl: 'https://api.example.test',`)
+    expect(listBlock).toContain(`method: 'GET',`)
+    expect(listBlock).toContain(`path: '',`)
+    expect(listBlock).toContain(`bind: { body: false },`)
+    expect(listBlock).toContain(`execution: { mode: 'remote-http', source: 'schema-default' }`)
+    expect(listBlock).not.toContain(`REMOTE_NOT_IMPLEMENTED`)
     expect(listBlock).not.toMatch(/await \w+\(ctx\.options\)/)
   })
 
-  test('remote-http command run body is a Phase 4 not-implemented stub', () => {
+  test('remote-http command without product remote fails generation instead of emitting a stub', () => {
     const cat = normalizeProduct(
       defineProduct({
         id: 'p',
@@ -195,10 +201,9 @@ describe('generateCli — run bodies by execution mode', () => {
         },
       }),
     )
-    const source = generate(cat)
-    const purgeBlock = extractCommandBlock(source, 'purge')
-    expect(purgeBlock).toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
-    expect(purgeBlock).toMatch(/remote-http commands is not implemented yet \(Phase 4\)/)
+    expect(() => generate(cat)).toThrow(
+      "Generated CLI cannot render HTTP capability 'purge' without defineProduct({ remote: { baseUrl } }).",
+    )
   })
 
   test('remote-http command with product remote config calls core HTTP transport', () => {
@@ -284,6 +289,7 @@ describe('generateCli — list output resolution', () => {
       name: 'P',
       version: '0.1.0',
       auth: Auth.none(),
+      remote: { baseUrl: Runtime.literal('https://api.example.test') },
       resources: {
         orphan: {
           label: 'o',

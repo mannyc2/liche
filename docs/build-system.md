@@ -262,7 +262,7 @@ For current core compatibility, handwritten CLIs may continue to use richer form
 
 Outbound HTTP operation transport is core runtime behavior.
 
-`@lili/core` exports documented `serializeHttpOperationRequest` and `callHttpOperation` primitives that can be used by handwritten CLIs and generated CLIs. `@lili/product` must generate wiring that calls those primitives after Product has a base URL/config source contract. That contract is the first-class config primitive in `docs/config-primitive.md`, not the current binding-only config-schema surface.
+`@lili/core` exports documented `serializeHttpOperationRequest` and `callHttpOperation` primitives that can be used by handwritten CLIs and generated CLIs. `@lili/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. That contract is the first-class config primitive in `docs/config-primitive.md`; HTTP-backed capabilities without a product remote base URL fail linting and generation.
 
 The primitive must own:
 

@@ -177,12 +177,20 @@ function lintResourceOperation(
       message: `Resource operation '${cap.id}' must declare a non-empty output schema`,
     })
   }
+  if (cap.http && !catalog.remote) {
+    issues.push({
+      code: 'catalog/remote-required',
+      path: `${base}.http`,
+      message: `HTTP capability '${cap.id}' requires product remote.baseUrl`,
+      recommendation: 'declare defineProduct({ remote: { baseUrl: Runtime.literal/env/config(...) } })',
+    })
+  }
 }
 
 function lintCommand(
   cap: CommandCapability,
   base: string,
-  _catalog: Catalog,
+  catalog: Catalog,
   issues: LintIssue[],
 ): void {
   if (!ID_PATTERN.test(cap.id)) {
@@ -211,6 +219,14 @@ function lintCommand(
       path: `${base}.execution.http`,
       message: `Hybrid-workflow command '${cap.id}' opted into OpenAPI but has no http trigger`,
       recommendation: 'declare http: { method, path } on the workflow or set surfaces.openapi=false',
+    })
+  }
+  if (cap.execution.mode === 'remote-http' && !catalog.remote) {
+    issues.push({
+      code: 'catalog/remote-required',
+      path: `${base}.execution.http`,
+      message: `HTTP capability '${cap.id}' requires product remote.baseUrl`,
+      recommendation: 'declare defineProduct({ remote: { baseUrl: Runtime.literal/env/config(...) } })',
     })
   }
 }

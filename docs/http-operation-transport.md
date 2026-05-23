@@ -147,7 +147,7 @@ Do not pass secret values through CLI flags such as `--auth-env NAME=VALUE`. Con
 
 When a resolved credential is present, `applyAuth` mutates headers. Generated code must not pass raw token strings to transport.
 
-Generated Product commands call this transport only when the catalog declares a product-level remote base URL source. Without that declaration, generated `remote-http` and resource-operation commands keep returning the explicit `REMOTE_NOT_IMPLEMENTED` Phase 4 stub rather than inventing an implicit base URL rule. When a remote base URL is declared, generated callers pass a resolved base URL sourced from a literal, env var, or declared config field while keeping auth/session resolution separate.
+Generated Product commands call this transport only when the catalog declares a product-level remote base URL source. Without that declaration, Product linting reports `catalog/remote-required` and CLI generation fails rather than emitting a placeholder transport path or inventing an implicit base URL rule. When a remote base URL is declared, generated callers pass a resolved base URL sourced from a literal, env var, or declared config field while keeping auth/session resolution separate.
 
 ## Timeout
 

@@ -22,9 +22,10 @@ These examples are source-checkout examples. Run commands from the repository ro
 - bearer token from `ACME_TOKEN`
 - CI-only token from `ACME_CI_TOKEN`
 - org context from `--org` or `ACME_ORG_ID`
+- remote base URL from `ACME_API_BASE_URL`
 - agent-visible remote command metadata
 
-The command still reaches `REMOTE_NOT_IMPLEMENTED` after auth/context resolution because this example focuses on credential/context resolution rather than a configured remote base URL.
+The command resolves credential/context inputs before using the shared core HTTP transport.
 
 ## Product Auth Session
 

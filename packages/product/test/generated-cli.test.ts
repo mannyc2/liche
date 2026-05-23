@@ -1,19 +1,31 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ServeOptions } from '@lili/core'
-import { canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
+import {
+  Auth,
+  Command,
+  Field,
+  Runtime,
+  Shape,
+  canonicalDigest,
+  defineProduct,
+  generateCli,
+  normalizeProduct,
+} from '../src/index.js'
+import type { RuntimeProduct } from '../src/index.js'
 import workersProduct from './fixtures/workers.product.js'
 import workersGenerated from './fixtures/workers.generated.js'
 import workersHandwritten from './fixtures/workers.handwritten.js'
 
 const FIXTURE_DIR = join(import.meta.dir, 'fixtures')
+type GeneratedCli = typeof workersGenerated
 
 type CapturedRun = { stdout: string; stderr: string; exitCode: number }
 
 async function runCli(
-  cli: typeof workersGenerated,
+  cli: GeneratedCli,
   argv: string[],
   options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<CapturedRun> {
@@ -28,6 +40,22 @@ async function runCli(
     isTty: options.isTty ?? false,
   })
   return { stdout, stderr, exitCode }
+}
+
+async function generateTempCli(product: RuntimeProduct): Promise<{ cli: GeneratedCli; dir: string }> {
+  const root = join(import.meta.dir, '.tmp')
+  mkdirSync(root, { recursive: true })
+  const dir = mkdtempSync(join(root, 'generated-'))
+  const catalog = normalizeProduct(product)
+  const source = generateCli(catalog, {
+    generatorVersion: 'test',
+    canonicalIrDigest: canonicalDigest(catalog),
+    generationOptionsDigest: canonicalDigest({ surfaceId: 'cli' }),
+  })
+  const path = join(dir, 'generated.ts')
+  writeFileSync(path, source)
+  const mod = await import(`${path}?t=${Date.now()}-${Math.random()}`) as { default: GeneratedCli }
+  return { cli: mod.default, dir }
 }
 
 describe('generated CLI — source matches golden', () => {
@@ -132,6 +160,140 @@ describe('generated CLI — runtime parity with handwritten', () => {
     } finally {
       rmSync(dir, { force: true, recursive: true })
       server.stop(true)
+    }
+  })
+
+  test('remote-http command uses a literal base URL and sends a JSON body', async () => {
+    const server = Bun.serve({
+      port: 0,
+      async fetch(request) {
+        expect(request.method).toBe('POST')
+        expect(new URL(request.url).pathname).toBe('/ping')
+        expect(await request.json()).toEqual({ name: 'Ada' })
+        return Response.json({ ok: true, name: 'Ada' })
+      },
+    })
+    const generated = await generateTempCli(defineProduct({
+      id: 'literal-remote',
+      name: 'Literal Remote',
+      version: '1.0.0',
+      auth: Auth.none(),
+      remote: { baseUrl: Runtime.literal(server.url.origin) },
+      commands: {
+        ping: Command.remoteHttp({
+          summary: 'Ping',
+          input: Shape.object({ name: Field.string('Name') }),
+          output: Shape.object({ ok: Field.boolean('OK'), name: Field.string('Name') }),
+          http: { method: 'POST', path: '/ping', bind: { body: true } },
+        }),
+      },
+    }))
+    try {
+      const out = await runCli(generated.cli, ['ping', '--name', 'Ada', '--json'])
+      expect(out.exitCode).toBe(0)
+      expect(JSON.parse(out.stdout)).toEqual({
+        ok: true,
+        data: { ok: true, name: 'Ada' },
+        error: null,
+        meta: { execution: { mode: 'remote-http', source: 'schema-default' } },
+      })
+    } finally {
+      server.stop(true)
+      rmSync(generated.dir, { force: true, recursive: true })
+    }
+  })
+
+  test('remote-http command resolves env base URL and fails clearly when missing', async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(request.method).toBe('GET')
+        expect(new URL(request.url).pathname).toBe('/status')
+        return Response.json({ ready: true })
+      },
+    })
+    const generated = await generateTempCli(defineProduct({
+      id: 'env-remote',
+      name: 'Env Remote',
+      version: '1.0.0',
+      auth: Auth.none(),
+      remote: { baseUrl: Runtime.env('REMOTE_API_BASE_URL') },
+      commands: {
+        status: Command.remoteHttp({
+          summary: 'Status',
+          output: Shape.object({ ready: Field.boolean('Ready') }),
+          http: { method: 'GET', path: '/status' },
+        }),
+      },
+    }))
+    try {
+      const ok = await runCli(generated.cli, ['status', '--json'], {
+        env: { REMOTE_API_BASE_URL: server.url.origin },
+      })
+      expect(ok.exitCode).toBe(0)
+      expect(JSON.parse(ok.stdout).meta).toEqual({ execution: { mode: 'remote-http', source: 'env' } })
+
+      const missing = await runCli(generated.cli, ['status', '--json'], { env: {} })
+      expect(missing.exitCode).toBe(1)
+      const body = JSON.parse(missing.stdout)
+      expect(body.error.code).toBe('REMOTE_CONFIG_MISSING_BASE_URL')
+      expect(body.error.suggested_fix).toContain('REMOTE_API_BASE_URL')
+    } finally {
+      server.stop(true)
+      rmSync(generated.dir, { force: true, recursive: true })
+    }
+  })
+
+  test('remote-http command returns structured auth, HTTP status, and schema errors', async () => {
+    let mode: 'status' | 'schema' = 'status'
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(request.headers.get('authorization')).toBe('Bearer secret-token')
+        if (mode === 'schema') return Response.json({ ok: 'yes' })
+        return Response.json({ error: 'bad token', token: 'secret-token' }, { status: 500 })
+      },
+    })
+    const generated = await generateTempCli(defineProduct({
+      id: 'auth-remote',
+      name: 'Auth Remote',
+      version: '1.0.0',
+      auth: Auth.bearer({ id: 'acme', sources: [Auth.token.env('ACME_TOKEN')] }),
+      remote: { baseUrl: Runtime.literal(server.url.origin) },
+      commands: {
+        purge: Command.remoteHttp({
+          summary: 'Purge',
+          input: Shape.object({ zone: Field.string('Zone') }),
+          output: Shape.object({ ok: Field.boolean('OK') }),
+          requires: { auth: true },
+          http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'], body: [] } },
+        }),
+      },
+    }))
+    try {
+      const auth = await runCli(generated.cli, ['purge', '--zone', 'zone-a', '--json'], { env: {} })
+      expect(auth.exitCode).toBe(1)
+      expect(JSON.parse(auth.stdout).error.code).toBe('AUTH_MISSING')
+
+      const status = await runCli(generated.cli, ['purge', '--zone', 'zone-a', '--json'], {
+        env: { ACME_TOKEN: 'secret-token' },
+      })
+      expect(status.exitCode).toBe(1)
+      const statusText = status.stdout
+      expect(statusText).not.toContain('secret-token')
+      const statusBody = JSON.parse(statusText)
+      expect(statusBody.error.code).toBe('REMOTE_HTTP_STATUS')
+      expect(statusBody.error.details.bodyPreview).toContain('[redacted]')
+
+      mode = 'schema'
+      const schema = await runCli(generated.cli, ['purge', '--zone', 'zone-a', '--json'], {
+        env: { ACME_TOKEN: 'secret-token' },
+      })
+      expect(schema.exitCode).toBe(1)
+      expect(JSON.parse(schema.stdout).error.code).toBe('REMOTE_RESPONSE_SCHEMA')
+    } finally {
+      server.stop(true)
+      rmSync(generated.dir, { force: true, recursive: true })
     }
   })
 

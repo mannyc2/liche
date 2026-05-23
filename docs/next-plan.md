@@ -327,6 +327,7 @@ Prove that generated remote commands and handwritten remote commands share the s
 
 - core `serializeHttpOperationRequest` and `callHttpOperation` are implemented and frozen; generated wiring calls those APIs when a Product declares a remote base URL
 - Product config/base URL authoring is defined and generated commands can source remote base URLs from literals, env vars, or declared config fields
+- Product linting and generation fail for HTTP-backed capabilities without a product remote base URL
 - generated auth-aware remote wiring calls `resolveAuth`/`resolveContext` before `callHttpOperation`
 - output schema validation treats HTTP responses as untrusted
 - non-2xx, malformed JSON, unsupported content types, timeout, missing base URL, and missing auth become structured core errors
@@ -342,7 +343,7 @@ Verification:
 
 ## Phase 4-B: config primitive and generated base URL wiring
 
-Status: the core config primitive, Product config catalog, and generated base URL wiring are implemented for declared remote sources. Generated Product remote stubs remain only when a catalog has no product-level remote base URL declaration.
+Status: the core config primitive, Product config catalog, and generated base URL wiring are implemented for declared remote sources. The hard cutover is complete: generated Product remote stubs are removed, and catalogs with HTTP-backed capabilities but no product-level remote base URL fail lint/generation.
 
 Core requirements:
 

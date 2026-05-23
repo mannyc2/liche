@@ -255,12 +255,50 @@ describe('lintCatalog — config/runtime', () => {
     }).find((i) => i.code === 'catalog/remote-base-url')
     expect(issue?.message).toContain("unknown config field 'missingBaseUrl'")
   })
+
+  test('HTTP resource operations require a product remote base URL', () => {
+    const issue = lintProductInput({
+      resources: {
+        script: {
+          label: 'Script',
+          path: '/scripts',
+          operations: {
+            list: {
+              summary: 'List',
+              http: { method: 'GET', path: '/scripts' },
+              output: Shape.list('script'),
+            },
+          },
+        },
+      },
+    }).find((i) => i.code === 'catalog/remote-required')
+    expect(issue).toEqual({
+      code: 'catalog/remote-required',
+      path: 'capabilities[0].http',
+      message: "HTTP capability 'script.list' requires product remote.baseUrl",
+      recommendation: 'declare defineProduct({ remote: { baseUrl: Runtime.literal/env/config(...) } })',
+    })
+  })
+
+  test('remote-http commands require a product remote base URL', () => {
+    const issue = lintProductInput({
+      commands: {
+        purge: Command.remoteHttp({
+          summary: 'Purge',
+          http: { method: 'POST', path: '/purge' },
+        }),
+      },
+    }).find((i) => i.code === 'catalog/remote-required')
+    expect(issue?.path).toBe('capabilities[0].execution.http')
+    expect(issue?.message).toBe("HTTP capability 'purge' requires product remote.baseUrl")
+  })
 })
 
 describe('lintCatalog — clean product', () => {
   test('workers-style product with resource + workflow + local command produces no issues', () => {
     expect(
       lintProductInput({
+        remote: { baseUrl: Runtime.literal('https://api.example.test') },
         resources: {
           script: {
             label: 'Worker script',
@@ -294,6 +332,7 @@ describe('lintCatalog — capability safety metadata', () => {
   test('agent or conformance visible capabilities must declare effects, policy, and examples', () => {
     expect(
       lintProductInput({
+        remote: { baseUrl: Runtime.literal('https://api.example.test') },
         commands: {
           deploy: Command.remoteHttp({
             summary: 'Deploy',
@@ -312,6 +351,7 @@ describe('lintCatalog — capability safety metadata', () => {
   test('dangerous and delete capabilities require consistent policy flags', () => {
     expect(
       lintProductInput({
+        remote: { baseUrl: Runtime.literal('https://api.example.test') },
         commands: {
           deleteCache: Command.remoteHttp({
             summary: 'Delete cache',

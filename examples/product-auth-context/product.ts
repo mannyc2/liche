@@ -1,10 +1,11 @@
-import { Auth, Command, Field, Shape, defineProduct } from '@lili/product'
+import { Auth, Command, Field, Runtime, Shape, defineProduct } from '@lili/product'
 
 export default defineProduct({
   id: 'acme-cache',
   name: 'Acme Cache',
   version: '0.1.0',
   description: 'Cache operations with bearer auth and org context.',
+  remote: { baseUrl: Runtime.env('ACME_API_BASE_URL') },
   auth: Auth.bearer({
       id: 'acme',
       sources: [

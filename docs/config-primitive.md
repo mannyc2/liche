@@ -10,7 +10,7 @@ The current core runtime already accepts `--config`, `--no-config`, a low-level 
 - Generated Product CLIs lower product config declarations into the same core primitive as handwritten CLIs.
 - General config and product bindings remain separate authoring concepts.
 - Auth/session/profile state remains outside general config.
-- Remote Product commands have a declarative way to resolve base URLs and other durable non-secret defaults before generated HTTP wiring leaves the `REMOTE_NOT_IMPLEMENTED` stub.
+- Remote Product commands resolve base URLs and other durable non-secret defaults through declared sources; generation fails when an HTTP-backed capability has no product remote base URL.
 - JSON Schema/config surfaces include both general product config and bindings when Product declares either.
 
 ## Public core API target

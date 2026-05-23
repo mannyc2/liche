@@ -83,7 +83,7 @@ Before adding rewrite tests:
 
 ## Remote transport coverage
 
-Current status (2026-05-20): `@lili/core` now exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/core/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the core primitive layer. Remaining remote work is generated Product wiring and conformance: Product `HttpSpec` still has no base URL/config source, so generated `remote-http` and resource-operation commands intentionally keep the explicit `REMOTE_NOT_IMPLEMENTED` stub until the config primitive/base URL contract lands.
+Current status (2026-05-23): `@lili/core` exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/core/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the core primitive layer. Generated Product wiring now calls the shared transport for literal, env, and config-backed remote base URLs; Product linting and generation fail for HTTP-backed capabilities without `remote.baseUrl`.
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|

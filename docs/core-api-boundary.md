@@ -122,7 +122,7 @@ The first outbound remote transport slice has shipped. The following are now rea
 - Values: `serializeHttpOperationRequest`, `callHttpOperation`.
 - Types: `RuntimeValue`, `HttpAuth`, `HttpMethod`, `HttpFetch`, `HttpOperationBind`, `HttpOperationRequestSpec`, `SerializedHttpRequest`, `HttpOperationCall`, `RemoteErrorDetails`.
 
-This slice covers pure request serialization, env/literal base URL resolution, env or resolved auth application, timeout/network/status/response/schema error normalization, and output validation. Generated Product remote command wiring remains deferred because Product `HttpSpec` currently has no base URL or config source; generated `remote-http` and resource-operation commands should keep the explicit Phase 4 `REMOTE_NOT_IMPLEMENTED` stub until the config primitive and catalog base URL contract are defined.
+This slice covers pure request serialization, env/literal base URL resolution, env or resolved auth application, timeout/network/status/response/schema error normalization, and output validation. The later Product config/base URL slice completed the generated wiring: generated `remote-http` and resource-operation commands now call `callHttpOperation` when `remote.baseUrl` is declared, and generation fails for HTTP-backed capabilities without that declaration.
 
 ## Config primitive re-freeze (landed)
 

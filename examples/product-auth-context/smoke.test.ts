@@ -48,42 +48,71 @@ describe('product-auth-context example', () => {
     expect(source).not.toContain('tok_example')
   })
 
-  test('resolves auth and context before reaching remote transport stub', async () => {
+  test('resolves auth and context before calling remote transport', async () => {
+    const server = Bun.serve({
+      port: 0,
+      async fetch(request) {
+        expect(request.method).toBe('POST')
+        expect(new URL(request.url).pathname).toBe('/orgs/acme/zones/zone-a/purge')
+        expect(request.headers.get('authorization')).toBe('Bearer tok_example')
+        expect(await request.json()).toEqual({ reason: 'smoke' })
+        return Response.json({ purge_id: 'purge-zone-a' })
+      },
+    })
     const result = await generateToDir(product, { outDir, generatorVersion: 'example' })
     const cli = await loadGenerated(result.generatedPath)
 
-    const missingToken = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--org', 'acme', '--json'])
-    expect(missingToken.exitCode).toBe(1)
-    expect(missingToken.stdout).toContain('AUTH_MISSING')
-    expect(missingToken.stdout).not.toContain('REMOTE_NOT_IMPLEMENTED')
+    try {
+      const missingToken = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--org', 'acme', '--json'])
+      expect(missingToken.exitCode).toBe(1)
+      expect(missingToken.stdout).toContain('AUTH_MISSING')
+      expect(missingToken.stdout).not.toContain('REMOTE_CONFIG_MISSING_BASE_URL')
 
-    const missingContext = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--json'], {
-      ACME_TOKEN: 'tok_example',
-    })
-    expect(missingContext.exitCode).toBe(1)
-    expect(missingContext.stdout).toContain('AUTH_CONTEXT_REQUIRED')
+      const missingContext = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--json'], {
+        ACME_TOKEN: 'tok_example',
+      })
+      expect(missingContext.exitCode).toBe(1)
+      expect(missingContext.stdout).toContain('AUTH_CONTEXT_REQUIRED')
 
-    const resolved = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--json'], {
-      ACME_TOKEN: 'tok_example',
-      ACME_ORG_ID: 'acme',
-    })
-    expect(resolved.exitCode).toBe(1)
-    expect(resolved.stdout).toContain('REMOTE_NOT_IMPLEMENTED')
-    expect(resolved.stdout).not.toContain('tok_example')
+      const resolved = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--reason', 'smoke', '--json'], {
+        ACME_API_BASE_URL: server.url.origin,
+        ACME_TOKEN: 'tok_example',
+        ACME_ORG_ID: 'acme',
+      })
+      expect(resolved.exitCode).toBe(0)
+      const body = JSON.parse(resolved.stdout)
+      expect(body.data).toEqual({ purge_id: 'purge-zone-a' })
+      expect(body.meta).toEqual({ execution: { mode: 'remote-http', source: 'env' } })
+      expect(resolved.stdout).not.toContain('tok_example')
+    } finally {
+      server.stop(true)
+    }
   })
 
   test('uses the CI-only token source when CI=true', async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        expect(request.headers.get('authorization')).toBe('Bearer tok_ci')
+        return Response.json({ purge_id: 'purge-ci' })
+      },
+    })
     const result = await generateToDir(product, { outDir, generatorVersion: 'example' })
     const cli = await loadGenerated(result.generatedPath)
 
-    const resolved = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--json'], {
-      CI: 'true',
-      ACME_CI_TOKEN: 'tok_ci',
-      ACME_ORG_ID: 'acme',
-    })
-    expect(resolved.exitCode).toBe(1)
-    expect(resolved.stdout).toContain('REMOTE_NOT_IMPLEMENTED')
-    expect(resolved.stdout).not.toContain('tok_ci')
+    try {
+      const resolved = await runGenerated(cli, ['purge', '--zone', 'zone-a', '--json'], {
+        CI: 'true',
+        ACME_API_BASE_URL: server.url.origin,
+        ACME_CI_TOKEN: 'tok_ci',
+        ACME_ORG_ID: 'acme',
+      })
+      expect(resolved.exitCode).toBe(0)
+      expect(JSON.parse(resolved.stdout).data).toEqual({ purge_id: 'purge-ci' })
+      expect(resolved.stdout).not.toContain('tok_ci')
+    } finally {
+      server.stop(true)
+    }
   })
 })
 

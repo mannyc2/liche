@@ -54,10 +54,13 @@ function authProduct() {
         summary: 'Purge',
         effects: { kind: 'write', idempotent: false },
         policy: { conformanceEligible: true },
-        input: Shape.object({ zone: Field.string('Zone') }),
+        input: Shape.object({
+          zone: Field.string('Zone'),
+          token: Field.string('Request token'),
+        }),
         output: Shape.object({ ok: Field.boolean('OK') }),
         requires: { auth: true },
-        http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'], body: [] } },
+        http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'], body: ['token'] } },
       }),
     },
   })
@@ -134,14 +137,16 @@ describe('product conformance', () => {
         fixtures: [{
           name: 'purge fails',
           capability: 'purge',
-          input: { zone: 'zone-1' },
+          input: { zone: 'zone-1', token: 'request-secret-token' },
         }],
       })
       expect(report.summary).toEqual({ passed: 0, failed: 1, skipped: 0, total: 1 })
       const text = JSON.stringify(report)
       expect(text).not.toContain('secret-token')
+      expect(text).not.toContain('request-secret-token')
       expect(text).toContain('[redacted]')
       expect(report.cases[0]?.request?.headers?.authorization).toBe('[redacted]')
+      expect(report.cases[0]?.request?.bodyPreview).toContain('[redacted]')
       expect(report.cases[0]?.errors[0]?.code).toBe('REMOTE_HTTP_STATUS')
     } finally {
       server.stop(true)
