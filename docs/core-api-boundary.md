@@ -56,6 +56,8 @@ Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, fetch-backed 
 
 The `isResult` guard intentionally rejects old-shape raw objects such as `{ ok: true, data }` and `{ ok: false, error }`. Command handlers that want to finish early must use `ctx.ok(...)` or `ctx.error(...)`; otherwise those objects are treated as ordinary domain data.
 
+The error-handling policy in `docs/error-handling.md` is the next authoritative simplification target: command-authored outcomes should return standardized `ok(...)` / `fail(commandError(...))` results, while typed thrown errors stay internal to parser/schema/auth/HTTP plumbing and are normalized once by the executor.
+
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
 
 ## Auth/session re-freeze target
