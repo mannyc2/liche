@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
+const PUBLIC_PACKAGE_VERSION = '0.2.0'
+const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
   { name: '@lili/core', dir: 'packages/core', bin: undefined },
@@ -12,6 +14,138 @@ const PUBLIC_PACKAGES = [
   { name: '@lili/product', dir: 'packages/product', bin: 'li-product' },
   { name: '@lili/releases', dir: 'packages/releases', bin: 'li-release' },
 ] as const
+
+const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
+  '@lili/core': [
+    'Formatter',
+    'applyAuth',
+    'authSwitch',
+    'authWhoami',
+    'callHttpOperation',
+    'commandError',
+    'createConfig',
+    'createFileSessionStore',
+    'createLocalTelemetrySink',
+    'defineCli',
+    'defineCommand',
+    'fail',
+    'logoutAuthSession',
+    'middleware',
+    'oauthDeviceLogin',
+    'ok',
+    'resolveAuth',
+    'resolveContext',
+    'runLocalDoctor',
+    'secret',
+    'serializeHttpOperationRequest',
+    'z',
+  ],
+  '@lili/build': [
+    'BuildRecordSchema',
+    'TARGETS',
+    'TARGET_PRESETS',
+    'buildBinaries',
+    'canonicalDigest',
+    'canonicalize',
+    'compileEntrypoint',
+    'compileFlagsDigest',
+    'createCompileFlagProfile',
+    'createCompilePlan',
+    'isTargetPreset',
+    'parseBuildRecord',
+    'renderCompileEntrypoint',
+    'resolveTargets',
+  ],
+  '@lili/product': [
+    'Auth',
+    'Command',
+    'DEFAULT_GENERATED_VOCABULARY',
+    'Field',
+    'FieldBuilder',
+    'Runtime',
+    'Shape',
+    'buildAuthManifest',
+    'canonicalDigest',
+    'canonicalize',
+    'checkAgainstDir',
+    'compileProduct',
+    'conformProduct',
+    'createConfig',
+    'defineProduct',
+    'fieldToJsonSchema',
+    'generateAgentReference',
+    'generateCli',
+    'generateCommandManifest',
+    'generateConfigSchema',
+    'generateDocsReference',
+    'generateMcpTools',
+    'generateOpenapi',
+    'generateToDir',
+    'hashString',
+    'lintCatalog',
+    'normalizeProduct',
+    'resolveListShape',
+    'shouldGenerateConfigSchema',
+    'vocabulary',
+    'z',
+  ],
+  '@lili/releases': [
+    'BuildRecordSchema',
+    'CliReleaseManifestSchema',
+    'DEFAULT_NPM_REGISTRY_AUDIENCE',
+    'OIDC_EXECUTOR_FAILURE_CODES',
+    'OIDC_PROVIDERS',
+    'PACKAGE_ECOSYSTEMS',
+    'PUBLISHER_ENV_NAMES',
+    'ReleasesConfigSchema',
+    'audienceForNpmRegistry',
+    'createOfficialFlowHandoff',
+    'defineReleasesConfig',
+    'executeReleasePublish',
+    'isPackageEcosystem',
+    'loadPublisherCredentialsFromEnv',
+    'manifestFromBuildRecord',
+    'npmOidcExchangeUrl',
+    'packageRelease',
+    'parseBuildRecord',
+    'parseCliReleaseManifest',
+    'planReleasePublish',
+    'planReleaseYank',
+    'preflightReleasePublish',
+    'resolveReleaseRenderers',
+    'verifyPackageArtifacts',
+    'verifyReleaseBinaries',
+  ],
+  '@lili/releases/manifest': ['CliReleaseManifestSchema', 'parseCliReleaseManifest'],
+  '@lili/releases/binary': ['verifyReleaseBinaries'],
+  '@lili/releases/artifacts': ['verifyPackageArtifacts'],
+  '@lili/releases/package': ['packageRelease'],
+  '@lili/releases/yank': ['planReleaseYank'],
+  '@lili/releases/renderers': ['PACKAGE_ECOSYSTEMS', 'isPackageEcosystem', 'resolveReleaseRenderers'],
+  '@lili/releases/renderers/all': [
+    'createDefaultRendererRegistry',
+    'homebrewRenderer',
+    'npmRenderer',
+    'pypiRenderer',
+    'scoopRenderer',
+  ],
+  '@lili/releases/renderers/npm': ['npmRenderer'],
+  '@lili/releases/renderers/pypi': ['pypiRenderer'],
+  '@lili/releases/renderers/homebrew': ['homebrewRenderer'],
+  '@lili/releases/renderers/scoop': ['scoopRenderer'],
+  '@lili/releases/publishers': [
+    'DEFAULT_NPM_REGISTRY_AUDIENCE',
+    'OIDC_EXECUTOR_FAILURE_CODES',
+    'OIDC_PROVIDERS',
+    'PUBLISHER_ENV_NAMES',
+    'audienceForNpmRegistry',
+    'executeReleasePublish',
+    'loadPublisherCredentialsFromEnv',
+    'npmOidcExchangeUrl',
+    'planReleasePublish',
+    'preflightReleasePublish',
+  ],
+}
 
 function run(cmd: string, args: string[], cwd: string): string {
   try {
@@ -35,17 +169,45 @@ function packageJson(packageDir: string): Record<string, any> {
   return JSON.parse(readFileSync(join(REPO_ROOT, packageDir, 'package.json'), 'utf8'))
 }
 
+function exportedTargets(value: unknown): string[] {
+  if (typeof value === 'string') return [value]
+  if (Array.isArray(value)) return value.flatMap((entry) => exportedTargets(entry))
+  if (value && typeof value === 'object') {
+    return Object.values(value).flatMap((entry) => exportedTargets(entry))
+  }
+  return []
+}
+
+function packedPath(target: string): string {
+  if (!target.startsWith('./')) throw new Error(`export target must be package-relative: ${target}`)
+  return `package/${target.slice(2)}`
+}
+
+function expectPackedTargets(entries: string[], json: Record<string, any>) {
+  for (const target of new Set(exportedTargets(json.exports))) {
+    expect(entries).toContain(packedPath(target))
+  }
+  for (const target of Object.values(json.bin ?? {})) {
+    expect(entries).toContain(packedPath(String(target)))
+  }
+}
+
 describe('public package readiness', () => {
   test('public package manifests have explicit publish file lists and no private flag', () => {
     for (const pkg of PUBLIC_PACKAGES) {
       const json = packageJson(pkg.dir)
       expect(json.name).toBe(pkg.name)
+      expect(json.version).toBe(PUBLIC_PACKAGE_VERSION)
       expect(json.private).toBeUndefined()
+      expect(json.engines?.bun).toBe(BUN_ENGINE)
       expect(json.files).toEqual(['src', 'README.md'])
       expect(json.exports?.['.']).toEqual({
         types: './src/index.ts',
         default: './src/index.ts',
       })
+      for (const [dependencyName, version] of Object.entries(json.dependencies ?? {})) {
+        if (dependencyName.startsWith('@lili/')) expect(version).toBe(`^${PUBLIC_PACKAGE_VERSION}`)
+      }
       if (pkg.bin) expect(json.bin?.[pkg.bin]).toMatch(/^\.\/src\/.*\.ts$/)
       expect(readFileSync(join(REPO_ROOT, pkg.dir, 'README.md'), 'utf8')).toContain(`# ${pkg.name}`)
     }
@@ -68,10 +230,12 @@ describe('public package readiness', () => {
         if (!tarball) throw new Error(`missing packed tarball for ${pkg.name}`)
         tarballs[pkg.name] = tarball
 
+        const json = packageJson(pkg.dir)
         const entries = run('tar', ['-tzf', tarball], REPO_ROOT).trim().split('\n')
         expect(entries).toContain('package/package.json')
         expect(entries).toContain('package/README.md')
         expect(entries).toContain('package/src/index.ts')
+        expectPackedTargets(entries, json)
         expect(entries.some((entry) => entry.startsWith('package/test/'))).toBe(false)
         expect(entries.some((entry) => entry.startsWith('package/docs/'))).toBe(false)
       }
@@ -90,38 +254,66 @@ describe('public package readiness', () => {
       run('bun', ['install'], consumerDir)
 
       writeFileSync(join(consumerDir, 'smoke.ts'), `
-import { createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@lili/core'
-import { createCompilePlan } from '@lili/build'
-import { Auth, Command, Field, Runtime, Shape, defineProduct, generateCli, normalizeProduct } from '@lili/product'
-import { parseCliReleaseManifest } from '@lili/releases'
-import { CliReleaseManifestSchema } from '@lili/releases/manifest'
-import { verifyReleaseBinaries } from '@lili/releases/binary'
-import { verifyPackageArtifacts } from '@lili/releases/artifacts'
-import { packageRelease } from '@lili/releases/package'
-import { planReleaseYank } from '@lili/releases/yank'
-import { resolveReleaseRenderers } from '@lili/releases/renderers'
-import { createDefaultRendererRegistry } from '@lili/releases/renderers/all'
-import { npmRenderer } from '@lili/releases/renderers/npm'
-import { pypiRenderer } from '@lili/releases/renderers/pypi'
-import { homebrewRenderer } from '@lili/releases/renderers/homebrew'
-import { scoopRenderer } from '@lili/releases/renderers/scoop'
-import { planReleasePublish } from '@lili/releases/publishers'
+import * as Core from '@lili/core'
+import * as Build from '@lili/build'
+import * as Product from '@lili/product'
+import * as Releases from '@lili/releases'
+import * as ReleaseManifest from '@lili/releases/manifest'
+import * as ReleaseBinary from '@lili/releases/binary'
+import * as ReleaseArtifacts from '@lili/releases/artifacts'
+import * as ReleasePackage from '@lili/releases/package'
+import * as ReleaseYank from '@lili/releases/yank'
+import * as ReleaseRenderers from '@lili/releases/renderers'
+import * as ReleaseRendererAll from '@lili/releases/renderers/all'
+import * as ReleaseRendererNpm from '@lili/releases/renderers/npm'
+import * as ReleaseRendererPypi from '@lili/releases/renderers/pypi'
+import * as ReleaseRendererHomebrew from '@lili/releases/renderers/homebrew'
+import * as ReleaseRendererScoop from '@lili/releases/renderers/scoop'
+import * as ReleasePublishers from '@lili/releases/publishers'
 
-const cli = defineCli({
+const expectedPublicValues = ${JSON.stringify(EXPECTED_PUBLIC_VALUES, null, 2)}
+const modules = {
+  '@lili/core': Core,
+  '@lili/build': Build,
+  '@lili/product': Product,
+  '@lili/releases': Releases,
+  '@lili/releases/manifest': ReleaseManifest,
+  '@lili/releases/binary': ReleaseBinary,
+  '@lili/releases/artifacts': ReleaseArtifacts,
+  '@lili/releases/package': ReleasePackage,
+  '@lili/releases/yank': ReleaseYank,
+  '@lili/releases/renderers': ReleaseRenderers,
+  '@lili/releases/renderers/all': ReleaseRendererAll,
+  '@lili/releases/renderers/npm': ReleaseRendererNpm,
+  '@lili/releases/renderers/pypi': ReleaseRendererPypi,
+  '@lili/releases/renderers/homebrew': ReleaseRendererHomebrew,
+  '@lili/releases/renderers/scoop': ReleaseRendererScoop,
+  '@lili/releases/publishers': ReleasePublishers,
+}
+
+for (const [specifier, mod] of Object.entries(modules)) {
+  const actual = Object.keys(mod).sort()
+  const expected = expectedPublicValues[specifier]
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(\`\${specifier} exported \${JSON.stringify(actual)}, expected \${JSON.stringify(expected)}\`)
+  }
+}
+
+const cli = Core.defineCli({
   name: 'consumer',
   commands: [
-    defineCommand({
+    Core.defineCommand({
       path: ['ping'],
-      output: z.object({ ok: z.boolean() }),
+      output: Core.z.object({ ok: Core.z.boolean() }),
       run() { return { ok: true } },
     }),
   ],
 })
-const doctor = await runLocalDoctor({ cliName: 'consumer', env: { PATH: '' }, packageManagers: ['bun'] })
-const sink = createLocalTelemetrySink({ env: {}, append() {} })
+const doctor = await Core.runLocalDoctor({ cliName: 'consumer', env: { PATH: '' }, packageManagers: ['bun'] })
+const sink = Core.createLocalTelemetrySink({ env: {}, append() {} })
 await sink({ type: 'version.rendered', occurredAt: new Date().toISOString(), cli: { name: 'consumer' }, format: 'json', formatExplicit: true, invocation: 'cli', agent: true, surface: { kind: 'version' } })
 
-const plan = createCompilePlan({
+const plan = Build.createCompilePlan({
   entrypoint: 'src/cli.ts',
   outfile: 'dist/consumer',
   target: 'bun-darwin-arm64',
@@ -133,28 +325,28 @@ const plan = createCompilePlan({
   },
 })
 
-const product = defineProduct({
+const product = Product.defineProduct({
   id: 'consumer',
   name: 'Consumer',
   version: '0.1.0',
-  auth: Auth.none(),
-  remote: { baseUrl: Runtime.literal('https://api.example.test') },
+  auth: Product.Auth.none(),
+  remote: { baseUrl: Product.Runtime.literal('https://api.example.test') },
   commands: {
-    deploy: Command.remoteHttp({
+    deploy: Product.Command.remoteHttp({
       summary: 'Deploy',
-      input: Shape.object({ name: Field.string('Name') }),
-      output: Shape.object({ id: Field.string('ID') }),
+      input: Product.Shape.object({ name: Product.Field.string('Name') }),
+      output: Product.Shape.object({ id: Product.Field.string('ID') }),
       http: { method: 'POST', path: '/deployments', bind: { body: true } },
     }),
   },
 })
-const generated = generateCli(normalizeProduct(product), {
+const generated = Product.generateCli(Product.normalizeProduct(product), {
   generatorVersion: 'consumer',
   canonicalIrDigest: 'sha256:catalog',
   generationOptionsDigest: 'sha256:options',
 })
 
-const parsed = parseCliReleaseManifest({
+const parsed = Releases.parseCliReleaseManifest({
   manifestVersion: 1,
   metadata: { description: 'Consumer CLI.' },
   subject: {
@@ -176,18 +368,18 @@ const refs = [
   plan,
   generated,
   parsed,
-  CliReleaseManifestSchema,
-  verifyReleaseBinaries,
-  verifyPackageArtifacts,
-  packageRelease,
-  planReleaseYank,
-  resolveReleaseRenderers,
-  createDefaultRendererRegistry(),
-  npmRenderer,
-  pypiRenderer,
-  homebrewRenderer,
-  scoopRenderer,
-  planReleasePublish,
+  ReleaseManifest.CliReleaseManifestSchema,
+  ReleaseBinary.verifyReleaseBinaries,
+  ReleaseArtifacts.verifyPackageArtifacts,
+  ReleasePackage.packageRelease,
+  ReleaseYank.planReleaseYank,
+  ReleaseRenderers.resolveReleaseRenderers,
+  ReleaseRendererAll.createDefaultRendererRegistry(),
+  ReleaseRendererNpm.npmRenderer,
+  ReleaseRendererPypi.pypiRenderer,
+  ReleaseRendererHomebrew.homebrewRenderer,
+  ReleaseRendererScoop.scoopRenderer,
+  ReleasePublishers.planReleasePublish,
 ]
 if (refs.some((value) => value === undefined || value === null)) {
   throw new Error('public package import smoke failed')
@@ -200,7 +392,9 @@ if (!parsed.ok || !plan.compileFlagsDigest || !generated.includes("defineCli")) 
 
       for (const pkg of PUBLIC_PACKAGES) {
         if (!pkg.bin) continue
-        run('bun', [join(consumerDir, 'node_modules/.bin', pkg.bin), '--version'], consumerDir)
+        expect(run('bun', [join(consumerDir, 'node_modules/.bin', pkg.bin), '--version'], consumerDir).trim()).toBe(
+          PUBLIC_PACKAGE_VERSION,
+        )
       }
     } finally {
       rmSync(root, { recursive: true, force: true })

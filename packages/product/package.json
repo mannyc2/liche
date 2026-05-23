@@ -1,10 +1,13 @@
 {
   "name": "@lili/product",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "type": "module",
   "license": "MIT",
   "description": "Product schema authoring, generated CLI surfaces, and conformance for Lili.",
   "sideEffects": false,
+  "engines": {
+    "bun": ">=1.3.0"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -24,7 +27,7 @@
     "mutate": "stryker run"
   },
   "dependencies": {
-    "@lili/build": "0.0.0",
+    "@lili/build": "^0.2.0",
     "@lili/core": "^0.2.0",
     "zod": "^4.4.3"
   },

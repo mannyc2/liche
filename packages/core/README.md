@@ -2,6 +2,8 @@
 
 Bun-native CLI runtime for handwritten and generated Lili CLIs.
 
+This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
+
 Use `@lili/core` when you want to own the command implementation directly and still get typed parsing, config discovery, JSON/JSONL/YAML/Markdown output envelopes, direct MCP tools, serializable command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics and telemetry sinks are opt-in; nonessential renderers and client/vendor installers are not required core behavior.
 
 ```ts
@@ -25,9 +27,9 @@ export const cli = defineCli({
         openWorld: true,
         readOnly: false,
       },
-run({ input }) {
-  return { deployment_id: `dep-${input.options.entrypoint}` };
-},
+      run({ input }) {
+        return { deployment_id: `dep-${input.options.entrypoint}` };
+      },
     }),
   ],
 });

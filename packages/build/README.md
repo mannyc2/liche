@@ -2,6 +2,8 @@
 
 Build and compile planning primitives for Bun-native Lili CLIs.
 
+This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
+
 Use `@lili/build` when you need deterministic Bun compile plans, compile flag profiles, target resolution, path-independent compile digests, and build records that release tooling can consume.
 
 ```ts
@@ -12,7 +14,7 @@ const plan = createCompilePlan({
   outfile: "dist/shipyard",
   target: "bun-darwin-arm64",
   constants: {
-    buildToolVersion: "0.0.0",
+    buildToolVersion: "0.2.0",
     contractDigest: "sha256:example",
     releaseVersion: "0.1.0",
     sourceCommit: "0000000",

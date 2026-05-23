@@ -9,7 +9,7 @@ import type { CompileTarget } from './compile.js'
 import { isTargetPreset } from './targets.js'
 import type { TargetSelection } from './targets.js'
 
-const BUILD_TOOL_VERSION = '0.0.0'
+const BUILD_TOOL_VERSION = '0.2.0'
 
 const BuildCliConfigSchema = z.object({
   build: z.object({

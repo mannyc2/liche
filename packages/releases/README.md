@@ -2,6 +2,8 @@
 
 Release manifests, package renderers, artifact verification, official-flow handoffs, publish planning, and yank planning for Lili CLIs.
 
+This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
+
 Use `@lili/releases` after `@lili/build` has produced a build record and final binary bytes. The release package validates the manifest, verifies binary bytes, renders package-manager artifacts, verifies package artifacts, and creates dry-run publisher plans.
 
 ```ts
@@ -20,7 +22,7 @@ const parsed = parseCliReleaseManifest({
   release: {
     version: "0.1.0",
     createdAt: new Date().toISOString(),
-    generatorVersion: "0.0.0",
+    generatorVersion: "0.2.0",
   },
   runtime: { command: "shipyard" },
   binaries: [],

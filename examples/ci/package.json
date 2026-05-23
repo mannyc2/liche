@@ -9,9 +9,9 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@lili/build": "0.0.0",
-    "@lili/core": "0.0.0",
-    "@lili/releases": "0.0.0"
+    "@lili/build": "0.2.0",
+    "@lili/core": "0.2.0",
+    "@lili/releases": "0.2.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

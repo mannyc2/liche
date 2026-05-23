@@ -2,6 +2,8 @@
 
 Product schema authoring, generated surfaces, and conformance for Lili CLIs.
 
+This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
+
 Use `@lili/product` when one product catalog should drive CLI source, OpenAPI, command manifests, MCP tools, agent docs, user docs, config schema, catalog/discovery artifacts, compile entrypoints, auth/session commands, local diagnostics, telemetry status, and conformance checks.
 
 ```ts

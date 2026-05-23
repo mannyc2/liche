@@ -2,6 +2,13 @@
 
 Lili is a Bun-native toolkit for building CLIs that are useful to humans, scripts, and agents.
 
+The v1 packages are Bun-only source publications. They export TypeScript source and Bun entrypoints directly, require Bun `>= 1.3.0`, and do not publish `dist` or declaration artifacts.
+
+```sh
+bun add @lili/core
+bun add -d @lili/product @lili/build @lili/releases
+```
+
 The v1 workflow is:
 
 1. Write a CLI directly with `@lili/core`, or describe a product once with `@lili/product`.

@@ -46,7 +46,7 @@ describe('public docs', () => {
         if (block.lang === 'sh') {
           expect(block.code).not.toMatch(/packages\/[^/\s]+\/src/)
           expect(block.code).not.toMatch(/docs\//)
-          expect(block.code).toMatch(/^(li-build|li-product|li-release|bun run|bun test)/m)
+          expect(block.code).toMatch(/^(li-build|li-product|li-release|bun add|bun run|bun test)/m)
         }
       }
     }

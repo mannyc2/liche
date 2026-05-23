@@ -8,7 +8,7 @@ import {
 } from './cli-commands.js'
 import { ReleasesConfigSchema } from './release-config.js'
 
-const RELEASE_TOOL_VERSION = '0.0.0'
+const RELEASE_TOOL_VERSION = '0.2.0'
 
 export const cli = defineCli({
   builtins: { completions: true },

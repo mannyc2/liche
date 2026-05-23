@@ -72,13 +72,19 @@ The agent-native release focus is now narrow. Declarative core and Product autho
 
 Publish all four first-party packages together once the external-consumer checks pass. Use synchronized versions for v1 unless a package is explicitly held back as experimental. Synchronized versions make examples, docs, and release troubleshooting simpler.
 
-Current package-state gaps to close:
+Current package-state status:
 
-- Root workspace is private, which is correct, but `@lili/build`, `@lili/product`, and `@lili/releases` are still package-private.
-- Package READMEs are missing.
-- Package export maps point at TypeScript source. Decide deliberately whether v1 is Bun-only source publication or whether packages emit `dist` plus `.d.ts`; then test the exact published shape in a temp consumer.
-- `files` lists need to include package READMEs and any generated type/build output required by the chosen package format.
-- Public API snapshots exist for core; product, build, and releases need equivalent public-surface checks before v1.
+- Root workspace is private, which is correct. `@lili/core`, `@lili/build`, `@lili/product`, and `@lili/releases` are public package entries with explicit `publishConfig.access = "public"`.
+- Package versions are synchronized for the first public package lane. Package-to-package `@lili/*` dependencies use the matching caret range, and the package-readiness test enforces that relationship.
+- V1 package format is Bun-only source publication. Export maps point at checked-in TypeScript source, bins point at TypeScript Bun entrypoints, and every publishable package declares `engines.bun >= 1.3.0`.
+- V1 does not emit `dist` or `.d.ts` as published package artifacts. That avoids a second build/declaration pipeline while the product contract is explicitly Bun-native. A Node/npm-general package format is a future compatibility project, not a v1 blocker.
+- `files` lists are intentionally narrow: `src` plus `README.md`. Internal docs, tests, examples, and planning material must not be published from package tarballs.
+- Public API snapshots exist for core, product, build, and releases. The package-readiness test now also imports documented root and subpath exports from packed tarballs in a temp Bun consumer.
+
+Remaining package-readiness work:
+
+- Run the release-candidate hygiene loop before publishing: pack inspection, temp-consumer install, README/doc smoke, examples smoke, full checks, and dry-run release planning.
+- Verify npm provenance/trusted-publishing credentials and release tags in the actual publishing environment.
 
 Verification:
 
