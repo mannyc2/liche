@@ -99,11 +99,11 @@ Dogfood v1 through local examples and a real generated sample CLI. Dogfood the h
 
 Core should expose two extension lanes, not one generic analytics API.
 
-Observe-only lifecycle events are the local observability foundation. A CLI may register subscribers with `cli.on(event, subscriber)`. Subscribers receive a redacted event snapshot and their return value is ignored. Subscriber failures must never change command output, exit status, result envelopes, or middleware behavior. This is the right lane for local debug logging, tests, UI wrappers, MCP wrappers, audit trails, and future telemetry sink adapters.
+Observe-only lifecycle events are the local observability foundation. A CLI declares subscribers with `defineCli({ events: [...] })`. Subscribers receive a redacted event snapshot and their return value is ignored. Subscriber failures must never change command output, exit status, result envelopes, or middleware behavior. This is the right lane for local debug logging, tests, UI wrappers, MCP wrappers, audit trails, and future telemetry sink adapters.
 
-Mutation hooks are a separate behavior lane. A CLI may register hooks with `cli.hook(name, handler)`. Hooks receive the runtime context at documented points and may mutate the context or fail the command. The first V1 mutation hook is `beforeExecute`, which runs after command selection and argument/config/env validation but before middleware and the command handler. This is the right lane for auth/session enrichment, policy checks, request metadata, and future outbound transport preparation.
+Mutation hooks are a separate behavior lane. A CLI declares hooks with `defineCli({ hooks: { beforeExecute } })`. Hooks receive the runtime context at documented points and may mutate the context or fail the command. The first V1 mutation hook is `beforeExecute`, which runs after command selection and argument/config/env validation but before middleware and the command handler. This is the right lane for auth/session enrichment, policy checks, request metadata, and future outbound transport preparation.
 
-Middleware stays distinct from both lanes. `.use()` remains the around-command behavior wrapper for handwritten command composition. It should not be used as the telemetry API because it sees parsed values and can intentionally alter command results.
+Middleware stays distinct from both lanes. A CLI declares middleware with `defineCli({ middleware: [...] })` for handwritten command composition. Middleware should not be used as the telemetry API because it sees parsed values and can intentionally alter command results.
 
 V1 core lifecycle events are broader than telemetry. They are safe local lifecycle facts:
 

@@ -6,6 +6,17 @@ export const observedEvents: Array<Pick<CliEvent, 'type' | 'command' | 'result'>
 
 export const cli = defineCli({
   builtins: { completions: true, mcp: false, skills: false },
+  events: [(event) => {
+    observedEvents.push({
+      command: event.command,
+      result: event.result,
+      type: event.type,
+    })
+  }],
+  middleware: [middleware(async (ctx, next) => {
+    ctx.set('requestId', 'example-request')
+    await next()
+  })],
   commands: [
     defineCommand({
       path: ['summarize'],
@@ -59,16 +70,5 @@ export const cli = defineCli({
   }),
   version: '0.1.0',
 })
-  .on('*', (event) => {
-    observedEvents.push({
-      command: event.command,
-      result: event.result,
-      type: event.type,
-    })
-  })
-  .use(middleware(async (ctx, next) => {
-    ctx.set('requestId', 'example-request')
-    await next()
-  }))
 
 if (import.meta.main) await cli.serve(process.argv.slice(2))

@@ -11,11 +11,6 @@ import type {
   GroupEntry,
   Schema,
   ServeOptions,
-  MiddlewareHandler,
-  CliEventSubscriber,
-  CliEventTarget,
-  CliHookHandler,
-  CliHookType,
   RuntimeEntry,
 } from '../types.js'
 import { commandContractFromDefinition, groupContract } from '../command/contract.js'
@@ -50,23 +45,8 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
       return fetchCli(name, state, request)
     },
 
-    hook<T extends CliHookType>(type: T, handler: CliHookHandler<T>) {
-      state.hooks[type].push(handler as any)
-      return cli
-    },
-
-    on(target: CliEventTarget, subscriber: CliEventSubscriber) {
-      state.events.push({ subscriber, target })
-      return cli
-    },
-
     serve(argv?: string[], options: ServeOptions = {}) {
       return serveCli(name, state, argv ?? Bun.argv.slice(2), options)
-    },
-
-    use(handler: MiddlewareHandler) {
-      state.middlewares.push(handler)
-      return cli
     },
   }
 

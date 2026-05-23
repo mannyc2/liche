@@ -277,8 +277,6 @@ export type CliEventSubscription = {
 }
 
 export type BeforeExecuteHook = (context: MiddlewareContext) => Awaitable<void>
-export type CliHookType = 'beforeExecute'
-export type CliHookHandler<T extends CliHookType = CliHookType> = T extends 'beforeExecute' ? BeforeExecuteHook : never
 export type CliHookRegistration = {
   beforeExecute?: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined
 }
@@ -498,11 +496,8 @@ export type CliInstance = {
   description?: string | undefined
   env?: Schema<any> | undefined
   fetch(request: Request): Promise<Response>
-  hook<T extends CliHookType>(type: T, handler: CliHookHandler<T>): CliInstance
   name: string
-  on(target: CliEventTarget, subscriber: CliEventSubscriber): CliInstance
   serve(argv?: string[], options?: ServeOptions): Promise<void>
-  use(handler: MiddlewareHandler): CliInstance
   vars?: Schema<any> | undefined
 }
 

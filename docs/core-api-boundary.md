@@ -24,10 +24,10 @@ Deliberate, narrow widening to let tool CLIs ship authored agent guidance withou
 
 Deliberate, narrow widening for local observability and framework extension:
 
-- `CliInstance.on(event, subscriber)` registers observe-only lifecycle subscribers.
-- `CliInstance.hook(name, handler)` registers typed mutation hooks.
-- `DefineCliOptions.events` and `DefineCliOptions.hooks` seed the same lanes at construction time for generated CLIs.
-- New public types: `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, `CliEventSurface`, `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook`.
+- `DefineCliOptions.events` declares observe-only lifecycle subscribers.
+- `DefineCliOptions.hooks` declares typed mutation hooks.
+- `DefineCliOptions.middleware` declares around-command middleware at construction time.
+- New public types: `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, `CliEventSurface`, `CliHookRegistration`, and `BeforeExecuteHook`.
 
 The public guarantee is the lane split, not a hosted telemetry product: event subscribers receive redacted snapshots and cannot affect command results; hooks are explicit mutation points and may fail commands.
 
@@ -136,8 +136,8 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
 - `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `DefineCliOptions.builtins` exposes it.
 - `CliInstance` (`packages/core/src/types.ts:203`) — public return type for `defineCli()`.
-- `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `.on()` and `DefineCliOptions.events` expose the observe-only lifecycle event contract.
-- `CliHooks`, `CliHookRegistration`, `CliHookType`, `CliHookHandler`, and `BeforeExecuteHook` — public because `.hook()` and `DefineCliOptions.hooks` expose typed mutation points.
+- `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `DefineCliOptions.events` exposes the observe-only lifecycle event contract.
+- `CliHookRegistration` and `BeforeExecuteHook` — public because `DefineCliOptions.hooks` exposes typed mutation points.
 - `CommandContract` — public serializable command metadata contract for manifest/schema/help/MCP projections. It must not expose `Entry`, `CliState`, handlers, or runtime registry handles.
 - `CommandEffectKind`, `CommandEffects`, and `CommandPolicy` — public because `DeclarativeCommand` and `CommandContract` expose safety metadata for command manifests and MCP annotations.
 - `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` — public because `defineCli()` / `defineCommand()` expose the declarative authoring contract.

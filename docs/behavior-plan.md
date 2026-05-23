@@ -6,7 +6,7 @@ See [env-vars.md](./env-vars.md) for the env var contract (option defaults via `
 
 ## Goals
 
-- Keep the public authoring API centered on `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, `.use()`, `middleware()`, and `z`. Command declaration is data-first only; the old fluent command builder is not part of the public or test-facing contract.
+- Keep the public authoring API centered on `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, `middleware()`, and `z`. Command declaration is data-first only; lifecycle events, hooks, and middleware are declared through `defineCli()` data, not fluent instance mutators.
 - Use Bun-native edges for process/runtime work: `Bun.argv`, `Bun.env`, `Bun.file`, `Bun.write`, Bun Shell, Bun stdin/stdout, and `bun:test`.
 - Use small runtime dependencies where they provide concrete feature parity:
   - `zod` for public schema compatibility and JSON Schema conversion.

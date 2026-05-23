@@ -5,6 +5,16 @@ import * as Mcp from '../src/mcp/index.js'
 import { parseJsonOutput, runCli, stateOf, testCli, testCommand } from './helpers.js'
 
 describe('lifecycle events and hooks', () => {
+  test('defineCli returns an execution instance without fluent lifecycle mutators', () => {
+    const cli = testCli('app', [testCommand('ok', { run: () => ({ ok: true }) })]) as unknown as Record<string, unknown>
+
+    expect(typeof cli['serve']).toBe('function')
+    expect(typeof cli['fetch']).toBe('function')
+    expect('on' in cli).toBe(false)
+    expect('hook' in cli).toBe(false)
+    expect('use' in cli).toBe(false)
+  })
+
   test('emits redacted command lifecycle events to observe-only subscribers', async () => {
     const events: CliEvent[] = []
     const cli = testCli('app', {
