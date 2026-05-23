@@ -25,3 +25,5 @@ bun examples/product-workers/run-generated.ts telemetry --json
 ```
 
 `script list` is remote HTTP-backed when a generated config file supplies `apiBaseUrl`; without a file it falls back to the declared schema default.
+
+`doctor --json` emits one structured supportability report for local install health plus generated Product posture: config fields, remote base URL source, auth posture, static notices, and agent-visible command annotation quality.

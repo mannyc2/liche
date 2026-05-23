@@ -154,12 +154,32 @@ describe('product-workers example', () => {
       PATH: '/tmp/project/node_modules/.bin',
     })
     expect(doctor.exitCode).toBe(0)
-    expect(JSON.parse(doctor.stdout).data.checks.map((check: { id: string }) => check.id)).toEqual([
+    const doctorJson = JSON.parse(doctor.stdout)
+    const checks = doctorJson.data.checks as Array<{ id: string; status: string; details?: Record<string, unknown> }>
+    expect(checks.map((check) => check.id)).toEqual([
       'path.present',
       'path.local-bin',
       'package-manager.bun',
       'package-manager.npm',
+      'product.catalog',
+      'product.config',
+      'remote.base-url',
+      'auth.provider',
+      'agent.commands',
+      'notices.updates',
+      'notices.channels',
+      'notices.yanks',
     ])
+    const byId = Object.fromEntries(checks.map((check) => [check.id, check]))
+    expect(byId['remote.base-url']).toMatchObject({
+      status: 'pass',
+      details: { configPath: 'apiBaseUrl', source: 'schema-default' },
+    })
+    expect(byId['agent.commands']).toMatchObject({
+      status: 'warn',
+      details: { visible: ['deploy', 'script.list'], risky: [], underAnnotated: ['deploy'] },
+    })
+    expect(doctorJson.data.summary).toEqual({ pass: 7, warn: 4, fail: 1 })
 
     const catalog = await runGenerated(cli, ['catalog', '--json'])
     expect(JSON.parse(catalog.stdout).data.ops.telemetry.enabledEnvVar).toBe('WORKERS_TELEMETRY')

@@ -63,7 +63,7 @@ The agent-native release focus is now narrow. Declarative core and Product autho
 | External-consumer readiness | V1 blocker. | Pack every package, install into a temp Bun project, import documented root/subpath exports, and run examples through package names rather than source-relative paths. | `examples:smoke`, temp-consumer import tests, package file-list checks, and public API snapshots pass. |
 | Install/update/channel UX | V1 local capability. | Generate install docs, expose version/update metadata, support channel selection in release manifests, surface yanked-version notices from static metadata when available, and provide install/PATH/package-manager diagnostics. Do not require a hosted update service. | Generated CLIs and release docs expose accurate install/channel/update behavior; static metadata tests cover yanked and out-of-date cases without a hosted backend. |
 | Telemetry and observability primitives | V1 local capability. | Define core lifecycle events, mutation hooks, opt-in telemetry events, redaction rules, sink interface, local/file/custom sink behavior, invocation labels (`cli`, `ci`, `agent`, `mcp`), and release-manifest disclosure. No hosted ingestion in v1. | Tests prove telemetry is off by default, redacts secrets/context values as specified, never changes command results, subscriber failures are swallowed, mutation hooks run at documented points, and events can be captured by a local sink in examples. |
-| Diagnostics and supportability | V1 local capability. | Generate `doctor`/diagnostic checks for auth, env, sessions, install path, package-manager wrapper health, release metadata, update metadata, and agent-readiness assumptions. | Diagnostic fixtures produce structured envelopes, redact secrets, and distinguish blocking failures from warnings. |
+| Diagnostics and supportability | V1 local capability. | Generated `doctor` now combines local install/PATH/package-manager checks with Product catalog, config, remote base URL, auth token source, session-store, context env, static notices, and agent-readiness checks. Remaining work is release-package metadata coverage once release install/update artifacts are finalized. | Diagnostic fixtures produce structured envelopes, redact secrets, distinguish blocking failures from warnings, and warn on agent-visible commands missing explicit effects/policy. |
 | Catalog and discovery artifacts | V1 local capability. | Emit versioned local catalogs for capabilities, command manifest, generated surfaces, release metadata, and agent/MCP discovery. Hosted catalog search is V2. | Packaged examples and generated CLIs include machine-readable discovery artifacts; drift checks fail when any advertised artifact is stale. |
 
 ## Package publication plan
@@ -281,7 +281,7 @@ The current plan also needs these v1 gates:
 - Publisher receipt/provenance completion: dry-run, receipt shape, credential preflight, provenance metadata, and real npm/PyPI/Homebrew/Scoop adapters from one manifest.
 - Install/update/channel completion: generated install docs, version/update metadata, channel selection, static yanked-version notices, and install diagnostics without hosted infrastructure.
 - Telemetry primitives: opt-in event taxonomy, redaction policy, local/custom sink interface, invocation labels, and release-manifest disclosure.
-- Diagnostics: generated `doctor` checks for env, auth, sessions, install path, package-manager wrappers, release metadata, update metadata, and agent-readiness assumptions.
+- Diagnostics: generated `doctor` checks for env, auth token sources, sessions, contexts, install path, package-manager wrappers, static notices, and agent-readiness assumptions. Remaining gap: release-package metadata checks after install/update artifacts are finalized.
 - Catalog/discovery artifacts: versioned local capability catalog, command manifest, surface manifest, release metadata, and agent/MCP discovery records.
 - Package name and namespace availability check before final npm naming.
 - License, repository, homepage, funding, and provenance metadata.
@@ -340,10 +340,12 @@ Add the V1 supportability layer around generated CLIs without introducing a serv
 
 Verification:
 
-- generated `doctor` checks auth/env/session/install/release/update/agent-readiness assumptions and emits structured envelopes
+- generated `doctor` checks auth/env/session/context/install/static-notice/agent-readiness assumptions and emits structured envelopes
 - telemetry is opt-in, locally sinkable, invocation-aware, and redacted by construction
 - catalog/discovery artifacts are versioned, packaged, and tracked by drift checks
 - install/update/channel metadata supports static yanked-version and out-of-date notices without hosted infrastructure
+
+Current status: generated Product `doctor --json` combines `runLocalDoctor(...)` with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. Release-package metadata checks remain tied to the install/update/channel slice.
 
 ### Phase 8E: release publish closure
 

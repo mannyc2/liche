@@ -62,6 +62,10 @@ export function generateCli(catalog: Catalog, options: GenerateOptions): string 
   if (catalog.ops.enabled) {
     lines.push('')
     lines.push(...renderCatalogConstants(catalog))
+    if (catalog.ops.doctor !== false) {
+      lines.push('')
+      lines.push(...renderProductDoctorHelpers())
+    }
   }
   lines.push('')
   lines.push(...renderCli(catalog))
@@ -116,6 +120,169 @@ function renderCatalogConstants(catalog: Catalog): string[] {
   return [
     `const GENERATED_CATALOG = ${JSON.stringify(catalog, null, 2)} as const`,
     `const STATIC_NOTICES = ${JSON.stringify(catalog.ops.notices, null, 2)} as const`,
+  ]
+}
+
+function renderProductDoctorHelpers(): string[] {
+  return [
+    `type GeneratedDoctorCheck = {`,
+    `  id: string`,
+    `  status: 'pass' | 'warn' | 'fail'`,
+    `  message: string`,
+    `  details?: Record<string, unknown> | undefined`,
+    `}`,
+    ``,
+    `type GeneratedDoctorContext = {`,
+    `  config: Record<string, unknown>`,
+    `  env: Record<string, string | undefined>`,
+    `  sources: { config(path: string): { kind: string } }`,
+    `}`,
+    ``,
+    `function withGeneratedProductDoctor(ctx: GeneratedDoctorContext, local: { cli: unknown; checks: GeneratedDoctorCheck[] }): { cli: unknown; checks: GeneratedDoctorCheck[]; summary: { pass: number; warn: number; fail: number } } {`,
+    `  const checks: GeneratedDoctorCheck[] = [...local.checks, ...generatedProductDoctorChecks(ctx)]`,
+    `  return { cli: local.cli, checks, summary: countGeneratedDoctorChecks(checks) }`,
+    `}`,
+    ``,
+    `function generatedProductDoctorChecks(ctx: GeneratedDoctorContext): GeneratedDoctorCheck[] {`,
+    `  const catalog = GENERATED_CATALOG as any`,
+    `  const checks: GeneratedDoctorCheck[] = []`,
+    `  checks.push({`,
+    `    id: 'product.catalog',`,
+    `    status: 'pass',`,
+    `    message: 'Generated product catalog is embedded.',`,
+    `    details: { productId: catalog.product?.id, version: catalog.product?.version, capabilities: Array.isArray(catalog.capabilities) ? catalog.capabilities.length : 0 },`,
+    `  })`,
+    `  if (catalog.config) {`,
+    `    const properties = catalog.config.fields?.properties ?? {}`,
+    `    checks.push({`,
+    `      id: 'product.config',`,
+    `      status: 'pass',`,
+    `      message: 'Product config schema is available to the generated CLI.',`,
+    `      details: { files: catalog.config.files ?? [], fields: Object.keys(properties).sort() },`,
+    `    })`,
+    `  } else {`,
+    `    checks.push({ id: 'product.config', status: 'pass', message: 'No durable product config is declared.' })`,
+    `  }`,
+    `  checks.push(generatedRemoteBaseUrlCheck(ctx, catalog.remote?.baseUrl))`,
+    `  checks.push(...generatedAuthChecks(ctx, catalog.auth))`,
+    `  checks.push(...generatedContextChecks(ctx, catalog.contexts ?? []))`,
+    `  checks.push(generatedAgentReadinessCheck(catalog.capabilities ?? []))`,
+    `  checks.push(...generatedNoticeChecks(catalog.ops?.notices ?? { updates: [], channels: [], yanks: [] }))`,
+    `  return checks`,
+    `}`,
+    ``,
+    `function generatedRemoteBaseUrlCheck(ctx: GeneratedDoctorContext, source: any): GeneratedDoctorCheck {`,
+    `  if (!source) return { id: 'remote.base-url', status: 'pass', message: 'No remote base URL is required.' }`,
+    `  if (source.kind === 'literal') {`,
+    `    return { id: 'remote.base-url', status: 'pass', message: 'Remote base URL is declared as a literal.', details: { source: 'schema-default' } }`,
+    `  }`,
+    `  if (source.kind === 'env') {`,
+    `    const value = ctx.env[source.envVar]`,
+    `    const hasEnv = typeof value === 'string' && value.length > 0`,
+    `    const hasFallback = typeof source.fallback === 'string' && source.fallback.length > 0`,
+    `    return {`,
+    `      id: 'remote.base-url',`,
+    `      status: hasEnv || hasFallback ? 'pass' : 'fail',`,
+    `      message: hasEnv ? 'Remote base URL env var is set.' : hasFallback ? 'Remote base URL env var is missing; literal fallback will be used.' : 'Remote base URL env var is missing.',`,
+    `      details: { envVar: source.envVar, source: hasEnv ? 'env' : hasFallback ? 'schema-default' : 'missing' },`,
+    `    }`,
+    `  }`,
+    `  if (source.kind === 'config') {`,
+    `    const value = ctx.config[source.path]`,
+    `    const ok = typeof value === 'string' && value.length > 0`,
+    `    return {`,
+    `      id: 'remote.base-url',`,
+    `      status: ok ? 'pass' : 'fail',`,
+    `      message: ok ? 'Remote base URL config value is resolved.' : 'Remote base URL config value is missing.',`,
+    `      details: { configPath: source.path, source: ok ? generatedConfigSourceKind(ctx.sources.config(source.path).kind) : 'missing' },`,
+    `    }`,
+    `  }`,
+    `  return { id: 'remote.base-url', status: 'fail', message: 'Remote base URL declaration is not recognized.' }`,
+    `}`,
+    ``,
+    `function generatedConfigSourceKind(kind: string): string {`,
+    `  return kind === 'default' ? 'schema-default' : 'config'`,
+    `}`,
+    ``,
+    `function generatedAuthChecks(ctx: GeneratedDoctorContext, auth: any): GeneratedDoctorCheck[] {`,
+    `  if (!auth || auth.kind === 'none') {`,
+    `    return [{ id: 'auth.provider', status: 'pass', message: 'No auth provider is declared.' }]`,
+    `  }`,
+    `  const checks: GeneratedDoctorCheck[] = [{`,
+    `    id: 'auth.provider',`,
+    `    status: 'pass',`,
+    `    message: 'Auth provider metadata is embedded without secrets.',`,
+    `    details: { providerId: auth.id, kind: auth.kind },`,
+    `  }]`,
+    `  for (const source of auth.tokenSources ?? []) {`,
+    `    if (source.kind === 'env') {`,
+    `      const set = typeof ctx.env[source.envVar] === 'string' && ctx.env[source.envVar]!.length > 0`,
+    `      checks.push({`,
+    `        id: ${'`auth.env.${source.envVar}`'},`,
+    `        status: set ? 'pass' : source.mode === 'ci' ? 'warn' : 'fail',`,
+    `        message: set ? 'Auth env var is set.' : 'Auth env var is missing.',`,
+    `        details: { envVar: source.envVar, mode: source.mode },`,
+    `      })`,
+    `    } else if (source.kind === 'session') {`,
+    `      checks.push({`,
+    `        id: 'auth.session-store',`,
+    `        status: 'pass',`,
+    `        message: 'File-backed auth sessions are enabled.',`,
+    `        details: { profiles: source.profiles === true, refresh: source.refresh === true },`,
+    `      })`,
+    `    }`,
+    `  }`,
+    `  return checks`,
+    `}`,
+    ``,
+    `function generatedContextChecks(ctx: GeneratedDoctorContext, contexts: readonly any[]): GeneratedDoctorCheck[] {`,
+    `  return contexts.map((context) => {`,
+    `    const envVar = context.envVar ?? context.select?.env`,
+    `    const flag = context.flag ?? context.select?.flag`,
+    `    if (!envVar) {`,
+    `      return { id: ${'`context.${context.id}`'}, status: 'pass', message: 'Context is selected by CLI flag when required.', details: { flag } }`,
+    `    }`,
+    `    const set = typeof ctx.env[envVar] === 'string' && ctx.env[envVar]!.length > 0`,
+    `    return {`,
+    `      id: ${'`context.${context.id}`'},`,
+    `      status: set ? 'pass' : 'warn',`,
+    `      message: set ? 'Context env var is set.' : 'Context env var is missing; pass the context flag when required.',`,
+    `      details: { envVar, flag },`,
+    `    }`,
+    `  })`,
+    `}`,
+    ``,
+    `function generatedAgentReadinessCheck(capabilities: readonly any[]): GeneratedDoctorCheck {`,
+    `  const agentVisible = capabilities.filter((cap) => cap.surfaces?.agent === true)`,
+    `  const risky = agentVisible.filter((cap) => cap.policy?.dangerous === true || cap.effects?.kind === 'delete' || cap.effects?.kind === 'auth-session-delete')`,
+    `  const underAnnotated = agentVisible.filter((cap) => !cap.effects || !cap.policy)`,
+    `  const needsAttention = risky.length > 0 || underAnnotated.length > 0`,
+    `  return {`,
+    `    id: 'agent.commands',`,
+    `    status: needsAttention ? 'warn' : 'pass',`,
+    `    message: risky.length > 0 ? 'Some agent-visible commands require extra confirmation policy.' : underAnnotated.length > 0 ? 'Some agent-visible commands need explicit effects and policy metadata.' : 'Agent-visible commands have explicit non-destructive posture.',`,
+    `    details: { visible: agentVisible.map((cap) => cap.id).sort(), risky: risky.map((cap) => cap.id).sort(), underAnnotated: underAnnotated.map((cap) => cap.id).sort() },`,
+    `  }`,
+    `}`,
+    ``,
+    `function generatedNoticeChecks(notices: { updates?: readonly unknown[]; channels?: readonly unknown[]; yanks?: readonly unknown[] }): GeneratedDoctorCheck[] {`,
+    `  const updates = notices.updates?.length ?? 0`,
+    `  const channels = notices.channels?.length ?? 0`,
+    `  const yanks = notices.yanks?.length ?? 0`,
+    `  return [`,
+    `    { id: 'notices.updates', status: updates > 0 ? 'warn' : 'pass', message: updates > 0 ? 'Static update notices are present.' : 'No static update notices are present.', details: { count: updates } },`,
+    `    { id: 'notices.channels', status: channels > 0 ? 'pass' : 'warn', message: channels > 0 ? 'Static channel metadata is present.' : 'No static channel metadata is present.', details: { count: channels } },`,
+    `    { id: 'notices.yanks', status: yanks > 0 ? 'warn' : 'pass', message: yanks > 0 ? 'Static yanked-version notices are present.' : 'No static yanked-version notices are present.', details: { count: yanks } },`,
+    `  ]`,
+    `}`,
+    ``,
+    `function countGeneratedDoctorChecks(checks: readonly GeneratedDoctorCheck[]): { pass: number; warn: number; fail: number } {`,
+    `  return {`,
+    `    pass: checks.filter((check) => check.status === 'pass').length,`,
+    `    warn: checks.filter((check) => check.status === 'warn').length,`,
+    `    fail: checks.filter((check) => check.status === 'fail').length,`,
+    `  }`,
+    `}`,
   ]
 }
 
@@ -289,20 +456,22 @@ function renderCli(catalog: Catalog): string[] {
 function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   const lines: string[] = []
   if (catalog.ops.enabled && catalog.ops.doctor !== false) {
+    const envFields = doctorEnvVars(catalog).map((envVar) => `${q(envVar)}: z.string().optional()`).join(', ')
     lines.push(`${indent}defineCommand({`)
     lines.push(`${indent}  path: ['doctor'],`)
     lines.push(`${indent}  agent: true,`)
     lines.push(`${indent}  summary: 'Run local installation and PATH diagnostics.',`)
-    lines.push(`${indent}  input: { env: z.object({ 'PATH': z.string().optional() }) },`)
+    lines.push(`${indent}  input: { env: z.object({ ${envFields} }) },`)
     lines.push(`${indent}  output: z.unknown(),`)
     lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
     lines.push(`${indent}  async run({ ctx }) {`)
-    lines.push(`${indent}    return await runLocalDoctor({`)
+    lines.push(`${indent}    const local = await runLocalDoctor({`)
     lines.push(`${indent}      cliName: PRODUCT_ID,`)
     lines.push(`${indent}      version: ${q(catalog.product.version)},`)
     lines.push(`${indent}      env: ctx.env as Record<string, string | undefined>,`)
     lines.push(`${indent}      packageManagers: DOCTOR_PACKAGE_MANAGERS,`)
     lines.push(`${indent}    })`)
+    lines.push(`${indent}    return withGeneratedProductDoctor(ctx, local)`)
     lines.push(`${indent}  },`)
     lines.push(`${indent}}),`)
   }
@@ -345,6 +514,20 @@ function renderOpsCommands(indent: string, catalog: Catalog): string[] {
     lines.push(`${indent}}),`)
   }
   return lines
+}
+
+function doctorEnvVars(catalog: Catalog): string[] {
+  const names = new Set<string>(['PATH'])
+  if (catalog.remote?.baseUrl.kind === 'env') names.add(catalog.remote.baseUrl.envVar)
+  if (catalog.auth.kind !== 'none') {
+    for (const source of catalog.auth.tokenSources) {
+      if (source.kind === 'env') names.add(source.envVar)
+    }
+  }
+  for (const context of catalog.contexts) {
+    if (context.select.env) names.add(context.select.env)
+  }
+  return [...names].sort()
 }
 
 function renderCapability(indent: string, catalog: Catalog, cap: Capability): string[] {

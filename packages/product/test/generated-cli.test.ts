@@ -316,12 +316,41 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(doctor.exitCode).toBe(0)
     const doctorJson = JSON.parse(doctor.stdout)
     expect(doctorJson.data.cli).toEqual({ name: 'workers', version: '1.0.0' })
-    expect(doctorJson.data.checks.map((check: { id: string }) => check.id)).toEqual([
+    const checks = doctorJson.data.checks as Array<{ id: string; status: string; details?: Record<string, unknown> }>
+    expect(checks.map((check) => check.id)).toEqual([
       'path.present',
       'path.local-bin',
       'package-manager.bun',
       'package-manager.npm',
+      'product.catalog',
+      'product.config',
+      'remote.base-url',
+      'auth.provider',
+      'agent.commands',
+      'notices.updates',
+      'notices.channels',
+      'notices.yanks',
     ])
+    const byId = Object.fromEntries(checks.map((check) => [check.id, check]))
+    expect(byId['product.config']).toMatchObject({
+      status: 'pass',
+      details: {
+        files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
+        fields: ['accountId', 'apiBaseUrl'],
+      },
+    })
+    expect(byId['remote.base-url']).toMatchObject({
+      status: 'pass',
+      details: { configPath: 'apiBaseUrl', source: 'schema-default' },
+    })
+    expect(byId['agent.commands']).toMatchObject({
+      status: 'pass',
+      details: { visible: [], risky: [] },
+    })
+    expect(byId['notices.updates']).toMatchObject({ status: 'warn', details: { count: 1 } })
+    expect(byId['notices.channels']).toMatchObject({ status: 'pass', details: { count: 1 } })
+    expect(byId['notices.yanks']).toMatchObject({ status: 'warn', details: { count: 1 } })
+    expect(doctorJson.data.summary).toEqual({ pass: 8, warn: 3, fail: 1 })
 
     const catalog = JSON.parse((await runCli(workersGenerated, ['catalog', '--json'])).stdout)
     expect(catalog.data.product.id).toBe('workers')

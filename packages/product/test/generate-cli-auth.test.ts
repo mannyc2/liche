@@ -51,6 +51,9 @@ function oauthProduct(): RuntimeProduct {
     contexts: {
       org: Auth.context.env({ label: 'Organization', select: { flag: 'org', env: 'ACME_ORG_ID' } }),
     },
+    ops: {
+      doctor: { packageManagers: ['bun'] },
+    },
     commands: {
       purge: Command.remoteHttp({
         summary: 'Purge cache for an org',
@@ -414,6 +417,67 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       suggested_fix: 'Set apiBaseUrl in config before retrying.',
     })
     expect(stdout).not.toContain('REMOTE_NETWORK')
+  })
+
+  test('generated doctor reports auth, session, and context readiness without leaking token values', async () => {
+    writeFileSync(modulePath, generate(oauthProduct()), 'utf8')
+
+    const { stdout, exitCode } = await runGenerated(['doctor', '--json'], {
+      PATH: '/tmp/project/node_modules/.bin',
+      ACME_TOKEN: 'tok-runtime',
+    })
+
+    expect(exitCode).toBe(0)
+    const body = JSON.parse(stdout)
+    const checks = body.data.checks as Array<{ id: string; status: string; details?: Record<string, unknown> }>
+    const byId = Object.fromEntries(checks.map((check) => [check.id, check]))
+    expect(checks.map((check) => check.id)).toEqual([
+      'path.present',
+      'path.local-bin',
+      'package-manager.bun',
+      'product.catalog',
+      'product.config',
+      'remote.base-url',
+      'auth.provider',
+      'auth.env.ACME_TOKEN',
+      'auth.env.ACME_CI_TOKEN',
+      'auth.session-store',
+      'context.org',
+      'agent.commands',
+      'notices.updates',
+      'notices.channels',
+      'notices.yanks',
+    ])
+    expect(byId['remote.base-url']).toMatchObject({
+      status: 'pass',
+      details: { source: 'schema-default' },
+    })
+    expect(byId['auth.provider']).toMatchObject({
+      status: 'pass',
+      details: { providerId: 'acme', kind: 'oauthDevice' },
+    })
+    expect(byId['auth.env.ACME_TOKEN']).toMatchObject({
+      status: 'pass',
+      details: { envVar: 'ACME_TOKEN', mode: 'any' },
+    })
+    expect(byId['auth.env.ACME_CI_TOKEN']).toMatchObject({
+      status: 'warn',
+      details: { envVar: 'ACME_CI_TOKEN', mode: 'ci' },
+    })
+    expect(byId['auth.session-store']).toMatchObject({
+      status: 'pass',
+      details: { profiles: true, refresh: false },
+    })
+    expect(byId['context.org']).toMatchObject({
+      status: 'warn',
+      details: { envVar: 'ACME_ORG_ID', flag: 'org' },
+    })
+    expect(byId['agent.commands']).toMatchObject({
+      status: 'warn',
+      details: { visible: ['auth.whoami', 'purge'], underAnnotated: ['purge'] },
+    })
+    expect(body.data.summary).toEqual({ pass: 10, warn: 4, fail: 1 })
+    expect(JSON.stringify(body)).not.toContain('tok-runtime')
   })
 
   test('--llms --json command manifest includes non-secret auth requirements for agent planning', async () => {
