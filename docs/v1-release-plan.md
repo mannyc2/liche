@@ -236,15 +236,21 @@ Verification:
 
 Simplification should be measured by package, not as a vague cleanup pass.
 
-Initial measured baseline from this checkout:
+Repeatable command:
 
-| Package | Source LOC | Source files | Test LOC | Test files |
-|---|---:|---:|---:|---:|
-| `@lili/core` | 2761 | 46 | 4121 | 24 |
-| `@lili/build` | 294 | 4 | 197 | 2 |
-| `@lili/product` | 2898 | 17 | 3539 | 18 |
-| `@lili/releases` | 3024 | 20 | 2870 | 11 |
-| Total | 8977 | 87 | 10727 | 55 |
+```bash
+bun run --silent metrics
+```
+
+Current measured baseline from the release-candidate metrics command:
+
+| Package | Source LOC | Source files | Test LOC | Test files | Root exports | Subpath exports | Runtime deps | Boundary exceptions |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `@lili/core` | 5287 | 53 | 5652 | 32 | 22 | 0 | 3 | 0 |
+| `@lili/build` | 714 | 7 | 596 | 6 | 14 | 0 | 2 | 0 |
+| `@lili/product` | 5294 | 27 | 6899 | 25 | 31 | 0 | 3 | 0 |
+| `@lili/releases` | 4582 | 28 | 4150 | 17 | 25 | 12 | 2 | 0 |
+| Total | 15877 | 115 | 17297 | 80 | 92 | 12 | 10 | 0 |
 
 LOC is a pressure gauge, not a product goal. A package should shrink when simplification removes concepts, but a package can grow if it replaces hidden behavior with public guard rails. Track:
 
@@ -265,35 +271,24 @@ Simplification targets before v1:
 
 Verification:
 
-- Add a repeatable LOC/exports/dependency metrics command before the first v1 release candidate.
-- Record the baseline and delta in release-candidate notes.
-- Any package with source LOC growth above a release-candidate threshold must name the requirement it implements.
+- Run `bun run --silent metrics` before the first v1 release candidate and include the resulting totals in the release-candidate notes.
+- Treat source LOC growth as a review trigger, not an automatic failure. Any package with material source LOC growth above the release-candidate baseline must name the requirement it implements.
+- Keep boundary exceptions at zero unless a future doc names a temporary exception, owner, and removal condition.
 
-## Missing work
+## Remaining release-candidate gates
 
-The current plan also needs these v1 gates:
+The main Product/runtime support gaps are closed enough that the next work is release-candidate hygiene, not another framework-shape pass. Before publishing:
 
-- Auth default hard cut: omitted `auth` equals no auth, and explicit `Auth.none()` is only authoring clarity.
-- Capability effects/policy/examples implemented before agent-ready or conformance claims.
-- Core remote HTTP transport and generated remote wiring implemented before remote-backed examples.
-- Catalog-derived MCP, Agent Skill/LLM, docs/reference, command manifest, and config schema surfaces completed or removed from public copy.
-- Session/OAuth completion: file sessions, profiles, generated auth commands, OAuth device login, identity probes, context switching, and no implicit login.
-- Publisher receipt/provenance completion: dry-run, receipt shape, credential preflight, provenance metadata, and real npm/PyPI/Homebrew/Scoop adapters from one manifest.
-- Install/update/channel completion: generated install docs, version/update metadata, channel selection, static yanked-version notices, and install diagnostics without hosted infrastructure.
-- Telemetry primitives: opt-in event taxonomy, redaction policy, local/custom sink interface, invocation labels, and release-manifest disclosure.
-- Diagnostics: generated `doctor` checks for env, auth token sources, sessions, contexts, install path, package-manager wrappers, static notices, and agent-readiness assumptions. Remaining gap: release-package metadata checks after install/update artifacts are finalized.
-- Catalog/discovery artifacts: versioned local capability catalog, command manifest, surface manifest, release metadata, and agent/MCP discovery records.
-- Package name and namespace availability check before final npm naming.
-- License, repository, homepage, funding, and provenance metadata.
-- Changelog and semver policy.
-- Release candidate workflow: pack, temp-consumer smoke, example smoke, publish dry-run, provenance check.
-- Trusted publishing or explicit token fallback for npm/PyPI.
-- GitHub release artifact layout and checksums.
-- Security posture: no secrets in manifests, docs, examples, logs, generated surfaces, or package artifacts.
-- API stability policy for experimental surfaces and subpaths.
-- Support matrix: Bun versions, OS targets, binary targets, and whether Node is explicitly unsupported.
-- Public docs hosting decision: static site, README-only for v1, or generated reference docs plus examples.
-- V2 cutline: hosted telemetry ingestion, release dashboard, hosted catalog, org/team admin, audit logs, billing, policy sync, and uptime commitments are not v1 gates.
+- Run the local release-candidate gate: `bun run release:check`.
+- Verify package name and namespace availability before final npm naming.
+- Fill publisher-confirmed repository, homepage, funding/support, provenance, changelog, semver, and security metadata. Do not invent these fields before the public URLs and support policy are real.
+- Run publisher plan/preflight/execute dry-runs in the actual publishing environment, including npm/PyPI trusted-publishing or explicit token fallback decisions.
+- Verify GitHub release artifact layout and checksums against the final release manifest.
+- Spot-check that no secrets appear in manifests, docs, examples, logs, generated surfaces, telemetry output, package artifacts, or release receipts.
+- Lock the API stability policy for experimental surfaces and subpath exports.
+- State the support matrix publicly: Bun versions, OS targets, binary targets, and that Node is unsupported for v1 package consumption.
+- Decide the public docs hosting lane: README-only for v1, static site, or generated reference docs plus examples.
+- Keep hosted telemetry ingestion, release dashboard, hosted catalog, org/team admin, audit logs, billing, policy sync, and uptime commitments out of the release-candidate checklist. Those are V2 gates.
 
 ## Phase order
 
@@ -372,6 +367,8 @@ Verification:
 - import documented root and subpath exports
 - run public API snapshot tests
 
+Current status: implemented by the public package readiness tests. They pack every publishable package, inspect tarball contents, install packed artifacts into a temp Bun consumer, import documented root/subpath exports, run generated Product surfaces from installed packages, and execute a generated remote command against a local HTTP server.
+
 ### Phase 8G: examples and dogfood
 
 Create the small examples first, then the all-packages release example.
@@ -381,6 +378,8 @@ Verification:
 - one command runs all example smokes
 - examples use package names, not source-relative paths
 - examples cover handwritten, generated, remote/conformance, auth/session, diagnostics/telemetry, compile, and release paths
+
+Current status: `bun run test:examples` is the example smoke gate. Existing examples cover handwritten core, CI/build/release planning, Product Workers generation, auth context, auth session, and release renderers.
 
 ### Phase 8H: public docs pass
 
@@ -392,6 +391,8 @@ Verification:
 - package READMEs link to examples
 - package files do not ship internal requirement docs
 
+Current status: public README/package README tests check that root and package READMEs describe the v1 workflow, avoid internal planning-doc dependencies, and keep package file lists narrow.
+
 ### Phase 8I: simplification pass
 
 Refactor only where metrics, examples, or package-readiness checks expose real complexity.
@@ -401,6 +402,8 @@ Verification:
 - metrics baseline recorded
 - boundary tests pass
 - package and workspace checks pass
+
+Current status: `bun run --silent metrics` records LOC, test LOC, public root exports, subpath exports, runtime dependencies, and boundary exceptions for all publishable packages. The current baseline is recorded above.
 
 ### Phase 8J: release candidate
 
@@ -416,3 +419,5 @@ Verification:
 - release renderers produce verified artifacts
 - publisher plan/preflight/execute dry-run passes
 - V2 service tasks are absent from the release-candidate checklist
+
+Current status: the local gate is `bun run release:check`, which runs workspace typechecks, package tests, example smokes, the metrics command, and whitespace diff checks. Registry credentials, public metadata, and release-artifact publication details remain environment-specific checks.
