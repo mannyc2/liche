@@ -140,6 +140,10 @@ describe('generated MCP tools', () => {
       effects: { kind: 'write', idempotent: false },
       policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
       examples: [{ command: 'acme deploy --org acme --ref main --json' }],
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+      readOnlyHint: false,
     })
   })
 })

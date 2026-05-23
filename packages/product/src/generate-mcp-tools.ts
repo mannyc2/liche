@@ -48,9 +48,35 @@ function mcpTool(catalog: Catalog, cap: Capability): Record<string, unknown> {
       effects: cap.effects,
       policy: cap.policy,
       examples: cap.examples,
+      ...mcpHintAnnotations(cap),
     },
   }
   const auth = capabilityAuthMetadata(catalog, cap)
   if (auth) tool.auth = auth
   return tool
+}
+
+function mcpHintAnnotations(cap: Capability): Record<string, boolean> {
+  const effectKind = cap.effects?.kind
+  const readOnly = effectKind === 'read' || effectKind === 'auth-session-read'
+  const destructive = cap.policy?.dangerous === true || effectKind === 'delete' || effectKind === 'auth-session-delete'
+  const idempotent = cap.effects?.idempotent ?? readOnly
+  const openWorld =
+    hasHttpTransport(cap) ||
+    cap.requires.auth ||
+    cap.requires.contexts.length > 0 ||
+    effectKind === 'exec'
+
+  return {
+    destructiveHint: destructive,
+    idempotentHint: idempotent,
+    openWorldHint: openWorld,
+    readOnlyHint: readOnly,
+  }
+}
+
+function hasHttpTransport(cap: Capability): boolean {
+  return cap.kind === 'resource-operation'
+    ? cap.http !== undefined
+    : cap.execution.mode === 'remote-http'
 }

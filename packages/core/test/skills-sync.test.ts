@@ -100,6 +100,31 @@ describe('writeMcp — agent-specific target files', () => {
     expect(json).toEqual({ mcpServers: { app: { args: ['--mcp'], command: 'app' } } })
   })
 
+  test('splits command lines into MCP executable and args', async () => {
+    const file = await Skill.writeMcp('app', {
+      agent: 'claude-code',
+      command: 'bunx "@scope/app binary" --profile dev',
+      env: { HOME: home },
+      cwd,
+    })
+    const json = await Bun.file(file).json()
+    expect(json.mcpServers.app).toEqual({
+      args: ['@scope/app binary', '--profile', 'dev', '--mcp'],
+      command: 'bunx',
+    })
+  })
+
+  test('does not duplicate --mcp when the command override already includes it', async () => {
+    const file = await Skill.writeMcp('app', {
+      agent: 'claude-code',
+      command: 'bun run ./cli.ts --mcp',
+      env: { HOME: home },
+      cwd,
+    })
+    const json = await Bun.file(file).json()
+    expect(json.mcpServers.app).toEqual({ args: ['run', './cli.ts', '--mcp'], command: 'bun' })
+  })
+
   test('default command falls back to the CLI name', async () => {
     const file = await Skill.writeMcp('mycli', { agent: 'claude-code', env: { HOME: home }, cwd })
     const json = await Bun.file(file).json()

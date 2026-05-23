@@ -121,7 +121,7 @@ describe('parity: mcp add and skills add flag handling', () => {
     process.chdir(cwd)
     await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '-c', 'bunx app-binary'], { env: { HOME: home } })
     const config = await Bun.file(`${home}/.claude.json`).json()
-    expect(config.mcpServers.app.command).toBe('bunx app-binary')
+    expect(config.mcpServers.app).toEqual({ args: ['app-binary', '--mcp'], command: 'bunx' })
   })
 
   test('skills add --agent cursor writes under ~/.cursor/skills', async () => {
@@ -270,6 +270,17 @@ describe('parity: --llms shape', () => {
       policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
       readOnlyHint: false,
     })
+  })
+
+  test('MCP tools include command output schemas when declared', async () => {
+    const cli = testCli('app', [testCommand('status', {
+      output: z.object({ ok: z.boolean() }),
+      run: () => ({ ok: true }),
+    })])
+    const state = (cli as InternalCli)[stateSymbol]
+
+    const list = await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
+    expect((list as any).result.tools[0].outputSchema.properties.ok.type).toBe('boolean')
   })
 })
 

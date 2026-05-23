@@ -41,7 +41,7 @@ const AGENT_INSTALL_ADAPTERS: Record<string, AgentInstallAdapter> = {
     },
     mcpTarget({ command, cwd, env, global, name }) {
       const file = global ? `${home(env)}/.claude.json` : `${cwd}/.mcp.json`
-      return mergeJsonMcpTarget(file, name, { args: ['--mcp'], command })
+      return mergeJsonMcpTarget(file, name, mcpEntry(command))
     },
   },
   cursor: {
@@ -50,7 +50,7 @@ const AGENT_INSTALL_ADAPTERS: Record<string, AgentInstallAdapter> = {
     },
     mcpTarget({ command, cwd, env, global, name }) {
       const file = global ? `${home(env)}/.cursor/mcp.json` : `${cwd}/.cursor/mcp.json`
-      return mergeJsonMcpTarget(file, name, { args: ['--mcp'], command })
+      return mergeJsonMcpTarget(file, name, mcpEntry(command))
     },
   },
 }
@@ -120,7 +120,7 @@ function mcpTarget(
     dir,
     file: `${dir}/${name}.json`,
     async write() {
-      return JSON.stringify({ mcpServers: { [name]: { args: ['--mcp'], command } } }, null, 2)
+      return JSON.stringify({ mcpServers: { [name]: mcpEntry(command) } }, null, 2)
     },
   }
 }
@@ -134,6 +134,45 @@ function mergeJsonMcpTarget(file: string, name: string, entry: McpEntry): McpTar
       return JSON.stringify(mergeMcp(existing, name, entry), null, 2)
     },
   }
+}
+
+function mcpEntry(commandLine: string): McpEntry {
+  const [command, ...args] = splitCommandLine(commandLine)
+  const mcpArgs = args.includes('--mcp') ? args : [...args, '--mcp']
+  return { args: mcpArgs, command: command ?? commandLine.trim() }
+}
+
+function splitCommandLine(value: string): string[] {
+  const tokens: string[] = []
+  let current = ''
+  let quote: '"' | "'" | undefined
+
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index]!
+    if (!quote && /\s/.test(char)) {
+      if (current) {
+        tokens.push(current)
+        current = ''
+      }
+      continue
+    }
+    if (char === "'" && quote !== '"') {
+      quote = quote === "'" ? undefined : "'"
+      continue
+    }
+    if (char === '"' && quote !== "'") {
+      quote = quote === '"' ? undefined : '"'
+      continue
+    }
+    if (char === '\\' && quote !== "'" && index + 1 < value.length) {
+      current += value[++index]
+      continue
+    }
+    current += char
+  }
+
+  if (current) tokens.push(current)
+  return tokens
 }
 
 function dirOf(file: string): string {

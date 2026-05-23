@@ -66,6 +66,12 @@ describe('generated MCP tool conformance', () => {
       type: 'object',
       properties: { deployment_id: { type: 'string' } },
     })
+    expect(manifest.tools[0].annotations).toMatchObject({
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+      readOnlyHint: false,
+    })
   })
 
   test('does not emit unsupported JSON Schema dialect markers', () => {

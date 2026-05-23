@@ -169,6 +169,7 @@ describe('declarative authoring API', () => {
     expect((tools as any).result.tools[0]).toMatchObject({
       name: 'status',
       inputSchema: { properties: { options: { properties: { verbose: { type: 'boolean' } } } } },
+      outputSchema: { properties: { ok: { type: 'boolean' } } },
     })
     expect(executed).toBe(false)
   })

@@ -45,6 +45,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
         type: 'object',
       },
       name: mcpToolName(command.name),
+      ...(jsonSchema(command.schema?.output) ? { outputSchema: jsonSchema(command.schema?.output) } : undefined),
       annotations: mcpAnnotations(command),
     }))
     await emitMcpLifecycle(binaryName, state, state.events, {
@@ -193,6 +194,10 @@ function mcpEventError(error: CommandError): CliEventError {
 function objectSchema(value: unknown) {
   if (isRecord(value) && value['type'] === 'object') return value
   return { type: 'object', properties: {} }
+}
+
+function jsonSchema(value: unknown) {
+  return isRecord(value) ? value : undefined
 }
 
 function mcpAnnotations(command: { effects?: any; examples?: unknown; name: string; policy?: any; safety?: any }): Record<string, unknown> {
