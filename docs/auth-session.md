@@ -33,7 +33,7 @@ Do not add `@lili/auth` for MVP. Auth is too central to remote-operation CLIs to
 
 ## Product schema API
 
-Auth is opt-in. Public products with no auth must declare that explicitly:
+Auth is opt-in. Omitting `auth` means no auth; `auth: Auth.none()` remains available when explicitness helps examples or tests:
 
 ```ts
 import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@lili/product";
@@ -58,100 +58,129 @@ export default defineProduct({
 API key via env:
 
 ```ts
-.auth(Auth.apiKey({
+export default defineProduct({
   id: "acme",
-  header: "x-api-key",
-  sources: [
-    Auth.token.env("ACME_API_KEY", { label: "API key" }),
-  ],
-}))
+  name: "Acme",
+  version: "1.0.0",
+  auth: Auth.apiKey({
+    id: "acme",
+    header: "x-api-key",
+    sources: [
+      Auth.token.env("ACME_API_KEY", { label: "API key" }),
+    ],
+  }),
+});
 ```
 
 Bearer token via env:
 
 ```ts
-.auth(Auth.bearer({
+export default defineProduct({
   id: "acme",
-  sources: [
-    Auth.token.env("ACME_TOKEN", { label: "Bearer token" }),
-  ],
-}))
+  name: "Acme",
+  version: "1.0.0",
+  auth: Auth.bearer({
+    id: "acme",
+    sources: [
+      Auth.token.env("ACME_TOKEN", { label: "Bearer token" }),
+    ],
+  }),
+});
 ```
 
 OAuth device flow plus CI token mode:
 
 ```ts
-.auth(Auth.oauthDevice({
+export default defineProduct({
   id: "acme",
-  token: { kind: "bearer" },
-  clientId: "acme-cli",
-  endpoints: {
-    deviceAuthorization: "https://auth.acme.dev/oauth/device/code",
-    token: "https://auth.acme.dev/oauth/token",
-    revoke: "https://auth.acme.dev/oauth/revoke",
-  },
-  sources: [
-    Auth.token.session({ profiles: true, refresh: false }),
-    Auth.token.env("ACME_TOKEN", { mode: "ci", nonInteractive: true }),
-  ],
-  identity: Auth.identity({
-    http: { method: "GET", path: "/v1/me" },
-    subject: "id",
-    label: "email",
+  name: "Acme",
+  version: "1.0.0",
+  auth: Auth.oauthDevice({
+    id: "acme",
+    token: { kind: "bearer" },
+    clientId: "acme-cli",
+    endpoints: {
+      deviceAuthorization: "https://auth.acme.dev/oauth/device/code",
+      token: "https://auth.acme.dev/oauth/token",
+      revoke: "https://auth.acme.dev/oauth/revoke",
+    },
+    sources: [
+      Auth.token.session({ profiles: true, refresh: false }),
+      Auth.token.env("ACME_TOKEN", { mode: "ci", nonInteractive: true }),
+    ],
+    identity: Auth.identity({
+      http: { method: "GET", path: "/v1/me" },
+      subject: "id",
+      label: "email",
+    }),
+    commands: Auth.commands({
+      login: "login",
+      logout: "logout",
+      whoami: "whoami",
+      switch: "switch",
+    }),
   }),
-  commands: Auth.commands({
-    login: "login",
-    logout: "logout",
-    whoami: "whoami",
-    switch: "switch",
-  }),
-}))
+});
 ```
 
 Context is first-class and non-secret:
 
 ```ts
-.context("org", Auth.context.remote({
-  label: "Organization",
-  idField: "org_id",
-  nameField: "name",
-  list: { http: { method: "GET", path: "/v1/orgs" } },
-  select: { flag: "org", env: "ACME_ORG_ID" },
-}))
-.context("project", Auth.context.remote({
-  label: "Project",
-  parent: "org",
-  idField: "project_id",
-  nameField: "name",
-  list: { http: { method: "GET", path: "/v1/orgs/{org_id}/projects" } },
-  select: { flag: "project", env: "ACME_PROJECT_ID" },
-}))
+export default defineProduct({
+  id: "acme",
+  name: "Acme",
+  version: "1.0.0",
+  contexts: {
+    org: Auth.context.remote({
+      label: "Organization",
+      idField: "org_id",
+      nameField: "name",
+      list: { http: { method: "GET", path: "/v1/orgs" } },
+      select: { flag: "org", env: "ACME_ORG_ID" },
+    }),
+    project: Auth.context.remote({
+      label: "Project",
+      parent: "org",
+      idField: "project_id",
+      nameField: "name",
+      list: { http: { method: "GET", path: "/v1/orgs/{org_id}/projects" } },
+      select: { flag: "project", env: "ACME_PROJECT_ID" },
+    }),
+  },
+});
 ```
 
 Permissions are product terms, even when backed by OAuth scopes:
 
 ```ts
-.permissions({
-  "projects:read": Auth.permission.scope("projects.read"),
-  "deployments:write": Auth.permission.scope("deployments.write"),
-})
-.command("deploy", Command.workflow({
-  summary: "Deploy a project",
-  input: Shape.object({
-    project_id: Field.string("Project ID").required(),
-    ref: Field.string("Git ref").required(),
-  }),
-  output: Shape.object({
-    deployment_id: Field.string("Deployment ID").required(),
-  }),
-  requires: {
-    auth: true,
-    contexts: ["org", "project"],
-    permissions: ["deployments:write"],
+export default defineProduct({
+  id: "acme",
+  name: "Acme",
+  version: "1.0.0",
+  permissions: {
+    "projects:read": Auth.permission.scope("projects.read"),
+    "deployments:write": Auth.permission.scope("deployments.write"),
   },
-  handler: "deploy.run",
-  surfaces: { cli: { command: "deploy <ref>" }, docs: true, agent: true },
-}));
+  commands: {
+    deploy: Command.workflow({
+      summary: "Deploy a project",
+      input: Shape.object({
+        project_id: Field.string("Project ID").required(),
+        ref: Field.string("Git ref").required(),
+      }),
+      output: Shape.object({
+        deployment_id: Field.string("Deployment ID").required(),
+      }),
+      requires: {
+        auth: true,
+        contexts: ["org", "project"],
+        permissions: ["deployments:write"],
+      },
+      handler: "deploy.run",
+      surfaces: { cli: { command: "deploy <ref>" }, docs: true, agent: true },
+    }),
+  },
+});
 ```
 
 MVP supports one auth provider per product and product-level auth only. Per-capability provider selection, multi-provider auth, hosted policy, OAuth consent optimization, and agent-triggered login are deferred.

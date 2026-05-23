@@ -44,7 +44,7 @@ Before v1 can claim an agent-ready Product workflow, each local support area bel
 
 Public docs may mark a specific adapter or edge-case integration experimental, but they must not present an incomplete local capability as finished.
 
-First, fix the auth default contradiction: omitted `.auth(...)` must normalize to no auth. `Auth.none()` remains an optional explicit declaration, not required boilerplate. A no-auth product must not emit auth runtime imports, generated auth commands, a fake `none` provider in release-facing metadata, or auth globals. A capability that declares `requires.auth` when the product has no provider remains an authoring error.
+First, fix the auth default contradiction: omitting the `auth` field must normalize to no auth. `Auth.none()` remains an optional explicit declaration, not required boilerplate. A no-auth product must not emit auth runtime imports, generated auth commands, a fake `none` provider in release-facing metadata, or auth globals. A capability that declares `requires.auth` when the product has no provider remains an authoring error.
 
 | Area | V1 posture | Required work | Verification |
 |---|---|---|---|
@@ -260,7 +260,7 @@ Verification:
 
 The current plan also needs these v1 gates:
 
-- Auth default hard cut: omitted `.auth(...)` equals no auth, and explicit `Auth.none()` is only authoring clarity.
+- Auth default hard cut: omitted `auth` equals no auth, and explicit `Auth.none()` is only authoring clarity.
 - Capability effects/policy/examples implemented before agent-ready or conformance claims.
 - Core remote HTTP transport and generated remote wiring implemented before remote-backed examples.
 - Catalog-derived MCP, Agent Skill/LLM, docs/reference, command manifest, and config schema surfaces completed or removed from public copy.
@@ -290,7 +290,7 @@ Close the Product contract gaps that would otherwise make the public story overc
 
 Verification:
 
-- omitted `.auth(...)` normalizes to no auth and matches explicit `Auth.none()` behavior where relevant
+- omitted `auth` normalizes to no auth and matches explicit `Auth.none()` behavior where relevant
 - no-auth products emit no auth runtime imports, auth globals, generated auth commands, or fake release-facing auth provider
 - capabilities carry effects, policy, examples, requirements, execution mode, input/output shapes, and surface membership
 - lints reject unsupported agent/conformance exposure before generation

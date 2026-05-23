@@ -4,6 +4,7 @@
 
 - Finished the Product declarative authoring cutover. `@lili/product` now exposes `defineProduct({ ... })` as the Product authoring root, with product resources, commands, bindings, config, remote, auth, contexts, permissions, and ops declared as sibling data fields. The old `Product` / `ResourceBuilder` compatibility path is gone from the package root, source, tests, examples, docs, and generated fixtures.
 - Hard-cut core lifecycle composition to declarative CLI data. `CliInstance` now exposes execution surfaces only (`serve` / `fetch`), while lifecycle subscribers, mutation hooks, and middleware are declared through `defineCli({ events, hooks, middleware })`. The handwritten core example and lifecycle docs were migrated off fluent lifecycle mutators, with a regression proving those mutators stay absent.
+- Updated stale requirement examples to match the hard cutovers. Env-var examples now use `defineCli()` / `defineCommand()` and Product auth/session examples now declare `auth`, `contexts`, `permissions`, and `commands` as `defineProduct({ ... })` data fields instead of chained Product methods.
 
 ## 2026-05-22
 

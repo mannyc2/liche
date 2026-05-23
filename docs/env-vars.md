@@ -9,14 +9,24 @@
 Use when an env var should act as the **default value for a CLI option**, overridable on the command line.
 
 ```ts
-cli.command('serve', {
-  options: z.object({
-    port: z.coerce.number().default(3000),
-    token: z.string(),
-  }),
-  optionEnv: { port: 'MYAPP_PORT', token: 'MYAPP_TOKEN' },
-  run: ({ options }) => { /* options.port, options.token */ },
-})
+import { defineCli, defineCommand, z } from "@lili/core";
+
+export const cli = defineCli({
+  name: "myapp",
+  commands: [
+    defineCommand({
+      path: ["serve"],
+      input: {
+        options: z.object({
+          port: z.coerce.number().default(3000),
+          token: z.string(),
+        }),
+      },
+      optionEnv: { port: "MYAPP_PORT", token: "MYAPP_TOKEN" },
+      run: ({ input }) => { /* input.options.port, input.options.token */ },
+    }),
+  ],
+});
 ```
 
 Help output annotates each bound option:
@@ -32,10 +42,13 @@ Options:
 Use when a handler genuinely needs the env value as **env**, not as an option (e.g., secrets passed through, ambient config never exposed as a flag).
 
 ```ts
-cli.command('publish', {
-  env: z.object({ NPM_TOKEN: z.string() }),
-  run: ({ env }) => { /* env.NPM_TOKEN, validated */ },
-})
+defineCommand({
+  path: ["publish"],
+  input: {
+    env: z.object({ NPM_TOKEN: z.string() }),
+  },
+  run: ({ input }) => { /* input.env.NPM_TOKEN, validated */ },
+});
 ```
 
 Missing required keys produce a structured validation error.
@@ -53,7 +66,7 @@ Env values arrive as strings. Coerce in the options schema with `z.coerce.number
 The first-class config primitive target expands the middle of this chain without changing the env boundary:
 
 ```txt
-argv flag > optionEnv > session/profile runtime defaults > project config > user config > schema default
+argv flag > optionEnv > project config > user config > schema default
 ```
 
 Env-backed option defaults remain `optionEnv`; durable non-secret preferences move through `ctx.config`; auth/session state remains on the auth/session path. See `docs/config-primitive.md` for the target config contract.
