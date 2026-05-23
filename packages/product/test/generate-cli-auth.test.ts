@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Auth, Command, Product, Runtime, canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
+import { Auth, Command, Config, Field, Product, Runtime, Shape, canonicalDigest, generateCli, normalizeProduct } from '../src/index.js'
 import type { RuntimeProduct } from '../src/index.js'
 import workersAuthProduct from './fixtures/workers-auth.product.js'
 import workersProduct from './fixtures/workers.product.js'
@@ -55,6 +55,27 @@ function oauthProduct(): RuntimeProduct {
       http: { method: 'POST', path: '/orgs/{org_id}/purge_cache' },
       requires: { auth: true, contexts: ['org'], permissions: ['cache:write'] },
       surfaces: { agent: true },
+    }))
+}
+
+function optionalConfigRemoteProduct(): RuntimeProduct {
+  return Product.create({
+    id: 'config-remote',
+    name: 'Config Remote',
+    version: '1.0.0',
+  })
+    .auth(Auth.none())
+    .config(Config.object({
+      files: ['config-remote.jsonc'],
+      fields: Shape.object({
+        apiBaseUrl: Field.string('API base URL').optional(),
+      }),
+      scopes: { project: { discoverUpwards: true }, user: false },
+    }))
+    .remote({ baseUrl: Runtime.config('apiBaseUrl') })
+    .command('ping', Command.remoteHttp({
+      summary: 'Ping the remote API',
+      http: { method: 'GET', path: '/ping' },
     }))
 }
 
@@ -280,7 +301,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       expect(JSON.parse(stdout)).toMatchObject({
         ok: true,
         data: {},
-        meta: { execution: { mode: 'remote-http', source: 'schema-default' } },
+        meta: { execution: { mode: 'remote-http', source: 'env' } },
       })
       expect(stdout).not.toContain('AUTH_MISSING')
       expect(stdout).not.toContain('tok-runtime')
@@ -372,6 +393,16 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     })
     expect(exitCode).toBe(1)
     expect(stdout).toContain('AUTH_CI_TOKEN_MISSING')
+  })
+
+  test('missing config-backed remote base URL fails before transport', async () => {
+    writeFileSync(modulePath, generate(optionalConfigRemoteProduct()), 'utf8')
+
+    const { stdout, exitCode } = await runGenerated(['ping', '--json'])
+
+    expect(exitCode).toBe(1)
+    expect(stdout).toContain('REMOTE_CONFIG_MISSING_BASE_URL')
+    expect(stdout).not.toContain('REMOTE_NETWORK')
   })
 
   test('--llms --json command manifest includes non-secret auth requirements for agent planning', async () => {

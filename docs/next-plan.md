@@ -322,8 +322,8 @@ Verification:
 
 Prove that generated remote commands and handwritten remote commands share the same core transport:
 
-- core `serializeHttpOperationRequest` and `callHttpOperation` are implemented and frozen; next generated wiring calls those APIs
-- Product config/base URL authoring is defined before generated wiring, because current `HttpSpec` only has `method`, `path`, and `bind`
+- core `serializeHttpOperationRequest` and `callHttpOperation` are implemented and frozen; generated wiring calls those APIs when a Product declares a remote base URL
+- Product config/base URL authoring is defined and generated commands can source remote base URLs from literals, env vars, or declared config fields
 - generated auth-aware remote wiring calls `resolveAuth`/`resolveContext` before `callHttpOperation`
 - output schema validation treats HTTP responses as untrusted
 - non-2xx, malformed JSON, unsupported content types, timeout, missing base URL, and missing auth become structured core errors
@@ -339,7 +339,7 @@ Verification:
 
 ## Phase 4-B: config primitive and generated base URL wiring
 
-Implement the config primitive from `docs/config-primitive.md` before removing generated Product remote stubs.
+Status: the core config primitive, Product config catalog, and generated base URL wiring are implemented for declared remote sources. Generated Product remote stubs remain only when a catalog has no product-level remote base URL declaration.
 
 Core requirements:
 
@@ -360,6 +360,8 @@ Product requirements:
 - generated config JSON Schema containing general config fields and bindings
 - config lints that reject secret fields in general config
 - remote base URL sources from literal, env var, or config field
+- generated remote callers resolve base URLs through `ctx.config`, `ctx.env`, or literals before `callHttpOperation`
+- generated remote callers report `meta.execution.source` as `config`, `env`, or `schema-default`
 
 Verification:
 
@@ -368,6 +370,8 @@ Verification:
 - config-to-option binding is explicit; matching option names do not bind automatically
 - handwritten tool CLIs use the primitive: `li-build` binds `build.*` and `compileEntry.*` defaults through `Config.object(...)`; `li-release` binds `package.*` and `publish.*` defaults through `Config.object(...)`
 - a Product with config but no bindings still emits a config schema
+- a generated Product remote command with a config-backed base URL calls the core HTTP transport and reports `meta.execution.source: "config"`
+- a generated Product remote command with an env-backed base URL calls the core HTTP transport and reports `meta.execution.source: "env"`
 - a Product with config and bindings emits both in one schema artifact
 - a generated remote command resolves `baseUrl` from config before calling `callHttpOperation`
 - auth/session values, selected profiles, runtime config values, and provenance stay out of catalog digests and release manifests

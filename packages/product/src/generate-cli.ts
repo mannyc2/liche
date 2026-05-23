@@ -570,6 +570,7 @@ function renderRemoteCall(
   http: NonNullable<ResourceOperationCapability['http']>,
   preamble: string[],
 ): string[] {
+  const remote = renderRemoteBaseUrlSetup(indent, catalog.remote!.baseUrl)
   const inputExpr = neededContexts(cap).length > 0
     ? `{ ...(ctx.options as Record<string, unknown>), ...context }`
     : `ctx.options as Record<string, unknown>`
@@ -578,9 +579,10 @@ function renderRemoteCall(
     : `{ kind: 'none' }`
   return [
     ...preamble,
+    ...remote.lines,
     `${indent}const data = await callHttpOperation({`,
     `${indent}  id: ${q(cap.id)},`,
-    `${indent}  baseUrl: ${renderRuntimeValue(catalog.remote!.baseUrl)},`,
+    `${indent}  baseUrl: ${remote.value},`,
     `${indent}  auth: ${authExpr},`,
     `${indent}  method: ${q(http.method)},`,
     `${indent}  path: ${q(http.path)},`,
@@ -591,8 +593,39 @@ function renderRemoteCall(
     `${indent}  env: ctx.env as Record<string, string | undefined>,`,
     ...(cap.requires.permissions.length > 0 ? [`${indent}  requiredPermissions: ${renderStringArray(cap.requires.permissions)},`] : []),
     `${indent}})`,
-    `${indent}return ctx.ok(data, { execution: { mode: 'remote-http', source: 'schema-default' } })`,
+    `${indent}return ctx.ok(data, { execution: { mode: 'remote-http', source: ${remote.source} } })`,
   ]
+}
+
+function renderRemoteBaseUrlSetup(
+  indent: string,
+  value: NormalizedRuntimeValue,
+): { lines: string[]; source: string; value: string } {
+  if (value.kind === 'literal') {
+    return { lines: [], source: q('schema-default'), value: q(value.value) }
+  }
+
+  if (value.kind === 'env') {
+    const envExpr = `ctx.env[${q(value.envVar)}]`
+    const source = `${envExpr} && ${envExpr}.length > 0 ? 'env' : 'schema-default'`
+    return { lines: [], source, value: renderRuntimeValue(value) }
+  }
+
+  const path = q(value.path)
+  return {
+    lines: [
+      `${indent}const remoteBaseUrl = ctx.config[${path}]`,
+      `${indent}if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {`,
+      `${indent}  return ctx.error({`,
+      `${indent}    code: 'REMOTE_CONFIG_MISSING_BASE_URL',`,
+      `${indent}    message: 'Remote base URL is required.',`,
+      `${indent}  })`,
+      `${indent}}`,
+      `${indent}const remoteBaseUrlSource = ctx.sources.config(${path}).kind === 'default' ? 'schema-default' : 'config'`,
+    ],
+    source: 'remoteBaseUrlSource',
+    value: 'remoteBaseUrl',
+  }
 }
 
 function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): string[] {

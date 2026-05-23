@@ -289,6 +289,8 @@ Verification:
 
 ### Slice C: generated remote wiring
 
+Status: implemented for generated Product remote base URL resolution.
+
 - Add Product remote base URL sources that can point at literal values, env vars, or config fields.
 - Generate remote commands that resolve config before calling core HTTP transport.
 - Keep auth/session resolution separate from config resolution.
@@ -299,6 +301,8 @@ Verification:
 - env-backed option defaults still show as env sources, not config sources
 - missing base URL reports structured remote config errors
 - auth/session metadata and config provenance stay separate in `--json` output
+
+Generated commands now report `meta.execution.source` from the declared base URL source: `schema-default` for literal/default values, `env` for env-backed values, and `config` when a config file or explicit config path supplies the winning value. Config-backed generated commands preflight an empty or non-string base URL with `REMOTE_CONFIG_MISSING_BASE_URL` before transport.
 
 ## Open questions
 

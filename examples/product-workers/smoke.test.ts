@@ -111,7 +111,7 @@ describe('product-workers example', () => {
         data: [
           { id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' },
         ],
-        meta: { execution: { mode: 'remote-http', source: 'schema-default' } },
+        meta: { execution: { mode: 'remote-http', source: 'config' } },
       })
     } finally {
       server.stop(true)

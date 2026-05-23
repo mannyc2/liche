@@ -83,7 +83,7 @@ export type HttpOperationCall<TInput, TOutput> =
 
 `inputFields` is optional because handwritten callers can rely on their own schema discipline. Generated callers should pass it so dead or typoed bind entries fail before network work with `REMOTE_BIND_UNKNOWN_FIELD`.
 
-The first landed transport slice intentionally excludes config-backed runtime values and supports `env` and `literal`. Config-backed values are the next generated-wiring slice and must use the first-class config primitive from `docs/config-primitive.md`, not an ad hoc loader lookup.
+Generated Product callers now support literal, env-backed, and config-backed remote base URL sources. Config-backed values use the first-class config primitive from `docs/config-primitive.md`, not an ad hoc loader lookup, and are resolved before transport through `ctx.config` plus `ctx.sources.config(...)`.
 
 Env-backed `bearer` and `apiKey` auth remain supported for handwritten CLIs and the first generated auth slice. Auth/session-aware generated CLIs should resolve credentials before transport and pass `{ kind: "resolved", credential }` so `callHttpOperation` only applies headers and reports HTTP failures. See `docs/auth-session.md`.
 
@@ -303,9 +303,17 @@ defineCommand({
   input: { options: usersList.input },
   output: usersList.output,
   async run({ ctx }) {
+    const remoteBaseUrl = ctx.config["apiBaseUrl"];
+    if (typeof remoteBaseUrl !== "string" || remoteBaseUrl.length === 0) {
+      return ctx.error({
+        code: "REMOTE_CONFIG_MISSING_BASE_URL",
+        message: "Remote base URL is required.",
+      });
+    }
+    const remoteBaseUrlSource = ctx.sources.config("apiBaseUrl").kind === "default" ? "schema-default" : "config";
     const data = await callHttpOperation({
       id: "users.list",
-      baseUrl: contract.remote.baseUrl,
+      baseUrl: remoteBaseUrl,
       auth: contract.remote.auth,
       method: "GET",
       path: "/users",
@@ -314,12 +322,12 @@ defineCommand({
       output: usersList.output,
       env: ctx.env,
     });
-    return ctx.ok(data, { execution: { mode: "remote-http", source: "schema-default" } });
+    return ctx.ok(data, { execution: { mode: "remote-http", source: remoteBaseUrlSource } });
   },
 });
 ```
 
-Auth/session-aware generated CLIs resolve credentials before this call, as shown in `docs/auth-session.md`. The example above is the env-backed transport path.
+Auth/session-aware generated CLIs resolve credentials before this call, as shown in `docs/auth-session.md`. The example above is the config-backed transport path.
 
 ## Tests
 

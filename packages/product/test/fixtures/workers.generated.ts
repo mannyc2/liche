@@ -565,9 +565,17 @@ const cli = defineCli({
       })),
       safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: true, readOnly: true },
       async run({ ctx }) {
+        const remoteBaseUrl = ctx.config['apiBaseUrl']
+        if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {
+          return ctx.error({
+            code: 'REMOTE_CONFIG_MISSING_BASE_URL',
+            message: 'Remote base URL is required.',
+          })
+        }
+        const remoteBaseUrlSource = ctx.sources.config('apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'
         const data = await callHttpOperation({
           id: 'script.list',
-          baseUrl: ctx.config['apiBaseUrl'] as string,
+          baseUrl: remoteBaseUrl,
           auth: { kind: 'none' },
           method: 'GET',
           path: '',
@@ -582,7 +590,7 @@ const cli = defineCli({
           env: ctx.env as Record<string, string | undefined>,
           requiredPermissions: ['workers:read'],
         })
-        return ctx.ok(data, { execution: { mode: 'remote-http', source: 'schema-default' } })
+        return ctx.ok(data, { execution: { mode: 'remote-http', source: remoteBaseUrlSource } })
       },
     }),
     defineCommand({
