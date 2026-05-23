@@ -12,9 +12,9 @@ Evidence used:
 - `rg "from ['\"]@lili/core['\"]" packages examples docs` for real package-root consumers.
 - `packages/core/test/extension-lane-coverage.test.ts` for public-lane extensibility proof.
 
-Current measured surface after cleanup:
+Current measured surface after the error-factory cutover:
 
-- 23 value exports from `@lili/core`.
+- 22 value exports from `@lili/core`.
 - 85 type exports from `@lili/core`.
 - Package export map exposes only `"."`, so subpath imports are internal/test-only even when source files export helpers.
 
@@ -31,7 +31,7 @@ These exports have clear non-test consumers or are required to type the main aut
 | `callHttpOperation`, `serializeHttpOperationRequest`, HTTP operation types | Used by Product conformance and generated remote command fixtures. | Shared generated/runtime transport primitive. Keep. |
 | `resolveAuth`, `resolveContext`, `createFileSessionStore`, generated auth command helpers, auth/session types | Used or emitted by Product generated CLI source when auth/session is enabled. | Shared auth/session runtime. Keep. |
 | `createLocalTelemetrySink`, `runLocalDoctor`, local ops types | Used by Product generated ops surfaces and public package readiness fixtures. | Opt-in local ops primitives. Keep while generated ops imports them. |
-| `LiliError`, `CommandError` | Used for hook failure, structured recovery, and public error envelopes. | Public recovery/error contract. Keep. |
+| `ok`, `fail`, `commandError`, `CommandError` | Used for command-authored outcomes, hook policy failures, structured recovery, and public error envelopes. | Public recovery/error contract. Keep. |
 
 ## Watch List
 
@@ -39,8 +39,6 @@ These exports are not wrong, but the current repo evidence is weaker than the gr
 
 | Export | Evidence | Tradeoff | Next check |
 |---|---|---|---|
-| `BaseError` | Mostly docs and direct core tests; no generated/package implementation imports it today. | Keeping it supports external inheritance and consistent error naming; removing it shrinks the public contract. | Decide whether external users should subclass only `LiliError`. If yes, deprecate or internalize `BaseError` before v1. |
-| `ParseError`, `ValidationError` | Public tests and docs use them; package implementation generally receives envelopes. | Useful for callers that run lower-level helpers and catch specific failures; also expands the error class surface. | Keep if direct helper calls stay public. Otherwise prefer `LiliError`/`CommandError` envelope handling. |
 | `Formatter` namespace | Used by core tests and docs, not by Product/build/release runtime imports. | Public formatting helpers are convenient for handwritten CLIs, but they expose renderer implementation details. | Either document `Formatter` as a stable helper surface or move users toward CLI `serve()` output modes only. |
 | Type aliases such as `Awaitable`, `ConfigDefinition`, `ConfigObjectDefinition`, `ConfigValueSource`, `OptionValueSource`, `SourceInspector` | Public signatures reference them. | Exporting helper aliases avoids unnameable public types, but increases apparent API size. | Shrink only by reshaping public signatures; do not remove aliases while exported types still name them. |
 
@@ -64,6 +62,12 @@ Private implementation helpers:
 | `probeIdentity` | Identity probing is used by generated auth helpers and OAuth flows, not as a standalone package-root primitive. |
 | `redactTelemetryValue` | Redaction remains inside `createLocalTelemetrySink`; custom redaction is not yet a public extension lane. |
 
+Internalized after the object-first error cutover:
+
+| Helper removed from root | Why it stays private |
+|---|---|
+| `BaseError`, `LiliError`, `ParseError`, `ValidationError` | Public command code now emits `CommandError` objects through `ok` / `fail` / `commandError` / `ctx.error`. Typed classes remain source-path internals for parser/schema/auth/HTTP and white-box tests. |
+
 ## Not Public Despite Source Exports
 
 Several source modules export helpers for internal composition or white-box tests. They are not package API because `packages/core/package.json` exports only `"."`.
@@ -84,4 +88,4 @@ The first minimization pass removed the low-evidence value exports. The next pas
 2. For each value kept public, add one package-root consumer fixture that demonstrates why an external CLI or extension needs it.
 3. For each value without a real consumer, remove it from `packages/core/src/index.ts`, update `packages/core/test/api-snapshot.test.ts`, and update `packages/product/test/core-consumer-boundary.test.ts`.
 
-The highest-risk remaining removals are `Formatter`, `ParseError`, and `ValidationError`, because they change the handwritten CLI ergonomics and test/debug story.
+The highest-risk remaining value removal is `Formatter`, because it changes handwritten CLI formatting ergonomics and the test/debug story.

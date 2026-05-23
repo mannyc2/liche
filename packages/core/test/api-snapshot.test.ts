@@ -180,12 +180,9 @@ export type _PublicTypeBag = [
 ]
 
 const FROZEN_PUBLIC_VALUES = [
-  'BaseError',
+  'commandError',
   'createConfig',
   'Formatter',
-  'LiliError',
-  'ParseError',
-  'ValidationError',
   'applyAuth',
   'authSwitch',
   'authWhoami',
@@ -194,9 +191,11 @@ const FROZEN_PUBLIC_VALUES = [
   'createLocalTelemetrySink',
   'defineCli',
   'defineCommand',
+  'fail',
   'logoutAuthSession',
   'middleware',
   'oauthDeviceLogin',
+  'ok',
   'resolveAuth',
   'resolveContext',
   'runLocalDoctor',

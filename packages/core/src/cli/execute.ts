@@ -15,7 +15,7 @@ import type {
   ConfigValueSource,
   OptionValueSource,
 } from '../types.js'
-import { LiliError, normalizeCommandError, toCommandError } from '../errors/error.js'
+import { fail, isRuntimeResult, LiliError, ok, toCommandError } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
 import type { LoadedConfig } from '../parser/config.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
@@ -82,12 +82,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       displayName: input.displayName,
       env: env as Dict,
       error(error) {
-        throw new Done({
-          ok: false,
-          data: null,
-          error: normalizeCommandError(error),
-          meta: error.cta ? { cta: error.cta } : undefined,
-        })
+        return fail(error)
       },
       format: input.format,
       formatExplicit: input.formatExplicit,
@@ -96,7 +91,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       isTty: input.isTty ?? false,
       name: binaryName,
       ok(data, meta) {
-        throw new Done({ ok: true, data: data ?? null, error: null, ...(meta && Object.keys(meta).length > 0 ? { meta } : {}) })
+        return ok(data, meta)
       },
       options: options as Dict,
       set(key, value) {
@@ -115,7 +110,14 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
 
     for (const hook of input.hooks.beforeExecute) {
       try {
-        await hook(context)
+        const hookResult = await hook(context)
+        if (isRuntimeResult(hookResult)) {
+          if (!hookResult.ok) {
+            await emitCommandEvent(binaryName, input, command, 'hook.failed', { error: eventError(hookResult.error) })
+          }
+          await emitResultEvent(binaryName, input, command, startedAt, hookResult)
+          return hookResult
+        }
       } catch (error) {
         await emitCommandEvent(binaryName, input, command, 'hook.failed', { error: eventError(toCommandError(error)) })
         throw error
@@ -127,6 +129,11 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       return await runtime.run(context)
     })
 
+    if (isRuntimeResult(result)) {
+      await emitResultEvent(binaryName, input, command, startedAt, result)
+      return result
+    }
+
     if (isAsyncIterable(result)) {
       if (input.onChunk) {
         const collected: unknown[] = []
@@ -134,30 +141,26 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
           collected.push(chunk)
           await input.onChunk(chunk)
         }
-        const completed = { ok: true, data: collected, error: null } satisfies Result
+        const completed = ok(collected)
         await emitResultEvent(binaryName, input, command, startedAt, completed)
         return completed
       }
-      const completed = { ok: true, data: await collectAsync(result), error: null } satisfies Result
+      const completed = ok(await collectAsync(result))
       await emitResultEvent(binaryName, input, command, startedAt, completed)
       return completed
     }
     const data = parseSchema(runtime.output, result, result)
-    const completed = { ok: true, data: data ?? null, error: null } satisfies Result
+    const completed = ok(data)
     await emitResultEvent(binaryName, input, command, startedAt, completed)
     return completed
   } catch (error) {
-    const result: Result = error instanceof Done ? error.result : { ok: false, data: null, error: toCommandError(error) }
+    const result = fail(toCommandError(error))
     if (!result.ok && result.error.code === 'VALIDATION_ERROR') {
       await emitCommandEvent(binaryName, input, command, 'validation.failed', { error: eventError(result.error) })
     }
     await emitResultEvent(binaryName, input, command, startedAt, result)
     return result
   }
-}
-
-class Done {
-  constructor(public result: Result) {}
 }
 
 async function runStack(

@@ -44,7 +44,7 @@ export const cli = defineCli({
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@lili/core` provides declarative command graphs, typed args/options/env parsing, config loading, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor`, plus `mcp add` and `skills add`, are explicit opt-ins; broader provider workflows, telemetry sinks, and nonessential renderers stay outside the required core path.
+`@lili/core` provides declarative command graphs, typed args/options/env parsing, config loading, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor`, plus `mcp add` and `skills add`, are explicit opt-ins; broader provider workflows, telemetry sinks, and nonessential renderers stay outside the required core path.
 
 ## Product Schema
 

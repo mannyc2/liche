@@ -5,12 +5,9 @@ import * as Core from '@lili/core'
 // and docs/core-api-boundary.md. Asserts package-level resolution (not just source-relative
 // imports) so generated code in @lili/product can only depend on the approved API.
 const FROZEN_PUBLIC_VALUES = [
-  'BaseError',
+  'commandError',
   'createConfig',
   'Formatter',
-  'LiliError',
-  'ParseError',
-  'ValidationError',
   'applyAuth',
   'authSwitch',
   'authWhoami',
@@ -19,9 +16,11 @@ const FROZEN_PUBLIC_VALUES = [
   'createLocalTelemetrySink',
   'defineCli',
   'defineCommand',
+  'fail',
   'logoutAuthSession',
   'middleware',
   'oauthDeviceLogin',
+  'ok',
   'resolveAuth',
   'resolveContext',
   'runLocalDoctor',

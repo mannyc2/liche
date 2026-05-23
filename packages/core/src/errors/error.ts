@@ -1,4 +1,7 @@
-import type { CommandError, FieldError } from '../types.js'
+import type { CommandError, CtaBlock, FieldError, Result, ResultMeta } from '../types.js'
+
+const RESULT_BRAND: unique symbol = Symbol.for('lili.result') as any
+type RuntimeResult = Result & { readonly [RESULT_BRAND]: true }
 
 export class BaseError extends Error {
   override name = 'Lili.BaseError'
@@ -111,7 +114,7 @@ export declare namespace ParseError {
 
 export function toCommandError(error: unknown): CommandError {
   if (error instanceof ValidationError) {
-    return normalizeCommandError({
+    return commandError({
       code: 'VALIDATION_ERROR',
       exitCode: 1,
       fieldErrors: error.fieldErrors,
@@ -120,7 +123,7 @@ export function toCommandError(error: unknown): CommandError {
   }
 
   if (error instanceof ParseError) {
-    return normalizeCommandError({
+    return commandError({
       code: 'PARSE_ERROR',
       exitCode: 1,
       message: error.shortMessage,
@@ -129,7 +132,7 @@ export function toCommandError(error: unknown): CommandError {
 
   if (error instanceof LiliError) {
     const status = error.status ?? statusFromDetails(error.details)
-    return normalizeCommandError({
+    return commandError({
       code: error.code,
       ...(error.code_actions !== undefined ? { code_actions: error.code_actions } : undefined),
       ...(error.detail !== undefined ? { detail: error.detail } : undefined),
@@ -147,14 +150,16 @@ export function toCommandError(error: unknown): CommandError {
     })
   }
 
-  return normalizeCommandError({
+  if (isCommandErrorLike(error)) return commandError(error)
+
+  return commandError({
     code: 'UNKNOWN',
     exitCode: 1,
     message: error instanceof Error ? error.message : String(error),
   })
 }
 
-export function normalizeCommandError(error: CommandError): CommandError {
+export function commandError(error: CommandError): CommandError {
   const code = error.code || 'UNKNOWN'
   const message = error.message || code
   return {
@@ -166,6 +171,49 @@ export function normalizeCommandError(error: CommandError): CommandError {
     title: error.title ?? titleFromCode(code),
     type: error.type ?? problemType(code),
   }
+}
+
+export function ok(data?: unknown, meta?: ResultMeta): Result {
+  return brandResult({
+    ok: true,
+    data: data ?? null,
+    error: null,
+    ...(hasMeta(meta) ? { meta } : {}),
+  })
+}
+
+export function fail(error: CommandError & { cta?: CtaBlock | undefined }, meta?: ResultMeta): Result {
+  const { cta, ...commandErrorInput } = error
+  const mergedMeta = cta === undefined ? meta : { ...(meta ?? {}), cta }
+  return brandResult({
+    ok: false,
+    data: null,
+    error: commandError(commandErrorInput),
+    ...(hasMeta(mergedMeta) ? { meta: mergedMeta } : {}),
+  })
+}
+
+export function isRuntimeResult(value: unknown): value is Result {
+  return !!value && typeof value === 'object' && (value as RuntimeResult)[RESULT_BRAND] === true
+}
+
+function brandResult(result: Result): RuntimeResult {
+  Object.defineProperty(result, RESULT_BRAND, {
+    enumerable: false,
+    value: true,
+  })
+  return result as RuntimeResult
+}
+
+function hasMeta(meta: ResultMeta | undefined): meta is ResultMeta {
+  return meta !== undefined && Object.keys(meta).length > 0
+}
+
+function isCommandErrorLike(error: unknown): error is CommandError {
+  return !!error
+    && typeof error === 'object'
+    && typeof (error as CommandError).code === 'string'
+    && typeof (error as CommandError).message === 'string'
 }
 
 function problemType(code: string): string {

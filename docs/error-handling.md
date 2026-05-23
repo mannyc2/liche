@@ -16,15 +16,16 @@ Everything agent-facing, script-facing, MCP-facing, and generated-CLI-facing mus
 
 ## Audit summary
 
-The current flow is mostly correct but mixes authoring styles:
+The flow now follows the split this document defines:
 
 - `CommandError` is already the inner machine object. It carries stable `code` / `message`, RFC-9457-shaped fields (`type`, `title`, `status`, `detail`, `instance`), validation fields, and agent recovery fields (`retry_after`, `suggested_fix`, `code_actions`).
 - `Result` is already a total envelope with explicit null branches.
 - `toCommandError()` already normalizes thrown internal errors into `CommandError`.
+- `ok()`, `fail()`, and `commandError()` are public package-root factories for command-authored outcomes.
+- `ctx.ok()` and `ctx.error()` return factory-branded `Result` objects instead of throwing a sentinel.
 - `serveCli()` already serializes non-human failures as the full result envelope, even for handwritten CLIs.
 - `MCP tools/call` already maps command failures to `CallToolResult.isError` content.
-- The inconsistent part is command-authored control flow: `ctx.ok()` and `ctx.error()` currently throw an internal `Done` sentinel even though normal command success/failure is no longer exceptional.
-- The public surface also still exports error classes (`BaseError`, `LiliError`, `ParseError`, `ValidationError`). That makes authoring look class-first even though the runtime boundary is object-first.
+- Error classes (`BaseError`, `LiliError`, `ParseError`, `ValidationError`) and `toCommandError()` stay internal source-path implementation details, not package-root authoring APIs.
 
 ## Decision
 
@@ -92,15 +93,15 @@ Rules:
 - `details` is for structured diagnostic payloads only. It must not contain raw tokens, env values, request bodies, session file contents, or full local paths.
 - `fieldErrors` is reserved for schema/validation failures and should use stable paths such as `$`, `$.option`, or `$.body.id`.
 
-Implementation note: these factories should live with the existing error normalizer in `packages/core/src/errors/error.ts` or a sibling module exported from the same package-root surface. The current `normalizeCommandError()` already does most of `commandError()`.
+Implementation note: these factories live with the internal error normalizer in `packages/core/src/errors/error.ts` and are exported from the package root.
 
 ## Public API policy
 
-The public command-authoring API should prefer values and factories:
+The public command-authoring API prefers values and factories:
 
 - keep public: `CommandError`, `FieldError`, `Result`, `ResultMeta`
-- add public: `ok`, `fail`, `commandError`
-- make internal before v1 if no package-root consumer proves otherwise: `BaseError`, `LiliError`, `ParseError`, `ValidationError`, `toCommandError`
+- keep public: `ok`, `fail`, `commandError`
+- keep internal: `BaseError`, `LiliError`, `ParseError`, `ValidationError`, `toCommandError`
 
 Tests may keep importing internals by source path for white-box validation, but that is not evidence that a class belongs in the package-root API.
 
@@ -150,7 +151,7 @@ Allowed internal throws:
 - auth/session resolution failures
 - outbound HTTP serialization/network/status/body/schema failures
 - impossible framework invariants and programmer errors
-- observer/hook exceptions before executor normalization
+- unexpected observer/hook exceptions before executor normalization
 
 Disallowed throws:
 
@@ -159,27 +160,19 @@ Disallowed throws:
 - build/product/release CLI preflight errors that already know the stable `CommandError`
 - helper built-in write failures once they can be expressed as `CommandError`
 
-## Current gaps
+## Implementation status
 
-These are code gaps relative to this policy:
+The hard cutover has landed:
 
-1. `RunContext.ok()` and `RunContext.error()` return `never` and throw an internal `Done` sentinel.
-2. Generated Product CLI code emits `return ctx.ok(...)` / `return ctx.error(...)`; after the factory cutover these can remain, but they should return objects rather than throw.
-3. The package root exports `BaseError`, `LiliError`, `ParseError`, and `ValidationError`.
-4. Auth error factories return `LiliError`; they should eventually return `CommandError` when used from command-authored paths, while internal `resolveAuth()` may still throw.
-5. Docs outside this file still mention public error classes as keep-public until the API snapshot changes.
+1. `ok`, `fail`, and `commandError` are package-root exports.
+2. Factory-created results carry a private runtime brand.
+3. `RunContext.ok/error` return `Result` instead of `never`.
+4. The executor no longer has a `Done` sentinel.
+5. Command tests prove `return ctx.error(...)` does not throw.
+6. Package-root error class exports were removed.
+7. `toCommandError()` and typed error classes remain source-path internals for parser/schema/auth/HTTP white-box coverage.
 
-## Implementation order
-
-Do this in one hard cutover before v1:
-
-1. Add `ok`, `fail`, and `commandError` factories.
-2. Brand factory-created results internally.
-3. Change `RunContext.ok/error` to return `Result` instead of `never`.
-4. Remove the executor `Done` sentinel.
-5. Update generated fixtures and command tests to prove `return ctx.error(...)` does not throw.
-6. Remove error classes from the package-root public API if no package-root consumer needs them.
-7. Keep `toCommandError()` and typed error classes as internal source-path implementation details.
+Remaining internal cleanup is optional: auth/session and HTTP helpers may continue throwing `LiliError` behind executor normalization, but any command-authored path should return `fail(commandError(...))` or `ctx.error(...)`.
 
 ## Review checklist
 

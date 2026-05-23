@@ -1,5 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import { BaseError, LiliError, ParseError, ValidationError, toCommandError } from '../src/errors/error.js'
+import {
+  BaseError,
+  LiliError,
+  ParseError,
+  ValidationError,
+  commandError,
+  fail,
+  isRuntimeResult,
+  ok,
+  toCommandError,
+} from '../src/errors/error.js'
 
 describe('error class names', () => {
   test.each([
@@ -248,6 +258,17 @@ describe('toCommandError', () => {
     })
   })
 
+  test('plain CommandError objects normalize without becoming UNKNOWN', () => {
+    expect(toCommandError({ code: 'HOOK_FAILED', message: 'policy denied' })).toEqual({
+      code: 'HOOK_FAILED',
+      detail: 'policy denied',
+      exitCode: 1,
+      message: 'policy denied',
+      title: 'Hook Failed',
+      type: 'urn:lili:error:hook-failed',
+    })
+  })
+
   test.each([
     ['Error instance', new Error('boom'), 'boom'],
     ['string', 'plain string', 'plain string'],
@@ -264,5 +285,57 @@ describe('toCommandError', () => {
       title: 'Unknown',
       type: 'urn:lili:error:unknown',
     })
+  })
+})
+
+describe('result factories', () => {
+  test('ok returns a branded success result', () => {
+    const result = ok({ id: 1 }, { custom: true })
+    expect(result).toEqual({
+      ok: true,
+      data: { id: 1 },
+      error: null,
+      meta: { custom: true },
+    })
+    expect(isRuntimeResult(result)).toBe(true)
+  })
+
+  test('fail returns a branded normalized failure result and lifts cta into meta', () => {
+    const result = fail({
+      code: 'NOPE',
+      message: 'failed',
+      cta: { commands: [{ command: 'app fix' }] },
+    })
+    expect(result).toEqual({
+      ok: false,
+      data: null,
+      error: {
+        code: 'NOPE',
+        detail: 'failed',
+        exitCode: 1,
+        message: 'failed',
+        title: 'Nope',
+        type: 'urn:lili:error:nope',
+      },
+      meta: {
+        cta: { commands: [{ command: 'app fix' }] },
+      },
+    })
+    expect(isRuntimeResult(result)).toBe(true)
+  })
+
+  test('commandError normalizes RFC 9457 defaults', () => {
+    expect(commandError({ code: 'AUTH_MISSING', message: 'Log in.' })).toEqual({
+      code: 'AUTH_MISSING',
+      detail: 'Log in.',
+      exitCode: 1,
+      message: 'Log in.',
+      title: 'Auth Missing',
+      type: 'urn:lili:error:auth-missing',
+    })
+  })
+
+  test('raw result-shaped objects are not runtime results', () => {
+    expect(isRuntimeResult({ ok: true, data: 1, error: null })).toBe(false)
   })
 })

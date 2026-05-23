@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
   createConfig,
-  LiliError,
   defineCli,
   defineCommand,
   z,
@@ -116,12 +115,13 @@ function nonInteractiveConfirmationExtension(): ExtensionLane {
     hooks: {
       beforeExecute(ctx) {
         if (ctx.global.nonInteractive && ctx.options['confirm'] !== true) {
-          throw new LiliError({
+          return ctx.error({
             code: 'EXTENSION_CONFIRMATION_REQUIRED',
             message: 'Confirmation is required in non-interactive mode.',
             suggested_fix: 'Pass --confirm or run interactively.',
           })
         }
+        return undefined
       },
     },
   }

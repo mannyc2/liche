@@ -64,6 +64,38 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     })
   })
 
+  test('ctx.ok and ctx.error return control results instead of throwing', async () => {
+    const success = captureRun(['inspect-ok', '--json'], {
+      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+    }, {
+      name: 'inspect-ok',
+      def: {
+        run(ctx: any) {
+          const result = ctx.ok({ message: 'pong' })
+          expect(result).toMatchObject({ ok: true, data: { message: 'pong' }, error: null })
+          return result
+        },
+      },
+    })
+    await success.promise
+    expect(JSON.parse(success.out)).toMatchObject({ ok: true, data: { message: 'pong' }, error: null })
+
+    const failure = captureRun(['inspect-error', '--json'], {
+      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+    }, {
+      name: 'inspect-error',
+      def: {
+        run(ctx: any) {
+          const result = ctx.error({ code: 'NOPE', message: 'failed' })
+          expect(result).toMatchObject({ ok: false, data: null, error: { code: 'NOPE' } })
+          return result
+        },
+      },
+    })
+    await failure.promise
+    expect(JSON.parse(failure.out)).toMatchObject({ ok: false, data: null, error: { code: 'NOPE' } })
+  })
+
   test('handwritten CLI without `generated` returns bare data under --json (compat)', async () => {
     const capture = captureRun(['ping', '--json'], undefined, {
       name: 'ping',

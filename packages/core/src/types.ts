@@ -189,14 +189,14 @@ export type RunContext<
   env: E
   error(input: CommandError & {
     cta?: CtaBlock | undefined
-  }): never
+  }): Result
   format: Format
   formatExplicit: boolean
   global: GlobalOptions
   invocation: InvocationKind
   isTty: boolean
   name: string
-  ok(data?: unknown, meta?: ResultMeta): never
+  ok(data?: unknown, meta?: ResultMeta): Result
   options: O
   set(key: string, value: unknown): void
   sources: SourceInspector
@@ -283,7 +283,7 @@ export type CliEventSubscription = {
   target: CliEventTarget
 }
 
-export type BeforeExecuteHook = (context: MiddlewareContext) => Awaitable<void>
+export type BeforeExecuteHook = (context: MiddlewareContext) => Awaitable<void | Result>
 export type CliHookRegistration = {
   beforeExecute?: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined
 }

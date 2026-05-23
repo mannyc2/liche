@@ -54,9 +54,21 @@ Deliberate, narrow widening to support generated CLIs:
 
 Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, fetch-backed commands, `cli.fetch()`, generated envelope mode, and write-side helper built-ins) must populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs, so agents and scripts can always find `error` without guessing whether stdout is a bare error object. Handwritten success output remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
 
-The `isResult` guard intentionally rejects old-shape raw objects such as `{ ok: true, data }` and `{ ok: false, error }`. Command handlers that want to finish early must use `ctx.ok(...)` or `ctx.error(...)`; otherwise those objects are treated as ordinary domain data.
+Executor control results are factory-branded, not structurally detected. Command handlers that want to finish early must return `ctx.ok(...)`, `ctx.error(...)`, `ok(...)`, or `fail(...)`; otherwise even full result-shaped objects are treated as ordinary domain data.
 
-The error-handling policy in `docs/error-handling.md` is the next authoritative simplification target: command-authored outcomes should return standardized `ok(...)` / `fail(commandError(...))` results, while typed thrown errors stay internal to parser/schema/auth/HTTP plumbing and are normalized once by the executor.
+The error-handling policy in `docs/error-handling.md` is now implemented: command-authored outcomes return standardized `ok(...)` / `fail(commandError(...))` results, while typed thrown errors stay internal to parser/schema/auth/HTTP plumbing and are normalized once by the executor.
+
+## Object-first error factory cutover
+
+The package-root error authoring surface is object-first:
+
+- `ok(data?, meta?)` returns a branded success `Result`.
+- `fail(error, meta?)` returns a branded failure `Result` and lifts `cta` into `meta.cta`.
+- `commandError(input)` normalizes a `CommandError` object with Problem Details defaults.
+
+`RunContext.ok()` and `RunContext.error()` now return these branded results instead of throwing a hidden executor sentinel. `BeforeExecuteHook` may also return a branded `Result` to short-circuit through the same lifecycle path. The executor removed the old `Done` sentinel and accepts only branded results as control results.
+
+`BaseError`, `LiliError`, `ParseError`, `ValidationError`, and `toCommandError()` are internal source-path implementation details. They remain available to parser/schema/auth/HTTP internals and white-box tests, but are no longer exported from `@lili/core`.
 
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
 
@@ -86,11 +98,11 @@ Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStor
 
 `RunContext` gained `invocation: 'cli' | 'ci' | 'agent' | 'mcp'` so generated command code can pass the real invocation posture into `resolveAuth`. Plain CLI invocations infer `ci` from common CI env vars; MCP and fetch-backed agent calls pass `mcp` / `agent` explicitly.
 
-`LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` gained the matching optional `details` field. `toCommandError` propagates it. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface — callers catch them as `LiliError` instances with `code: 'AUTH_*'`.
+Internal `LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` gained the matching optional `details` field. `toCommandError` propagates it behind the executor boundary. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface; public command code should emit `CommandError` objects through `ctx.error(...)` / `fail(...)`.
 
 ### Agent recovery error widening landed
 
-`CommandError` now also carries RFC-9457-shaped Problem Details fields (`type`, `title`, `status`, `detail`, `instance`) and agent recovery extensions (`retry_after`, `suggested_fix`, `code_actions`). The existing `message`, `code`, `details`, `fieldErrors`, `hint`, `retryable`, and `exitCode` fields remain for CLI compatibility. `RunContext.error(...)` accepts the full `CommandError` shape plus optional CTA metadata, so generated and handwritten commands can emit structured recovery actions without throwing a separate error class.
+`CommandError` now also carries RFC-9457-shaped Problem Details fields (`type`, `title`, `status`, `detail`, `instance`) and agent recovery extensions (`retry_after`, `suggested_fix`, `code_actions`). The existing `message`, `code`, `details`, `fieldErrors`, `hint`, `retryable`, and `exitCode` fields remain for CLI compatibility. `RunContext.error(...)` accepts the full `CommandError` shape plus optional CTA metadata and returns a branded failure `Result`, so generated and handwritten commands can emit structured recovery actions without throwing a separate error class.
 
 ### Phase 3D-B/C landed (sessions, generated auth commands, OAuth device)
 
@@ -151,10 +163,7 @@ Public means importable from `@lili/core`. Tests may keep importing subpaths for
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
 - `z` (`packages/core/src/schema/zod.ts:5`) — imported by many core tests and used in docs examples; public schema authoring convenience.
 - `Formatter` (`packages/core/src/format/index.ts:1`) — imported by `contract.test.ts`, `formatter-default.test.ts`, and `behavior-edges.test.ts`; docs require formatter/output envelope behavior.
-- `BaseError` (`packages/core/src/errors/error.ts:3`) — direct error test coverage; public base class for structured core errors.
-- `LiliError` (`packages/core/src/errors/error.ts:25`) — direct error test coverage and docs/log references; user-thrown structured error type.
-- `ParseError` (`packages/core/src/errors/error.ts:70`) — imported through index by `parser-config.test.ts`; public parse failure type.
-- `ValidationError` (`packages/core/src/errors/error.ts:52`) — direct schema/error test coverage; public validation failure type.
+- `ok`, `fail`, and `commandError` (`packages/core/src/errors/error.ts`) — public object-first result/error factories for command-authored outcomes.
 - `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
 - `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `DefineCliOptions.builtins` exposes it.
 - `CliInstance` (`packages/core/src/types.ts:203`) — public return type for `defineCli()`.
@@ -201,11 +210,19 @@ Kept only as private implementation helpers because production core code still u
 - `probeIdentity`
 - `redactTelemetryValue`
 
+Moved from package-root API to source-path internals because public command code now uses the object factories and machine envelopes:
+
+- `BaseError`
+- `LiliError`
+- `ParseError`
+- `ValidationError`
+- `toCommandError`
+
 Re-promoting any private helper now requires a package-root consumer fixture or an extension-lane test that cannot be written through the remaining public APIs. Recreating deleted auth metadata needs stronger evidence than white-box tests because generated manifests and MCP projections already carry non-secret auth metadata.
 
 ## Mark internal
 
-- `Errors` (`packages/core/src/errors/index.ts:1`) — no test imports the namespace from index. Keep top-level error classes public; keep `toCommandError` internal.
+- `Errors` (`packages/core/src/errors/index.ts:1`) — no test imports the namespace from index. Keep typed error classes and `toCommandError` internal; expose only `ok`, `fail`, and `commandError` from the package root.
 - `Help` (`packages/core/src/help/index.ts:1`) — direct tests cover `renderHelp`, but the signature requires `CliState`; do not expose the state-shaped renderer.
 - `Parser` (`packages/core/src/parser/index.ts:1`) — `behavior-edges.test.ts` imports it through index, but generated code should not parse argv itself. Parser/config/env validation is core behavior, not a public helper namespace.
 - `Filter` (`packages/core/src/format/filter.ts:3`) — no direct index test import; `Formatter.pick` is enough.

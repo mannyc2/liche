@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  LiliError,
   callHttpOperation,
   secret,
   serializeHttpOperationRequest,
   z,
 } from '../src/index.js'
 import type { AuthCredential } from '../src/index.js'
+import { LiliError } from '../src/errors/error.js'
 
 function expectLiliError(fn: () => unknown, code: string): LiliError {
   try {

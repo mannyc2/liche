@@ -25,9 +25,9 @@ export const cli = defineCli({
         openWorld: true,
         readOnly: false,
       },
-      run({ input }) {
-        return { deployment_id: `dep-${input.options.entrypoint}` };
-      },
+run({ input }) {
+  return { deployment_id: `dep-${input.options.entrypoint}` };
+},
     }),
   ],
 });
@@ -39,6 +39,7 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 
 - `defineCli()` and `defineCommand()` define serializable command graphs for CLI, JSON, MCP, and command-contract surfaces.
 - `createConfig()` loads typed project/user config files.
+- `ctx.ok()`, `ctx.error()`, `ok()`, `fail()`, and `commandError()` produce the standard machine result/error objects without public error classes.
 - `resolveAuth()`, `createFileSessionStore()`, and OAuth device helpers support generated and handwritten auth flows.
 - `callHttpOperation()` is the shared outbound HTTP transport for remote commands.
 - `runLocalDoctor()` reports local PATH and package-manager diagnostics.
