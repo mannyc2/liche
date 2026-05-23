@@ -114,14 +114,14 @@ export function createFileSessionStore(options: FileSessionStoreOptions = {}): S
   }
 }
 
-export function defaultSessionRoot(env: Record<string, string | undefined> = process.env): string {
+function defaultSessionRoot(env: Record<string, string | undefined> = process.env): string {
   if (env['LILI_HOME']) return env['LILI_HOME']
   if (platform() === 'darwin') return join(homedir(), 'Library', 'Application Support', 'lili')
   if (platform() === 'win32') return join(env['APPDATA'] ?? join(homedir(), 'AppData', 'Roaming'), 'lili')
   return join(env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config'), 'lili')
 }
 
-export function isValidProfileName(profile: string): boolean {
+function isValidProfileName(profile: string): boolean {
   return PROFILE_RE.test(profile)
 }
 

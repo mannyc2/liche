@@ -219,7 +219,7 @@ export async function oauthDeviceLogin(input: AuthRuntimeInput & { interactive?:
   })
 }
 
-export async function probeIdentity(input: AuthIdentityProbeInput): Promise<{ id: string; label?: string | undefined }> {
+async function probeIdentity(input: AuthIdentityProbeInput): Promise<{ id: string; label?: string | undefined }> {
   const url = new URL(input.identity.http.path, resolveBaseUrl(input.baseUrl, input.env ?? {}))
   const headers = new Headers({ accept: 'application/json' })
   applyAuth(headers, input.credential)

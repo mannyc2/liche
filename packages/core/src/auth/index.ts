@@ -14,11 +14,11 @@ export {
   authSessionLocked,
 } from './errors.js'
 export type { AuthErrorCode, AuthErrorDetails } from './errors.js'
-export { resolveAuth, resolveContext, applyAuth, authMetaFromCredential } from './resolve.js'
+export { resolveAuth, resolveContext, applyAuth } from './resolve.js'
 export type { ResolveAuthInput, ResolveContextInput } from './resolve.js'
-export { authSwitch, authWhoami, logoutAuthSession, oauthDeviceLogin, probeIdentity } from './device.js'
+export { authSwitch, authWhoami, logoutAuthSession, oauthDeviceLogin } from './device.js'
 export type { AuthRuntimeInput } from './device.js'
-export { createFileSessionStore, defaultSessionRoot, isValidProfileName } from './session-store.js'
+export { createFileSessionStore } from './session-store.js'
 export type { FileSessionStoreOptions } from './session-store.js'
 export type {
   AuthCommandRuntime,
@@ -31,7 +31,6 @@ export type {
   IdentityRuntime,
   InvocationKind,
   OAuthDeviceRuntime,
-  ResolvedAuthMeta,
   SessionStore,
   SessionTokenSourceSpec,
   StoredProfile,

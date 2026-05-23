@@ -5,7 +5,6 @@ import type {
   AuthProviderRuntime,
   ContextRuntime,
   InvocationKind,
-  ResolvedAuthMeta,
   SessionStore,
   StoredProfile,
 } from './types.js'
@@ -197,17 +196,4 @@ export function applyAuth(headers: Headers, credential: AuthCredential): void {
     return
   }
   headers.set(credential.header ?? 'x-api-key', raw)
-}
-
-export function authMetaFromCredential(credential: AuthCredential | undefined): ResolvedAuthMeta {
-  if (!credential) return { kind: 'none' }
-  return {
-    kind: 'resolved',
-    providerId: credential.providerId,
-    source: credential.source,
-    profile: credential.profile,
-    account: credential.account,
-    scopes: credential.scopes,
-    expiresAt: credential.expiresAt,
-  }
 }

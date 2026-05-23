@@ -31,7 +31,6 @@ export type {
   IdentityRuntime,
   InvocationKind,
   OAuthDeviceRuntime,
-  ResolvedAuthMeta,
   SessionStore,
   SessionTokenSourceSpec,
   StoredProfile,

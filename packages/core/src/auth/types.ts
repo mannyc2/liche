@@ -117,15 +117,3 @@ export type AuthIdentityProbeInput = {
   fetch?: HttpFetch | undefined
   identity: IdentityRuntime
 }
-
-export type ResolvedAuthMeta =
-  | { kind: 'none' }
-  | {
-      kind: 'resolved'
-      providerId: string
-      source: 'env' | 'session'
-      profile?: string | undefined
-      account?: { id: string; label?: string | undefined } | undefined
-      scopes?: string[] | undefined
-      expiresAt?: string | undefined
-    }

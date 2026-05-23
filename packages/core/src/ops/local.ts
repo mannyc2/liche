@@ -112,7 +112,7 @@ export function createLocalTelemetrySink(options: LocalTelemetrySinkOptions = {}
   }
 }
 
-export function redactTelemetryValue(value: unknown): unknown {
+function redactTelemetryValue(value: unknown): unknown {
   if (typeof value === 'string') return redactString(value)
   if (Array.isArray(value)) return value.map(redactTelemetryValue)
   if (value && typeof value === 'object') {

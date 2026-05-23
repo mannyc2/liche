@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isSecretString } from '../../src/auth/secret.js'
 import { createFileSessionStore, secret } from '../../src/index.js'
-import { applyAuth, authMetaFromCredential, resolveAuth, resolveContext } from '../../src/auth/resolve.js'
+import { applyAuth, resolveAuth, resolveContext } from '../../src/auth/resolve.js'
 import type { AuthProviderRuntime, ContextRuntime } from '../../src/auth/types.js'
 import { LiliError } from '../../src/errors/error.js'
 
@@ -467,32 +467,5 @@ describe('applyAuth', () => {
     const headers = new Headers()
     applyAuth(headers, cred!)
     expect(headers.get('x-api-key')).toBe('v')
-  })
-})
-
-describe('authMetaFromCredential', () => {
-  test('undefined credential → { kind: "none" }', () => {
-    expect(authMetaFromCredential(undefined)).toEqual({ kind: 'none' })
-  })
-
-  test('resolved credential strips the SecretString and exposes only safe metadata', async () => {
-    const cred = await resolveAuth({
-      provider: bearerProvider,
-      required: true,
-      invocation: 'cli',
-      env: { ACME_TOKEN: 'shh' },
-    })
-    const meta = authMetaFromCredential(cred)
-    expect(meta).toEqual({
-      kind: 'resolved',
-      providerId: 'acme',
-      source: 'env',
-      profile: undefined,
-      account: undefined,
-      scopes: undefined,
-      expiresAt: undefined,
-    })
-    expect(JSON.stringify(meta)).not.toContain('shh')
-    expect(JSON.stringify(meta)).not.toContain('redacted')
   })
 })

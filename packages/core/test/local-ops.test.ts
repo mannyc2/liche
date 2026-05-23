@@ -3,7 +3,6 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { createLocalTelemetrySink, runLocalDoctor } from '../src/index.js'
-import { redactTelemetryValue } from '../src/ops/local.js'
 
 describe('local ops doctor', () => {
   test('reports PATH and package-manager checks as structured diagnostics', async () => {
@@ -102,11 +101,28 @@ describe('local telemetry sink', () => {
     expect(writes).toEqual([])
   })
 
-  test('redaction handles nested token fields and bearer strings', () => {
-    expect(redactTelemetryValue({
+  test('redaction handles nested token fields and bearer strings', async () => {
+    const writes: string[] = []
+    const sink = createLocalTelemetrySink({
+      env: { LILI_TELEMETRY: '1', LILI_TELEMETRY_FILE: '/tmp/lili-telemetry.jsonl' },
+      append: (_path, text) => {
+        writes.push(text)
+      },
+    })
+
+    await sink({
+      agent: false,
+      cli: { name: 'shipyard' },
+      format: 'json',
+      formatExplicit: true,
+      invocation: 'cli',
+      occurredAt: '2026-05-21T00:00:00.000Z',
+      type: 'version.rendered',
       nested: { apiKey: 'abc123' },
       message: 'Authorization: Bearer abc123',
-    })).toEqual({
+    } as any)
+
+    expect(JSON.parse(writes[0]!)).toMatchObject({
       nested: { apiKey: '[redacted]' },
       message: 'Authorization: Bearer [redacted]',
     })

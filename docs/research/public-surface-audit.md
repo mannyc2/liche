@@ -15,7 +15,7 @@ Evidence used:
 Current measured surface after cleanup:
 
 - 23 value exports from `@lili/core`.
-- 86 type exports from `@lili/core`.
+- 85 type exports from `@lili/core`.
 - Package export map exposes only `"."`, so subpath imports are internal/test-only even when source files export helpers.
 
 ## Keep Strongly
@@ -44,13 +44,21 @@ These exports are not wrong, but the current repo evidence is weaker than the gr
 | `Formatter` namespace | Used by core tests and docs, not by Product/build/release runtime imports. | Public formatting helpers are convenient for handwritten CLIs, but they expose renderer implementation details. | Either document `Formatter` as a stable helper surface or move users toward CLI `serve()` output modes only. |
 | Type aliases such as `Awaitable`, `ConfigDefinition`, `ConfigObjectDefinition`, `ConfigValueSource`, `OptionValueSource`, `SourceInspector` | Public signatures reference them. | Exporting helper aliases avoids unnameable public types, but increases apparent API size. | Shrink only by reshaping public signatures; do not remove aliases while exported types still name them. |
 
-## Internalized
+## Removed Or Privatized
 
-These values were removed from the package root after the audit because the only package-root evidence was the boundary snapshot itself. Their source implementations remain internal where core still needs them.
+These exports were removed from the package root after the audit because the only package-root evidence was the boundary snapshot itself.
 
-| Export removed from root | Why it moved internal |
+Deleted entirely:
+
+| Deleted export | Why it was deleted |
 |---|---|
-| `authMetaFromCredential` | Generated code and package-level consumers do not import it directly; auth metadata still travels through generated manifests and MCP projections. |
+| `authMetaFromCredential` | Generated code and package-level consumers do not import it directly; auth metadata still travels through generated manifests and MCP projections. It had no runtime caller after tests stopped importing it. |
+| `ResolvedAuthMeta` | Only existed to type `authMetaFromCredential`; no remaining public signature needs it. |
+
+Private implementation helpers:
+
+| Helper removed from root | Why it stays private |
+|---|---|
 | `defaultSessionRoot` | `createFileSessionStore()` owns the default path decision; external callers can still pass an explicit root. |
 | `isValidProfileName` | Profile validation remains session-store behavior; no package-root consumer fixture needs the predicate. |
 | `probeIdentity` | Identity probing is used by generated auth helpers and OAuth flows, not as a standalone package-root primitive. |
@@ -64,7 +72,7 @@ Examples:
 
 - `stateSymbol`, `InternalCli`, parser helpers, command registry helpers, and command guards.
 - `Mcp`, `Skill`, `Completions`, `Help`, `Parser`, `Fetch`, and schema-adapter namespaces removed from the package root.
-- `formatHumanValidationError`, `mcpMessage`, `serveMcp`, `handleMcpHttp`, `skillMarkdown`, `writeMcp`, `authMetaFromCredential`, `defaultSessionRoot`, `isValidProfileName`, `probeIdentity`, and `redactTelemetryValue` are source-level internals unless intentionally promoted later.
+- `formatHumanValidationError`, `mcpMessage`, `serveMcp`, `handleMcpHttp`, `skillMarkdown`, `writeMcp`, `defaultSessionRoot`, `isValidProfileName`, `probeIdentity`, and `redactTelemetryValue` are implementation details unless intentionally promoted later.
 
 White-box tests may import these from source subpaths, but that is not promotion evidence. Generated code and external consumers must stay on `@lili/core`.
 
