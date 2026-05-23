@@ -238,6 +238,8 @@ describe('generateCli — run bodies by execution mode', () => {
     const purgeBlock = extractCommandBlock(source, 'purge')
     expect(purgeBlock).toContain(`const remoteBaseUrl = ctx.config['apiBaseUrl']`)
     expect(purgeBlock).toContain(`code: 'REMOTE_CONFIG_MISSING_BASE_URL'`)
+    expect(purgeBlock).toContain(`code_actions: [{ title: 'Inspect config', argv: ['config', 'doctor'] }]`)
+    expect(purgeBlock).toContain(`suggested_fix: 'Set apiBaseUrl in config before retrying.'`)
     expect(purgeBlock).toContain(`const remoteBaseUrlSource = ctx.sources.config('apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'`)
     expect(purgeBlock).toContain(`const data = await callHttpOperation({`)
     expect(purgeBlock).toContain(`baseUrl: remoteBaseUrl,`)

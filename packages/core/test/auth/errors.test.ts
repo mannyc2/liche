@@ -54,6 +54,11 @@ describe('AUTH_* error factories', () => {
       loginCommand: 'acme login',
       requiredPermissions: ['deployments:write'],
     })
+    expect(e.suggested_fix).toContain('acme login')
+    expect(e.code_actions).toEqual([
+      { title: 'Log in', command: 'acme login' },
+      { title: 'Set auth environment', description: 'Set ACME_TOKEN before retrying.' },
+    ])
   })
 
   test('authMissing without login command only mentions env vars', () => {
@@ -121,6 +126,11 @@ describe('AUTH_* error factories', () => {
       loginCommand: 'acme login',
       requiredPermissions: undefined,
     })
+    expect(envelope.suggested_fix).toContain('acme login')
+    expect(envelope.code_actions).toEqual([
+      { title: 'Log in', command: 'acme login' },
+      { title: 'Set auth environment', description: 'Set ACME_TOKEN before retrying.' },
+    ])
   })
 
   test('AUTH_CODES contains every required 3D-A code', () => {

@@ -569,7 +569,9 @@ const cli = defineCli({
         if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {
           return ctx.error({
             code: 'REMOTE_CONFIG_MISSING_BASE_URL',
+            code_actions: [{ title: 'Inspect config', argv: ['config', 'doctor'] }],
             message: 'Remote base URL is required.',
+            suggested_fix: 'Set apiBaseUrl in config before retrying.',
           })
         }
         const remoteBaseUrlSource = ctx.sources.config('apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'

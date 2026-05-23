@@ -407,7 +407,12 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     const { stdout, exitCode } = await runGenerated(['ping', '--json'])
 
     expect(exitCode).toBe(1)
-    expect(stdout).toContain('REMOTE_CONFIG_MISSING_BASE_URL')
+    const body = JSON.parse(stdout)
+    expect(body.error).toMatchObject({
+      code: 'REMOTE_CONFIG_MISSING_BASE_URL',
+      code_actions: [{ title: 'Inspect config', argv: ['config', 'doctor'] }],
+      suggested_fix: 'Set apiBaseUrl in config before retrying.',
+    })
     expect(stdout).not.toContain('REMOTE_NETWORK')
   })
 

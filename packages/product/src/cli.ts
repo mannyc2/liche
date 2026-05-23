@@ -55,8 +55,10 @@ export const cli = defineCli({
           if (result.ok) return { inSync: true }
           return ctx.error({
             code: 'GENERATED_SURFACE_DRIFT',
+            code_actions: [{ title: 'Regenerate surfaces', command: `li-product generate ${input.args.product}` }],
             hint: result.drift.join('\n'),
             message: 'Generated artifacts are out of sync',
+            suggested_fix: 'Run generation without --check and commit the updated artifacts.',
           })
         }
 
@@ -112,6 +114,7 @@ export const cli = defineCli({
             code: 'COMPILE_FAILED',
             message: 'Bun.build failed',
             ...(hint === undefined ? {} : { hint }),
+            suggested_fix: 'Fix the Bun.build diagnostics, then rerun compile.',
           })
         }
 
@@ -157,6 +160,9 @@ export const cli = defineCli({
             code: 'CONFORMANCE_FAILED',
             message: `${report.summary.failed} conformance case(s) failed`,
             hint: JSON.stringify(report.summary),
+            suggested_fix: input.options.report
+              ? `Inspect ${input.options.report}, fix the failing cases, and rerun conformance.`
+              : 'Rerun with --report to inspect failing cases, then fix the product or remote fixture.',
           })
         }
         return report

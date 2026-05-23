@@ -69,7 +69,9 @@ describe('li-product CLI', () => {
     const error = JSON.parse(result.stdout)
     expect(error).toMatchObject({
       code: 'GENERATED_SURFACE_DRIFT',
+      code_actions: [{ title: 'Regenerate surfaces', command: `li-product generate ${productPath}` }],
       message: 'Generated artifacts are out of sync',
+      suggested_fix: 'Run generation without --check and commit the updated artifacts.',
     })
     expect(error.hint).toContain('generated file missing')
   })

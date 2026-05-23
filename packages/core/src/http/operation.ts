@@ -524,14 +524,59 @@ function remoteError(
   extra?: Record<string, unknown> | undefined,
   options?: { cause?: Error | undefined; retryable?: boolean | undefined } | undefined,
 ): LiliError {
+  const mergedDetails = compactDetails(details, extra)
   return new LiliError({
     code,
-    details: compactDetails(details, extra),
+    details: mergedDetails,
     message,
     retryable: options?.retryable,
     cause: options?.cause,
     exitCode: 1,
+    ...remoteRecovery(code, mergedDetails, options),
   })
+}
+
+function remoteRecovery(
+  code: string,
+  details: Record<string, unknown> | undefined,
+  options: { retryable?: boolean | undefined } | undefined,
+): Pick<LiliError.Options, 'retry_after' | 'suggested_fix'> {
+  if (code === 'REMOTE_CONFIG_MISSING_BASE_URL') {
+    const envVar = typeof details?.['envVar'] === 'string' ? details['envVar'] : undefined
+    return {
+      suggested_fix: envVar
+        ? `Set ${envVar} to the remote API base URL before retrying.`
+        : 'Set the remote API base URL before retrying.',
+    }
+  }
+  if (code === 'REMOTE_CONFIG_INVALID_BASE_URL') {
+    return { suggested_fix: 'Use an absolute http(s) URL for the remote API base URL.' }
+  }
+  if (code === 'REMOTE_CONFIG_MISSING_AUTH') {
+    const envVar = typeof details?.['envVar'] === 'string' ? details['envVar'] : undefined
+    return {
+      suggested_fix: envVar
+        ? `Set ${envVar} before retrying.`
+        : 'Configure remote authentication before retrying.',
+    }
+  }
+  if (code === 'REMOTE_NETWORK' || code === 'REMOTE_TIMEOUT') {
+    return {
+      retry_after: options?.retryable ? 5 : undefined,
+      suggested_fix: 'Check network connectivity and retry the command.',
+    }
+  }
+  if (code === 'REMOTE_HTTP_STATUS') {
+    const status = typeof details?.['status'] === 'number' ? details['status'] : undefined
+    if (status !== undefined && status >= 500) {
+      return { retry_after: 5, suggested_fix: 'Retry after the remote service recovers.' }
+    }
+    return { suggested_fix: 'Check the remote request details and retry with corrected inputs or credentials.' }
+  }
+  if (code === 'REMOTE_RESPONSE_SCHEMA' || code === 'REMOTE_RESPONSE_MALFORMED') {
+    return { suggested_fix: 'Check whether the remote service response matches the declared output schema.' }
+  }
+  return {}
 }
 
 function compactDetails(
