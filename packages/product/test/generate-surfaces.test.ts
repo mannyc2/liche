@@ -173,6 +173,10 @@ describe('generated agent and docs references', () => {
     expect(reference).toContain('## Config bindings')
     expect(reference).toContain('### kv_namespaces')
     expect(reference).toContain('| `binding` | Variable name in code |')
+    expect(reference).toContain('## Release')
+    expect(reference).toContain('Current version: `1.0.0`')
+    expect(reference).toContain('- bun: `bun add -g @workers/cli`')
+    expect(reference).toContain('| npm | `@workers/cli` | `1.0.0` |')
   })
 })
 

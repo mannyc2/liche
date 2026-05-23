@@ -137,10 +137,11 @@ describe('Local ops normalization', () => {
       doctor: false,
       telemetry: false,
       notices: { updates: [], channels: [], yanks: [] },
+      release: false,
     })
   })
 
-  test('ops opt-in normalizes doctor defaults, telemetry env vars, and static notices', () => {
+  test('ops opt-in normalizes doctor defaults, telemetry env vars, static notices, and release metadata', () => {
     const catalog = normalizeProduct(
       testProduct({
         ops: {
@@ -150,6 +151,14 @@ describe('Local ops normalization', () => {
             updates: [{ id: 'p-1.1.0', message: 'P 1.1.0 is available.' }],
             channels: [{ id: 'p-next', message: 'Next channel available.' }],
             yanks: [{ id: 'p-0.9.0', severity: 'warning', message: 'P 0.9.0 is yanked.' }],
+          },
+          release: {
+            version: '1.0.0',
+            latestVersion: '1.1.0',
+            channel: 'stable',
+            install: [{ manager: 'bun', command: 'bun add -g p' }],
+            packages: [{ ecosystem: 'npm', kind: 'umbrella', name: 'p', version: '1.0.0' }],
+            yankedVersions: [{ id: 'p-0.9.0', version: '0.9.0', message: 'P 0.9.0 is yanked.' }],
           },
         },
       }),
@@ -163,6 +172,14 @@ describe('Local ops normalization', () => {
         updates: [{ id: 'p-1.1.0', message: 'P 1.1.0 is available.' }],
         channels: [{ id: 'p-next', message: 'Next channel available.' }],
         yanks: [{ id: 'p-0.9.0', severity: 'warning', message: 'P 0.9.0 is yanked.' }],
+      },
+      release: {
+        version: '1.0.0',
+        latestVersion: '1.1.0',
+        channel: 'stable',
+        install: [{ manager: 'bun', command: 'bun add -g p' }],
+        packages: [{ ecosystem: 'npm', kind: 'umbrella', name: 'p', version: '1.0.0' }],
+        yankedVersions: [{ id: 'p-0.9.0', version: '0.9.0', message: 'P 0.9.0 is yanked.' }],
       },
     })
   })

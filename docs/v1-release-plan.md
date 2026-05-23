@@ -345,7 +345,7 @@ Verification:
 - catalog/discovery artifacts are versioned, packaged, and tracked by drift checks
 - install/update/channel metadata supports static yanked-version and out-of-date notices without hosted infrastructure
 
-Current status: generated Product `doctor --json` combines `runLocalDoctor(...)` with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. Release-package metadata checks remain tied to the install/update/channel slice.
+Current status: generated Product `doctor --json` combines `runLocalDoctor(...)` with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, static `ops.release` metadata, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. `ops.release` is Product-owned static metadata, not a runtime dependency on `@lili/releases`: generated docs, discovery JSON, `release --json`, and `doctor --json` can explain install commands, channel, latest known version, packages, and yanked versions without a hosted update service.
 
 ### Phase 8E: release publish closure
 
@@ -359,7 +359,7 @@ Verification:
 - receipt records artifact hashes, publisher, step ordering, credential posture, and provenance/attestation metadata when configured
 - npm/PyPI trusted-publishing/OIDC paths are represented without treating attestations as a substitute for sha256 checks; PyPI OIDC remains an official-workflow handoff rather than a local upload-client token exchange
 - live npm/PyPI/Homebrew/Scoop mutation adapters are implemented behind explicit executors and tested with injected command runners where direct registry mutation is unsafe
-- install/update/channel metadata from the release manifest is consumed by generated docs and diagnostics
+- install/update/channel metadata from static Product release metadata is consumed by generated docs, discovery, `release --json`, and diagnostics
 
 ### Phase 8F: public package readiness
 

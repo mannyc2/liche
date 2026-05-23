@@ -447,6 +447,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       'notices.updates',
       'notices.channels',
       'notices.yanks',
+      'release.metadata',
     ])
     expect(byId['remote.base-url']).toMatchObject({
       status: 'pass',
@@ -476,7 +477,8 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       status: 'warn',
       details: { visible: ['auth.whoami', 'purge'], underAnnotated: ['purge'] },
     })
-    expect(body.data.summary).toEqual({ pass: 10, warn: 4, fail: 1 })
+    expect(byId['release.metadata']).toMatchObject({ status: 'warn' })
+    expect(body.data.summary).toEqual({ pass: 10, warn: 5, fail: 1 })
     expect(JSON.stringify(body)).not.toContain('tok-runtime')
   })
 

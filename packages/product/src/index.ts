@@ -96,7 +96,12 @@ export type {
 export { Runtime } from './runtime.js'
 export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
 
-export type { ProductNotice, ProductOpsSpec, ProductPackageManager } from './ops.js'
+export type {
+  ProductNotice,
+  ProductOpsSpec,
+  ProductPackageManager,
+  ProductReleaseSpec,
+} from './ops.js'
 
 export { defineProduct } from './product.js'
 export type {

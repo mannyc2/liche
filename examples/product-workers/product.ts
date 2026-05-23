@@ -40,6 +40,30 @@ export default defineProduct({
         message: 'Workers CLI 0.1.0 was yanked due to a packaging regression.',
       }],
     },
+    release: {
+      version: '0.1.0',
+      latestVersion: '0.2.0',
+      channel: 'stable',
+      createdAt: '2026-05-23T12:00:00Z',
+      install: [
+        { manager: 'bun', command: 'bun add -g @workers/cli' },
+        { manager: 'npm', command: 'npm install -g @workers/cli' },
+      ],
+      packages: [{
+        id: 'npm.umbrella',
+        ecosystem: 'npm',
+        kind: 'umbrella',
+        name: '@workers/cli',
+        version: '0.1.0',
+        channel: 'latest',
+      }],
+      yankedVersions: [{
+        id: 'workers-cli-0.1.0',
+        version: '0.1.0',
+        severity: 'warning',
+        message: 'Workers CLI 0.1.0 was yanked due to a packaging regression.',
+      }],
+    },
   },
   permissions: {
     'workers:read': Auth.permission.scope('workers.read'),

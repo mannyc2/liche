@@ -33,7 +33,12 @@ import type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
 import type { ListShape, ObjectShape, Shape } from './shape.js'
 import type { JsonSchemaNode } from './types.js'
 import type { Vocabulary } from './vocabulary.js'
-import { normalizeOpsSpec, type ProductNotice, type ProductPackageManager } from './ops.js'
+import {
+  normalizeOpsSpec,
+  type ProductNotice,
+  type ProductPackageManager,
+  type ProductReleaseSpec,
+} from './ops.js'
 
 export type NormalizedHttpBind = {
   path: string[]
@@ -141,6 +146,7 @@ export type NormalizedOps = {
     channels: ProductNotice[]
     yanks: ProductNotice[]
   }
+  release: false | ProductReleaseSpec
 }
 
 export type NormalizedRequires = {

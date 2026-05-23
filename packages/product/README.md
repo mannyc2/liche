@@ -47,6 +47,8 @@ Generated artifacts include:
 - `lili.compile-entry.ts`
 - `lili.generated.manifest.json`
 
+Opt-in `ops.release` metadata is embedded into generated docs, discovery JSON, `doctor --json`, and a local `release --json` command. It is static by design: install commands, channel, latest known version, packages, and yanked versions are available to users and agents without a hosted update service.
+
 ## Conformance
 
 Run conformance against an owned fixture server or local server:

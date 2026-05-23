@@ -42,6 +42,10 @@ export function generateDocsReference(
     lines.push('', ...fieldTable(fields))
   }
 
+  if (catalog.ops.release !== false) {
+    lines.push('', ...releaseSection(catalog))
+  }
+
   if (catalog.bindings.length > 0) {
     lines.push('', '## Config bindings')
     for (const binding of catalog.bindings) {
@@ -52,6 +56,35 @@ export function generateDocsReference(
   }
 
   return `${lines.join('\n')}\n`
+}
+
+function releaseSection(catalog: Catalog): string[] {
+  const release = catalog.ops.release
+  if (release === false) return []
+  const lines = [
+    '## Release',
+    '',
+    `Current version: \`${release.version}\``,
+    '',
+    `Channel: \`${release.channel ?? 'stable'}\``,
+    '',
+    `Latest known version: \`${release.latestVersion ?? release.version}\``,
+  ]
+  if (release.install && release.install.length > 0) {
+    lines.push('', '### Install', '')
+    for (const entry of release.install) lines.push(`- ${entry.manager}: \`${entry.command}\``)
+  }
+  if (release.packages && release.packages.length > 0) {
+    lines.push('', '### Packages', '', '| Ecosystem | Package | Version |', '| --- | --- | --- |')
+    for (const entry of release.packages) {
+      lines.push(`| ${entry.ecosystem} | \`${entry.name}\` | \`${entry.version}\` |`)
+    }
+  }
+  if (release.yankedVersions && release.yankedVersions.length > 0) {
+    lines.push('', '### Yanked versions', '')
+    for (const entry of release.yankedVersions) lines.push(`- \`${entry.version}\`: ${entry.message}`)
+  }
+  return lines
 }
 
 function docsCommandSection(catalog: Catalog, cap: Capability): string[] {

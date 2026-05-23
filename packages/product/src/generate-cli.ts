@@ -120,6 +120,7 @@ function renderCatalogConstants(catalog: Catalog): string[] {
   return [
     `const GENERATED_CATALOG = ${JSON.stringify(catalog, null, 2)} as const`,
     `const STATIC_NOTICES = ${JSON.stringify(catalog.ops.notices, null, 2)} as const`,
+    `const STATIC_RELEASE = ${JSON.stringify(catalog.ops.release, null, 2)} as const`,
   ]
 }
 
@@ -168,6 +169,7 @@ function renderProductDoctorHelpers(): string[] {
     `  checks.push(...generatedContextChecks(ctx, catalog.contexts ?? []))`,
     `  checks.push(generatedAgentReadinessCheck(catalog.capabilities ?? []))`,
     `  checks.push(...generatedNoticeChecks(catalog.ops?.notices ?? { updates: [], channels: [], yanks: [] }))`,
+    `  checks.push(...generatedReleaseChecks(catalog.ops?.release ?? false))`,
     `  return checks`,
     `}`,
     ``,
@@ -273,6 +275,53 @@ function renderProductDoctorHelpers(): string[] {
     `    { id: 'notices.updates', status: updates > 0 ? 'warn' : 'pass', message: updates > 0 ? 'Static update notices are present.' : 'No static update notices are present.', details: { count: updates } },`,
     `    { id: 'notices.channels', status: channels > 0 ? 'pass' : 'warn', message: channels > 0 ? 'Static channel metadata is present.' : 'No static channel metadata is present.', details: { count: channels } },`,
     `    { id: 'notices.yanks', status: yanks > 0 ? 'warn' : 'pass', message: yanks > 0 ? 'Static yanked-version notices are present.' : 'No static yanked-version notices are present.', details: { count: yanks } },`,
+    `  ]`,
+    `}`,
+    ``,
+    `function generatedReleaseChecks(release: any): GeneratedDoctorCheck[] {`,
+    `  if (!release) {`,
+    `    return [{`,
+    `      id: 'release.metadata',`,
+    `      status: 'warn',`,
+    `      message: 'No static release metadata is embedded.',`,
+    `    }]`,
+    `  }`,
+    `  const install = Array.isArray(release.install) ? release.install : []`,
+    `  const packages = Array.isArray(release.packages) ? release.packages : []`,
+    `  const yankedVersions = Array.isArray(release.yankedVersions) ? release.yankedVersions : []`,
+    `  const latestVersion = typeof release.latestVersion === 'string' && release.latestVersion.length > 0 ? release.latestVersion : release.version`,
+    `  const currentYank = yankedVersions.find((entry: any) => entry.version === release.version)`,
+    `  return [`,
+    `    {`,
+    `      id: 'release.metadata',`,
+    `      status: 'pass',`,
+    `      message: 'Static release metadata is embedded.',`,
+    `      details: { version: release.version, channel: release.channel ?? 'stable', createdAt: release.createdAt, manifest: release.manifest },`,
+    `    },`,
+    `    {`,
+    `      id: 'release.install',`,
+    `      status: install.length > 0 ? 'pass' : 'warn',`,
+    `      message: install.length > 0 ? 'Static install commands are available.' : 'No static install commands are available.',`,
+    `      details: { count: install.length, managers: install.map((entry: any) => entry.manager).sort() },`,
+    `    },`,
+    `    {`,
+    `      id: 'release.update',`,
+    `      status: latestVersion !== release.version ? 'warn' : 'pass',`,
+    `      message: latestVersion !== release.version ? 'A newer static release version is advertised.' : 'Current release version matches the latest static release metadata.',`,
+    `      details: { currentVersion: release.version, latestVersion },`,
+    `    },`,
+    `    {`,
+    `      id: 'release.channel',`,
+    `      status: release.channel ? 'pass' : 'warn',`,
+    `      message: release.channel ? 'Static release channel is declared.' : 'No static release channel is declared.',`,
+    `      details: { channel: release.channel ?? 'stable', packages: packages.length },`,
+    `    },`,
+    `    {`,
+    `      id: 'release.yanks',`,
+    `      status: currentYank ? 'fail' : yankedVersions.length > 0 ? 'warn' : 'pass',`,
+    `      message: currentYank ? 'The current release version is statically marked as yanked.' : yankedVersions.length > 0 ? 'Static yanked-version metadata is present.' : 'No static yanked-version metadata is present.',`,
+    `      details: { count: yankedVersions.length, currentVersionYanked: currentYank ? true : false },`,
+    `    },`,
     `  ]`,
     `}`,
     ``,
@@ -491,6 +540,16 @@ function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
   lines.push(`${indent}  run() { return STATIC_NOTICES },`)
   lines.push(`${indent}}),`)
+  if (catalog.ops.release !== false) {
+    lines.push(`${indent}defineCommand({`)
+    lines.push(`${indent}  path: ['release'],`)
+    lines.push(`${indent}  agent: true,`)
+    lines.push(`${indent}  summary: 'Print static release, install, update, and channel metadata.',`)
+    lines.push(`${indent}  output: z.unknown(),`)
+    lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
+    lines.push(`${indent}  run() { return STATIC_RELEASE },`)
+    lines.push(`${indent}}),`)
+  }
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
     lines.push(`${indent}defineCommand({`)
     lines.push(`${indent}  path: ['telemetry'],`)

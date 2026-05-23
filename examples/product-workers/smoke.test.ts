@@ -169,6 +169,11 @@ describe('product-workers example', () => {
       'notices.updates',
       'notices.channels',
       'notices.yanks',
+      'release.metadata',
+      'release.install',
+      'release.update',
+      'release.channel',
+      'release.yanks',
     ])
     const byId = Object.fromEntries(checks.map((check) => [check.id, check]))
     expect(byId['remote.base-url']).toMatchObject({
@@ -179,13 +184,22 @@ describe('product-workers example', () => {
       status: 'warn',
       details: { visible: ['deploy', 'script.list'], risky: [], underAnnotated: ['deploy'] },
     })
-    expect(doctorJson.data.summary).toEqual({ pass: 7, warn: 4, fail: 1 })
+    expect(byId['release.update']).toMatchObject({
+      status: 'warn',
+      details: { currentVersion: '0.1.0', latestVersion: '0.2.0' },
+    })
+    expect(byId['release.yanks']).toMatchObject({ status: 'fail', details: { count: 1, currentVersionYanked: true } })
+    expect(doctorJson.data.summary).toEqual({ pass: 10, warn: 5, fail: 2 })
 
     const catalog = await runGenerated(cli, ['catalog', '--json'])
     expect(JSON.parse(catalog.stdout).data.ops.telemetry.enabledEnvVar).toBe('WORKERS_TELEMETRY')
+    expect(JSON.parse(catalog.stdout).data.ops.release.channel).toBe('stable')
 
     const notices = await runGenerated(cli, ['notices', '--json'])
     expect(JSON.parse(notices.stdout).data.yanks[0].id).toBe('workers-cli-0.1.0')
+
+    const release = await runGenerated(cli, ['release', '--json'])
+    expect(JSON.parse(release.stdout).data.yankedVersions[0].version).toBe('0.1.0')
 
     const telemetryFile = join(outDir, 'telemetry.jsonl')
     const telemetry = await runGenerated(cli, ['telemetry', '--json'], {

@@ -21,9 +21,10 @@ bun examples/product-workers/run-generated.ts deploy --entrypoint src/index.ts -
 bun examples/product-workers/run-generated.ts dev --entrypoint src/index.ts --json
 bun examples/product-workers/run-generated.ts script list --json
 bun examples/product-workers/run-generated.ts doctor --json
+bun examples/product-workers/run-generated.ts release --json
 bun examples/product-workers/run-generated.ts telemetry --json
 ```
 
 `script list` is remote HTTP-backed when a generated config file supplies `apiBaseUrl`; without a file it falls back to the declared schema default.
 
-`doctor --json` emits one structured supportability report for local install health plus generated Product posture: config fields, remote base URL source, auth posture, static notices, and agent-visible command annotation quality.
+`doctor --json` emits one structured supportability report for local install health plus generated Product posture: config fields, remote base URL source, auth posture, static notices, static release metadata, and agent-visible command annotation quality. `release --json` prints the embedded install/update/channel/yank metadata without calling a hosted update service.

@@ -61,6 +61,14 @@ describe('generate --check drift detection', () => {
       CATALOG_FILE,
       DISCOVERY_FILE,
     ])
+    const discovery = JSON.parse(result.artifacts.discovery!.contents)
+    expect(discovery.ops.release).toMatchObject({
+      version: '1.0.0',
+      latestVersion: '1.1.0',
+      channel: 'stable',
+      installManagers: ['bun', 'npm'],
+      yankedVersions: ['0.9.0'],
+    })
 
     const check = await checkAgainstDir(product, { outDir: dir, generatorVersion: '0.0.0' })
     expect(check.ok).toBe(true)

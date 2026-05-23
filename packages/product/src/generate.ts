@@ -316,7 +316,27 @@ function discoveryArtifact(catalog: Catalog): Record<string, unknown> {
         channels: catalog.ops.notices.channels.length,
         yanks: catalog.ops.notices.yanks.length,
       },
+      release: releaseDiscovery(catalog),
     },
+  }
+}
+
+function releaseDiscovery(catalog: Catalog): Record<string, unknown> | false {
+  if (catalog.ops.release === false) return false
+  const release = catalog.ops.release
+  return {
+    version: release.version,
+    channel: release.channel ?? 'stable',
+    latestVersion: release.latestVersion ?? release.version,
+    installManagers: release.install?.map((entry) => entry.manager).sort() ?? [],
+    packages: release.packages?.map((entry) => ({
+      ecosystem: entry.ecosystem,
+      kind: entry.kind,
+      name: entry.name,
+      version: entry.version,
+      ...(entry.channel ? { channel: entry.channel } : undefined),
+    })) ?? [],
+    yankedVersions: release.yankedVersions?.map((entry) => entry.version).sort() ?? [],
   }
 }
 

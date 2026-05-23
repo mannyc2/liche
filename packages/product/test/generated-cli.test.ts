@@ -330,6 +330,11 @@ describe('generated CLI — runtime parity with handwritten', () => {
       'notices.updates',
       'notices.channels',
       'notices.yanks',
+      'release.metadata',
+      'release.install',
+      'release.update',
+      'release.channel',
+      'release.yanks',
     ])
     const byId = Object.fromEntries(checks.map((check) => [check.id, check]))
     expect(byId['product.config']).toMatchObject({
@@ -350,14 +355,35 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(byId['notices.updates']).toMatchObject({ status: 'warn', details: { count: 1 } })
     expect(byId['notices.channels']).toMatchObject({ status: 'pass', details: { count: 1 } })
     expect(byId['notices.yanks']).toMatchObject({ status: 'warn', details: { count: 1 } })
-    expect(doctorJson.data.summary).toEqual({ pass: 8, warn: 3, fail: 1 })
+    expect(byId['release.metadata']).toMatchObject({
+      status: 'pass',
+      details: { version: '1.0.0', channel: 'stable' },
+    })
+    expect(byId['release.install']).toMatchObject({ status: 'pass', details: { count: 2, managers: ['bun', 'npm'] } })
+    expect(byId['release.update']).toMatchObject({
+      status: 'warn',
+      details: { currentVersion: '1.0.0', latestVersion: '1.1.0' },
+    })
+    expect(byId['release.channel']).toMatchObject({ status: 'pass', details: { channel: 'stable', packages: 1 } })
+    expect(byId['release.yanks']).toMatchObject({ status: 'warn', details: { count: 1, currentVersionYanked: false } })
+    expect(doctorJson.data.summary).toEqual({ pass: 11, warn: 5, fail: 1 })
 
     const catalog = JSON.parse((await runCli(workersGenerated, ['catalog', '--json'])).stdout)
     expect(catalog.data.product.id).toBe('workers')
     expect(catalog.data.ops.notices.updates[0].id).toBe('workers-cli-1.1.0')
+    expect(catalog.data.ops.release.install[0].manager).toBe('bun')
 
     const notices = JSON.parse((await runCli(workersGenerated, ['notices', '--json'])).stdout)
     expect(notices.data.yanks[0].id).toBe('workers-cli-0.9.0')
+
+    const release = JSON.parse((await runCli(workersGenerated, ['release', '--json'])).stdout)
+    expect(release.data).toMatchObject({
+      version: '1.0.0',
+      latestVersion: '1.1.0',
+      channel: 'stable',
+    })
+    expect(release.data.install.map((entry: { manager: string }) => entry.manager)).toEqual(['bun', 'npm'])
+    expect(release.data.yankedVersions[0].version).toBe('0.9.0')
 
     const telemetry = JSON.parse((await runCli(workersGenerated, ['telemetry', '--json'], {
       env: {
