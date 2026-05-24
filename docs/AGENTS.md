@@ -23,10 +23,11 @@ Read these before editing rewrite implementation or tests:
 13. `docs/distribution.md`
 14. `docs/npm-binary-packaging.md`
 15. `docs/releases.md`
-16. `docs/v1-release-plan.md`
-17. `docs/v2-platform-goals.md`
-18. `docs/coverage-rewrite.md`
-19. `docs/log.md`
+16. `docs/public-release.md`
+17. `docs/v1-release-plan.md`
+18. `docs/v2-platform-goals.md`
+19. `docs/coverage-rewrite.md`
+20. `docs/log.md`
 
 `docs/coverage-current.md` and `docs/behavior-plan.md` describe the existing Bun-native core, not the rewrite.
 

@@ -1,0 +1,192 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+const PUBLIC_PACKAGES = [
+  { name: '@lili/core', dir: 'packages/core' },
+  { name: '@lili/build', dir: 'packages/build' },
+  { name: '@lili/product', dir: 'packages/product' },
+  { name: '@lili/releases', dir: 'packages/releases' },
+] as const
+
+const REQUIRED_SUPPORT_FILES = [
+  'LICENSE',
+  'SECURITY.md',
+  'SUPPORT.md',
+  'CHANGELOG.md',
+  'docs/public-release.md',
+] as const
+
+const FORBIDDEN_PLACEHOLDER = /\b(TODO|TBD|changeme|example\.com|example\.test|acme)\b/i
+
+type CheckStatus = 'pass' | 'fail'
+
+type CheckResult = {
+  id: string
+  status: CheckStatus
+  message: string
+}
+
+type MetadataCheckReport = {
+  schemaVersion: 1
+  ok: boolean
+  checks: CheckResult[]
+  packages: Array<{
+    name: string
+    dir: string
+    license: string
+    files: string[]
+    repository: string | null
+    homepage: string | null
+    bugs: string | null
+    funding: string | null
+  }>
+  remainingHumanGates: string[]
+}
+
+function readJson(path: string): Record<string, any> {
+  return JSON.parse(readFileSync(path, 'utf8'))
+}
+
+function pass(id: string, message: string): CheckResult {
+  return { id, status: 'pass', message }
+}
+
+function fail(id: string, message: string): CheckResult {
+  return { id, status: 'fail', message }
+}
+
+function textHasPlaceholder(path: string): boolean {
+  return FORBIDDEN_PLACEHOLDER.test(readFileSync(path, 'utf8'))
+}
+
+function packageMetadataValue(json: Record<string, any>, key: string): string | null {
+  const value = json[key]
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') return JSON.stringify(value)
+  return null
+}
+
+export function collectReleaseMetadataCheck(): MetadataCheckReport {
+  const checks: CheckResult[] = []
+
+  for (const file of REQUIRED_SUPPORT_FILES) {
+    const path = join(REPO_ROOT, file)
+    checks.push(
+      existsSync(path)
+        ? pass(`support-file:${file}`, `${file} exists`)
+        : fail(`support-file:${file}`, `${file} is missing`),
+    )
+  }
+
+  const rootJson = readJson(join(REPO_ROOT, 'package.json'))
+  checks.push(
+    rootJson.private === true
+      ? pass('root-private', 'root workspace is private')
+      : fail('root-private', 'root workspace must stay private'),
+  )
+  checks.push(
+    rootJson.license === 'MIT'
+      ? pass('root-license', 'root package declares MIT')
+      : fail('root-license', 'root package must declare MIT'),
+  )
+  checks.push(
+    rootJson.scripts?.['release:metadata'] === 'bun scripts/release-metadata-check.ts'
+      ? pass('script:release-metadata', 'release:metadata runs the offline metadata check')
+      : fail('script:release-metadata', 'release:metadata must run scripts/release-metadata-check.ts'),
+  )
+  checks.push(
+    rootJson.scripts?.['release:names'] === 'bun scripts/check-npm-package-availability.ts'
+      ? pass('script:release-names', 'release:names runs the live npm package-name probe')
+      : fail('script:release-names', 'release:names must run scripts/check-npm-package-availability.ts'),
+  )
+  checks.push(
+    String(rootJson.scripts?.['release:check'] ?? '').includes('bun run --silent release:metadata')
+      ? pass('script:release-check-metadata', 'release:check includes the offline metadata gate')
+      : fail('script:release-check-metadata', 'release:check must include release:metadata'),
+  )
+
+  const packages = PUBLIC_PACKAGES.map((pkg) => {
+    const packageDir = join(REPO_ROOT, pkg.dir)
+    const json = readJson(join(packageDir, 'package.json'))
+    const files = Array.isArray(json.files) ? json.files.map(String) : []
+    const packageLicensePath = join(packageDir, 'LICENSE')
+
+    checks.push(
+      json.license === 'MIT'
+        ? pass(`package-license:${pkg.name}`, `${pkg.name} declares MIT`)
+        : fail(`package-license:${pkg.name}`, `${pkg.name} must declare MIT`),
+    )
+    checks.push(
+      existsSync(packageLicensePath)
+        ? pass(`package-license-file:${pkg.name}`, `${pkg.name} ships LICENSE`)
+        : fail(`package-license-file:${pkg.name}`, `${pkg.name} is missing LICENSE`),
+    )
+    checks.push(
+      JSON.stringify(files) === JSON.stringify(['src', 'README.md', 'LICENSE'])
+        ? pass(`package-files:${pkg.name}`, `${pkg.name} has narrow publish files`)
+        : fail(`package-files:${pkg.name}`, `${pkg.name} files must be ["src","README.md","LICENSE"]`),
+    )
+    checks.push(
+      json.publishConfig?.access === 'public'
+        ? pass(`package-access:${pkg.name}`, `${pkg.name} publishes publicly`)
+        : fail(`package-access:${pkg.name}`, `${pkg.name} publishConfig.access must be public`),
+    )
+
+    const metadataText = JSON.stringify({
+      repository: json.repository,
+      homepage: json.homepage,
+      bugs: json.bugs,
+      funding: json.funding,
+    })
+    checks.push(
+      FORBIDDEN_PLACEHOLDER.test(metadataText)
+        ? fail(`package-placeholder:${pkg.name}`, `${pkg.name} has placeholder public metadata`)
+        : pass(`package-placeholder:${pkg.name}`, `${pkg.name} has no placeholder public metadata`),
+    )
+
+    return {
+      name: pkg.name,
+      dir: pkg.dir,
+      license: String(json.license ?? ''),
+      files,
+      repository: packageMetadataValue(json, 'repository'),
+      homepage: packageMetadataValue(json, 'homepage'),
+      bugs: packageMetadataValue(json, 'bugs'),
+      funding: packageMetadataValue(json, 'funding'),
+    }
+  })
+
+  for (const file of ['SECURITY.md', 'SUPPORT.md', 'CHANGELOG.md', 'docs/public-release.md']) {
+    const path = join(REPO_ROOT, file)
+    if (existsSync(path)) {
+      checks.push(
+        textHasPlaceholder(path)
+          ? fail(`placeholder:${file}`, `${file} contains placeholder language`)
+          : pass(`placeholder:${file}`, `${file} contains no banned placeholders`),
+      )
+    }
+  }
+
+  return {
+    schemaVersion: 1,
+    ok: checks.every((check) => check.status === 'pass'),
+    checks,
+    packages,
+    remainingHumanGates: [
+      'Confirm npm @lili organization ownership and package creation rights.',
+      'Set package repository/homepage/bugs/funding only after canonical public URLs are real.',
+      'Configure npm trusted publishers for the final release workflow and environment.',
+      'Configure PyPI trusted publishers for the final release workflow and environment when PyPI artifacts are published.',
+      'Verify GitHub release asset layout and checksums against final release artifacts.',
+    ],
+  }
+}
+
+if (import.meta.main) {
+  const report = collectReleaseMetadataCheck()
+  console.log(JSON.stringify(report, null, 2))
+  if (!report.ok) process.exitCode = 1
+}

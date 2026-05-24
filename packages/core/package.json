@@ -14,7 +14,7 @@
       "default": "./src/index.ts"
     }
   },
-  "files": ["src", "README.md"],
+  "files": ["src", "README.md", "LICENSE"],
   "publishConfig": {
     "access": "public"
   },

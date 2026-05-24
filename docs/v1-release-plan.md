@@ -78,13 +78,13 @@ Current package-state status:
 - Package versions are synchronized for the first public package lane. Package-to-package `@lili/*` dependencies use the matching caret range, and the package-readiness test enforces that relationship.
 - V1 package format is Bun-only source publication. Export maps point at checked-in TypeScript source, bins point at TypeScript Bun entrypoints, and every publishable package declares `engines.bun >= 1.3.0`.
 - V1 does not emit `dist` or `.d.ts` as published package artifacts. That avoids a second build/declaration pipeline while the product contract is explicitly Bun-native. A Node/npm-general package format is a future compatibility project, not a v1 blocker.
-- `files` lists are intentionally narrow: `src` plus `README.md`. Internal docs, tests, examples, and planning material must not be published from package tarballs.
+- `files` lists are intentionally narrow: `src`, `README.md`, and `LICENSE`. Internal docs, tests, examples, and planning material must not be published from package tarballs.
 - Public API snapshots exist for core, product, build, and releases. The package-readiness test now also imports documented root and subpath exports from packed tarballs in a temp Bun consumer.
 
 Remaining package-readiness work:
 
-- Run the release-candidate hygiene loop before publishing: pack inspection, temp-consumer install, README/doc smoke, examples smoke, full checks, and dry-run release planning.
-- Verify npm provenance/trusted-publishing credentials and release tags in the actual publishing environment.
+- Run the release-candidate hygiene loop before publishing: pack inspection, temp-consumer install, README/doc smoke, examples smoke, full checks, offline metadata checks, and dry-run release planning.
+- Verify npm provenance/trusted-publishing credentials, package-name rights, and release tags in the actual publishing environment.
 
 Verification:
 
@@ -248,9 +248,9 @@ Current measured baseline from the release-candidate metrics command:
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `@lili/core` | 5287 | 53 | 5652 | 32 | 22 | 0 | 3 | 0 |
 | `@lili/build` | 714 | 7 | 596 | 6 | 14 | 0 | 2 | 0 |
-| `@lili/product` | 5294 | 27 | 6899 | 25 | 31 | 0 | 3 | 0 |
+| `@lili/product` | 5294 | 27 | 6921 | 25 | 31 | 0 | 3 | 0 |
 | `@lili/releases` | 4582 | 28 | 4150 | 17 | 25 | 12 | 2 | 0 |
-| Total | 15877 | 115 | 17297 | 80 | 92 | 12 | 10 | 0 |
+| Total | 15877 | 115 | 17319 | 80 | 92 | 12 | 10 | 0 |
 
 LOC is a pressure gauge, not a product goal. A package should shrink when simplification removes concepts, but a package can grow if it replaces hidden behavior with public guard rails. Track:
 
@@ -280,8 +280,8 @@ Verification:
 The main Product/runtime support gaps are closed enough that the next work is release-candidate hygiene, not another framework-shape pass. Before publishing:
 
 - Run the local release-candidate gate: `bun run release:check`.
-- Verify package name and namespace availability before final npm naming.
-- Fill publisher-confirmed repository, homepage, funding/support, provenance, changelog, semver, and security metadata. Do not invent these fields before the public URLs and support policy are real.
+- Run `bun run --silent release:names` near publication time. The current npm registry check on 2026-05-24 returned no public packages for `@lili/core`, `@lili/build`, `@lili/product`, or `@lili/releases`, but that does not prove organization ownership or publish rights.
+- Fill publisher-confirmed repository, homepage, funding/support, provenance, changelog, semver, and security metadata. Do not invent package metadata before the public URLs and support policy are real.
 - Run publisher plan/preflight/execute dry-runs in the actual publishing environment, including npm/PyPI trusted-publishing or explicit token fallback decisions.
 - Verify GitHub release artifact layout and checksums against the final release manifest.
 - Spot-check that no secrets appear in manifests, docs, examples, logs, generated surfaces, telemetry output, package artifacts, or release receipts.
@@ -420,4 +420,4 @@ Verification:
 - publisher plan/preflight/execute dry-run passes
 - V2 service tasks are absent from the release-candidate checklist
 
-Current status: the local gate is `bun run release:check`, which runs workspace typechecks, package tests, example smokes, the metrics command, and whitespace diff checks. Registry credentials, public metadata, and release-artifact publication details remain environment-specific checks.
+Current status: the local gate is `bun run release:check`, which runs workspace typechecks, package tests, example smokes, the metrics command, the offline release metadata gate, and whitespace diff checks. Registry credentials, package-name ownership, and release-artifact publication details remain environment-specific checks.

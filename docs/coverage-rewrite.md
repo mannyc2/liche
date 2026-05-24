@@ -253,12 +253,14 @@ AUTH-005 and AUTH-007 require sessions / `whoami` and stay open for 3D-B and bey
 | V1-008 | Generated diagnostics are available without a hosted service. | `docs/v1-release-plan.md` | `doctor` fixtures cover local install/PATH/package-manager checks plus Product catalog/config/remote/auth/session/context/static-notice/agent-readiness checks and emit structured envelopes. | Diagnostic schema | Supportability depends on manual debugging, leaks secrets, drops undeclared env vars, or requires a SaaS backend. |
 | V1-009 | Local catalog/discovery artifacts are versioned and drift-checked. | `docs/v1-release-plan.md` | Generate CLI, command manifest, surface manifest, MCP/agent discovery, and release metadata; mutate one artifact and assert targeted drift. | Generated catalog manifests | Hosted catalog assumptions hide stale local artifacts. |
 | V1-010 | Install/update/channel UX works from static release metadata. | `docs/v1-release-plan.md` | Fixture `ops.release` metadata drives generated docs, discovery JSON, `release --json`, `doctor --json` release checks, version/update status, channel selection, yanked-version notices, and package-manager wrapper diagnostics. | Static Product release metadata | Generated CLIs need a hosted update service or a runtime `@lili/releases` dependency to explain install or channel state. |
+| V1-011 | Public release metadata and support policy are explicit before publication. | `docs/public-release.md` | Offline metadata gate checks LICENSE/SECURITY/SUPPORT/CHANGELOG, package LICENSE files, narrow package file lists, no placeholder package metadata, and release scripts; live npm-name probe stays manual. | Public release metadata policy | Packages publish without license/support/security policy, with placeholder URLs, or with registry-name assumptions treated as ownership. |
 
 ### V1 public-readiness implementation trace
 
 | ID | Status | Test file(s) |
 |---|---|---|
 | V1-005 | Implemented for local release-candidate metrics and gate wiring | `scripts/release-candidate-metrics.ts`, `packages/product/test/release-candidate-readiness.test.ts` |
+| V1-011 | Implemented for offline metadata policy checks and live npm registry status probe | `scripts/release-metadata-check.ts`, `scripts/check-npm-package-availability.ts`, `packages/product/test/release-candidate-readiness.test.ts` |
 
 ## Docs coverage
 

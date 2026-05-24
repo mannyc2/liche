@@ -29,10 +29,13 @@ describe('release candidate readiness gate', () => {
   test('root package exposes one local release candidate check', () => {
     const json = JSON.parse(readFileSync(resolve(REPO_ROOT, 'package.json'), 'utf8'))
     expect(json.scripts.metrics).toBe('bun scripts/release-candidate-metrics.ts')
+    expect(json.scripts['release:metadata']).toBe('bun scripts/release-metadata-check.ts')
+    expect(json.scripts['release:names']).toBe('bun scripts/check-npm-package-availability.ts')
     expect(json.scripts['release:check']).toContain('bun run check')
     expect(json.scripts['release:check']).toContain('bun run test')
     expect(json.scripts['release:check']).toContain('bun run test:examples')
     expect(json.scripts['release:check']).toContain('bun run --silent metrics')
+    expect(json.scripts['release:check']).toContain('bun run --silent release:metadata')
     expect(json.scripts['release:check']).toContain('git diff --check')
   })
 
@@ -62,5 +65,25 @@ describe('release candidate readiness gate', () => {
     const releases = metrics.packages.find((pkg: { name: string }) => pkg.name === '@lili/releases')
     expect(releases.public.subpathExportNames).toContain('./publishers')
     expect(releases.public.subpathExportNames).toContain('./renderers/all')
+  })
+
+  test('metadata gate locks public release support files and package metadata rules', () => {
+    const output = run('bun', ['scripts/release-metadata-check.ts'])
+    const report = JSON.parse(output)
+    expect(report.schemaVersion).toBe(1)
+    expect(report.ok).toBe(true)
+    expect(report.remainingHumanGates).toContain(
+      'Confirm npm @lili organization ownership and package creation rights.',
+    )
+
+    for (const pkg of report.packages) {
+      expect(PUBLIC_PACKAGES).toContain(pkg.name)
+      expect(pkg.license).toBe('MIT')
+      expect(pkg.files).toEqual(['src', 'README.md', 'LICENSE'])
+      expect(pkg.repository).toBeNull()
+      expect(pkg.homepage).toBeNull()
+      expect(pkg.bugs).toBeNull()
+      expect(pkg.funding).toBeNull()
+    }
   })
 })

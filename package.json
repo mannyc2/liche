@@ -36,7 +36,9 @@
     "check": "bun run --filter '*' check",
     "examples:smoke": "bun test examples",
     "metrics": "bun scripts/release-candidate-metrics.ts",
-    "release:check": "bun run check && bun run test && bun run test:examples && bun run --silent metrics && git diff --check",
+    "release:check": "bun run check && bun run test && bun run test:examples && bun run --silent metrics && bun run --silent release:metadata && git diff --check",
+    "release:metadata": "bun scripts/release-metadata-check.ts",
+    "release:names": "bun scripts/check-npm-package-availability.ts",
     "test": "bun run --filter '*' test",
     "test:core": "bun run --filter @lili/core test",
     "test:examples": "bun test examples"

@@ -135,4 +135,7 @@ The examples cover handwritten CLIs, generated Product CLIs, auth/context resolu
 bun run check
 bun run test
 bun run test:examples
+bun run release:check
 ```
+
+`bun run release:check` is the local release-candidate gate. It does not publish packages or require network access. Run `bun run --silent release:names` separately near publication time to check current public npm registry status for the package names.

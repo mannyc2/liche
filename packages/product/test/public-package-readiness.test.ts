@@ -200,7 +200,7 @@ describe('public package readiness', () => {
       expect(json.version).toBe(PUBLIC_PACKAGE_VERSION)
       expect(json.private).toBeUndefined()
       expect(json.engines?.bun).toBe(BUN_ENGINE)
-      expect(json.files).toEqual(['src', 'README.md'])
+      expect(json.files).toEqual(['src', 'README.md', 'LICENSE'])
       expect(json.exports?.['.']).toEqual({
         types: './src/index.ts',
         default: './src/index.ts',
@@ -234,6 +234,7 @@ describe('public package readiness', () => {
         const entries = run('tar', ['-tzf', tarball], REPO_ROOT).trim().split('\n')
         expect(entries).toContain('package/package.json')
         expect(entries).toContain('package/README.md')
+        expect(entries).toContain('package/LICENSE')
         expect(entries).toContain('package/src/index.ts')
         expectPackedTargets(entries, json)
         expect(entries.some((entry) => entry.startsWith('package/test/'))).toBe(false)
