@@ -17,6 +17,7 @@ const REQUIRED_SUPPORT_FILES = [
   'SUPPORT.md',
   'CHANGELOG.md',
   'docs/public-release.md',
+  '.github/workflows/publish.yml',
 ] as const
 
 const FORBIDDEN_PLACEHOLDER = /\b(TODO|TBD|changeme|example\.com|example\.test|acme)\b/i
@@ -108,6 +109,36 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
       : fail('script:release-check-metadata', 'release:check must include release:metadata'),
   )
 
+  const publishWorkflowPath = join(REPO_ROOT, '.github/workflows/publish.yml')
+  if (existsSync(publishWorkflowPath)) {
+    const workflow = readFileSync(publishWorkflowPath, 'utf8')
+    checks.push(
+      workflow.includes('id-token: write')
+        ? pass('workflow:oidc-permission', 'publish workflow grants id-token: write')
+        : fail('workflow:oidc-permission', 'publish workflow must grant id-token: write'),
+    )
+    checks.push(
+      workflow.includes('environment: npm-production')
+        ? pass('workflow:npm-environment', 'publish workflow uses npm-production environment')
+        : fail('workflow:npm-environment', 'publish workflow must use npm-production environment'),
+    )
+    checks.push(
+      workflow.includes('node-version: "24"') || workflow.includes("node-version: '24'")
+        ? pass('workflow:node-version', 'publish workflow uses Node 24')
+        : fail('workflow:node-version', 'publish workflow must use Node 24 for npm trusted publishing'),
+    )
+    checks.push(
+      workflow.includes('npm install -g npm@^11.10.0')
+        ? pass('workflow:npm-version', 'publish workflow installs npm 11.10+')
+        : fail('workflow:npm-version', 'publish workflow must install npm 11.10+'),
+    )
+    checks.push(
+      workflow.includes('package-manager-cache: false')
+        ? pass('workflow:no-release-cache', 'publish workflow disables package-manager cache')
+        : fail('workflow:no-release-cache', 'publish workflow must disable package-manager cache'),
+    )
+  }
+
   const packages = PUBLIC_PACKAGES.map((pkg) => {
     const packageDir = join(REPO_ROOT, pkg.dir)
     const json = readJson(join(packageDir, 'package.json'))
@@ -176,9 +207,10 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
     checks,
     packages,
     remainingHumanGates: [
-      'Confirm npm @lili organization ownership and package creation rights.',
+      'Confirm npm organization ownership and package creation rights for the final scope.',
+      'Bootstrap the first public package versions before configuring npm trust; npm trust requires existing packages.',
       'Set package repository/homepage/bugs/funding only after canonical public URLs are real.',
-      'Configure npm trusted publishers for the final release workflow and environment.',
+      'Configure npm trusted publishers for .github/workflows/publish.yml and npm-production after the first publish.',
       'Configure PyPI trusted publishers for the final release workflow and environment when PyPI artifacts are published.',
       'Verify GitHub release asset layout and checksums against final release artifacts.',
     ],

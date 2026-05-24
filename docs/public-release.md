@@ -51,6 +51,27 @@ bun run --silent release:metadata
 
 npm trusted publishing uses OIDC to publish from CI without long-lived npm tokens. The current npm docs require npm CLI `11.5.1` or later and Node `22.14.0` or later for trusted publishing, and GitHub Actions configuration needs `id-token: write`. The npm trusted publisher settings must name the GitHub organization or user, repository, workflow filename, optional environment, and allowed action.
 
+The release workflow committed in this repository is:
+
+```txt
+.github/workflows/publish.yml
+```
+
+It uses a manual `workflow_dispatch` trigger, a `dry_run` input that defaults to `true`, GitHub-hosted Ubuntu runners, Node 24, Bun 1.3.0, npm 11.10+, `id-token: write`, disabled package-manager caching, and the GitHub environment `npm-production`.
+
+Trusted publishing is not the first-package creation path for npm. The npm CLI `npm trust` command requires the package to already exist on the registry, and the npm website configures trusted publishers from package settings. Therefore the bootstrap order is:
+
+1. Create the npm organization for the final scope.
+2. Hard-cut package names, imports, docs, and release checks to that scope.
+3. Publish the first public versions with an interactive owner account or a short-lived bootstrap token.
+4. Configure each package's trusted publisher to use GitHub Actions:
+   - GitHub organization/user: final repository owner
+   - Repository: final repository name
+   - Workflow filename: `publish.yml`
+   - Environment name: `npm-production`
+   - Allowed action: `npm publish`
+5. Restrict package publishing access to require 2FA and disallow traditional tokens after the trusted publisher is verified.
+
 For npm:
 
 - use GitHub-hosted runners for the trusted-publishing path
@@ -58,7 +79,7 @@ For npm:
 - configure trusted publishers for each npm package
 - select `npm publish` as an allowed action
 - keep `repository.url` exactly aligned with the final GitHub repository before enabling trusted publishing
-- use token publishing only as an explicit fallback
+- use token publishing only for the first-package bootstrap or as an explicit emergency fallback
 
 PyPI trusted publishing also uses OIDC. The PyPI docs recommend `pypa/gh-action-pypi-publish` for the stable public interface, with job-level `id-token: write`; the manual OIDC token exchange is documented as implementation-specific and not the preferred user path.
 
