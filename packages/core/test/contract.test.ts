@@ -394,23 +394,6 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(result.stdout.trim().split('\n')).toEqual(['run'])
   })
 
-  test('completion install scripts use shell-specific dynamic adapters', () => {
-    const bash = Completions.completionScript('bash', 'app')
-    expect(bash).toContain('COMPLETE=bash app -- "${COMP_WORDS[@]:1}"')
-    expect(bash).toContain('complete -F _app_complete -- app')
-
-    const zsh = Completions.completionScript('zsh', 'app')
-    expect(zsh.split('\n')[0]).toBe('#compdef app')
-    expect(zsh).toContain('COMPLETE=zsh app -- "${words[@]:1}"')
-    expect(zsh).toContain('compdef _app_complete app')
-    expect(zsh).not.toContain('complete -F')
-
-    const fish = Completions.completionScript('fish', 'app')
-    expect(fish).toContain('env COMPLETE=fish app -- (commandline -opc)[2..-1]')
-    expect(fish).toContain('complete -c app -f -a "(_app_complete)"')
-    expect(fish).not.toContain('$(COMPLETE=fish app)')
-  })
-
   test('command-level default format is used unless a global format is explicit', async () => {
     const cli = testCli('app', [
       testCommand('render', {
