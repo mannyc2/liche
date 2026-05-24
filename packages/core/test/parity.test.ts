@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { middleware, z } from '../src/index.js'
-import { createConfig } from '../src/config/index.js'
-import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
+import { createConfig, parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import * as Mcp from '../src/mcp/index.js'

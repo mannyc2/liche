@@ -1,7 +1,34 @@
 import { defineCli, defineCommand } from '../src/index.js'
-import type { CliExtension, CliInstance, DeclarativeCommand, ServeOptions } from '../src/index.js'
+import type {
+  CliExtension,
+  CliInstance,
+  ConfigDefinition,
+  ConfigObjectDefinition,
+  ConfigScopesDeclaration,
+  DeclarativeCommand,
+  Schema,
+  ServeOptions,
+} from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import type { CommandDefinition, CreateOptions } from '../src/types.js'
+
+type ConfigFixtureOptions<T> = {
+  files?: readonly string[] | undefined
+  flag?: string | undefined
+  schema?: Schema<T> | undefined
+  scopes?: ConfigScopesDeclaration | undefined
+}
+
+export function createConfig<T = Record<string, unknown>>(
+  options: ConfigFixtureOptions<T> = {},
+): ConfigDefinition<T> {
+  const out: ConfigObjectDefinition<T> = { kind: 'liche.config.object' }
+  if (options.files) out.files = [...options.files]
+  if (options.flag) out.flag = options.flag
+  if (options.schema) out.schema = options.schema
+  if (options.scopes) out.scopes = { ...options.scopes }
+  return out
+}
 
 export function stateOf(cli: CliInstance) {
   return (cli as InternalCli)[stateSymbol]

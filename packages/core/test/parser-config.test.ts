@@ -3,11 +3,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { z } from '../src/index.js'
-import { createConfig } from '../src/config/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { ValidationError } from '../src/errors/error.js'
 import { loadConfig, loadConfigResolution } from '../src/parser/config.js'
-import { testCli, testCommand } from './helpers.js'
+import { createConfig, testCli, testCommand } from './helpers.js'
 
 const stateOf = (cli: unknown) => (cli as InternalCli)[stateSymbol]
 

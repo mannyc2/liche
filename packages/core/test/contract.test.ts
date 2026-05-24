@@ -3,10 +3,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Formatter, middleware, z } from '../src/index.js'
-import { createConfig } from '../src/config/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '../src/mcp/index.js'
-import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
+import { createConfig, parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 
 describe('contract: command resolution and execution', () => {
