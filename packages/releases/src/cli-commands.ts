@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { chmod, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
-import type { RunContext } from '@lili/core'
+import type { RunContext } from '@liche/core'
 import { z } from 'zod'
 import type { CliReleaseManifest } from './manifest.js'
 import { parseBuildRecord } from './build-record.js'
@@ -60,7 +60,7 @@ const SHIP_DEFAULTS = {
   buildOut: 'dist/binaries',
   buildRecord: 'dist/build-record.json',
   cli: 'src/cli.ts',
-  commandManifest: 'lili.command-manifest.json',
+  commandManifest: 'liche.command-manifest.json',
   ecosystems: 'npm,homebrew,scoop,github',
   generatedOut: 'dist/generated',
   product: 'src/product.ts',
@@ -586,7 +586,7 @@ async function productShipSource(input: {
 }): Promise<CommandResult<ShipSource>> {
   const generated = await runShipPhase(
     input.runner,
-    ['bun', 'li-product', 'generate', SHIP_DEFAULTS.product, '--out', input.generatedOut, '--json'],
+    ['bun', 'liche-product', 'generate', SHIP_DEFAULTS.product, '--out', input.generatedOut, '--json'],
     { cwd: input.cwd, env: input.env, phase: 'product generation' },
   )
   if (!generated.ok) return generated
@@ -601,8 +601,8 @@ async function productShipSource(input: {
     }
   }
 
-  const manifestPath = readStringPath(generatedOutput, 'manifestPath') ?? join(input.generatedOut, 'lili.generated.manifest.json')
-  const compileEntrypoint = readStringPath(generatedOutput, 'compileEntrypointPath') ?? join(input.generatedOut, 'lili.compile-entry.ts')
+  const manifestPath = readStringPath(generatedOutput, 'manifestPath') ?? join(input.generatedOut, 'liche.generated.manifest.json')
+  const compileEntrypoint = readStringPath(generatedOutput, 'compileEntrypointPath') ?? join(input.generatedOut, 'liche.compile-entry.ts')
   const rawGeneratedManifest = await readJsonFile(manifestPath)
   if (!rawGeneratedManifest.ok) {
     return {
@@ -742,7 +742,7 @@ export async function shipRelease(input: ShipReleaseInput): Promise<CommandResul
     runner,
     [
       'bun',
-      'li-build',
+      'liche-build',
       'build',
       source.value.compileEntrypoint,
       '--targets',

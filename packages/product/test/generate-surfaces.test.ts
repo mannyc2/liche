@@ -87,7 +87,7 @@ describe('generated command manifest', () => {
     const manifest = JSON.parse(generateCommandManifest(catalog, options(catalog)))
     const deploy = manifest.commands.find((command: any) => command.id === 'deploy')
 
-    expect(manifest.manifestVersion).toBe('lili.command-manifest.v1')
+    expect(manifest.manifestVersion).toBe('liche.command-manifest.v1')
     expect(manifest.product).toMatchObject({ id: 'acme', version: '1.0.0' })
     expect(deploy).toMatchObject({
       kind: 'command',
@@ -126,7 +126,7 @@ describe('generated MCP tools', () => {
     const catalog = normalizeProduct(agentProduct())
     const manifest = JSON.parse(generateMcpTools(catalog, options(catalog)))
 
-    expect(manifest.manifestVersion).toBe('lili.mcp-tools.v1')
+    expect(manifest.manifestVersion).toBe('liche.mcp-tools.v1')
     expect(manifest.tools.map((tool: any) => tool.name)).toEqual(['deploy'])
     const tool = manifest.tools[0]
     expect(tool.inputSchema.properties.options.properties).toHaveProperty('ref')
@@ -186,7 +186,7 @@ describe('generated config schema', () => {
     expect(shouldGenerateConfigSchema(catalog)).toBe(true)
 
     const schema = JSON.parse(generateConfigSchema(catalog, options(catalog)))
-    expect(schema['x-lili-manifest-version']).toBe('lili.config-schema.v1')
+    expect(schema['x-liche-manifest-version']).toBe('liche.config-schema.v1')
     expect(schema.properties.apiBaseUrl.description).toBe('API base URL')
     expect(schema.properties.accountId.description).toBe('Default account ID')
     expect(schema.properties.kv_namespaces.type).toBe('array')

@@ -141,7 +141,7 @@ describe('contract: args, flags, config, env, middleware', () => {
   })
 
   test('first-class config exposes ctx.config, explicit option bindings, and source provenance', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'lili-config-contract-'))
+    const dir = mkdtempSync(join(tmpdir(), 'liche-config-contract-'))
     try {
       const path = join(dir, 'app.jsonc')
       writeFileSync(path, `{
@@ -563,7 +563,7 @@ describe('contract: mcp, completions, and token behavior', () => {
         detail: 'Command has no run handler',
         message: 'Command has no run handler',
         title: 'Command Not Runnable',
-        type: 'urn:lili:error:command-not-runnable',
+        type: 'urn:liche:error:command-not-runnable',
       },
     })
   })

@@ -2,7 +2,7 @@ export { z } from 'zod'
 
 export type { JsonSchemaNode } from './types.js'
 
-export { canonicalDigest, canonicalize } from '@lili/build'
+export { canonicalDigest, canonicalize } from '@liche/build'
 
 export { lintCatalog } from './lints.js'
 export type { LintIssue } from './lints.js'

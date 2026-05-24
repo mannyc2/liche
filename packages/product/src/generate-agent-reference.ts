@@ -25,7 +25,7 @@ export function generateAgentReference(
     '',
     `Catalog digest: \`${options.canonicalCatalogDigest}\``,
     '',
-    `Generator: \`@lili/product ${options.generatorVersion}\``,
+    `Generator: \`@liche/product ${options.generatorVersion}\``,
     '',
     'Use `--json` for machine-readable command output. Do not start interactive auth flows from agent or CI invocations.',
     '',

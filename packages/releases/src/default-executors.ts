@@ -114,7 +114,7 @@ async function publishGitFile(input: {
   targetPath: string
   token: string
 }): Promise<StepExecutorResult> {
-  const root = await mkdtemp(join(tmpdir(), 'lili-release-git-'))
+  const root = await mkdtemp(join(tmpdir(), 'liche-release-git-'))
   const checkout = join(root, 'repo')
   const repoUrl = `https://github.com/${input.target.owner}/${input.target.repo}.git`
   const redactions = [input.token]

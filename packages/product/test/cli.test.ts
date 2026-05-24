@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ServeOptions } from '@lili/core'
+import type { ServeOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
 
 async function runCli(
@@ -22,12 +22,12 @@ async function runCli(
   return { exitCode, stderr, stdout }
 }
 
-describe('li-product CLI', () => {
+describe('liche-product CLI', () => {
   let dir: string
   const productPath = join(import.meta.dir, 'fixtures/workers.product.ts')
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'lili-product-cli-'))
+    dir = mkdtempSync(join(tmpdir(), 'liche-product-cli-'))
   })
 
   afterEach(() => {
@@ -42,19 +42,19 @@ describe('li-product CLI', () => {
     const data = JSON.parse(result.stdout)
     expect(data).toEqual({
       artifactPaths: {
-        'agent-reference': join(dir, 'lili.generated.agent.md'),
-        catalog: join(dir, 'lili.generated.catalog.json'),
-        cli: join(dir, 'lili.generated.ts'),
-        'command-manifest': join(dir, 'lili.generated.commands.json'),
-        'config-schema': join(dir, 'lili.generated.config.schema.json'),
-        discovery: join(dir, 'lili.generated.discovery.json'),
-        'docs-reference': join(dir, 'lili.generated.docs.md'),
-        'mcp-tools': join(dir, 'lili.generated.mcp.json'),
-        openapi: join(dir, 'lili.generated.openapi.json'),
+        'agent-reference': join(dir, 'liche.generated.agent.md'),
+        catalog: join(dir, 'liche.generated.catalog.json'),
+        cli: join(dir, 'liche.generated.ts'),
+        'command-manifest': join(dir, 'liche.generated.commands.json'),
+        'config-schema': join(dir, 'liche.generated.config.schema.json'),
+        discovery: join(dir, 'liche.generated.discovery.json'),
+        'docs-reference': join(dir, 'liche.generated.docs.md'),
+        'mcp-tools': join(dir, 'liche.generated.mcp.json'),
+        openapi: join(dir, 'liche.generated.openapi.json'),
       },
-      compileEntrypointPath: join(dir, 'lili.compile-entry.ts'),
-      generatedPath: join(dir, 'lili.generated.ts'),
-      manifestPath: join(dir, 'lili.generated.manifest.json'),
+      compileEntrypointPath: join(dir, 'liche.compile-entry.ts'),
+      generatedPath: join(dir, 'liche.generated.ts'),
+      manifestPath: join(dir, 'liche.generated.manifest.json'),
     })
     expect(await Bun.file(data.compileEntrypointPath).exists()).toBe(true)
     expect(await Bun.file(data.generatedPath).exists()).toBe(true)
@@ -72,7 +72,7 @@ describe('li-product CLI', () => {
       data: null,
       error: {
         code: 'GENERATED_SURFACE_DRIFT',
-        code_actions: [{ title: 'Regenerate surfaces', command: `li-product generate ${productPath}` }],
+        code_actions: [{ title: 'Regenerate surfaces', command: `liche-product generate ${productPath}` }],
         message: 'Generated artifacts are out of sync',
         suggested_fix: 'Run generation without --check and commit the updated artifacts.',
       },
@@ -152,23 +152,23 @@ describe('li-product CLI', () => {
     }
   })
 
-  test('skills add installs authored li-product guidance', async () => {
+  test('skills add installs authored liche-product guidance', async () => {
     const result = await runCli(['skills', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout)
-    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/li-product/SKILL.md') }, error: null })
+    expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude/skills/liche-product/SKILL.md') }, error: null })
     const content = await Bun.file(body.data.path).text()
-    expect(content).toContain('description: Author and maintain lili product schemas')
+    expect(content).toContain('description: Author and maintain liche product schemas')
     expect(content).toContain('defineProduct({')
-    expect(content).toContain('li-product generate <product.ts> --check')
+    expect(content).toContain('liche-product generate <product.ts> --check')
   })
 
-  test('mcp add is enabled for li-product', async () => {
+  test('mcp add is enabled for liche-product', async () => {
     const result = await runCli(['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout)
     expect(body).toEqual({ ok: true, data: { path: join(dir, '.claude.json') }, error: null })
     const config = await Bun.file(body.data.path).json()
-    expect(config.mcpServers['li-product']).toEqual({ args: ['--mcp'], command: 'li-product' })
+    expect(config.mcpServers['liche-product']).toEqual({ args: ['--mcp'], command: 'liche-product' })
   })
 })

@@ -17,7 +17,7 @@ export type GenerateMcpToolsOptions = {
 
 export function generateMcpTools(catalog: Catalog, options: GenerateMcpToolsOptions): string {
   return jsonArtifact({
-    manifestVersion: 'lili.mcp-tools.v1',
+    manifestVersion: 'liche.mcp-tools.v1',
     product: catalog.product,
     catalogDigest: options.canonicalCatalogDigest,
     generatorVersion: options.generatorVersion,

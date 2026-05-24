@@ -1,17 +1,17 @@
 import {
   compileEntrypoint,
-} from '@lili/build'
+} from '@liche/build'
 import type {
   BunBuildFn,
   CompileEntrypointFailure,
   CompileEntrypointSuccess,
   CompilePlan,
   CompileTarget,
-} from '@lili/build'
+} from '@liche/build'
 import { generateToDir, type GenerateResult, type GenerateToDirOptions } from './generate.js'
 import type { RuntimeProduct } from './product.js'
 
-export type { BunBuildFn, CompilePlan, CompileTarget } from '@lili/build'
+export type { BunBuildFn, CompilePlan, CompileTarget } from '@liche/build'
 
 export type CompileProductOptions = GenerateToDirOptions & {
   outfile: string

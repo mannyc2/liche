@@ -20,7 +20,7 @@ export function generateCommandManifest(
   options: GenerateCommandManifestOptions,
 ): string {
   return jsonArtifact({
-    manifestVersion: 'lili.command-manifest.v1',
+    manifestVersion: 'liche.command-manifest.v1',
     product: catalog.product,
     catalogDigest: options.canonicalCatalogDigest,
     generatorVersion: options.generatorVersion,

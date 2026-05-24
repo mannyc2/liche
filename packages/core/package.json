@@ -1,9 +1,9 @@
 {
-  "name": "@lili/core",
+  "name": "@liche/core",
   "version": "0.2.0",
   "type": "module",
   "license": "MIT",
-  "description": "Bun-native CLI runtime framework for Lili.",
+  "description": "Bun-native CLI runtime framework for Liche.",
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"

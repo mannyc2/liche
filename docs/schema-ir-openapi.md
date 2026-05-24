@@ -1,8 +1,8 @@
 # Catalog and OpenAPI requirements
 
-`@lili/product` normalizes runtime product schema values into a canonical catalog before generation. Public docs and APIs should use product names such as `Product`, `Resource`, `Command`, `Binding`, `Shape`, `Field`, `Catalog`, and `Capability`; avoid exposing `ProductIR` or `OperationIR` as the author-facing model.
+`@liche/product` normalizes runtime product schema values into a canonical catalog before generation. Public docs and APIs should use product names such as `Product`, `Resource`, `Command`, `Binding`, `Shape`, `Field`, `Catalog`, and `Capability`; avoid exposing `ProductIR` or `OperationIR` as the author-facing model.
 
-OpenAPI is owned by `@lili/product`, not `@lili/core`. Core's `cli.fetch` handler exposes command-tree execution and MCP, but does not emit or ingest OpenAPI documents. The previous runtime-reflection emit and ingest in core have been removed; `@lili/product` will produce OpenAPI from the normalized catalog, HTTP bindings, and field metadata. In Phase 3C, OpenAPI is a projection of HTTP resource operations, not the source of truth and not a mirror of every CLI command.
+OpenAPI is owned by `@liche/product`, not `@liche/core`. Core's `cli.fetch` handler exposes command-tree execution and MCP, but does not emit or ingest OpenAPI documents. The previous runtime-reflection emit and ingest in core have been removed; `@liche/product` will produce OpenAPI from the normalized catalog, HTTP bindings, and field metadata. In Phase 3C, OpenAPI is a projection of HTTP resource operations, not the source of truth and not a mirror of every CLI command.
 
 ## Runtime and canonical catalog split
 
@@ -32,7 +32,7 @@ The detailed product schema model lives in `docs/product-schema.md`. The minimum
 
 ```ts
 export type Catalog = {
-  kind: "lili.catalog";
+  kind: "liche.catalog";
   catalogVersion: 1;
   id: string;
   name: string;
@@ -214,7 +214,7 @@ The generated CLI's MCP command tools are different: they are catalog-derived co
 
 ## Generated surface manifest
 
-`@lili/product` emits a generated surface manifest beside generated artifacts.
+`@liche/product` emits a generated surface manifest beside generated artifacts.
 
 Minimum shape:
 

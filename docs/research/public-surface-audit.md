@@ -1,6 +1,6 @@
 # Public Surface Minimization Audit
 
-Status: evidence note. This audits the `@lili/core` root exports after the hard declarative cutover and records the first minimization pass.
+Status: evidence note. This audits the `@liche/core` root exports after the hard declarative cutover and records the first minimization pass.
 
 ## Method
 
@@ -9,13 +9,13 @@ Evidence used:
 - `packages/core/src/index.ts` for the exported package root.
 - `packages/core/test/api-snapshot.test.ts` for the source-local frozen value/type snapshot.
 - `packages/product/test/core-consumer-boundary.test.ts` for package-level import proof.
-- `rg "from ['\"]@lili/core['\"]" packages examples docs` for real package-root consumers.
+- `rg "from ['\"]@liche/core['\"]" packages examples docs` for real package-root consumers.
 - `packages/core/test/extension-lane-coverage.test.ts` for public-lane extensibility proof.
 
 Current measured surface after the error-factory cutover:
 
-- 22 value exports from `@lili/core`.
-- 85 type exports from `@lili/core`.
+- 22 value exports from `@liche/core`.
+- 85 type exports from `@liche/core`.
 - Package export map exposes only `"."`, so subpath imports are internal/test-only even when source files export helpers.
 
 ## Keep Strongly
@@ -66,7 +66,7 @@ Internalized after the object-first error cutover:
 
 | Helper removed from root | Why it stays private |
 |---|---|
-| `BaseError`, `LiliError`, `ParseError`, `ValidationError` | Public command code now emits `CommandError` objects through `ok` / `fail` / `commandError` / `ctx.error`. Typed classes remain source-path internals for parser/schema/auth/HTTP and white-box tests. |
+| `BaseError`, `LicheError`, `ParseError`, `ValidationError` | Public command code now emits `CommandError` objects through `ok` / `fail` / `commandError` / `ctx.error`. Typed classes remain source-path internals for parser/schema/auth/HTTP and white-box tests. |
 
 ## Not Public Despite Source Exports
 
@@ -78,7 +78,7 @@ Examples:
 - `Mcp`, `Skill`, `Completions`, `Help`, `Parser`, `Fetch`, and schema-adapter namespaces removed from the package root.
 - `formatHumanValidationError`, `mcpMessage`, `serveMcp`, `handleMcpHttp`, `skillMarkdown`, `writeMcp`, `defaultSessionRoot`, `isValidProfileName`, `probeIdentity`, and `redactTelemetryValue` are implementation details unless intentionally promoted later.
 
-White-box tests may import these from source subpaths, but that is not promotion evidence. Generated code and external consumers must stay on `@lili/core`.
+White-box tests may import these from source subpaths, but that is not promotion evidence. Generated code and external consumers must stay on `@liche/core`.
 
 ## Recommendation
 

@@ -33,7 +33,7 @@ The Phase 5 implementation uses fake renderers inside `packages/releases/test/` 
 | `packages/releases/test/renderer-selection.test.ts` | `RELEASE-009`, `RELEASE-012`, `RELEASE-020` | Empty, one, many, and all selections work; unsupported or underconfigured selected renderers fail before staging; absent publisher credentials do not block rendering. | npm-only control flow, implicit all-renderer behavior, or credential checks mixed into renderer selection. |
 | `packages/releases/test/release-package.test.ts` | `RELEASE-009`, `RELEASE-012`, `RELEASE-019`, `RELEASE-020` | The orchestration path validates the manifest, verifies binaries, invokes a fixture renderer with manifest data plus verified binary records, packs artifacts, records verified artifact metadata, and verifies the packed output. | Renderer reads product schema/build workspace state, omits artifact records, or verifies only staging directories. |
 | `packages/releases/test/yank.test.ts` | `RELEASE-010` | Yank dry run derives affected artifacts from one manifest reference. | Yank requires ad hoc package names or ecosystem-specific manual input. |
-| `packages/releases/test/package-boundary.test.ts` | `RELEASE-013` | `@lili/releases` has no runtime dependency on `@lili/core`, `@lili/build`, or `@lili/product`; build output is consumed as data; concrete renderers stay behind renderer subpath exports. | Release code reaches around the manifest into build/core/product internals, or the root export pulls every renderer implementation. |
+| `packages/releases/test/package-boundary.test.ts` | `RELEASE-013` | `@liche/releases` has no runtime dependency on `@liche/core`, `@liche/build`, or `@liche/product`; build output is consumed as data; concrete renderers stay behind renderer subpath exports. | Release code reaches around the manifest into build/core/product internals, or the root export pulls every renderer implementation. |
 | `packages/releases/test/ecosystem-renderers.test.ts` | `RELEASE-005`, `RELEASE-006`, `RELEASE-007`, `RELEASE-008`, `RELEASE-011`, `RELEASE-019` | npm/PyPI/Homebrew/Scoop renderers produce package artifacts from one manifest plus verified binary records; npm tarballs, PyPI wheels, Homebrew formulae, and Scoop JSON are inspected. | Renderer emits invalid package-manager artifacts, accepts lifecycle scripts, loses binary hashes, or only verifies staging directories. |
 
 ## Fixture rules
@@ -42,7 +42,7 @@ The Phase 5 implementation uses fake renderers inside `packages/releases/test/` 
 - Simulate signing by mutating bytes before manifest hash calculation, then mutate again to assert verification failure.
 - Keep fixture renderers inside tests. They may pack a simple final artifact, but they must not become npm package scaffolding.
 - Fixture renderer outputs must include verified artifact records with renderer, ecosystem, kind, version, sha256, and size.
-- Do not import `@lili/core`, `@lili/build`, or `@lili/product` from `@lili/releases` tests except from the explicit package-boundary test that proves they are absent.
+- Do not import `@liche/core`, `@liche/build`, or `@liche/product` from `@liche/releases` tests except from the explicit package-boundary test that proves they are absent.
 
 ## Publishing automation tests
 

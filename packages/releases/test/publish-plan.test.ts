@@ -83,20 +83,20 @@ function artifact(
 
 function fullFixture() {
   const packages: PackageRecord[] = [
-    pkg('npm:@lili/workers', 'npm', 'npm-umbrella', '@lili/workers'),
-    pkg('npm:@lili/workers-linux-x64', 'npm', 'npm-platform', '@lili/workers-linux-x64'),
-    pkg('npm:@lili/workers-darwin-arm64', 'npm', 'npm-platform', '@lili/workers-darwin-arm64'),
-    pkg('npm:@lili/workers-win32-x64', 'npm', 'npm-platform', '@lili/workers-win32-x64'),
-    pkg('pypi:lili-workers', 'pypi', 'pypi-wheel', 'lili-workers'),
+    pkg('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers'),
+    pkg('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64'),
+    pkg('npm:@liche/workers-darwin-arm64', 'npm', 'npm-platform', '@liche/workers-darwin-arm64'),
+    pkg('npm:@liche/workers-win32-x64', 'npm', 'npm-platform', '@liche/workers-win32-x64'),
+    pkg('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers'),
     pkg('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers'),
     pkg('scoop:workers', 'scoop', 'scoop-manifest', 'workers'),
   ]
   const artifacts: VerifiedPackageArtifact[] = [
-    artifact('npm:@lili/workers', 'npm', 'npm-umbrella', '@lili/workers', 'lili-workers-0.1.0.tgz', 1024),
-    artifact('npm:@lili/workers-linux-x64', 'npm', 'npm-platform', '@lili/workers-linux-x64', 'lili-workers-linux-x64-0.1.0.tgz', 2048),
-    artifact('npm:@lili/workers-darwin-arm64', 'npm', 'npm-platform', '@lili/workers-darwin-arm64', 'lili-workers-darwin-arm64-0.1.0.tgz', 2048),
-    artifact('npm:@lili/workers-win32-x64', 'npm', 'npm-platform', '@lili/workers-win32-x64', 'lili-workers-win32-x64-0.1.0.tgz', 2048),
-    artifact('pypi:lili-workers', 'pypi', 'pypi-wheel', 'lili-workers', 'lili_workers-0.1.0-py3-none-any.whl', 4096),
+    artifact('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers', 'liche-workers-0.1.0.tgz', 1024),
+    artifact('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64', 'liche-workers-linux-x64-0.1.0.tgz', 2048),
+    artifact('npm:@liche/workers-darwin-arm64', 'npm', 'npm-platform', '@liche/workers-darwin-arm64', 'liche-workers-darwin-arm64-0.1.0.tgz', 2048),
+    artifact('npm:@liche/workers-win32-x64', 'npm', 'npm-platform', '@liche/workers-win32-x64', 'liche-workers-win32-x64-0.1.0.tgz', 2048),
+    artifact('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers', 'lili_workers-0.1.0-py3-none-any.whl', 4096),
     artifact('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers', 'workers.rb', 512),
     artifact('scoop:workers', 'scoop', 'scoop-manifest', 'workers', 'workers.json', 256),
   ]
@@ -105,8 +105,8 @@ function fullFixture() {
 
 function defaultConfig(): PublisherConfigMap {
   return {
-    homebrew: { tap: { owner: 'lili', repo: 'homebrew-tap' } },
-    scoop: { bucket: { owner: 'lili', repo: 'scoop-bucket' } },
+    homebrew: { tap: { owner: 'liche', repo: 'homebrew-tap' } },
+    scoop: { bucket: { owner: 'liche', repo: 'scoop-bucket' } },
   }
 }
 
@@ -138,11 +138,11 @@ describe('planReleasePublish', () => {
       packageId: step.packageId,
     }))
     expect(stepShapes).toEqual([
-      { kind: 'npm-publish', packageId: 'npm:@lili/workers-darwin-arm64' },
-      { kind: 'npm-publish', packageId: 'npm:@lili/workers-linux-x64' },
-      { kind: 'npm-publish', packageId: 'npm:@lili/workers-win32-x64' },
-      { kind: 'npm-publish', packageId: 'npm:@lili/workers' },
-      { kind: 'pypi-upload', packageId: 'pypi:lili-workers' },
+      { kind: 'npm-publish', packageId: 'npm:@liche/workers-darwin-arm64' },
+      { kind: 'npm-publish', packageId: 'npm:@liche/workers-linux-x64' },
+      { kind: 'npm-publish', packageId: 'npm:@liche/workers-win32-x64' },
+      { kind: 'npm-publish', packageId: 'npm:@liche/workers' },
+      { kind: 'pypi-upload', packageId: 'pypi:liche-workers' },
       { kind: 'homebrew-write-formula', packageId: 'homebrew:workers' },
       { kind: 'scoop-write-manifest', packageId: 'scoop:workers' },
     ])
@@ -217,13 +217,13 @@ describe('planReleasePublish', () => {
     expect(result.plan.steps).toEqual([
       {
         kind: 'pypi-upload',
-        packageId: 'pypi:lili-workers',
+        packageId: 'pypi:liche-workers',
         ecosystem: 'pypi',
         artifactPath: '/tmp/release/pypi/lili_workers-0.1.0-py3-none-any.whl',
         artifactFileName: 'lili_workers-0.1.0-py3-none-any.whl',
         sha256: ZERO_HASH,
         size: 4096,
-        name: 'lili-workers',
+        name: 'liche-workers',
         version: '0.1.0',
         repositoryUrl: 'https://upload.pypi.org/legacy/',
       },
@@ -253,7 +253,7 @@ describe('planReleasePublish', () => {
         size: 512,
         name: 'workers',
         version: '0.1.0',
-        tap: { owner: 'lili', repo: 'homebrew-tap', branch: 'main' },
+        tap: { owner: 'liche', repo: 'homebrew-tap', branch: 'main' },
         targetPath: 'Formula/workers.rb',
       },
     ])
@@ -282,7 +282,7 @@ describe('planReleasePublish', () => {
         size: 256,
         name: 'workers',
         version: '0.1.0',
-        bucket: { owner: 'lili', repo: 'scoop-bucket', branch: 'main' },
+        bucket: { owner: 'liche', repo: 'scoop-bucket', branch: 'main' },
         targetPath: 'bucket/workers.json',
       },
     ])
@@ -290,9 +290,9 @@ describe('planReleasePublish', () => {
 
   test("selection 'all' skips ecosystems with no packages", () => {
     const manifest = parseManifest()
-    const packages: PackageRecord[] = [pkg('pypi:lili-workers', 'pypi', 'pypi-wheel', 'lili-workers')]
+    const packages: PackageRecord[] = [pkg('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers')]
     const artifacts: VerifiedPackageArtifact[] = [
-      artifact('pypi:lili-workers', 'pypi', 'pypi-wheel', 'lili-workers', 'lili_workers-0.1.0-py3-none-any.whl', 1),
+      artifact('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers', 'lili_workers-0.1.0-py3-none-any.whl', 1),
     ]
     const result = planReleasePublish({ manifest, packages, artifacts, selection: 'all' })
     expect(result.ok).toBe(true)
@@ -344,7 +344,7 @@ describe('planReleasePublish', () => {
 
   test('missing artifact for a package fails', () => {
     const manifest = parseManifest()
-    const packages: PackageRecord[] = [pkg('npm:@lili/workers', 'npm', 'npm-umbrella', '@lili/workers')]
+    const packages: PackageRecord[] = [pkg('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers')]
     const result = planReleasePublish({
       manifest,
       packages,
@@ -357,8 +357,8 @@ describe('planReleasePublish', () => {
       {
         publisher: 'npm',
         code: 'PUBLISHER_ARTIFACT_MISSING',
-        message: `publisher 'npm' has no verified artifact for package 'npm:@lili/workers'`,
-        details: { packageId: 'npm:@lili/workers' },
+        message: `publisher 'npm' has no verified artifact for package 'npm:@liche/workers'`,
+        details: { packageId: 'npm:@liche/workers' },
       },
     ])
   })

@@ -26,10 +26,10 @@ export type CompileFlagProfile = {
     tsconfig: false
   }
   define: Record<
-    | 'LILI_BUILD_VERSION'
-    | 'LILI_CONTRACT_DIGEST'
-    | 'LILI_SOURCE_COMMIT'
-    | 'LILI_BUILD_TOOL_VERSION',
+    | 'LICHE_BUILD_VERSION'
+    | 'LICHE_CONTRACT_DIGEST'
+    | 'LICHE_SOURCE_COMMIT'
+    | 'LICHE_BUILD_TOOL_VERSION',
     string
   >
 }
@@ -84,10 +84,10 @@ export function createCompileFlagProfile(input: {
       tsconfig: false,
     },
     define: {
-      LILI_BUILD_VERSION: JSON.stringify(input.constants.releaseVersion),
-      LILI_CONTRACT_DIGEST: JSON.stringify(input.constants.contractDigest),
-      LILI_SOURCE_COMMIT: JSON.stringify(input.constants.sourceCommit),
-      LILI_BUILD_TOOL_VERSION: JSON.stringify(input.constants.buildToolVersion),
+      LICHE_BUILD_VERSION: JSON.stringify(input.constants.releaseVersion),
+      LICHE_CONTRACT_DIGEST: JSON.stringify(input.constants.contractDigest),
+      LICHE_SOURCE_COMMIT: JSON.stringify(input.constants.sourceCommit),
+      LICHE_BUILD_TOOL_VERSION: JSON.stringify(input.constants.buildToolVersion),
     },
   }
 }
@@ -124,7 +124,7 @@ export function createCompilePlan(input: CreateCompilePlanInput): CompilePlan {
   }
 }
 
-export function renderCompileEntrypoint(generatedFileName = 'lili.generated.ts'): string {
+export function renderCompileEntrypoint(generatedFileName = 'liche.generated.ts'): string {
   const specifier = generatedModuleSpecifier(generatedFileName)
   return [
     '#!/usr/bin/env bun',

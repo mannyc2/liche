@@ -4,10 +4,10 @@
     "title": "Workers",
     "version": "1.0.0",
     "description": "Build and deploy serverless applications.",
-    "x-lili-generator-version": "0.0.0",
-    "x-lili-catalog-digest": "sha256:162f5532afcd3960e60d3314734655dfea55cc9313ca5f8c22e588b2c750c04f",
-    "x-lili-generation-options-digest": "sha256:a6dacd68d2c4378548c2d103b512edd2bf5db82a433a5e65f5fffb84ad5b353b",
-    "x-lili-surface-id": "openapi"
+    "x-liche-generator-version": "0.0.0",
+    "x-liche-catalog-digest": "sha256:90d3a4444e2384f11261e4b9122a265a0c5945c3f27bad72921485b87e449eb4",
+    "x-liche-generation-options-digest": "sha256:8c7140a8f866c79ba47b6ecc874ad9360fae6974fc42c70333b505010a67bc16",
+    "x-liche-surface-id": "openapi"
   },
   "paths": {
     "/workers/scripts": {
@@ -62,18 +62,18 @@
             "type": "string",
             "format": "date-time",
             "description": "Creation time",
-            "x-lili-mutability": "immutable"
+            "x-liche-mutability": "immutable"
           },
           "id": {
             "type": "string",
             "description": "Script ID",
-            "x-lili-identifier": true,
-            "x-lili-mutability": "immutable"
+            "x-liche-identifier": true,
+            "x-liche-mutability": "immutable"
           },
           "name": {
             "type": "string",
             "description": "Script name",
-            "x-lili-human-label": true
+            "x-liche-human-label": true
           }
         },
         "required": [

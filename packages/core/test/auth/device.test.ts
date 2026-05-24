@@ -38,7 +38,7 @@ const provider: AuthProviderRuntime = {
 }
 
 async function withStore<T>(fn: (root: string) => Promise<T>): Promise<T> {
-  const root = mkdtempSync(join(tmpdir(), 'lili-device-'))
+  const root = mkdtempSync(join(tmpdir(), 'liche-device-'))
   try {
     return await fn(root)
   } finally {

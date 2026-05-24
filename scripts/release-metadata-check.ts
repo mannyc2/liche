@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url'
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const PUBLIC_PACKAGES = [
-  { name: '@lili/core', dir: 'packages/core' },
-  { name: '@lili/build', dir: 'packages/build' },
-  { name: '@lili/product', dir: 'packages/product' },
-  { name: '@lili/releases', dir: 'packages/releases' },
+  { name: '@liche/core', dir: 'packages/core' },
+  { name: '@liche/build', dir: 'packages/build' },
+  { name: '@liche/product', dir: 'packages/product' },
+  { name: '@liche/releases', dir: 'packages/releases' },
 ] as const
 
 const REQUIRED_SUPPORT_FILES = [

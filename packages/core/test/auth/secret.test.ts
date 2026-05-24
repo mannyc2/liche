@@ -9,8 +9,8 @@ describe('SecretString', () => {
     expect(s.reveal()).toBe(RAW)
   })
 
-  test('kind is "lili.secret" brand', () => {
-    expect(secret(RAW).kind).toBe('lili.secret')
+  test('kind is "liche.secret" brand', () => {
+    expect(secret(RAW).kind).toBe('liche.secret')
   })
 
   test('toString() returns "[redacted]" and never the raw value', () => {
@@ -47,7 +47,7 @@ describe('SecretString', () => {
 
   test('isSecretString narrows correctly', () => {
     expect(isSecretString(secret(RAW))).toBe(true)
-    expect(isSecretString({ kind: 'lili.secret' })).toBe(false)
+    expect(isSecretString({ kind: 'liche.secret' })).toBe(false)
     expect(isSecretString(null)).toBe(false)
     expect(isSecretString('plain-string')).toBe(false)
     expect(isSecretString({ kind: 'other', reveal: () => 'x' })).toBe(false)

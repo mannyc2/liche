@@ -3,10 +3,10 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFileSessionStore, secret } from '../../src/index.js'
-import { LiliError } from '../../src/errors/error.js'
+import { LicheError } from '../../src/errors/error.js'
 
 function tempRoot(): string {
-  return mkdtempSync(join(tmpdir(), 'lili-session-'))
+  return mkdtempSync(join(tmpdir(), 'liche-session-'))
 }
 
 describe('createFileSessionStore', () => {
@@ -87,8 +87,8 @@ describe('createFileSessionStore', () => {
       } catch (error) {
         caught = error
       }
-      expect(caught).toBeInstanceOf(LiliError)
-      expect((caught as LiliError).code).toBe('AUTH_SESSION_CORRUPT')
+      expect(caught).toBeInstanceOf(LicheError)
+      expect((caught as LicheError).code).toBe('AUTH_SESSION_CORRUPT')
       expect(existsSync(join(dir, 'acme.json'))).toBe(false)
       expect(readdirSync(dir).some((name) => name.startsWith('acme.json.corrupt.'))).toBe(true)
     } finally {

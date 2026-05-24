@@ -66,7 +66,7 @@ function makeBinaryEntry(overrides: Partial<BinaryTarget> & {
   }
 }
 
-const tmp = mkdtempSync(join(tmpdir(), 'lili-releases-binary-'))
+const tmp = mkdtempSync(join(tmpdir(), 'liche-releases-binary-'))
 const paths = {
   signed: join(tmp, 'workers-signed'),
   corrupt: join(tmp, 'workers-corrupt'),

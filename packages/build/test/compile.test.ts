@@ -27,7 +27,7 @@ function successfulBuild(captured: BunBuildOptions[]): BunBuildFn {
 describe('compile profile', () => {
   test('derives deterministic Bun.build options from one flag profile', () => {
     const plan = createCompilePlan({
-      entrypoint: '/tmp/a/lili.compile-entry.ts',
+      entrypoint: '/tmp/a/liche.compile-entry.ts',
       outfile: '/tmp/a/workers',
       target: 'bun-linux-x64-baseline',
       constants,
@@ -47,15 +47,15 @@ describe('compile profile', () => {
         tsconfig: false,
       },
       define: {
-        LILI_BUILD_VERSION: '"1.2.3"',
-        LILI_CONTRACT_DIGEST: '"sha256:contract"',
-        LILI_SOURCE_COMMIT: '"0123456789abcdef"',
-        LILI_BUILD_TOOL_VERSION: '"0.0.0"',
+        LICHE_BUILD_VERSION: '"1.2.3"',
+        LICHE_CONTRACT_DIGEST: '"sha256:contract"',
+        LICHE_SOURCE_COMMIT: '"0123456789abcdef"',
+        LICHE_BUILD_TOOL_VERSION: '"0.0.0"',
       },
     })
     expect(plan.compileFlagsDigest).toBe(canonicalDigest(plan.flags))
     expect(plan.buildOptions).toMatchObject({
-      entrypoints: ['/tmp/a/lili.compile-entry.ts'],
+      entrypoints: ['/tmp/a/liche.compile-entry.ts'],
       compile: {
         target: 'bun-linux-x64-baseline',
         outfile: '/tmp/a/workers',
@@ -76,7 +76,7 @@ describe('compile profile', () => {
 
   test('compileFlagsDigest does not include local paths', () => {
     const a = createCompilePlan({
-      entrypoint: '/tmp/a/lili.compile-entry.ts',
+      entrypoint: '/tmp/a/liche.compile-entry.ts',
       outfile: '/tmp/a/workers',
       target: 'bun-linux-x64-baseline',
       constants,
@@ -106,7 +106,7 @@ describe('compile profile', () => {
     const captured: BunBuildOptions[] = []
     const result = await compileEntrypoint(
       {
-        entrypoint: '/tmp/a/lili.compile-entry.ts',
+        entrypoint: '/tmp/a/liche.compile-entry.ts',
         outfile: '/tmp/a/workers',
         target: 'bun-linux-x64-baseline',
         constants,
@@ -120,7 +120,7 @@ describe('compile profile', () => {
     expect(options).toBeDefined()
     if (options === undefined) return
     expect(result.plan.buildOptions).toBe(options)
-    expect(options.entrypoints).toEqual(['/tmp/a/lili.compile-entry.ts'])
+    expect(options.entrypoints).toEqual(['/tmp/a/liche.compile-entry.ts'])
     expect(options.compile).toMatchObject({
       target: 'bun-linux-x64-baseline',
       outfile: '/tmp/a/workers',
@@ -132,7 +132,7 @@ describe('compile profile', () => {
   test('compileEntrypoint reports a failed Bun.build result without throwing', async () => {
     const result = await compileEntrypoint(
       {
-        entrypoint: '/tmp/a/lili.compile-entry.ts',
+        entrypoint: '/tmp/a/liche.compile-entry.ts',
         outfile: '/tmp/a/workers',
         target: 'bun-linux-x64-baseline',
         constants,

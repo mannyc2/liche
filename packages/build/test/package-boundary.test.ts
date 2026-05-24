@@ -8,7 +8,7 @@ type PackageJson = {
   peerDependencies?: Record<string, string>
 }
 
-const FORBIDDEN_RUNTIME_DEPS = ['@lili/product', '@lili/releases'] as const
+const FORBIDDEN_RUNTIME_DEPS = ['@liche/product', '@liche/releases'] as const
 const RUNTIME_DEP_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const
 
 function packageJson(): PackageJson {
@@ -25,7 +25,7 @@ function sourceFiles(dir: string): string[] {
   return files
 }
 
-describe('package boundary: @lili/build', () => {
+describe('package boundary: @liche/build', () => {
   test('has no runtime dependency on product or releases', () => {
     const pkg = packageJson()
 

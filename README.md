@@ -1,27 +1,27 @@
-# Lili
+# Liche
 
-Lili is a Bun-native toolkit for building CLIs that are useful to humans, scripts, and agents.
+Liche is a Bun-native toolkit for building CLIs that are useful to humans, scripts, and agents.
 
 The v1 packages are Bun-only source publications. They export TypeScript source and Bun entrypoints directly, require Bun `>= 1.3.0`, and do not publish `dist` or declaration artifacts.
 
 ```sh
-bun add @lili/core
-bun add -d @lili/product @lili/build @lili/releases
+bun add @liche/core
+bun add -d @liche/product @liche/build @liche/releases
 ```
 
 The v1 workflow is:
 
-1. Write a CLI directly with `@lili/core`, or describe a product once with `@lili/product`.
+1. Write a CLI directly with `@liche/core`, or describe a product once with `@liche/product`.
 2. Generate runtime surfaces from the Product catalog when you need CLI, OpenAPI, MCP, docs, conformance, diagnostics, or telemetry wiring.
-3. Compile standalone binaries with `@lili/build`.
-4. Render package-manager artifacts and plan publishing with `@lili/releases`.
+3. Compile standalone binaries with `@liche/build`.
+4. Render package-manager artifacts and plan publishing with `@liche/releases`.
 
 ## Handwritten CLI
 
-Use `@lili/core` when the command tree is already clear and you want a normal TypeScript CLI.
+Use `@liche/core` when the command tree is already clear and you want a normal TypeScript CLI.
 
 ```ts
-import { defineCli, defineCommand, z } from "@lili/core";
+import { defineCli, defineCommand, z } from "@liche/core";
 
 export const cli = defineCli({
   name: "shipyard",
@@ -51,14 +51,14 @@ export const cli = defineCli({
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@lili/core` provides declarative command graphs, typed args/options/env parsing, config loading, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor`, plus `mcp add` and `skills add`, are explicit opt-ins; broader provider workflows, telemetry sinks, and nonessential renderers stay outside the required core path.
+`@liche/core` provides declarative command graphs, typed args/options/env parsing, config loading, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor`, plus `mcp add` and `skills add`, are explicit opt-ins; broader provider workflows, telemetry sinks, and nonessential renderers stay outside the required core path.
 
 ## Product Schema
 
-Use `@lili/product` when a product needs multiple generated surfaces from one catalog.
+Use `@liche/product` when a product needs multiple generated surfaces from one catalog.
 
 ```ts
-import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@liche/product";
 
 export default defineProduct({
   id: "workers",
@@ -80,18 +80,18 @@ export default defineProduct({
 Generate and check surfaces:
 
 ```sh
-li-product generate ./product.ts --out ./generated
-li-product generate ./product.ts --out ./generated --check --json
+liche-product generate ./product.ts --out ./generated
+liche-product generate ./product.ts --out ./generated --check --json
 ```
 
 Generated Product outputs include the CLI source, OpenAPI, command manifest, MCP tools, agent reference, docs reference, config schema, catalog JSON, discovery JSON, compile entrypoint, and drift manifest.
 
 ## Compile
 
-Use `@lili/build` or `li-build` to produce standalone Bun binaries with recorded compile flags and build provenance.
+Use `@liche/build` or `liche-build` to produce standalone Bun binaries with recorded compile flags and build provenance.
 
 ```sh
-li-build build ./src/cli.ts \
+liche-build build ./src/cli.ts \
   --targets native \
   --release-version 0.1.0 \
   --commit 0000000 \
@@ -103,11 +103,11 @@ li-build build ./src/cli.ts \
 
 ## Package And Publish
 
-Use `@lili/releases` or `li-release` after binaries exist. It consumes build records and final binary bytes, renders package-manager artifacts, verifies final artifacts, and creates dry-run publish plans.
+Use `@liche/releases` or `liche-release` after binaries exist. It consumes build records and final binary bytes, renders package-manager artifacts, verifies final artifacts, and creates dry-run publish plans.
 
 ```sh
-li-release package ./dist/build-record.json --out ./dist/release --json
-li-release publish ./dist/release/manifest.json --ecosystems npm --dry-run --json
+liche-release package ./dist/build-record.json --out ./dist/release --json
+liche-release publish ./dist/release/manifest.json --ecosystems npm --dry-run --json
 ```
 
 Release renderers cover npm, PyPI, Homebrew, and Scoop. Publisher planning is separate from rendering, so CI can consume generated handoff artifacts instead of reconstructing package order in workflow YAML.
@@ -124,10 +124,10 @@ The examples cover handwritten CLIs, generated Product CLIs, auth/context resolu
 
 ## Packages
 
-- `@lili/core`: CLI runtime, config, auth/session, HTTP transport, command contracts, direct MCP projection, config-owned diagnostics, and opt-in local telemetry primitives.
-- `@lili/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
-- `@lili/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
-- `@lili/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.
+- `@liche/core`: CLI runtime, config, auth/session, HTTP transport, command contracts, direct MCP projection, config-owned diagnostics, and opt-in local telemetry primitives.
+- `@liche/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
+- `@liche/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
+- `@liche/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.
 
 ## Repository Checks
 

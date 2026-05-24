@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { dirname, isAbsolute, resolve } from 'node:path'
-import { defineCli, defineCommand, z } from '@lili/core'
+import { defineCli, defineCommand, z } from '@liche/core'
 import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
 import { conformProduct, type ConformanceCase } from './conformance.js'
@@ -14,7 +14,7 @@ async function loadProduct(productPath: string): Promise<RuntimeProduct> {
   const absolute = isAbsolute(productPath) ? productPath : resolve(process.cwd(), productPath)
   const mod = await import(absolute)
   const product = mod.default as RuntimeProduct | undefined
-  if (!product || product.kind !== 'lili.product') {
+  if (!product || product.kind !== 'liche.product') {
     throw new Error(`Module at ${absolute} does not default-export a defineProduct() result`)
   }
   return product
@@ -55,7 +55,7 @@ export const cli = defineCli({
           if (result.ok) return { inSync: true }
           return ctx.error({
             code: 'GENERATED_SURFACE_DRIFT',
-            code_actions: [{ title: 'Regenerate surfaces', command: `li-product generate ${input.args.product}` }],
+            code_actions: [{ title: 'Regenerate surfaces', command: `liche-product generate ${input.args.product}` }],
             hint: result.drift.join('\n'),
             message: 'Generated artifacts are out of sync',
             suggested_fix: 'Run generation without --check and commit the updated artifacts.',
@@ -164,7 +164,7 @@ export const cli = defineCli({
             code: 'CONFORMANCE_FAILED',
             code_actions: input.options.report
               ? [{ title: 'Inspect conformance report', command: `cat ${input.options.report}` }]
-              : [{ title: 'Write conformance report', argv: ['conform', input.args.product, '--report', 'lili.conformance.json'] }],
+              : [{ title: 'Write conformance report', argv: ['conform', input.args.product, '--report', 'liche.conformance.json'] }],
             message: `${report.summary.failed} conformance case(s) failed`,
             hint: JSON.stringify(report.summary),
             suggested_fix: input.options.report
@@ -176,7 +176,7 @@ export const cli = defineCli({
       },
     }),
   ],
-  name: 'li-product',
+  name: 'liche-product',
   skill: {
     index: LI_PRODUCT_SKILL_INDEX,
     markdown: LI_PRODUCT_SKILL_MARKDOWN,

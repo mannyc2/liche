@@ -25,13 +25,13 @@ function singleStepPlan(step: ReleasePublishPlan['steps'][number]): ReleasePubli
 function pypiPlan(): ReleasePublishPlan {
   const step: PypiPublishStep = {
     kind: 'pypi-upload',
-    packageId: 'pypi:lili-workers',
+    packageId: 'pypi:liche-workers',
     ecosystem: 'pypi',
     artifactPath: '/tmp/release/pypi/lili_workers-0.1.0-py3-none-any.whl',
     artifactFileName: 'lili_workers-0.1.0-py3-none-any.whl',
     sha256: ZERO_HASH,
     size: 1,
-    name: 'lili-workers',
+    name: 'liche-workers',
     version: '0.1.0',
     repositoryUrl: 'https://upload.pypi.org/legacy/',
   }
@@ -49,7 +49,7 @@ function homebrewPlan(): ReleasePublishPlan {
     size: 1,
     name: 'workers',
     version: '0.1.0',
-    tap: { owner: 'lili', repo: 'homebrew-tap', branch: 'main' },
+    tap: { owner: 'liche', repo: 'homebrew-tap', branch: 'main' },
     targetPath: 'Formula/workers.rb',
   }
   return singleStepPlan(step)

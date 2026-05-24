@@ -89,8 +89,8 @@ describe('parity: mcp add and skills add flag handling', () => {
   let originalCwd: string
   beforeEach(() => {
     originalCwd = process.cwd()
-    home = realpathSync(mkdtempSync(join(tmpdir(), 'lili-mcp-')))
-    cwd = realpathSync(mkdtempSync(join(tmpdir(), 'lili-cwd-')))
+    home = realpathSync(mkdtempSync(join(tmpdir(), 'liche-mcp-')))
+    cwd = realpathSync(mkdtempSync(join(tmpdir(), 'liche-cwd-')))
   })
   afterEach(() => {
     process.chdir(originalCwd)
@@ -194,7 +194,7 @@ describe('parity: --json flips agent on a TTY', () => {
 })
 
 describe('parity: --llms shape', () => {
-  test('--llms with --format json returns the lili.v1 envelope', async () => {
+  test('--llms with --format json returns the liche.v1 envelope', async () => {
     const cli = testCli('app', { description: 'app cli', version: '1.0.0' }, [testCommand('publish', {
         description: 'ship a release',
         examples: ['app publish v1'],
@@ -204,7 +204,7 @@ describe('parity: --llms shape', () => {
       })])
     const result = await runCli(cli, ['--llms', '--format', 'json'])
     const envelope = parseJsonOutput(result.stdout)
-    expect(envelope.manifestVersion).toBe('lili.v1')
+    expect(envelope.manifestVersion).toBe('liche.v1')
     expect(envelope.name).toBe('app')
     expect(envelope.commands[0]).toMatchObject({
       name: 'publish',
@@ -218,7 +218,7 @@ describe('parity: --llms shape', () => {
     const cli = testCli('app', [testCommand('echo', { run: () => ({}) })])
     const state = (cli as InternalCli)[stateSymbol]
     const envelope = manifestEnvelope('app', state)
-    expect(envelope.manifestVersion).toBe('lili.v1')
+    expect(envelope.manifestVersion).toBe('liche.v1')
     expect(envelope.commands.map((command) => command.name)).toEqual(['echo'])
   })
 

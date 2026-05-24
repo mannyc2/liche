@@ -109,7 +109,7 @@ function workersProduct() {
 describe('Catalog header', () => {
   test('carries product id/name/version/description/scope and the catalog version tag', () => {
     const catalog = normalizeProduct(workersProduct())
-    expect(catalog.kind).toBe('lili.catalog')
+    expect(catalog.kind).toBe('liche.catalog')
     expect(catalog.catalogVersion).toBe(1)
     expect(catalog.product).toEqual({
       id: 'workers',
@@ -461,7 +461,7 @@ describe('Product config and remote runtime values', () => {
 })
 
 describe('JSON Schema projection', () => {
-  test('field metadata projects into description, format, and x-lili-* extensions', () => {
+  test('field metadata projects into description, format, and x-liche-* extensions', () => {
     const idSchema = fieldToJsonSchema({
       type: 'string',
       description: 'Script ID',
@@ -474,12 +474,12 @@ describe('JSON Schema projection', () => {
     expect(idSchema).toEqual({
       type: 'string',
       description: 'Script ID',
-      'x-lili-identifier': true,
-      'x-lili-mutability': 'immutable',
+      'x-liche-identifier': true,
+      'x-liche-mutability': 'immutable',
     })
   })
 
-  test('secret and human-label flags project as their x-lili-* extensions', () => {
+  test('secret and human-label flags project as their x-liche-* extensions', () => {
     const f = fieldToJsonSchema({
       type: 'string',
       description: 'API token',
@@ -489,14 +489,14 @@ describe('JSON Schema projection', () => {
       humanLabel: true,
       mutability: 'mutable',
     })
-    expect(f['x-lili-secret']).toBe(true)
-    expect(f['x-lili-human-label']).toBe(true)
-    expect('x-lili-mutability' in f).toBe(false)
+    expect(f['x-liche-secret']).toBe(true)
+    expect(f['x-liche-human-label']).toBe(true)
+    expect('x-liche-mutability' in f).toBe(false)
   })
 
-  test('option config bindings project as x-lili-config-path', () => {
+  test('option config bindings project as x-liche-config-path', () => {
     const f = Field.string('Organization').optional().fromConfig('defaultOrg').toField()
-    expect(fieldToJsonSchema(f)['x-lili-config-path']).toBe('defaultOrg')
+    expect(fieldToJsonSchema(f)['x-liche-config-path']).toBe('defaultOrg')
   })
 
   test('enum and datetime types project type+format/enum lists', () => {

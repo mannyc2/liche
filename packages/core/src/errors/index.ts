@@ -1,6 +1,6 @@
 export {
   BaseError,
-  LiliError,
+  LicheError,
   ParseError,
   ValidationError,
   commandError,

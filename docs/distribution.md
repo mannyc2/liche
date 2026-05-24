@@ -1,6 +1,6 @@
 # Distribution requirements
 
-`@lili/releases` owns the distribution contract. It consumes final binary artifacts and produces a release manifest plus selected package-manager artifacts rendered from that manifest.
+`@liche/releases` owns the distribution contract. It consumes final binary artifacts and produces a release manifest plus selected package-manager artifacts rendered from that manifest.
 
 Package-manager wrappers are delivery mechanisms. The compiled binary is the product.
 
@@ -37,9 +37,9 @@ Implemented release-spine APIs:
 - `packageRelease(...)` validates the manifest, verifies binaries, runs selected renderers, and verifies final package artifact bytes when renderers produce packed artifacts.
 - `verifyPackageArtifacts(...)` verifies package artifact file name, size, and sha256 against package records.
 - `planReleaseYank(...)` derives a dry-run yank plan from manifest package records.
-- `@lili/releases/renderers/all` exports `createDefaultRendererRegistry()` for the implemented npm, PyPI, Homebrew, and Scoop renderers.
+- `@liche/releases/renderers/all` exports `createDefaultRendererRegistry()` for the implemented npm, PyPI, Homebrew, and Scoop renderers.
 
-The root package export intentionally stays renderer-light. Concrete renderers are loaded through `@lili/releases/renderers/npm`, `@lili/releases/renderers/pypi`, `@lili/releases/renderers/homebrew`, `@lili/releases/renderers/scoop`, or the all-renderer convenience subpath. Publisher adapter types live behind `@lili/releases/publishers`; the CLI registers concrete executors only at publish time so package rendering stays separate from registry or repository mutation.
+The root package export intentionally stays renderer-light. Concrete renderers are loaded through `@liche/releases/renderers/npm`, `@liche/releases/renderers/pypi`, `@liche/releases/renderers/homebrew`, `@liche/releases/renderers/scoop`, or the all-renderer convenience subpath. Publisher adapter types live behind `@liche/releases/publishers`; the CLI registers concrete executors only at publish time so package rendering stays separate from registry or repository mutation.
 
 ## Manifest schema
 
@@ -275,7 +275,7 @@ Only stable release-facing facts belong in the manifest.
 Required pipeline:
 
 ```txt
-1. Read binary artifacts and compile flag profiles from @lili/build output.
+1. Read binary artifacts and compile flag profiles from @liche/build output.
 2. Apply signing/notarization hooks where configured.
 3. Verify signature/notarization where configured.
 4. Compute sha256 and size over final binary bytes.
@@ -289,7 +289,7 @@ Required pipeline:
 
 Do not treat an uninspected staging directory as final proof. The npm renderer writes package directories first because they are the canonical inspectable output. The pack step then derives `.tgz` files from those directories when exact packed bytes are needed for publish planning or artifact records. The shared release spine verifies final package artifact file bytes when they exist; ecosystem renderer tests inspect package-format details such as npm package directories and derived `.tgz` contents, PyPI `RECORD` entries, and Homebrew/Scoop manifest text.
 
-`@lili/releases` never invokes `Bun.build()` and never rebuilds a binary. `binaries[].compileFlagsDigest` is copied from the `@lili/build` compile flag profile, while `binaries[].sha256` and `binaries[].size` are computed after signing/notarization from the final bytes that will be packaged.
+`@liche/releases` never invokes `Bun.build()` and never rebuilds a binary. `binaries[].compileFlagsDigest` is copied from the `@liche/build` compile flag profile, while `binaries[].sha256` and `binaries[].size` are computed after signing/notarization from the final bytes that will be packaged.
 
 ## Renderer selection
 
@@ -457,7 +457,7 @@ WinGet is a later asynchronous track because it typically involves a repository 
 One command should operate from the manifest:
 
 ```sh
-li-releases yank ./release-manifest.json --reason "bad binary"
+liche-releases yank ./release-manifest.json --reason "bad binary"
 ```
 
 Expected behavior:

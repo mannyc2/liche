@@ -1,4 +1,4 @@
-const PUBLIC_PACKAGES = ['@lili/core', '@lili/build', '@lili/product', '@lili/releases'] as const
+const PUBLIC_PACKAGES = ['@liche/core', '@liche/build', '@liche/product', '@liche/releases'] as const
 
 type PackageRegistryStatus =
   | {
@@ -73,7 +73,7 @@ export async function checkNpmPackageAvailability(
     checkedAt: now.toISOString(),
     registry: 'https://registry.npmjs.org',
     packages,
-    note: 'no_public_package means the public registry did not return a package. It does not prove @lili organization ownership or publish rights.',
+    note: 'no_public_package means the public registry did not return a package. It does not prove @liche organization ownership or publish rights.',
   }
 }
 

@@ -8,19 +8,19 @@ Implemented in current `src/` first; each behavior maps to a rewrite component:
 
 | Behavior ID | Rewrite component | Test |
 |---|---|---|
-| STREAM-001 | `@lili/core` runtime (cli/execute + cli/serve + cli/fetch) | `parity.test.ts` |
-| OPT-DEP-001 | `@lili/core` schema metadata + help renderer | `parity.test.ts` |
-| MCP-ADD-001 | `@lili/core` skills/sync resolver | `parity.test.ts` |
-| SKILLS-ADD-001 | `@lili/core` skills/sync resolver | `parity.test.ts` |
-| MCP-NAME-001 | `@lili/core` mcp transport | `parity.test.ts` |
-| MCP-CONFORMANCE-001 | `@lili/core` MCP JSON-RPC transport + `@lili/product` generated MCP tools | `packages/core/test/mcp-conformance.test.ts`, `packages/product/test/generate-mcp-conformance.test.ts` |
-| AGENT-FLIP-001 | `@lili/core` execute context | `parity.test.ts` |
-| LLMS-SHAPE-001 | `@lili/core` command/registry | `parity.test.ts` |
-| OPENAPI-001 | `@lili/core` command/openapi (emit) | `parity.test.ts` |
-| OPENAPI-002 | `@lili/core` command/openapi (ingest) | `parity.test.ts` |
-| CONFIG-002 | `@lili/core` parser/globals + parser/config | `parity.test.ts` |
-| HELP-002 / USAGE-001 | `@lili/core` help renderer | `parity.test.ts` |
-| VARS-001 | `@lili/core` execute context | `parity.test.ts` |
+| STREAM-001 | `@liche/core` runtime (cli/execute + cli/serve + cli/fetch) | `parity.test.ts` |
+| OPT-DEP-001 | `@liche/core` schema metadata + help renderer | `parity.test.ts` |
+| MCP-ADD-001 | `@liche/core` skills/sync resolver | `parity.test.ts` |
+| SKILLS-ADD-001 | `@liche/core` skills/sync resolver | `parity.test.ts` |
+| MCP-NAME-001 | `@liche/core` mcp transport | `parity.test.ts` |
+| MCP-CONFORMANCE-001 | `@liche/core` MCP JSON-RPC transport + `@liche/product` generated MCP tools | `packages/core/test/mcp-conformance.test.ts`, `packages/product/test/generate-mcp-conformance.test.ts` |
+| AGENT-FLIP-001 | `@liche/core` execute context | `parity.test.ts` |
+| LLMS-SHAPE-001 | `@liche/core` command/registry | `parity.test.ts` |
+| OPENAPI-001 | `@liche/core` command/openapi (emit) | `parity.test.ts` |
+| OPENAPI-002 | `@liche/core` command/openapi (ingest) | `parity.test.ts` |
+| CONFIG-002 | `@liche/core` parser/globals + parser/config | `parity.test.ts` |
+| HELP-002 / USAGE-001 | `@liche/core` help renderer | `parity.test.ts` |
+| VARS-001 | `@liche/core` execute context | `parity.test.ts` |
 
 
 Before adding rewrite tests:
@@ -34,7 +34,7 @@ Before adding rewrite tests:
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
-| BUILD-001 | Handwritten core CLI works without `@lili/product` or `@lili/build`. | `docs/invariant.md` | Package boundary test imports only `@lili/core`. | Public API | Product/build dependency leaks into core runtime. |
+| BUILD-001 | Handwritten core CLI works without `@liche/product` or `@liche/build`. | `docs/invariant.md` | Package boundary test imports only `@liche/core`. | Public API | Product/build dependency leaks into core runtime. |
 | BUILD-002 | Runtime product schema normalizes into a canonical catalog. | `docs/build-system.md` | Normalize representative schema and snapshot canonical catalog. | Requirement fixture | Generator reads erased TypeScript types, class identity, or raw source formatting. |
 | BUILD-003 | Catalog digest ignores source formatting. | `docs/invariant.md` | Two differently formatted schemas normalize to same digest. | Canonical catalog | Digest computed from source bytes. |
 | BUILD-004 | Closed vocabulary is a positive allowlist. | `docs/build-system.md` | Lint an absent verb, then add a product-specific verb and verify it passes. | Requirement fixture | Vocabulary drift accepted or project-specific vocabulary blocked. |
@@ -65,14 +65,14 @@ Before adding rewrite tests:
 | BUILD-029 | Surface membership is normalized once. | `docs/product-schema.md` | Fixture omits some surface hints and asserts defaults for CLI/docs/dashboard/agent/OpenAPI. | Normalized surfaces | Each generator guesses different defaults. |
 | BUILD-030 | Generated CLI consumes flattened capabilities. | `docs/next-plan.md` | Generated CLI fixture includes a resource operation and top-level `deploy`/`dev` commands. | Public CLI behavior | CLI generator remains tied to operation-only records. |
 | BUILD-032 | Compile profile is the source of truth for `Bun.build()` and `compileFlagsDigest`. | `docs/build-system.md` | Unit-test compile profile construction, path-independent digesting, internal entrypoint rendering, and injected `Bun.build()` options. | Bun build API docs + canonical digest | Shell-string compile logic drifts from recorded flags, or release rebuilds from workspace state. |
-| BUILD-033 | `@lili/build` stays generic and does not depend on Product or releases. | `docs/package-layout.md` | Package boundary test inspects runtime dependencies and source imports. | Package graph | Build users who only want standalone CLI compilation pull in Product generation or release rendering. |
+| BUILD-033 | `@liche/build` stays generic and does not depend on Product or releases. | `docs/package-layout.md` | Package boundary test inspects runtime dependencies and source imports. | Package graph | Build users who only want standalone CLI compilation pull in Product generation or release rendering. |
 | CORE-PLUGIN-001 | Core is simplified around a serializable `CommandContract`; optional renderers/installers/vendor helpers live in plugins or separate packages. | `docs/next-plan.md` | Contract fixture emits schema, manifest, help, and MCP tools without executing handlers; manifest JSON contains no internal state/functions; dependency tests prove plugin packages do not leak into core. | Serializable contract fixture + package graph | Runtime reflection over `Entry`/`CliState` remains the canonical surface, plugin renderers or installer helpers stay hard-wired into core, or plugins are required for normal command execution. |
 
 ## Config primitive coverage
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
-| CONFIG-PRIM-001 | Core exposes opt-in `createConfig(...)` for handwritten CLIs. | `docs/config-primitive.md` | Package consumer imports `createConfig` from `@lili/core`, declares config, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook or Product-only feature. |
+| CONFIG-PRIM-001 | Core exposes opt-in `createConfig(...)` for handwritten CLIs. | `docs/config-primitive.md` | Package consumer imports `createConfig` from `@liche/core`, declares config, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook or Product-only feature. |
 | CONFIG-PRIM-002 | CLIs without config reject `--config` and `--no-config`. | `docs/config-primitive.md` | Invoke no-config CLI with each flag and assert parse errors. | CLI parser | Config flags silently no-op or become positionals. |
 | CONFIG-PRIM-003 | Explicit config path and disabled config behavior are exclusive and source-aware. | `docs/config-primitive.md` | `--config` loads only one file; `--no-config` disables discovery; both together fail. | Temp filesystem fixture | Explicit files are merged with discovered files or conflicting flags are accepted. |
 | CONFIG-PRIM-004 | Project/user discovery follows documented precedence. | `docs/config-primitive.md` | Create user and nested project config files, run from a child cwd, and inspect resolved values/provenance. | Temp filesystem fixture | User config beats project config or upward discovery misses the nearest project file. |
@@ -83,11 +83,11 @@ Before adding rewrite tests:
 
 ## Remote transport coverage
 
-Current status (2026-05-23): `@lili/core` exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/core/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the core primitive layer. Generated Product wiring now calls the shared transport for literal, env, and config-backed remote base URLs; Product linting and generation fail for HTTP-backed capabilities without `remote.baseUrl`.
+Current status (2026-05-23): `@liche/core` exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/core/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the core primitive layer. Generated Product wiring now calls the shared transport for literal, env, and config-backed remote base URLs; Product linting and generation fail for HTTP-backed capabilities without `remote.baseUrl`.
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
-| REMOTE-001 | Core exposes outbound HTTP operation transport without `@lili/product` or `@lili/build`. | `docs/build-system.md` | Handwritten CLI calls transport directly. | Public API | Remote calls are generation-only. |
+| REMOTE-001 | Core exposes outbound HTTP operation transport without `@liche/product` or `@liche/build`. | `docs/build-system.md` | Handwritten CLI calls transport directly. | Public API | Remote calls are generation-only. |
 | REMOTE-002 | Transport serializes path/query/body mapping. | `docs/build-system.md` | Fixture capability captures outgoing Request. | Fetch Request | Input fields serialized to wrong location. |
 | REMOTE-003 | Missing base URL maps to structured error. | `docs/build-system.md` | Omit env/config and run remote command. | Error envelope | Raw config exception leaks. |
 | REMOTE-004 | Missing auth maps to structured error. | `docs/build-system.md` | Omit token env and run authenticated command. | Error envelope | Raw env exception leaks. |
@@ -97,7 +97,7 @@ Current status (2026-05-23): `@lili/core` exports `serializeHttpOperationRequest
 | REMOTE-008 | Malformed success body maps to structured error. | `docs/build-system.md` | 200 with invalid JSON for JSON operation. | Error envelope | JSON parse error leaks. |
 | REMOTE-009 | Output schema validates untrusted response. | `docs/build-system.md` | 200 body violates output schema. | Zod + error envelope | Malformed server response returned as success. |
 | REMOTE-010 | Mixed local/remote conformance holds. | `docs/build-system.md` | Same input through fixture local impl and fixture backend, compare parsed output. | Output schema | Local and remote implementations drift. |
-| REMOTE-011 | Server conformance uses schema as reference. | `docs/build-system.md` | `li-product conform` sends example request to fixture server and validates output. | Output schema + fixture server | OpenAPI emitted but server behavior unverified. |
+| REMOTE-011 | Server conformance uses schema as reference. | `docs/build-system.md` | `liche-product conform` sends example request to fixture server and validates output. | Output schema + fixture server | OpenAPI emitted but server behavior unverified. |
 | REMOTE-012 | Server conformance is separate from `generate --check`. | `docs/build-system.md` | Artifact freshness check runs without server; conformance requires target. | Capability contract | CI gate conflates generated drift with live server verification. |
 | REMOTE-013 | Bind coverage lints request placement. | `docs/build-system.md` | Missing, unknown, and conflicting bind entries fail lint. | Input schema | Dead parameter or broken request accepted. |
 | REMOTE-014 | Destructive conformance requires opt-in fixture. | `docs/build-system.md` | Destructive capability without fixture is skipped with reason, not executed. | Capability policy | Conformance mutates production accidentally. |
@@ -115,7 +115,7 @@ Current status (2026-05-23): `@lili/core` exports `serializeHttpOperationRequest
 | CORE-OBS-002 | Subscriber failures never change command results. | `docs/v1-release-plan.md` | Subscriber throws during `command.started`; command output and exit code remain successful. | Command result envelope | Telemetry sink failure breaks CLI execution. |
 | CORE-OBS-003 | Local lifecycle events cover non-command supportability surfaces without expanding telemetry. | `docs/v1-release-plan.md` | Subscribe to `*`, exercise help/version/completion/schema/not-found/MCP surfaces, and assert event names plus absence of raw argv/request payloads. | Event stream snapshot | Framework hooks become the telemetry API or leak unresolved user input. |
 | CORE-OBS-004 | Telemetry sinks consume an explicit allowlist, not every lifecycle event. | `docs/v1-release-plan.md` | Attach a fixture telemetry subscriber that forwards only the documented allowlist while broad local events are also emitted. | Telemetry allowlist | Help, completion, schema, or MCP discovery events are exported by default. |
-| CORE-OBS-005 | Telemetry config resolves from the reserved `lili.telemetry` namespace without treating command options or declared app config as telemetry controls. | `docs/v1-release-plan.md` | Config fixture contains `lili.telemetry`, command-option config, and unrelated declared product config keys; resolver applies precedence and leaves command option parsing unchanged. | Telemetry control resolver | Telemetry reads raw app config, collides with product keys, or ignores `--no-config`. |
+| CORE-OBS-005 | Telemetry config resolves from the reserved `liche.telemetry` namespace without treating command options or declared app config as telemetry controls. | `docs/v1-release-plan.md` | Config fixture contains `liche.telemetry`, command-option config, and unrelated declared product config keys; resolver applies precedence and leaves command option parsing unchanged. | Telemetry control resolver | Telemetry reads raw app config, collides with product keys, or ignores `--no-config`. |
 | CORE-HOOK-001 | Mutation hooks run at documented points before middleware/handler execution. | `docs/v1-release-plan.md` | `beforeExecute` mutates context vars; middleware and handler observe the mutation in order. | Hook contract | Hooks run too late or are conflated with middleware. |
 | CORE-HOOK-002 | Hook failures are command failures, unlike subscriber failures. | `docs/v1-release-plan.md` | `beforeExecute` throws a structured error; command returns the normalized error envelope. | Error envelope | Mutation hooks fail silently or look like telemetry failures. |
 
@@ -137,7 +137,7 @@ Current status (2026-05-23): `@lili/core` exports `serializeHttpOperationRequest
 | SURFACE-012 | Product-specific surfaces require explicit adapters. | `docs/application-integration.md` | Request `wrangler.jsonc`, Workers Binding RPC, dashboard metadata, or generated server/API output before adapter registration. | Requirement gate | Build silently emits partial product-specific artifacts. |
 | SURFACE-013 | Command manifest is catalog-derived and includes effects/execution. | `docs/build-system.md` | Generate `schema --json` or command manifest output and assert argv, input/output schemas, effects, execution mode, and examples. | Canonical catalog | Agent manifest loses CLI-only semantics or mirrors OpenAPI instead. |
 | SURFACE-014 | Config JSON Schema is generated from declared general config and bindings, with only explicitly reserved runtime namespaces allowed outside strict product fields. | `docs/config-primitive.md` | Product fixture declares general config fields and bindings; generated config schema includes both plus reserved runtime namespaces and rejects unknown app keys. | Canonical catalog config + bindings | Config docs/schema are absent, binding-only, hand-written separately, or silently accept misspelled product fields. |
-| BUILD-031 | `@lili/product` has package-local mutation testing. | `docs/build-system.md` | Add `packages/product/stryker.conf.mjs`, `mutate` script, root-catalog Stryker dev deps, and config typecheck inclusion; run the package-local mutate command for an initial report. | Stryker + Bun runner | Product package silently lacks the mutation-testing workflow already available in core. |
+| BUILD-031 | `@liche/product` has package-local mutation testing. | `docs/build-system.md` | Add `packages/product/stryker.conf.mjs`, `mutate` script, root-catalog Stryker dev deps, and config typecheck inclusion; run the package-local mutate command for an initial report. | Stryker + Bun runner | Product package silently lacks the mutation-testing workflow already available in core. |
 
 ### Generated surface implementation trace
 
@@ -201,8 +201,8 @@ AUTH-005 and AUTH-007 require sessions / `whoami` and stay open for 3D-B and bey
 | RELEASE-009 | Renderer interface is pure manifest plus verified binary records to staged package. | `docs/distribution.md` | Renderer test runs without schema/build output. | Dependency boundary | Renderer reads non-manifest state. |
 | RELEASE-010 | Yank command uses one manifest reference. | `docs/distribution.md` | Dry-run yank fixture for npm and future ecosystems. | Manifest | Yank requires ad hoc package names. |
 | RELEASE-011 | npm platform packages verify directory contents and final `.tgz` binaries. | `docs/npm-binary-packaging.md` | Inspect package directory fields; pack, unpack, hash, and inspect package fields. | Manifest + sha256 | Directory output and packed artifact drift apart. |
-| RELEASE-012 | Renderer selection supports zero to all renderers inside `@lili/releases`. | `docs/releases.md` | Release config fixtures cover `[]`, one renderer, multiple renderers, and `all`. | Decision record | npm-only flow or separate `release-extra` package becomes the architecture. |
-| RELEASE-013 | `@lili/releases` consumes build output as manifest/data, not by importing `@lili/core`, `@lili/build`, or `@lili/product`; concrete renderers stay behind subpath exports. | `docs/package-layout.md` | Package boundary test inspects runtime dependencies, imports `@lili/releases` without concrete renderers, and checks renderer subpath exports. | Package graph | Release code reaches around the manifest into core/build/product internals or root imports every renderer. |
+| RELEASE-012 | Renderer selection supports zero to all renderers inside `@liche/releases`. | `docs/releases.md` | Release config fixtures cover `[]`, one renderer, multiple renderers, and `all`. | Decision record | npm-only flow or separate `release-extra` package becomes the architecture. |
+| RELEASE-013 | `@liche/releases` consumes build output as manifest/data, not by importing `@liche/core`, `@liche/build`, or `@liche/product`; concrete renderers stay behind subpath exports. | `docs/package-layout.md` | Package boundary test inspects runtime dependencies, imports `@liche/releases` without concrete renderers, and checks renderer subpath exports. | Package graph | Release code reaches around the manifest into core/build/product internals or root imports every renderer. |
 | RELEASE-014 | Publish automation derives npm/PyPI/Homebrew/Scoop mutations from one manifest. | `docs/next-plan.md` | Dry-run publish plan for all implemented publishers from one manifest fixture. | Manifest + verified artifact records | Publisher requires ad hoc package names, versions, or workspace state. |
 | RELEASE-015 | Selected publisher credentials and repository settings fail before mutation. | `docs/next-plan.md` | Missing npm/PyPI token or Homebrew/Scoop repo config fails during preflight. | Dry-run/preflight fixture | Partial publishes happen before config errors surface. |
 | RELEASE-016 | Publish rechecks final artifact hashes immediately before upload/update. | `docs/next-plan.md` | Tamper with a packed artifact after verification and before publish. | sha256 | Stale or tampered artifact is published. |
@@ -252,7 +252,7 @@ AUTH-005 and AUTH-007 require sessions / `whoami` and stay open for 3D-B and bey
 | V1-007 | V1 telemetry is opt-in local instrumentation, not hosted ingestion. | `docs/v1-release-plan.md` | Fixture command emits lifecycle events to a local sink only when enabled; redaction tests cover secrets, env values, context values, and local paths; subscriber failures do not alter results. | Telemetry event schema | Telemetry leaks secrets, becomes mandatory for command execution, or uses mutation hooks as its collection path. |
 | V1-008 | Generated diagnostics are available without a hosted service. | `docs/v1-release-plan.md` | `doctor` fixtures cover local install/PATH/package-manager checks plus Product catalog/config/remote/auth/session/context/static-notice/agent-readiness checks and emit structured envelopes. | Diagnostic schema | Supportability depends on manual debugging, leaks secrets, drops undeclared env vars, or requires a SaaS backend. |
 | V1-009 | Local catalog/discovery artifacts are versioned and drift-checked. | `docs/v1-release-plan.md` | Generate CLI, command manifest, surface manifest, MCP/agent discovery, and release metadata; mutate one artifact and assert targeted drift. | Generated catalog manifests | Hosted catalog assumptions hide stale local artifacts. |
-| V1-010 | Install/update/channel UX works from static release metadata. | `docs/v1-release-plan.md` | Fixture `ops.release` metadata drives generated docs, discovery JSON, `release --json`, `doctor --json` release checks, version/update status, channel selection, yanked-version notices, and package-manager wrapper diagnostics. | Static Product release metadata | Generated CLIs need a hosted update service or a runtime `@lili/releases` dependency to explain install or channel state. |
+| V1-010 | Install/update/channel UX works from static release metadata. | `docs/v1-release-plan.md` | Fixture `ops.release` metadata drives generated docs, discovery JSON, `release --json`, `doctor --json` release checks, version/update status, channel selection, yanked-version notices, and package-manager wrapper diagnostics. | Static Product release metadata | Generated CLIs need a hosted update service or a runtime `@liche/releases` dependency to explain install or channel state. |
 | V1-011 | Public release metadata and support policy are explicit before publication. | `docs/public-release.md` | Offline metadata gate checks LICENSE/SECURITY/SUPPORT/CHANGELOG, package LICENSE files, narrow package file lists, no placeholder package metadata, and release scripts; live npm-name probe stays manual. | Public release metadata policy | Packages publish without license/support/security policy, with placeholder URLs, or with registry-name assumptions treated as ownership. |
 
 ### V1 public-readiness implementation trace

@@ -10,22 +10,22 @@ import {
 } from '../src/index.js'
 import product from './fixtures/workers.product.js'
 
-const GEN_FILE = 'lili.generated.ts'
-const OPENAPI_FILE = 'lili.generated.openapi.json'
-const COMMANDS_FILE = 'lili.generated.commands.json'
-const MCP_FILE = 'lili.generated.mcp.json'
-const AGENT_FILE = 'lili.generated.agent.md'
-const DOCS_FILE = 'lili.generated.docs.md'
-const CONFIG_FILE = 'lili.generated.config.schema.json'
-const CATALOG_FILE = 'lili.generated.catalog.json'
-const DISCOVERY_FILE = 'lili.generated.discovery.json'
-const MANIFEST_FILE = 'lili.generated.manifest.json'
+const GEN_FILE = 'liche.generated.ts'
+const OPENAPI_FILE = 'liche.generated.openapi.json'
+const COMMANDS_FILE = 'liche.generated.commands.json'
+const MCP_FILE = 'liche.generated.mcp.json'
+const AGENT_FILE = 'liche.generated.agent.md'
+const DOCS_FILE = 'liche.generated.docs.md'
+const CONFIG_FILE = 'liche.generated.config.schema.json'
+const CATALOG_FILE = 'liche.generated.catalog.json'
+const DISCOVERY_FILE = 'liche.generated.discovery.json'
+const MANIFEST_FILE = 'liche.generated.manifest.json'
 
 describe('generate --check drift detection', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'lili-gen-check-'))
+    dir = mkdtempSync(join(tmpdir(), 'liche-gen-check-'))
   })
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true })
@@ -170,7 +170,7 @@ describe('generate --check drift detection', () => {
 
   test('changing surfaceId option changes generationOptionsDigest without changing inputDigest', async () => {
     const a = await generateToDir(product, { outDir: dir, generatorVersion: '0.0.0', surfaceId: 'cli' })
-    const dir2 = mkdtempSync(join(tmpdir(), 'lili-gen-check-2-'))
+    const dir2 = mkdtempSync(join(tmpdir(), 'liche-gen-check-2-'))
     try {
       const b = await generateToDir(product, { outDir: dir2, generatorVersion: '0.0.0', surfaceId: 'cli-alt' })
       expect(a.manifest.surfaces[0]!.inputDigest).toBe(b.manifest.surfaces[0]!.inputDigest)

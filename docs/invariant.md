@@ -1,6 +1,6 @@
 # Rewrite invariant
 
-This document is the anchor for the lili rewrite. It describes the product boundaries before implementation details are allowed to drift.
+This document is the anchor for the liche rewrite. It describes the product boundaries before implementation details are allowed to drift.
 
 ## Product invariant
 
@@ -47,18 +47,18 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@lili/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, standard formatter, opt-in config primitive, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the lili runtime itself, including handwritten CLIs, typed config, direct MCP execution, and the shared remote HTTP transport. |
-| `@lili/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
-| `@lili/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up lili's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
-| `@lili/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
+| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser, standard formatter, opt-in config primitive, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the liche runtime itself, including handwritten CLIs, typed config, direct MCP execution, and the shared remote HTTP transport. |
+| `@liche/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
+| `@liche/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up liche's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
+| `@liche/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
 
-Do not create MVP packages for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice belongs inside `@lili/releases` configuration, not in separate first-party packages.
+Do not create MVP packages for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice belongs inside `@liche/releases` configuration, not in separate first-party packages.
 
 ## Core, Product, and extension standard
 
-Use this standard when deciding whether a capability belongs in `@lili/core`, `@lili/product`, or an optional extension/adapter package.
+Use this standard when deciding whether a capability belongs in `@liche/core`, `@liche/product`, or an optional extension/adapter package.
 
-### Belongs in `@lili/core`
+### Belongs in `@liche/core`
 
 Core owns the runtime contract required by both handwritten and generated CLIs:
 
@@ -71,7 +71,7 @@ Core owns the runtime contract required by both handwritten and generated CLIs:
 
 A feature belongs in core only when a CLI cannot keep the same basic command semantics without it, or when putting it outside core would duplicate parser/executor/security/provenance behavior. Core APIs must be source-of-truth primitives, not convenience workflows.
 
-### Does not belong in `@lili/core`
+### Does not belong in `@liche/core`
 
 These are optional extensions/adapters, even when they are useful first-party workflows:
 
@@ -83,16 +83,16 @@ These are optional extensions/adapters, even when they are useful first-party wo
 
 The narrow core exceptions are config-owned diagnostics such as `config doctor`, and the explicitly opt-in `mcp add` / `skills add` helper built-ins. They must stay disabled unless requested by the CLI author and must not pull in broader vendor publishing adapters.
 
-### Belongs in `@lili/product`
+### Belongs in `@liche/product`
 
 Product owns the catalog compiler and generated-surface graph:
 
 - product schema authoring APIs for products, resources, commands, bindings, general config, auth providers, permissions, contexts, effects, policy, examples, and surface membership
 - deterministic catalog normalization, lints, digests, vocabulary policy, and generated-surface manifests
-- generated CLI source that lowers through public `@lili/core` APIs
+- generated CLI source that lowers through public `@liche/core` APIs
 - generated OpenAPI, MCP command tools, docs/reference markdown, Agent Skill/LLM surfaces, config JSON Schema, and drift checks
 - server conformance against owned HTTP deployments
-- Product-to-build orchestration that delegates compile mechanics to `@lili/build`
+- Product-to-build orchestration that delegates compile mechanics to `@liche/build`
 
 Product does not own command execution, parser behavior, runtime config loading, session storage, auth header application, outbound HTTP transport semantics, binary compile mechanics, or package-manager release rendering. Those remain core, build, or release concerns.
 
@@ -111,7 +111,7 @@ Extensions also need a disabled-state test: turning the extension off must leave
 
 The core extension-lane property test makes this standard executable for core-level proposals. If the test can express the candidate as a package-root extension, the candidate stays outside core. If it cannot, the public API widening must be framed as a reusable lane rather than a one-off helper.
 
-Do not create a catch-all package unless its opt-in sentence is concrete. "Official optional adapters over stable lili contracts" is a valid package thesis; "miscellaneous things not in core" is not.
+Do not create a catch-all package unless its opt-in sentence is concrete. "Official optional adapters over stable liche contracts" is a valid package thesis; "miscellaneous things not in core" is not.
 
 ## Execution direction invariant
 
@@ -119,11 +119,11 @@ The current core has multiple execution directions. The rewrite must name them s
 
 | Direction | Owner | Meaning |
 |---|---|---|
-| argv CLI runner | `@lili/core` | `.serve(argv)` parses command-line input, executes one selected command, writes output, and exits or returns. It is not an HTTP server. |
-| inbound HTTP handler | `@lili/core` | `.fetch(request)` receives HTTP requests and dispatches them to registered commands. It also exposes core reflection endpoints such as MCP and schema/manifest surfaces for handwritten CLIs. |
-| in-process fetch-backed command | `@lili/core` | A command can delegate to a provided `FetchHandler`. This is an in-process Request/Response bridge, not a hosted backend client. |
-| outbound HTTP operation transport | `@lili/core` | A command can call a configured remote HTTP API, parse the response, validate it against the output schema, and map failures into the standard error envelope. |
-| generated command wiring | `@lili/product` | Generated code wires resource operations and commands into core runtime primitives. It does not own transport semantics. |
+| argv CLI runner | `@liche/core` | `.serve(argv)` parses command-line input, executes one selected command, writes output, and exits or returns. It is not an HTTP server. |
+| inbound HTTP handler | `@liche/core` | `.fetch(request)` receives HTTP requests and dispatches them to registered commands. It also exposes core reflection endpoints such as MCP and schema/manifest surfaces for handwritten CLIs. |
+| in-process fetch-backed command | `@liche/core` | A command can delegate to a provided `FetchHandler`. This is an in-process Request/Response bridge, not a hosted backend client. |
+| outbound HTTP operation transport | `@liche/core` | A command can call a configured remote HTTP API, parse the response, validate it against the output schema, and map failures into the standard error envelope. |
+| generated command wiring | `@liche/product` | Generated code wires resource operations and commands into core runtime primitives. It does not own transport semantics. |
 
 The word `remote` in the schema means outbound HTTP operation transport. It is not a synonym for `.fetch()`.
 
@@ -159,7 +159,7 @@ no generated server/API implementation unless an explicit adapter requirement ex
 no assumption that every command is CRUD, HTTP-backed, table-shaped, or resource-derived
 ```
 
-OpenAPI is output, not input. Importing arbitrary OpenAPI specifications into an lili schema is a later adapter track.
+OpenAPI is output, not input. Importing arbitrary OpenAPI specifications into an liche schema is a later adapter track.
 
 The primary MVP targets owned product capability catalogs:
 
@@ -194,7 +194,7 @@ Build, signing, hashing, manifest creation, package rendering, and verification 
 ```txt
 normalize product schema catalog
 generate artifacts
-compile binary through @lili/build, or compile a handwritten CLI entrypoint directly through @lili/build
+compile binary through @liche/build, or compile a handwritten CLI entrypoint directly through @liche/build
 sign final binary, when configured
 notarize final binary, when configured
 verify signature

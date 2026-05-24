@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { createConfig, defineCli, defineCommand, z } from '@lili/core'
+import { createConfig, defineCli, defineCommand, z } from '@liche/core'
 import {
   PublisherCredentialEnvSchema,
   runPackageCommand,
@@ -46,11 +46,11 @@ export const cli = defineCli({
     }),
   ],
   config: createConfig({
-    files: ['lili.releases.json', 'lili.releases.jsonc'],
+    files: ['liche.releases.json', 'liche.releases.jsonc'],
     schema: ReleasesConfigSchema,
     scopes: { project: { discoverUpwards: true }, user: false },
   }),
-  name: 'li-release',
+  name: 'liche-release',
   version: RELEASE_TOOL_VERSION,
 })
 

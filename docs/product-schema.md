@@ -1,6 +1,6 @@
 # Product schema requirements
 
-`@lili/product` is a product-schema compiler, not a wrapper around `@lili/core`.
+`@liche/product` is a product-schema compiler, not a wrapper around `@liche/core`.
 
 The public authoring model is a catalog of product capabilities plus product config declarations. Some capabilities are resources, some are workflow commands, and some declarations are product bindings. Generated CLIs are one projection of that catalog. OpenAPI, command manifests, docs, Agent Skills, dashboard metadata, and config surfaces are other projections.
 
@@ -22,7 +22,7 @@ Do not force every meaningful product action into a CRUD resource operation. `de
 The public API should keep the same namespace-style ergonomics as the rest of the package set:
 
 ```ts
-import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@liche/product";
 
 export default defineProduct({
   id: "workers",
@@ -124,7 +124,7 @@ export default defineProduct({
 });
 ```
 
-The authoring API is data-first. `@lili/product` normalizes `defineProduct(...)` into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
+The authoring API is data-first. `@liche/product` normalizes `defineProduct(...)` into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
 General config and bindings are separate authoring concepts. Config fields such as `apiBaseUrl`, `accountId`, output preferences, telemetry posture, update channel, or release defaults are durable non-secret product preferences that lower into the core config primitive. Bindings such as `kv_namespaces` are product-specific structured declarations that may project to deployment config, docs, command manifests, and later platform adapters. Both can appear in the generated config JSON Schema, but they are not the same catalog node.
 
@@ -271,7 +271,7 @@ type Field = {
 This metadata must flow into the normalized catalog and generated surfaces:
 
 - CLI help, redaction, and examples
-- OpenAPI descriptions and extensions such as `x-lili-secret`, `x-lili-identifier`, and `x-lili-mutability`
+- OpenAPI descriptions and extensions such as `x-liche-secret`, `x-liche-identifier`, and `x-liche-mutability`
 - docs/reference markdown
 - Agent Skill and command manifest safety hints
 - dashboard metadata
@@ -329,7 +329,7 @@ OpenAPI is a projection of HTTP-backed capabilities. CLI is a projection of user
 
 The product schema must be enforceable against real implementation code, but server runtime belongs behind an adapter boundary.
 
-MVP `@lili/product` owns:
+MVP `@liche/product` owns:
 
 - product schema authoring API
 - normalization into canonical catalog
@@ -338,13 +338,13 @@ MVP `@lili/product` owns:
 - drift checks
 - server conformance against owned HTTP deployments
 
-MVP `@lili/product` does not own:
+MVP `@liche/product` does not own:
 
 - generated server routes
 - a generic product API runtime
 - workflow step execution
 
-A future server adapter may consume the same catalog and provide `implement(...)`, `boot()`, `request(...)`, or framework-specific route mounting. Until that adapter exists, apps implement handlers manually and `li-product conform` proves the implementation matches the schema.
+A future server adapter may consume the same catalog and provide `implement(...)`, `boot()`, `request(...)`, or framework-specific route mounting. Until that adapter exists, apps implement handlers manually and `liche-product conform` proves the implementation matches the schema.
 
 ## Refactor path
 

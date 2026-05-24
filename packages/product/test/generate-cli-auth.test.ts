@@ -91,7 +91,7 @@ function optionalConfigRemoteProduct(): RuntimeProduct {
 describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertions', () => {
   test('imports HTTP transport, resolveAuth, and resolveContext alongside declarative core helpers', () => {
     const source = generate(workersAuthProduct)
-    const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
+    const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, createFileSessionStore, defineCli, defineCommand, resolveAuth, resolveContext, z')
   })
 
@@ -172,7 +172,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('CONTEXTS')
     expect(source).not.toContain('resolveAuth')
     expect(source).not.toContain('applyAuth')
-    const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
+    const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
   })
 
@@ -197,13 +197,13 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
   })
 })
 
-describe('generated CLI runtime — auth fixture executes resolveAuth/resolveContext via @lili/core', () => {
+describe('generated CLI runtime — auth fixture executes resolveAuth/resolveContext via @liche/core', () => {
   let dir: string
   let modulePath: string
   let savedEnv: Record<string, string | undefined> = {}
 
   beforeEach(async () => {
-    // Generate inside the workspace so @lili/core resolves via the workspace's
+    // Generate inside the workspace so @liche/core resolves via the workspace's
     // node_modules. tmpdir() escapes the workspace and breaks Bun's resolver.
     const root = join(import.meta.dir, '.tmp')
     mkdirSync(root, { recursive: true })
@@ -215,13 +215,13 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       ACME_CI_TOKEN: process.env.ACME_CI_TOKEN,
       ACME_ORG_ID: process.env.ACME_ORG_ID,
       CI: process.env.CI,
-      LILI_HOME: process.env.LILI_HOME,
+      LICHE_HOME: process.env.LICHE_HOME,
     }
     delete process.env.ACME_TOKEN
     delete process.env.ACME_CI_TOKEN
     delete process.env.ACME_ORG_ID
     delete process.env.CI
-    delete process.env.LILI_HOME
+    delete process.env.LICHE_HOME
   })
 
   afterEach(() => {
@@ -517,7 +517,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
 
   test('generated OAuth login/whoami/switch/logout round-trip through file sessions', async () => {
     writeFileSync(modulePath, generate(oauthProduct()), 'utf8')
-    process.env.LILI_HOME = join(dir, 'home')
+    process.env.LICHE_HOME = join(dir, 'home')
     const originalFetch = globalThis.fetch
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input)
@@ -573,7 +573,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
 
   test('generated MCP path never uses stored session implicitly and hides interactive auth commands', async () => {
     writeFileSync(modulePath, generate(oauthProduct()), 'utf8')
-    process.env.LILI_HOME = join(dir, 'home')
+    process.env.LICHE_HOME = join(dir, 'home')
     const originalFetch = globalThis.fetch
     globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input)

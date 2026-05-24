@@ -1,6 +1,6 @@
 # Core error handling
 
-Status: authoritative design note for `@lili/core`. This document decides the simple error model core should converge on. It does not reopen the settled result envelope, structured recovery fields, config precedence, or agent-native output contract.
+Status: authoritative design note for `@liche/core`. This document decides the simple error model core should converge on. It does not reopen the settled result envelope, structured recovery fields, config precedence, or agent-native output contract.
 
 ## Goal
 
@@ -25,7 +25,7 @@ The flow now follows the split this document defines:
 - `ctx.ok()` and `ctx.error()` return factory-branded `Result` objects instead of throwing a sentinel.
 - `serveCli()` already serializes non-human failures as the full result envelope, even for handwritten CLIs.
 - `MCP tools/call` already maps command failures to `CallToolResult.isError` content.
-- Error classes (`BaseError`, `LiliError`, `ParseError`, `ValidationError`) and `toCommandError()` stay internal source-path implementation details, not package-root authoring APIs.
+- Error classes (`BaseError`, `LicheError`, `ParseError`, `ValidationError`) and `toCommandError()` stay internal source-path implementation details, not package-root authoring APIs.
 
 ## Decision
 
@@ -46,7 +46,7 @@ return fail(commandError({
 
 This lane is for user-recoverable, domain, policy, validation, auth, remote, and preflight outcomes that the command deliberately reports.
 
-No command author should need to construct or throw `LiliError`.
+No command author should need to construct or throw `LicheError`.
 
 ### Lane 2: internal runtime plumbing may throw
 
@@ -101,7 +101,7 @@ The public command-authoring API prefers values and factories:
 
 - keep public: `CommandError`, `FieldError`, `Result`, `ResultMeta`
 - keep public: `ok`, `fail`, `commandError`
-- keep internal: `BaseError`, `LiliError`, `ParseError`, `ValidationError`, `toCommandError`
+- keep internal: `BaseError`, `LicheError`, `ParseError`, `ValidationError`, `toCommandError`
 
 Tests may keep importing internals by source path for white-box validation, but that is not evidence that a class belongs in the package-root API.
 
@@ -172,7 +172,7 @@ The hard cutover has landed:
 6. Package-root error class exports were removed.
 7. `toCommandError()` and typed error classes remain source-path internals for parser/schema/auth/HTTP white-box coverage.
 
-Remaining internal cleanup is optional: auth/session and HTTP helpers may continue throwing `LiliError` behind executor normalization, but any command-authored path should return `fail(commandError(...))` or `ctx.error(...)`.
+Remaining internal cleanup is optional: auth/session and HTTP helpers may continue throwing `LicheError` behind executor normalization, but any command-authored path should return `fail(commandError(...))` or `ctx.error(...)`.
 
 ## Review checklist
 

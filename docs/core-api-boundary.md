@@ -1,6 +1,6 @@
 # Core API boundary freeze
 
-This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@lili/product` starts importing `@lili/core`.
+This records the Phase 2 decision for `packages/core/src/index.ts` before generated code in `@liche/product` starts importing `@liche/core`.
 
 ## Declarative authoring re-freeze
 
@@ -68,13 +68,13 @@ The package-root error authoring surface is object-first:
 
 `RunContext.ok()` and `RunContext.error()` now return these branded results instead of throwing a hidden executor sentinel. `BeforeExecuteHook` may also return a branded `Result` to short-circuit through the same lifecycle path. The executor removed the old `Done` sentinel and accepts only branded results as control results.
 
-`BaseError`, `LiliError`, `ParseError`, `ValidationError`, and `toCommandError()` are internal source-path implementation details. They remain available to parser/schema/auth/HTTP internals and white-box tests, but are no longer exported from `@lili/core`.
+`BaseError`, `LicheError`, `ParseError`, `ValidationError`, and `toCommandError()` are internal source-path implementation details. They remain available to parser/schema/auth/HTTP internals and white-box tests, but are no longer exported from `@liche/core`.
 
 Out of scope: `ctx.sources.options` (per-option provenance). Locality source values are restricted to `"flag" | "schema-default"` until core carries option provenance — that's a separate change with its own re-freeze.
 
 ## Auth/session re-freeze target
 
-When the auth/session slice lands, `@lili/core` deliberately widens again to support generated and handwritten remote-operation CLIs. The planned top-level public additions are:
+When the auth/session slice lands, `@liche/core` deliberately widens again to support generated and handwritten remote-operation CLIs. The planned top-level public additions are:
 
 - `secret(value)` and `SecretString` — redaction boundary for token material. Stringification and JSON serialization must redact; only transport/session code may reveal.
 - `resolveAuth(input)` — async credential resolution over env and, in later slices, stored sessions.
@@ -89,7 +89,7 @@ This re-freeze does not make auth a separate package. The authoritative behavior
 
 ### Phase 3D-A landed (env-only auth)
 
-The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@liche/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
 - Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`.
 - Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `CommandAuthMetadata`.
@@ -98,7 +98,7 @@ Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStor
 
 `RunContext` gained `invocation: 'cli' | 'ci' | 'agent' | 'mcp'` so generated command code can pass the real invocation posture into `resolveAuth`. Plain CLI invocations infer `ci` from common CI env vars; MCP and fetch-backed agent calls pass `mcp` / `agent` explicitly.
 
-Internal `LiliError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` gained the matching optional `details` field. `toCommandError` propagates it behind the executor boundary. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface; public command code should emit `CommandError` objects through `ctx.error(...)` / `fail(...)`.
+Internal `LicheError` gained a structured `details: Record<string, unknown>` slot (with `BaseError.details` widened to `string | Record<string, unknown> | undefined` so the override is type-safe) and `CommandError` gained the matching optional `details` field. `toCommandError` propagates it behind the executor boundary. `AUTH_*` error factories (`authMissing`, `authCiTokenMissing`, `authContextRequired`, `authScopeMissing`, `authPermissionDenied`, `authInvalid`, `authExpired`) stay package-internal and are not part of the frozen surface; public command code should emit `CommandError` objects through `ctx.error(...)` / `fail(...)`.
 
 ### Agent recovery error widening landed
 
@@ -106,7 +106,7 @@ Internal `LiliError` gained a structured `details: Record<string, unknown>` slot
 
 ### Phase 3D-B/C landed (sessions, generated auth commands, OAuth device)
 
-The session and OAuth slices from `docs/auth-session.md` have shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+The session and OAuth slices from `docs/auth-session.md` have shipped. The following are now real public exports of `@liche/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
 - Values: `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`.
 - Types: `SessionStore`, `StoredProfile`, `AuthCommandRuntime`, `AuthGlobalOptions`, `AuthIdentityProbeInput`, `AuthRuntimeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`, `FileSessionStoreOptions`, and `GlobalOptions`.
@@ -117,7 +117,7 @@ The file session store is intentionally plaintext JSON with restricted permissio
 
 ### Phase 4-A landed (core HTTP transport)
 
-The first outbound remote transport slice has shipped. The following are now real public exports of `@lili/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+The first outbound remote transport slice has shipped. The following are now real public exports of `@liche/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
 - Values: `serializeHttpOperationRequest`, `callHttpOperation`.
 - Types: `RuntimeValue`, `HttpAuth`, `HttpMethod`, `HttpFetch`, `HttpOperationBind`, `HttpOperationRequestSpec`, `SerializedHttpRequest`, `HttpOperationCall`, `RemoteErrorDetails`.
@@ -141,16 +141,16 @@ Runtime guarantees:
 - `--no-config` disables project and user discovery.
 - Project/user config, session/profile defaults, option env defaults, argv, and schema defaults keep distinct provenance.
 
-This re-freeze replaced the low-level loader-shaped config compatibility hook with a declarative public contract on `DefineCliOptions`. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@lili/core` APIs.
+This re-freeze replaced the low-level loader-shaped config compatibility hook with a declarative public contract on `DefineCliOptions`. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@liche/core` APIs.
 
-Public means importable from `@lili/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
+Public means importable from `@liche/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
 ## Freeze rules
 
 - New handwritten CLI code declares commands through `defineCli()` / `defineCommand()` and uses core runtime behavior through documented top-level APIs only.
 - Generated CLI code declares through `defineCli()` / `defineCommand()` and must not depend on internal registry state.
 - Generated code must not import `stateSymbol`, `InternalCli`, `CliState`, parser helpers, command registry helpers, command guards, help renderers, or schema-adapter internals.
-- Runtime reflection in core is backed by serializable `CommandContract` records, not raw `Entry` / `CliState` inspection. Product-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces still belong to `@lili/product` when the Product catalog is the source of truth.
+- Runtime reflection in core is backed by serializable `CommandContract` records, not raw `Entry` / `CliState` inspection. Product-generated OpenAPI, MCP, docs, Agent Skill, and command manifest surfaces still belong to `@liche/product` when the Product catalog is the source of truth.
 - Remove or reshape current index exports before freezing. Do not keep duplicate or state-shaped exports just because tests currently reach them.
 - Widen the public surface only when an extension cannot be implemented through public lanes without importing internals, mutating hidden runtime state, eagerly importing implementation modules, or duplicating parser/executor/security/provenance behavior. The widening must add a reusable lane, not a one-off helper.
 
@@ -196,7 +196,7 @@ The config primitive additions above are now part of the keep-public list and ar
 
 ## Internalized Before V1
 
-The public-surface minimization pass after `docs/research/public-surface-audit.md` removed these weakly justified root exports from `@lili/core`.
+The public-surface minimization pass after `docs/research/public-surface-audit.md` removed these weakly justified root exports from `@liche/core`.
 
 Deleted because they were test-only auth metadata mirrors with no generated-code, extension-lane, or package-root consumer:
 
@@ -213,7 +213,7 @@ Kept only as private implementation helpers because production core code still u
 Moved from package-root API to source-path internals because public command code now uses the object factories and machine envelopes:
 
 - `BaseError`
-- `LiliError`
+- `LicheError`
 - `ParseError`
 - `ValidationError`
 - `toCommandError`
@@ -231,7 +231,7 @@ Re-promoting any private helper now requires a package-root consumer fixture or 
 ## Remove from the public index
 
 - `default` (`packages/core/src/cli/context.ts:7`) — no test, docs, or source caller; delete this default export before freeze.
-- legacy builder types such as `CommandDefinition` and `CreateOptions` — internal normalized runtime shapes only; they are not exported from `@lili/core`.
+- legacy builder types such as `CommandDefinition` and `CreateOptions` — internal normalized runtime shapes only; they are not exported from `@liche/core`.
 
 ## Rename or reshape
 
@@ -258,4 +258,4 @@ These imports are not promotion candidates:
 - parser/config functions from `packages/core/src/parser/*`
 - Zod adapter helpers from `packages/core/src/schema/zod.ts`
 
-White-box tests can keep using these while the source tree is tested directly. Package and generated-code boundary tests should prove no consumer imports them from `@lili/core`.
+White-box tests can keep using these while the source tree is tested directly. Package and generated-code boundary tests should prove no consumer imports them from `@liche/core`.

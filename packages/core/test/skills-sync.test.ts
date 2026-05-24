@@ -10,8 +10,8 @@ describe('writeSkill — agent-specific target dirs', () => {
   let home: string
   let cwd: string
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'lili-home-'))
-    cwd = mkdtempSync(join(tmpdir(), 'lili-cwd-'))
+    home = mkdtempSync(join(tmpdir(), 'liche-home-'))
+    cwd = mkdtempSync(join(tmpdir(), 'liche-cwd-'))
   })
   afterEach(() => {
     rmSync(home, { force: true, recursive: true })
@@ -42,10 +42,10 @@ describe('writeSkill — agent-specific target dirs', () => {
     expect(path).toBe(`${cwd}/.cursor/skills/app/SKILL.md`)
   })
 
-  test('unknown agent falls back to $HOME/.config/lili/skills/<name>/SKILL.md', async () => {
+  test('unknown agent falls back to $HOME/.config/liche/skills/<name>/SKILL.md', async () => {
     const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const path = await Skill.writeSkill('app', stateOf(cli), { agent: 'unknown', env: { HOME: home }, cwd })
-    expect(path).toBe(`${home}/.config/lili/skills/app/SKILL.md`)
+    expect(path).toBe(`${home}/.config/liche/skills/app/SKILL.md`)
   })
 
   test('writes the actual SKILL.md content', async () => {
@@ -61,8 +61,8 @@ describe('writeMcp — agent-specific target files', () => {
   let home: string
   let cwd: string
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'lili-home-'))
-    cwd = mkdtempSync(join(tmpdir(), 'lili-cwd-'))
+    home = mkdtempSync(join(tmpdir(), 'liche-home-'))
+    cwd = mkdtempSync(join(tmpdir(), 'liche-cwd-'))
   })
   afterEach(() => {
     rmSync(home, { force: true, recursive: true })
@@ -93,9 +93,9 @@ describe('writeMcp — agent-specific target files', () => {
     expect(file).toBe(`${cwd}/.cursor/mcp.json`)
   })
 
-  test('no agent → $HOME/.config/lili/mcp/<name>.json', async () => {
+  test('no agent → $HOME/.config/liche/mcp/<name>.json', async () => {
     const file = await Skill.writeMcp('app', { command: 'app', env: { HOME: home }, cwd })
-    expect(file).toBe(`${home}/.config/lili/mcp/app.json`)
+    expect(file).toBe(`${home}/.config/liche/mcp/app.json`)
     const json = await Bun.file(file).json()
     expect(json).toEqual({ mcpServers: { app: { args: ['--mcp'], command: 'app' } } })
   })
@@ -138,7 +138,7 @@ describe('writeMcp — agent-specific target files', () => {
     process.env['HOME'] = home
     try {
       const file = await Skill.writeMcp('app')
-      expect(file).toBe(`${home}/.config/lili/mcp/app.json`)
+      expect(file).toBe(`${home}/.config/liche/mcp/app.json`)
     } finally {
       if (previousHome === undefined) delete process.env['HOME']
       else process.env['HOME'] = previousHome

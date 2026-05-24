@@ -11,13 +11,13 @@ V1 should publish the package suite, not a single generic end-user CLI.
 The public product is:
 
 ```txt
-@lili/core       runtime CLI framework
-@lili/product    Product schema, generated surfaces, drift checks, conformance
-@lili/build      Bun compile/provenance helpers
-@lili/releases   manifest, renderers, publisher planning/execution, rollback planning
+@liche/core       runtime CLI framework
+@liche/product    Product schema, generated surfaces, drift checks, conformance
+@liche/build      Bun compile/provenance helpers
+@liche/releases   manifest, renderers, publisher planning/execution, rollback planning
 ```
 
-`li-product` and `li-build` are developer tool binaries that ship with their packages. They are not the v1 positioning by themselves. A later hosted product or website can dogfood these packages, but it must not block v1 package publication.
+`liche-product` and `liche-build` are developer tool binaries that ship with their packages. They are not the v1 positioning by themselves. A later hosted product or website can dogfood these packages, but it must not block v1 package publication.
 
 The v1 story should be:
 
@@ -48,7 +48,7 @@ First, fix the auth default contradiction: omitting the `auth` field must normal
 
 The agent-native release focus is now narrow. Declarative core and Product authoring are hard-cut, the core config primitive has landed, generated remote base URL wiring is implemented for declared literal/env/config sources, and `gen` is gone from core. The remaining agent-readiness work should optimize recovery and discovery instead of reopening the framework shape:
 
-- Structured recovery errors now cover the core envelope, auth failures, remote HTTP transport failures, generated config-backed remote failures, and the `li-product` generate/compile/conform commands. Remaining work is to measure whether agents recover from those fields instead of prompting users with raw error text.
+- Structured recovery errors now cover the core envelope, auth failures, remote HTTP transport failures, generated config-backed remote failures, and the `liche-product` generate/compile/conform commands. Remaining work is to measure whether agents recover from those fields instead of prompting users with raw error text.
 - MCP metadata parity has landed. Direct core `tools/list` includes declared command output schemas, and Product-generated MCP tools mirror the MCP-standard `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` fields from catalog effects/policy.
 - Keep `mcp add` and `skills add` as opt-in core helpers only for narrow local registration/sync. `mcp add` owns the generic MCP executable/args config shape, including splitting command overrides and appending `--mcp` once. Broader provider workflows such as VS Code/Codex config formats, Claude Desktop app config, `.mcpb` bundles, URL skill installers, or vendor publishing should be adapter work unless a public-lane test proves core must widen.
 - Use extension-lane tests to settle future boundary debates. If a feature can be implemented through `CommandContract`, `Catalog`, generated OpenAPI, lifecycle events, hooks, middleware, documented config, or release/build records without internals, it stays out of core.
@@ -74,8 +74,8 @@ Publish all four first-party packages together once the external-consumer checks
 
 Current package-state status:
 
-- Root workspace is private, which is correct. `@lili/core`, `@lili/build`, `@lili/product`, and `@lili/releases` are public package entries with explicit `publishConfig.access = "public"`.
-- Package versions are synchronized for the first public package lane. Package-to-package `@lili/*` dependencies use the matching caret range, and the package-readiness test enforces that relationship.
+- Root workspace is private, which is correct. `@liche/core`, `@liche/build`, `@liche/product`, and `@liche/releases` are public package entries with explicit `publishConfig.access = "public"`.
+- Package versions are synchronized for the first public package lane. Package-to-package `@liche/*` dependencies use the matching caret range, and the package-readiness test enforces that relationship.
 - V1 package format is Bun-only source publication. Export maps point at checked-in TypeScript source, bins point at TypeScript Bun entrypoints, and every publishable package declares `engines.bun >= 1.3.0`.
 - V1 does not emit `dist` or `.d.ts` as published package artifacts. That avoids a second build/declaration pipeline while the product contract is explicitly Bun-native. A Node/npm-general package format is a future compatibility project, not a v1 blocker.
 - `files` lists are intentionally narrow: `src`, `README.md`, and `LICENSE`. Internal docs, tests, examples, and planning material must not be published from package tarballs.
@@ -90,19 +90,19 @@ Verification:
 
 - `npm pack --dry-run` or equivalent pack inspection for every publishable package.
 - Temp Bun consumer installs packed artifacts and imports documented entrypoints by package name.
-- Package boundary tests prove `@lili/core` does not import product/build/releases, `@lili/releases` does not import core/product/build, and concrete renderers/publishers stay behind subpath exports.
+- Package boundary tests prove `@liche/core` does not import product/build/releases, `@liche/releases` does not import core/product/build, and concrete renderers/publishers stay behind subpath exports.
 - API snapshot tests cover every public root export and documented subpath export.
 
 ## CLI and V2 cutline
 
-Do not invent one top-level `li` CLI as the v1 centerpiece unless it has a clear job that is not already owned by `li-product` or `li-build`.
+Do not invent one top-level `li` CLI as the v1 centerpiece unless it has a clear job that is not already owned by `liche-product` or `liche-build`.
 
 For v1:
 
-- `li-product` owns schema loading, generation, drift checks, and conformance.
-- `li-build` owns compile/provenance helpers.
+- `liche-product` owns schema loading, generation, drift checks, and conformance.
+- `liche-build` owns compile/provenance helpers.
 - Generated product CLIs own their own user-facing command names.
-- `@lili/core` remains a library for handwritten CLIs.
+- `@liche/core` remains a library for handwritten CLIs.
 
 A V2 hosted surface can expose schema management, hosted generation, API keys, docs hosting, release dashboards, artifact distribution, hosted telemetry ingestion, team administration, policy sync, and audit logs. That is a separate product, not the proof that the packages work.
 
@@ -149,11 +149,11 @@ Core now has a first-class opt-in config primitive for CLI authors: `createConfi
 Telemetry should use a reserved framework namespace in that same loaded config object, not command options:
 
 ```yaml
-lili:
+liche:
   telemetry:
     enabled: false
     mode: off # off | local | debug
-    file: ./.lili/telemetry.ndjson
+    file: ./.liche/telemetry.ndjson
 
 commands:
   deploy:
@@ -161,26 +161,26 @@ commands:
       region: iad
 ```
 
-The reserved namespace is `lili.telemetry`, not top-level `telemetry`, so generated CLIs and handwritten CLIs can still use arbitrary product keys without colliding with framework controls. The v1 resolver should treat config as one input to the control decision, not as proof that telemetry may run. Telemetry is active only when the CLI author has enabled telemetry support and the user/operator has opted in.
+The reserved namespace is `liche.telemetry`, not top-level `telemetry`, so generated CLIs and handwritten CLIs can still use arbitrary product keys without colliding with framework controls. The v1 resolver should treat config as one input to the control decision, not as proof that telemetry may run. Telemetry is active only when the CLI author has enabled telemetry support and the user/operator has opted in.
 
 Recommended precedence:
 
 1. `DO_NOT_TRACK=1`, `--telemetry=off`, or `--no-config` disabling a config-only opt-in
 2. `--telemetry=debug`
 3. explicit CLI-specific env var such as `ACME_TELEMETRY=1|0|debug`, configured by the CLI author or generated from the Product id
-4. `LILI_TELEMETRY=1|0|debug` for framework-level local development
-5. loaded config at `lili.telemetry`
+4. `LICHE_TELEMETRY=1|0|debug` for framework-level local development
+5. loaded config at `liche.telemetry`
 6. author default, which must remain off unless both the framework feature and user/operator opt-in are present
 
 Config is loaded after global parsing, command selection, help/version/completion/schema handling, and not-found help. That is acceptable because the telemetry allowlist is command/validation only. Do not force config loading just to decide whether help, version, completion, schema, or command-not-found local events should export; those events are local-only by default.
 
-Product-generated config schema now includes declared Product config and bindings. Before telemetry config is documented publicly, the schema must either include explicitly reserved framework namespaces such as `lili.telemetry`, or the telemetry namespace must stay outside the generated app config schema. Unknown product keys still fail under strict declared schemas.
+Product-generated config schema now includes declared Product config and bindings. Before telemetry config is documented publicly, the schema must either include explicitly reserved framework namespaces such as `liche.telemetry`, or the telemetry namespace must stay outside the generated app config schema. Unknown product keys still fail under strict declared schemas.
 
 ## README and docs plan
 
 The root README should become a public starting point, not a planning index. It should contain:
 
-- what lili is
+- what liche is
 - when to use handwritten core vs Product schema
 - install commands
 - a small handwritten CLI example
@@ -194,10 +194,10 @@ Package READMEs should be narrow:
 
 | Package | README job |
 |---|---|
-| `@lili/core` | Build a handwritten CLI and use runtime primitives. |
-| `@lili/product` | Define a Product schema, generate surfaces, run drift/conformance checks. |
-| `@lili/build` | Compile a generated or handwritten CLI and record provenance. |
-| `@lili/releases` | Package and publish final artifacts from one manifest. |
+| `@liche/core` | Build a handwritten CLI and use runtime primitives. |
+| `@liche/product` | Define a Product schema, generate surfaces, run drift/conformance checks. |
+| `@liche/build` | Compile a generated or handwritten CLI and record provenance. |
+| `@liche/releases` | Package and publish final artifacts from one manifest. |
 
 The current `docs/` tree is internal requirement material. It should not be published as-is. For v1, create a curated public docs surface from the README, package READMEs, examples, and generated reference docs. Keep internal requirement docs available in the repo for traceability, but do not make users read implementation history.
 
@@ -215,13 +215,13 @@ Recommended examples:
 
 | Example | Purpose | Packages used |
 |---|---|---|
-| `examples/handwritten-cli` | Minimal handwritten CLI with JSON output and help. | `@lili/core` |
-| `examples/product-generated-cli` | Product schema generates CLI, command manifest, OpenAPI, docs, and agent surfaces. | `@lili/product`, `@lili/core` |
-| `examples/remote-backed-cli` | HTTP-backed capability uses core transport and conformance against a local server. | `@lili/product`, `@lili/core` |
-| `examples/auth-session-cli` | Env auth, file session/profile state, OAuth device login in a fake auth server, context switching, and no implicit login. | `@lili/product`, `@lili/core` |
-| `examples/diagnostics-telemetry-cli` | Generated diagnostics plus opt-in local telemetry sink and redaction behavior. | `@lili/product`, `@lili/core` |
+| `examples/handwritten-cli` | Minimal handwritten CLI with JSON output and help. | `@liche/core` |
+| `examples/product-generated-cli` | Product schema generates CLI, command manifest, OpenAPI, docs, and agent surfaces. | `@liche/product`, `@liche/core` |
+| `examples/remote-backed-cli` | HTTP-backed capability uses core transport and conformance against a local server. | `@liche/product`, `@liche/core` |
+| `examples/auth-session-cli` | Env auth, file session/profile state, OAuth device login in a fake auth server, context switching, and no implicit login. | `@liche/product`, `@liche/core` |
+| `examples/diagnostics-telemetry-cli` | Generated diagnostics plus opt-in local telemetry sink and redaction behavior. | `@liche/product`, `@liche/core` |
 | `examples/compiled-release` | Compile a CLI, write a manifest, render npm/PyPI/Homebrew/Scoop artifacts, run publish dry-run. | all four packages |
-| `examples/web-app-capabilities` | Optional later example showing a web app exposing capabilities without a framework adapter. | `@lili/product`, app-local server |
+| `examples/web-app-capabilities` | Optional later example showing a web app exposing capabilities without a framework adapter. | `@liche/product`, app-local server |
 
 Do not start with a large hosted demo. The first examples should be small enough that failures identify package defects instead of app complexity.
 
@@ -246,10 +246,10 @@ Current measured baseline from the release-candidate metrics command:
 
 | Package | Source LOC | Source files | Test LOC | Test files | Root exports | Subpath exports | Runtime deps | Boundary exceptions |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `@lili/core` | 5287 | 53 | 5652 | 32 | 22 | 0 | 3 | 0 |
-| `@lili/build` | 714 | 7 | 596 | 6 | 14 | 0 | 2 | 0 |
-| `@lili/product` | 5294 | 27 | 6921 | 25 | 31 | 0 | 3 | 0 |
-| `@lili/releases` | 4582 | 28 | 4150 | 17 | 25 | 12 | 2 | 0 |
+| `@liche/core` | 5287 | 53 | 5652 | 32 | 22 | 0 | 3 | 0 |
+| `@liche/build` | 714 | 7 | 596 | 6 | 14 | 0 | 2 | 0 |
+| `@liche/product` | 5294 | 27 | 6921 | 25 | 31 | 0 | 3 | 0 |
+| `@liche/releases` | 4582 | 28 | 4150 | 17 | 25 | 12 | 2 | 0 |
 | Total | 15877 | 115 | 17319 | 80 | 92 | 12 | 10 | 0 |
 
 LOC is a pressure gauge, not a product goal. A package should shrink when simplification removes concepts, but a package can grow if it replaces hidden behavior with public guard rails. Track:
@@ -263,8 +263,8 @@ LOC is a pressure gauge, not a product goal. A package should shrink when simpli
 
 Simplification targets before v1:
 
-- Keep `@lili/build` narrow. It should remain compile/provenance only.
-- Keep `@lili/releases` manifest/data-driven. Publishing must consume verified artifact records, not workspace state.
+- Keep `@liche/build` narrow. It should remain compile/provenance only.
+- Keep `@liche/releases` manifest/data-driven. Publishing must consume verified artifact records, not workspace state.
 - Remove duplicate schema/manifest primitives where package-local helpers can make the code clearer.
 - Prefer examples over new abstractions when the problem is unclear.
 - Do not add compatibility shims for old names or old package layout.
@@ -280,7 +280,7 @@ Verification:
 The main Product/runtime support gaps are closed enough that the next work is release-candidate hygiene, not another framework-shape pass. Before publishing:
 
 - Run the local release-candidate gate: `bun run release:check`.
-- Run `bun run --silent release:names` near publication time. The current npm registry check on 2026-05-24 returned no public packages for `@lili/core`, `@lili/build`, `@lili/product`, or `@lili/releases`, but that does not prove organization ownership or publish rights.
+- Run `bun run --silent release:names` near publication time. The current npm registry check on 2026-05-24 returned no public packages for `@liche/core`, `@liche/build`, `@liche/product`, or `@liche/releases`, but that does not prove organization ownership or publish rights.
 - Fill publisher-confirmed repository, homepage, funding/support, provenance, changelog, semver, and security metadata. Do not invent package metadata before the public URLs and support policy are real.
 - Run publisher plan/preflight/execute dry-runs in the actual publishing environment, including npm/PyPI trusted-publishing or explicit token fallback decisions.
 - Verify GitHub release artifact layout and checksums against the final release manifest.
@@ -314,7 +314,7 @@ Verification:
 
 - generated remote commands call core transport and validate untrusted HTTP output
 - auth-aware 401/403 mapping follows `docs/auth-session.md` and `docs/http-operation-transport.md`
-- `li-product conform` runs against an owned fixture server and stays separate from `generate --check`
+- `liche-product conform` runs against an owned fixture server and stays separate from `generate --check`
 - generated MCP command tools, Agent Skill/LLM surfaces, docs/reference markdown, command manifest, and config schema have manifest records and drift checks
 
 ### Phase 8C: auth and session closure
@@ -340,13 +340,13 @@ Verification:
 - catalog/discovery artifacts are versioned, packaged, and tracked by drift checks
 - install/update/channel metadata supports static yanked-version and out-of-date notices without hosted infrastructure
 
-Current status: generated Product `doctor --json` combines `runLocalDoctor(...)` with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, static `ops.release` metadata, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. `ops.release` is Product-owned static metadata, not a runtime dependency on `@lili/releases`: generated docs, discovery JSON, `release --json`, and `doctor --json` can explain install commands, channel, latest known version, packages, and yanked versions without a hosted update service.
+Current status: generated Product `doctor --json` combines `runLocalDoctor(...)` with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, static `ops.release` metadata, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. `ops.release` is Product-owned static metadata, not a runtime dependency on `@liche/releases`: generated docs, discovery JSON, `release --json`, and `doctor --json` can explain install commands, channel, latest known version, packages, and yanked versions without a hosted update service.
 
 ### Phase 8E: release publish closure
 
-Finish the v1 publish contract without requiring a hosted lili control plane.
+Finish the v1 publish contract without requiring a hosted liche control plane.
 
-Current status: `li-release publish --no-dry-run` now has explicit executors for npm, PyPI token upload, Homebrew, and Scoop. Execution re-reads artifact bytes and checks size/sha256 before every executor call. Successful executor receipts record stable step order, package id, ecosystem, artifact path/name/hash/size, credential posture without secrets, and executor provenance metadata. npm delegates to `npm publish` and requests npm provenance when running under GitHub Actions. PyPI token publishing delegates to `python -m twine upload`; PyPI trusted-publisher/OIDC credentials are represented in preflight/execute metadata but intentionally fail before mutation until they are run through the official trusted-publisher workflow path.
+Current status: `liche-release publish --no-dry-run` now has explicit executors for npm, PyPI token upload, Homebrew, and Scoop. Execution re-reads artifact bytes and checks size/sha256 before every executor call. Successful executor receipts record stable step order, package id, ecosystem, artifact path/name/hash/size, credential posture without secrets, and executor provenance metadata. npm delegates to `npm publish` and requests npm provenance when running under GitHub Actions. PyPI token publishing delegates to `python -m twine upload`; PyPI trusted-publisher/OIDC credentials are represented in preflight/execute metadata but intentionally fail before mutation until they are run through the official trusted-publisher workflow path.
 
 Verification:
 

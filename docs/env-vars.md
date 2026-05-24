@@ -1,6 +1,6 @@
 # Environment Variables
 
-`lili` exposes env vars to commands through two distinct channels. Use the right one for the job.
+`liche` exposes env vars to commands through two distinct channels. Use the right one for the job.
 
 ## Two channels
 
@@ -9,7 +9,7 @@
 Use when an env var should act as the **default value for a CLI option**, overridable on the command line.
 
 ```ts
-import { defineCli, defineCommand, z } from "@lili/core";
+import { defineCli, defineCommand, z } from "@liche/core";
 
 export const cli = defineCli({
   name: "myapp",

@@ -15,7 +15,7 @@ import type {
   StepExecutorResult,
 } from '../src/index.js'
 
-const tmp = mkdtempSync(join(tmpdir(), 'lili-releases-execute-'))
+const tmp = mkdtempSync(join(tmpdir(), 'liche-releases-execute-'))
 
 afterAll(() => {
   rmSync(tmp, { recursive: true, force: true })
@@ -86,13 +86,13 @@ function buildFixture(): Fixture {
   const npmPlatformStep: NpmPublishStep = {
     kind: 'npm-publish',
     role: 'platform',
-    packageId: 'npm:@lili/workers-linux-x64',
+    packageId: 'npm:@liche/workers-linux-x64',
     ecosystem: 'npm',
     artifactPath: npmPlatform.path,
     artifactFileName: npmPlatform.fileName,
     sha256: npmPlatform.sha256,
     size: npmPlatform.size,
-    name: '@lili/workers-linux-x64',
+    name: '@liche/workers-linux-x64',
     version: '0.1.0',
     registry: 'https://registry.npmjs.org/',
     tag: 'latest',
@@ -101,13 +101,13 @@ function buildFixture(): Fixture {
   const npmUmbrellaStep: NpmPublishStep = {
     kind: 'npm-publish',
     role: 'umbrella',
-    packageId: 'npm:@lili/workers',
+    packageId: 'npm:@liche/workers',
     ecosystem: 'npm',
     artifactPath: npmUmbrella.path,
     artifactFileName: npmUmbrella.fileName,
     sha256: npmUmbrella.sha256,
     size: npmUmbrella.size,
-    name: '@lili/workers',
+    name: '@liche/workers',
     version: '0.1.0',
     registry: 'https://registry.npmjs.org/',
     tag: 'latest',
@@ -115,13 +115,13 @@ function buildFixture(): Fixture {
   }
   const pypiStep: PypiPublishStep = {
     kind: 'pypi-upload',
-    packageId: 'pypi:lili-workers',
+    packageId: 'pypi:liche-workers',
     ecosystem: 'pypi',
     artifactPath: pypi.path,
     artifactFileName: pypi.fileName,
     sha256: pypi.sha256,
     size: pypi.size,
-    name: 'lili-workers',
+    name: 'liche-workers',
     version: '0.1.0',
     repositoryUrl: 'https://upload.pypi.org/legacy/',
   }
@@ -135,7 +135,7 @@ function buildFixture(): Fixture {
     size: homebrew.size,
     name: 'workers',
     version: '0.1.0',
-    tap: { owner: 'lili', repo: 'homebrew-tap', branch: 'main' },
+    tap: { owner: 'liche', repo: 'homebrew-tap', branch: 'main' },
     targetPath: 'Formula/workers.rb',
   }
   const scoopStep: ScoopPublishStep = {
@@ -148,7 +148,7 @@ function buildFixture(): Fixture {
     size: scoop.size,
     name: 'workers',
     version: '0.1.0',
-    bucket: { owner: 'lili', repo: 'scoop-bucket', branch: 'main' },
+    bucket: { owner: 'liche', repo: 'scoop-bucket', branch: 'main' },
     targetPath: 'bucket/workers.json',
   }
 
@@ -216,15 +216,15 @@ describe('executeReleasePublish', () => {
     ])
     expect(log[0]?.bytesLength).toBe(baseFixture.artifacts.npmPlatform.size)
     expect(result.completed.map((receipt) => receipt.step.packageId)).toEqual([
-      'npm:@lili/workers-linux-x64',
-      'npm:@lili/workers',
-      'pypi:lili-workers',
+      'npm:@liche/workers-linux-x64',
+      'npm:@liche/workers',
+      'pypi:liche-workers',
       'homebrew:workers',
       'scoop:workers',
     ])
     expect(result.completed[2]).toMatchObject({
       stepIndex: 2,
-      packageId: 'pypi:lili-workers',
+      packageId: 'pypi:liche-workers',
       ecosystem: 'pypi',
       artifact: {
         path: baseFixture.artifacts.pypi.path,
@@ -265,7 +265,7 @@ describe('executeReleasePublish', () => {
     expect(result.completed).toEqual([])
     expect(result.failure.code).toBe('ARTIFACT_READ_FAILED')
     expect(result.failure.stepIndex).toBe(0)
-    expect(result.failure.packageId).toBe('npm:@lili/workers-linux-x64')
+    expect(result.failure.packageId).toBe('npm:@liche/workers-linux-x64')
     expect(result.failure.details).toEqual({
       artifactPath: baseFixture.artifacts.npmPlatform.path,
     })
@@ -292,7 +292,7 @@ describe('executeReleasePublish', () => {
     expect(result.failure.ecosystem).toBe('pypi')
     expect(result.failure.details).toEqual({
       stepIndex: 2,
-      packageId: 'pypi:lili-workers',
+      packageId: 'pypi:liche-workers',
       ecosystem: 'pypi',
       artifactPath: baseFixture.artifacts.pypi.path,
       expectedSha256: baseFixture.artifacts.pypi.sha256,
@@ -364,7 +364,7 @@ describe('executeReleasePublish', () => {
       failure: {
         code: 'GITHUB_PUSH_REJECTED',
         message: 'tap rejected the push',
-        details: { remote: 'https://example.test/lili/homebrew-tap.git' },
+        details: { remote: 'https://example.test/liche/homebrew-tap.git' },
       },
     })
     const result = await executeReleasePublish({
@@ -380,7 +380,7 @@ describe('executeReleasePublish', () => {
     expect(result.failure.message).toBe('tap rejected the push')
     expect(result.failure.details).toEqual({
       executorCode: 'GITHUB_PUSH_REJECTED',
-      remote: 'https://example.test/lili/homebrew-tap.git',
+      remote: 'https://example.test/liche/homebrew-tap.git',
     })
     expect(result.completed).toHaveLength(3)
     expect(log.find((entry) => entry.ecosystem === 'scoop')).toBeUndefined()
@@ -419,8 +419,8 @@ describe('executeReleasePublish', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.completed.map((receipt) => receipt.step.packageId)).toEqual([
-      'npm:@lili/workers-linux-x64',
-      'npm:@lili/workers',
+      'npm:@liche/workers-linux-x64',
+      'npm:@liche/workers',
     ])
     for (const receipt of result.completed) {
       expect(receipt.metadata).toEqual({ ok: true })

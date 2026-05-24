@@ -4,7 +4,7 @@ import {
   defineCli,
   defineCommand,
   z,
-} from '@lili/core'
+} from '@liche/core'
 import type {
   BeforeExecuteHook,
   CliEvent,
@@ -14,7 +14,7 @@ import type {
   DefineCliOptions,
   MiddlewareHandler,
   ServeOptions,
-} from '@lili/core'
+} from '@liche/core'
 
 type CapturedRun = { exitCode: number; stderr: string; stdout: string }
 type ExtensionLane = {
@@ -27,7 +27,7 @@ type ExtensionLane = {
 describe('extension lane coverage', () => {
   test('fixture consumes only the public package root', async () => {
     const source = await Bun.file(import.meta.path).text()
-    expect(source).toContain("from '@lili/core'")
+    expect(source).toContain("from '@liche/core'")
     expect(source).not.toMatch(/from ['"][^'"]*src\//)
     expect(source).not.toMatch(/from ['"][^'"]*(stateSymbol|registry|parser|InternalCli)/)
   })

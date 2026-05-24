@@ -18,8 +18,8 @@ function generate(catalog: Catalog, surfaceId = 'openapi'): string {
     canonicalIrDigest: canonicalDigest(catalog),
     generationOptionsDigest: canonicalDigest({
       surfaceId,
-      openapiFileName: 'lili.generated.openapi.json',
-      manifestFileName: 'lili.generated.manifest.json',
+      openapiFileName: 'liche.generated.openapi.json',
+      manifestFileName: 'liche.generated.manifest.json',
     }),
     surfaceId,
   })
@@ -41,15 +41,15 @@ describe('generateOpenapi — golden fixture', () => {
 })
 
 describe('generateOpenapi — document shape', () => {
-  test('header carries openapi 3.1.0 plus lili catalog + options digests', () => {
+  test('header carries openapi 3.1.0 plus liche catalog + options digests', () => {
     const catalog = normalizeProduct(workersProduct)
     const doc = JSON.parse(generate(catalog))
     expect(doc.openapi).toBe('3.1.0')
     expect(doc.info.title).toBe('Workers')
     expect(doc.info.version).toBe('1.0.0')
-    expect(doc.info['x-lili-catalog-digest']).toBe(canonicalDigest(catalog))
-    expect(doc.info['x-lili-generator-version']).toBe('0.0.0')
-    expect(doc.info['x-lili-surface-id']).toBe('openapi')
+    expect(doc.info['x-liche-catalog-digest']).toBe(canonicalDigest(catalog))
+    expect(doc.info['x-liche-generator-version']).toBe('0.0.0')
+    expect(doc.info['x-liche-surface-id']).toBe('openapi')
   })
 
   test('omits info.description when the product has none', () => {
@@ -150,13 +150,13 @@ describe('generateOpenapi — list output schemas', () => {
     expect(doc.components.schemas.script.type).toBe('object')
   })
 
-  test('component schema preserves lili vendor extensions on fields', () => {
+  test('component schema preserves liche vendor extensions on fields', () => {
     const doc = JSON.parse(generate(normalizeProduct(workersProduct)))
     const script = doc.components.schemas.script
-    expect(script.properties.id['x-lili-identifier']).toBe(true)
-    expect(script.properties.id['x-lili-mutability']).toBe('immutable')
-    expect(script.properties.name['x-lili-human-label']).toBe(true)
-    expect(script.properties.created_at['x-lili-mutability']).toBe('immutable')
+    expect(script.properties.id['x-liche-identifier']).toBe(true)
+    expect(script.properties.id['x-liche-mutability']).toBe('immutable')
+    expect(script.properties.name['x-liche-human-label']).toBe(true)
+    expect(script.properties.created_at['x-liche-mutability']).toBe('immutable')
     expect(script.required).toEqual(['id', 'name'])
   })
 

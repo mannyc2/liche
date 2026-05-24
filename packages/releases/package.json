@@ -1,9 +1,9 @@
 {
-  "name": "@lili/releases",
+  "name": "@liche/releases",
   "version": "0.2.0",
   "type": "module",
   "license": "MIT",
-  "description": "Release manifests, package renderers, and publisher planning for Lili CLIs.",
+  "description": "Release manifests, package renderers, and publisher planning for Liche CLIs.",
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"
@@ -63,7 +63,7 @@
     }
   },
   "bin": {
-    "li-release": "./src/cli.ts"
+    "liche-release": "./src/cli.ts"
   },
   "files": ["src", "README.md", "LICENSE"],
   "publishConfig": {
@@ -74,7 +74,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@lili/core": "^0.2.0",
+    "@liche/core": "^0.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

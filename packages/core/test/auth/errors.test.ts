@@ -13,12 +13,12 @@ import {
   authSessionLocked,
   authScopeMissing,
 } from '../../src/auth/errors.js'
-import { LiliError, toCommandError } from '../../src/errors/error.js'
+import { LicheError, toCommandError } from '../../src/errors/error.js'
 
-const detailsOf = (e: LiliError) => e.details as AuthErrorDetails | undefined
+const detailsOf = (e: LicheError) => e.details as AuthErrorDetails | undefined
 
 describe('AUTH_* error factories', () => {
-  test('every factory returns a LiliError with the right code and exitCode 1', () => {
+  test('every factory returns a LicheError with the right code and exitCode 1', () => {
     const samples = [
       authMissing({ providerId: 'acme', envVars: ['ACME_TOKEN'] }),
       authCiTokenMissing({ providerId: 'acme', envVars: ['ACME_TOKEN'] }),
@@ -32,7 +32,7 @@ describe('AUTH_* error factories', () => {
       authSessionLocked({ providerId: 'acme', profile: 'default' }),
     ]
     for (const e of samples) {
-      expect(e).toBeInstanceOf(LiliError)
+      expect(e).toBeInstanceOf(LicheError)
       expect(e.code.startsWith('AUTH_')).toBe(true)
       expect(e.exitCode).toBe(1)
     }

@@ -2,10 +2,10 @@
 
 This project follows one changelog for the synchronized first-party package suite:
 
-- `@lili/core`
-- `@lili/product`
-- `@lili/build`
-- `@lili/releases`
+- `@liche/core`
+- `@liche/product`
+- `@liche/build`
+- `@liche/releases`
 
 ## Unreleased
 

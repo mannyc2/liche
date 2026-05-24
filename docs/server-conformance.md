@@ -1,15 +1,15 @@
 # Server conformance requirements
 
-`@lili/product` owns server conformance.
+`@liche/product` owns server conformance.
 
 Conformance verifies that an owned external HTTP deployment implements HTTP-backed product schema capabilities. It is separate from generated-file drift checks.
 
 ## Command contract
 
 ```sh
-li-product conform ./lili.schema.ts \
+liche-product conform ./liche.schema.ts \
   --base-url http://localhost:5173 \
-  --report .lili/conformance.json
+  --report .liche/conformance.json
 ```
 
 Options:
@@ -33,11 +33,11 @@ Do not add an option that passes secret values directly on the command line. Use
 ## Separation from drift check
 
 ```txt
-li-product generate --check
+liche-product generate --check
   Hermetic generated-file freshness and provenance check.
   Does not need a server.
 
-li-product conform
+liche-product conform
   Live or fixture server-vs-schema verification.
   Needs a base URL or target.
 ```
@@ -88,7 +88,7 @@ export type ConformanceCase = {
 Fixture example:
 
 ```ts
-import type { ConformanceCase } from "@lili/product";
+import type { ConformanceCase } from "@liche/product";
 
 export default [
   {
@@ -210,10 +210,10 @@ Reports must not include raw secret values.
 
 ```sh
 bun run dev-server
-li-product conform ./lili.schema.ts \
+liche-product conform ./liche.schema.ts \
   --base-url http://localhost:5173 \
   --capability "projects.*" \
-  --report .lili/conformance.local.json
+  --report .liche/conformance.local.json
 ```
 
 Expected behavior:

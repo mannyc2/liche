@@ -96,10 +96,10 @@ export function normalizeOpsSpec(spec: ProductOpsSpec | undefined): NormalizedOp
     : {
         enabledEnvVar: spec?.telemetry && typeof spec.telemetry === 'object' && spec.telemetry.enabledEnvVar
           ? spec.telemetry.enabledEnvVar
-          : 'LILI_TELEMETRY',
+          : 'LICHE_TELEMETRY',
         fileEnvVar: spec?.telemetry && typeof spec.telemetry === 'object' && spec.telemetry.fileEnvVar
           ? spec.telemetry.fileEnvVar
-          : 'LILI_TELEMETRY_FILE',
+          : 'LICHE_TELEMETRY_FILE',
       }
   return {
     enabled,

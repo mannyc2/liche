@@ -9,10 +9,10 @@ type PackageJson = {
   exports?: Record<string, unknown>
 }
 
-// @lili/releases depends on @lili/core for the shared declarative CLI framework
-// used by li-release. It must still stay clear of @lili/build and @lili/product
+// @liche/releases depends on @liche/core for the shared declarative CLI framework
+// used by liche-release. It must still stay clear of @liche/build and @liche/product
 // so it can be consumed standalone as a library by anyone authoring releases.
-const FORBIDDEN_RUNTIME_DEPS = ['@lili/build', '@lili/product'] as const
+const FORBIDDEN_RUNTIME_DEPS = ['@liche/build', '@liche/product'] as const
 const RUNTIME_DEP_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const
 
 function packageJson(): PackageJson {
@@ -30,7 +30,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe('package boundary', () => {
-  test('@lili/releases has no runtime dependency on core, build, or product', () => {
+  test('@liche/releases has no runtime dependency on core, build, or product', () => {
     const pkg = packageJson()
 
     for (const section of RUNTIME_DEP_SECTIONS) {
@@ -41,7 +41,7 @@ describe('package boundary', () => {
     }
   })
 
-  test('@lili/releases source does not import core, build, or product', () => {
+  test('@liche/releases source does not import core, build, or product', () => {
     const source = sourceFiles(join(import.meta.dir, '..', 'src'))
       .map((path) => readFileSync(path, 'utf8'))
       .join('\n')

@@ -9,7 +9,7 @@ This plan starts after the current Bun-native core builder work. It assumes a ha
 - `packages/product` owns product schema authoring, canonical catalog normalization, generation, drift checks, Product compile orchestration, and server conformance.
 - `packages/build` owns reusable Bun build/compile primitives for generated and handwritten CLI entrypoints.
 - `packages/releases` owns release manifests, final binary verification, renderer selection, package-manager artifact rendering, and yank planning.
-- `@lili/core` exposes an opt-in first-class config primitive for handwritten CLIs, and generated Product CLIs lower product config into that same primitive.
+- `@liche/core` exposes an opt-in first-class config primitive for handwritten CLIs, and generated Product CLIs lower product config into that same primitive.
 - There is no `release-extra` package. Users choose zero to all release renderers through release configuration.
 - Generated surfaces are tracked through a surface manifest with source digests, generator versions, generation options digests, output digests, and artifact lists.
 - Existing core tests pass after the package move, and new rewrite tests trace to `docs/coverage-rewrite.md`.
@@ -51,10 +51,10 @@ The concrete public/exported surface decision lives in `docs/core-api-boundary.m
 
 Verification:
 
-- Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@lili/product` when that package's catalog-driven generator lands.
-- A dependency boundary test proves `@lili/core` does not import `@lili/build`, `@lili/product`, or `@lili/releases`.
-- A package-consumer boundary test in `@lili/product` imports `@lili/core` by package name and asserts the resolved value exports equal the approved frozen surface from `docs/core-api-boundary.md`.
-- A source-level API snapshot test in `@lili/core` locks both value and type exports against `docs/core-api-boundary.md`.
+- Core parity, golden, contract, property, formatter, MCP, and skill tests pass from `packages/core`. OpenAPI tests move to `@liche/product` when that package's catalog-driven generator lands.
+- A dependency boundary test proves `@liche/core` does not import `@liche/build`, `@liche/product`, or `@liche/releases`.
+- A package-consumer boundary test in `@liche/product` imports `@liche/core` by package name and asserts the resolved value exports equal the approved frozen surface from `docs/core-api-boundary.md`.
+- A source-level API snapshot test in `@liche/core` locks both value and type exports against `docs/core-api-boundary.md`.
 - A generated-command fixture can request `--json` and receive a structured envelope, not ad hoc text. (Deferred until Phase 3 produces the first generated fixture.)
 
 ## Phase 2A: agent consistency closure
@@ -79,9 +79,9 @@ Verification:
 
 ## Phase 2B: declarative core and plugin extraction
 
-Simplify `@lili/core` around one declarative command contract. Core should own the runtime contract every command depends on; optional projections and client/vendor workflows should move behind plugin-style packages or opt-in adapters.
+Simplify `@liche/core` around one declarative command contract. Core should own the runtime contract every command depends on; optional projections and client/vendor workflows should move behind plugin-style packages or opt-in adapters.
 
-Status: the core hard cutover has landed. Core stores serializable `CommandContract` records at command registration time, keeps handlers and runtime schemas in a separate runtime entry, and drives manifest, schema, help, skill, and MCP projection from the contract boundary. Public manifests no longer expose runtime state, core formats are limited to JSON/JSONL/YAML/Markdown, and the public handwritten authoring path starts with `defineCli()` plus `defineCommand()` data objects. Additional renderers belong outside `@lili/core`.
+Status: the core hard cutover has landed. Core stores serializable `CommandContract` records at command registration time, keeps handlers and runtime schemas in a separate runtime entry, and drives manifest, schema, help, skill, and MCP projection from the contract boundary. Public manifests no longer expose runtime state, core formats are limited to JSON/JSONL/YAML/Markdown, and the public handwritten authoring path starts with `defineCli()` plus `defineCommand()` data objects. Additional renderers belong outside `@liche/core`.
 
 Core responsibilities:
 
@@ -118,7 +118,7 @@ Verification:
 - A contract fixture can emit schema, manifest, help, and MCP tool definitions without executing command handlers.
 - A declarative fixture can execute direct and aliased nested command paths while manifest and MCP projection read safety metadata without executing the handler.
 - Public manifest JSON contains only serializable contract data and no `Entry`, `CliState`, function, absolute path, timestamp, or runtime handle.
-- Core package dependency and import tests prove `@lili/core` does not depend on plugin packages, Product, Build, or Releases.
+- Core package dependency and import tests prove `@liche/core` does not depend on plugin packages, Product, Build, or Releases.
 - Disabling optional helper built-ins removes `skills add` and `mcp add`; disabling optional adapters removes nonessential renderers and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
 - Generated Product surfaces consume catalog outputs or `CommandContract` artifacts and do not rely on weaker runtime reflection when a canonical generated surface exists.
 
@@ -127,7 +127,7 @@ Verification:
 Implement the smallest product package slice that proves the architecture:
 
 1. Define runtime schema API and canonical catalog normalization.
-2. Generate one command tree through `@lili/core` public APIs.
+2. Generate one command tree through `@liche/core` public APIs.
 3. Generate deterministic provenance headers.
 4. Add `generate --check` for generated-file freshness.
 5. Include both a CRUD-like resource operation and a workflow command in fixtures.
@@ -158,7 +158,7 @@ Verification:
 
 ## Phase 3B: product schema refactor
 
-Hard-cut `@lili/product` from operation-contract authoring to product-schema authoring before adding OpenAPI.
+Hard-cut `@liche/product` from operation-contract authoring to product-schema authoring before adding OpenAPI.
 
 Status: Product authoring now starts from `defineProduct({ ... })`, with resources, commands, config, remote, auth, contexts, permissions, ops, and bindings declared as sibling data fields. The old chained Product builder has been removed from the package root, internal tests, and `packages/product/src/product.ts`.
 
@@ -195,7 +195,7 @@ Implementation requirements:
 - normalize surface defaults once (`cli`, `docs`, `dashboard`, `agent`, `openapi`)
 - keep command execution mode explicit: `remote-http`, `local`, or `hybrid-workflow`
 - make generated CLI consume `Capability[]`, not operation-specific records
-- keep generated code lowering through public `@lili/core` APIs
+- keep generated code lowering through public `@liche/core` APIs
 - keep the surface manifest and `generate --check` working through the refactor
 
 Verification:
@@ -204,7 +204,7 @@ Verification:
 - The generated CLI includes the resource operation plus top-level `deploy` and `dev` commands.
 - `dev` is not treated as HTTP-capable; `deploy` remains a hybrid workflow, not a fake resource mutation.
 - Field metadata changes affect the catalog digest; source formatting and class instance identity do not.
-- `bun run --filter @lili/product check` and `bun run --filter @lili/product test` pass after removing the old operation-contract fixture.
+- `bun run --filter @liche/product check` and `bun run --filter @liche/product test` pass after removing the old operation-contract fixture.
 
 ## Phase 3C: OpenAPI projection
 
@@ -215,7 +215,7 @@ OpenAPI generation consumes:
 - normalized HTTP-capable capabilities
 - `http.method`, `http.path`, and `http.bind`
 - input/output shape JSON Schema
-- field metadata for descriptions and `x-lili-*` extensions
+- field metadata for descriptions and `x-liche-*` extensions
 - normalized surface membership
 
 OpenAPI generation must not consume:
@@ -237,7 +237,7 @@ Verification:
 
 ## Phase 3C-QA: product mutation testing
 
-Set up mutation testing for `@lili/product` using the same local workflow as `@lili/core`.
+Set up mutation testing for `@liche/product` using the same local workflow as `@liche/core`.
 
 Implementation requirements:
 
@@ -246,19 +246,19 @@ Implementation requirements:
 - add Stryker/Bun-runner dev dependencies through the existing root workspace catalog
 - include `stryker.conf.mjs` in the product package TypeScript config
 - mutate implementation modules for catalog normalization, digesting, lints, generators, manifest checks, and product-schema builders
-- exclude public barrels, `li-product` CLI wrapper code, packaged skill text, generated fixtures, and tests from mutation input
+- exclude public barrels, `liche-product` CLI wrapper code, packaged skill text, generated fixtures, and tests from mutation input
 - start with the same thresholds as core unless the first measured baseline proves a narrower first gate is needed
 
 Verification:
 
-- `bun run --filter @lili/product check` passes with the config included in TypeScript checking.
-- `bun run --filter @lili/product mutate` starts Stryker with the Bun test runner and completes an initial report.
+- `bun run --filter @liche/product check` passes with the config included in TypeScript checking.
+- `bun run --filter @liche/product mutate` starts Stryker with the Bun test runner and completes an initial report.
 - The initial report names surviving mutants that should become focused follow-up tests rather than broad snapshot updates.
 - The root workspace remains clean: no duplicate Stryker versions, no package-local lockfile, and no mutation artifacts committed.
 
 ## Phase 3D: auth/session catalog and runtime foundation
 
-Implement auth/session in staged slices from `docs/auth-session.md`. Keep the API opt-in and do not create `@lili/auth`.
+Implement auth/session in staged slices from `docs/auth-session.md`. Keep the API opt-in and do not create `@liche/auth`.
 
 ### Phase 3D-A: env auth and capability requirements
 
@@ -271,7 +271,7 @@ Add catalog support for:
 - token env sources
 - product permissions and capability `requires`
 - context declarations with explicit flags and env vars
-- `SecretString`, `resolveAuth`, `resolveContext`, and `applyAuth` in `@lili/core`
+- `SecretString`, `resolveAuth`, `resolveContext`, and `applyAuth` in `@liche/core`
 - structured `AUTH_*` errors
 - release manifest auth metadata
 
@@ -284,7 +284,7 @@ Verification:
 
 ### Phase 3D-B: file sessions and context
 
-Status: landed. The default file store, generated profile globals, generated `whoami` / `switch`, selected-context fallback, corrupt-file quarantine, and lock timeout behavior are implemented in `@lili/core` and `@lili/product`.
+Status: landed. The default file store, generated profile globals, generated `whoami` / `switch`, selected-context fallback, corrupt-file quarantine, and lock timeout behavior are implemented in `@liche/core` and `@liche/product`.
 
 Add the file-backed `SessionStore` and profile behavior:
 
@@ -332,7 +332,7 @@ Prove that generated remote commands and handwritten remote commands share the s
 - output schema validation treats HTTP responses as untrusted
 - non-2xx, malformed JSON, unsupported content types, timeout, missing base URL, and missing auth become structured core errors
 - 401/403 responses map to auth errors when an auth requirement is present and to remote HTTP errors otherwise
-- `li-product conform` verifies an owned fixture server separately from `generate --check`
+- `liche-product conform` verifies an owned fixture server separately from `generate --check`
 
 Verification:
 
@@ -358,7 +358,7 @@ Core requirements:
 
 Product requirements:
 
-- public `@lili/product` `createConfig` helper
+- public `@liche/product` `createConfig` helper
 - `defineProduct({ config })` as a sibling of `bindings`
 - normalized catalog config node
 - generated config JSON Schema containing general config fields and bindings
@@ -372,7 +372,7 @@ Verification:
 - a handwritten CLI with config receives typed `ctx.config` and provenance
 - a handwritten CLI without config rejects `--config` and `--no-config`
 - config-to-option binding is explicit; matching option names do not bind automatically
-- handwritten tool CLIs use the primitive: `li-build` binds `build.*` and `compileEntry.*` defaults through `createConfig(...)`; `li-release` binds `package.*` and `publish.*` defaults through `createConfig(...)`
+- handwritten tool CLIs use the primitive: `liche-build` binds `build.*` and `compileEntry.*` defaults through `createConfig(...)`; `liche-release` binds `package.*` and `publish.*` defaults through `createConfig(...)`
 - a Product with config but no bindings still emits a config schema
 - a generated Product remote command with a config-backed base URL calls the core HTTP transport and reports `meta.execution.source: "config"`
 - a generated Product remote command with an env-backed base URL calls the core HTTP transport and reports `meta.execution.source: "env"`
@@ -382,7 +382,7 @@ Verification:
 
 ## Phase 5: releases spine
 
-Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This `@lili/releases` package slice is implemented through Phase 5F, Phase 6 has baseline npm/PyPI/Homebrew/Scoop renderer implementations, and Phase 7A has the `li-release publish` dry-run/preflight CLI. Concrete ecosystem publisher adapters, receipts, and provenance capture remain the next release slice.
+Implement renderer-neutral release infrastructure before any ecosystem-specific renderer is treated as special. This `@liche/releases` package slice is implemented through Phase 5F, Phase 6 has baseline npm/PyPI/Homebrew/Scoop renderer implementations, and Phase 7A has the `liche-release publish` dry-run/preflight CLI. Concrete ecosystem publisher adapters, receipts, and provenance capture remain the next release slice.
 
 ### Phase 5A: manifest schema and fixture
 
@@ -397,7 +397,7 @@ Verification:
 
 - `packages/releases/test/manifest.test.ts` rejects malformed manifests.
 - The fixture manifest records metadata, executable metadata, subject/contract provenance, runtime env/config expectations, one conformance-metadata case, at least one glibc and one musl binary, and at least one baseline x64 target.
-- `bun run --filter @lili/releases check` proves the exported types compile.
+- `bun run --filter @liche/releases check` proves the exported types compile.
 
 ### Phase 5B: final binary byte verification
 
@@ -456,11 +456,11 @@ Verification:
 - The dry run must not require package names or versions that are not derivable from the manifest.
 - Implemented in `packages/releases/src/yank.ts` as `planReleaseYank(...)`.
 
-Phase 5 exits only when `bun run --filter @lili/releases check`, `bun run --filter @lili/releases test`, and root `bun run check` pass with no `release-extra` package and no npm-specific renderer implementation.
+Phase 5 exits only when `bun run --filter @liche/releases check`, `bun run --filter @liche/releases test`, and root `bun run check` pass with no `release-extra` package and no npm-specific renderer implementation.
 
 ## Phase 6: renderer implementations
 
-Add ecosystem renderers inside `@lili/releases`. This phase renders and verifies package artifacts; it does not publish them to registries.
+Add ecosystem renderers inside `@liche/releases`. This phase renders and verifies package artifacts; it does not publish them to registries.
 
 - npm umbrella plus platform package directories, with optional derived `.tgz` packing
 - PyPI wheels
@@ -493,8 +493,8 @@ Automate publishing npm, PyPI, Homebrew, and Scoop outputs from one release mani
 
 Implemented Phase 7A:
 
-- `li-release package` writes `package-records.json` and `package-artifacts.json` alongside the release manifest.
-- `li-release publish <manifest> --publishers <id|all>` consumes the release manifest plus verified package records/artifact records without rebuilding or rerendering.
+- `liche-release package` writes `package-records.json` and `package-artifacts.json` alongside the release manifest.
+- `liche-release publish <manifest> --publishers <id|all>` consumes the release manifest plus verified package records/artifact records without rebuilding or rerendering.
 - The CLI produces a dry-run publish plan, checks selected publisher credentials from canonical env vars, rejects missing git repository settings for selected Homebrew/Scoop publishers, and rechecks artifact bytes on `--no-dry-run` before any executor can mutate.
 - The CLI intentionally registers no concrete registry executors yet, so a non-dry-run attempt can verify bytes but cannot publish to live registries until the adapter slice lands.
 
@@ -518,9 +518,9 @@ Required publisher adapters:
 
 Verification:
 
-- A dry-run publish plan lists every registry mutation for npm, PyPI, Homebrew, and Scoop from one manifest reference. Implemented for `li-release publish` dry-run planning.
-- Missing credentials or required repository settings for a selected publisher fail before any mutation. Implemented for `li-release publish` preflight.
-- Artifact hash verification runs immediately before publish and refuses stale or mismatched packed artifacts. Implemented for `li-release publish --no-dry-run` before executor dispatch. npm publishing should delegate to `npm publish` against either verified tarballs or verified package directories; custom OIDC upload clients are not the default path.
+- A dry-run publish plan lists every registry mutation for npm, PyPI, Homebrew, and Scoop from one manifest reference. Implemented for `liche-release publish` dry-run planning.
+- Missing credentials or required repository settings for a selected publisher fail before any mutation. Implemented for `liche-release publish` preflight.
+- Artifact hash verification runs immediately before publish and refuses stale or mismatched packed artifacts. Implemented for `liche-release publish --no-dry-run` before executor dispatch. npm publishing should delegate to `npm publish` against either verified tarballs or verified package directories; custom OIDC upload clients are not the default path.
 - npm publish ordering publishes platform packages before the umbrella package. Implemented in the publish plan.
 - npm and PyPI publisher tests include trusted-publishing/provenance-capable paths when the required CI identity is configured, while token-based fallback stays explicit.
 - Homebrew and Scoop publisher tests use local fixture git repositories or dry-run command capture, not live registry mutation.

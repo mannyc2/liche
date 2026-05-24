@@ -100,7 +100,7 @@ export type ProductDefinition = ProductMetadata & {
 }
 
 export type DefinedProduct = {
-  readonly kind: 'lili.product'
+  readonly kind: 'liche.product'
   readonly id: string
   readonly name: string
   readonly version: string
@@ -120,7 +120,7 @@ export type DefinedProduct = {
 
 export function defineProduct(init: ProductDefinition): DefinedProduct {
   const base: DefinedProduct = {
-    kind: 'lili.product',
+    kind: 'liche.product',
     id: init.id,
     name: init.name,
     version: init.version,

@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import * as Core from '@lili/core'
+import * as Core from '@liche/core'
 
-// Frozen public surface of @lili/core, mirrored from packages/core/test/api-snapshot.test.ts
+// Frozen public surface of @liche/core, mirrored from packages/core/test/api-snapshot.test.ts
 // and docs/core-api-boundary.md. Asserts package-level resolution (not just source-relative
-// imports) so generated code in @lili/product can only depend on the approved API.
+// imports) so generated code in @liche/product can only depend on the approved API.
 const FROZEN_PUBLIC_VALUES = [
   'commandError',
   'createConfig',
@@ -29,7 +29,7 @@ const FROZEN_PUBLIC_VALUES = [
   'z',
 ].sort()
 
-describe('@lili/core package consumer boundary', () => {
+describe('@liche/core package consumer boundary', () => {
   test('package-level import exposes only the frozen surface', () => {
     expect(Object.keys(Core).sort()).toEqual(FROZEN_PUBLIC_VALUES)
   })

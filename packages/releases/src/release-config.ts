@@ -111,7 +111,7 @@ function repoMetadata(repository: string | undefined): ReleaseDistConfig['metada
 
 function requireSection<T>(value: T | undefined, name: string): T {
   if (value !== undefined) return value
-  throw new Error(`lili.releases.json is missing '${name}'`)
+  throw new Error(`liche.releases.json is missing '${name}'`)
 }
 
 export function distConfigFromReleasesConfig(config: ReleasesConfig): ReleaseDistConfig {

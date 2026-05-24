@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ServeOptions } from '@lili/core'
+import type { ServeOptions } from '@liche/core'
 import {
   Auth,
   Command,
@@ -79,17 +79,17 @@ describe('generated CLI — source matches golden', () => {
 })
 
 describe('generated CLI — boundary discipline', () => {
-  test('generated source imports only public @lili/core APIs required by the fixture', () => {
+  test('generated source imports only public @liche/core APIs required by the fixture', () => {
     const source = readFileSync(join(FIXTURE_DIR, 'workers.generated.ts'), 'utf8')
-    const coreImports = [...source.matchAll(/from '@lili\/core'/g)]
+    const coreImports = [...source.matchAll(/from '@liche\/core'/g)]
     expect(coreImports).toHaveLength(1)
-    const importLine = source.match(/import \{ ([^}]+) \} from '@lili\/core'/)
+    const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
   })
 
-  test('generated source does not import from @lili/core subpaths or internals', () => {
+  test('generated source does not import from @liche/core subpaths or internals', () => {
     const source = readFileSync(join(FIXTURE_DIR, 'workers.generated.ts'), 'utf8')
-    expect(source).not.toContain('@lili/core/')
+    expect(source).not.toContain('@liche/core/')
     expect(source).not.toContain('stateSymbol')
     expect(source).not.toContain('InternalCli')
   })
@@ -144,7 +144,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
         ])
       },
     })
-    const dir = mkdtempSync(join(tmpdir(), 'lili-workers-config-'))
+    const dir = mkdtempSync(join(tmpdir(), 'liche-workers-config-'))
     const configPath = join(dir, 'workers.jsonc')
     try {
       writeFileSync(configPath, JSON.stringify({ apiBaseUrl: server.url.origin }))
@@ -399,7 +399,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
   })
 
   test('generated telemetry sink is opt-in and writes local JSONL when enabled', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'lili-workers-telemetry-'))
+    const dir = mkdtempSync(join(tmpdir(), 'liche-workers-telemetry-'))
     const file = join(dir, 'telemetry.jsonl')
     const saved = {
       WORKERS_TELEMETRY: process.env.WORKERS_TELEMETRY,

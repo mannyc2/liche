@@ -16,27 +16,27 @@ This document defines the public API direction and the runtime contract. It does
 
 | Responsibility | Owner |
 |---|---|
-| Auth provider declarations | `@lili/product` product schema API; normalized into catalog |
-| Permission declarations | `@lili/product`; product permissions/scopes are catalog metadata |
-| Context declarations | `@lili/product`; resolved by generated code through core primitives |
-| Generated `login`, `logout`, `whoami`, `switch` | `@lili/product` emits catalog capabilities; generated code implements them through `@lili/core` |
-| Token resolution | `@lili/core` |
-| Session/profile storage | `@lili/core` default store plus public `SessionStore` interface |
-| Refresh token handling | `@lili/core` later; deferred from MVP |
-| Applying auth headers | `@lili/core` HTTP operation transport |
-| Structured auth errors | `@lili/core` |
-| Agent/MCP auth metadata | Catalog metadata from `@lili/product`; runtime status from generated code/core |
-| Release manifest auth metadata | `@lili/releases`; non-secret expectations only |
+| Auth provider declarations | `@liche/product` product schema API; normalized into catalog |
+| Permission declarations | `@liche/product`; product permissions/scopes are catalog metadata |
+| Context declarations | `@liche/product`; resolved by generated code through core primitives |
+| Generated `login`, `logout`, `whoami`, `switch` | `@liche/product` emits catalog capabilities; generated code implements them through `@liche/core` |
+| Token resolution | `@liche/core` |
+| Session/profile storage | `@liche/core` default store plus public `SessionStore` interface |
+| Refresh token handling | `@liche/core` later; deferred from MVP |
+| Applying auth headers | `@liche/core` HTTP operation transport |
+| Structured auth errors | `@liche/core` |
+| Agent/MCP auth metadata | Catalog metadata from `@liche/product`; runtime status from generated code/core |
+| Release manifest auth metadata | `@liche/releases`; non-secret expectations only |
 | Hosted policy/session sync | Future hosted platform only |
 
-Do not add `@lili/auth` for MVP. Auth is too central to remote-operation CLIs to make the core generated experience feel optional or incomplete. A package boundary is allowed only if a later requirement can state what users give up by not installing it.
+Do not add `@liche/auth` for MVP. Auth is too central to remote-operation CLIs to make the core generated experience feel optional or incomplete. A package boundary is allowed only if a later requirement can state what users give up by not installing it.
 
 ## Product schema API
 
 Auth is opt-in. Omitting `auth` means no auth; `auth: Auth.none()` remains available when explicitness helps examples or tests:
 
 ```ts
-import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@liche/product";
 
 export default defineProduct({
   id: "notes",
@@ -191,7 +191,7 @@ Core exposes small public primitives usable by handwritten and generated CLIs. G
 
 ```ts
 export type SecretString = {
-  readonly kind: "lili.secret";
+  readonly kind: "liche.secret";
   reveal(): string;
   toJSON(): "[redacted]";
   toString(): "[redacted]";
@@ -264,7 +264,7 @@ export function applyAuth(headers: Headers, credential: AuthCredential): void;
 
 `SecretString` is a redaction boundary. It must not serialize, stringify, or inspect as the raw secret by accident. Only transport/session code may call `reveal()`.
 
-`resolveAuth`, `resolveContext`, `SessionStore`, `createFileSessionStore`, `secret`, and `applyAuth` are public top-level `@lili/core` APIs once the auth slice lands.
+`resolveAuth`, `resolveContext`, `SessionStore`, `createFileSessionStore`, `secret`, and `applyAuth` are public top-level `@liche/core` APIs once the auth slice lands.
 
 Structured auth errors:
 
@@ -312,10 +312,10 @@ Default file store root:
 
 | Platform | Root |
 |---|---|
-| Env override | `LILI_HOME` |
-| macOS | `~/Library/Application Support/lili` |
-| Linux | `${XDG_CONFIG_HOME:-~/.config}/lili` |
-| Windows | `%APPDATA%\\lili` |
+| Env override | `LICHE_HOME` |
+| macOS | `~/Library/Application Support/liche` |
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/liche` |
+| Windows | `%APPDATA%\\liche` |
 
 File:
 
@@ -580,7 +580,7 @@ Expose only values that are useful for safe planning and recovery. Never expose 
 
 ## Release manifest fields
 
-`@lili/releases` records auth/session expectations, never secrets:
+`@liche/releases` records auth/session expectations, never secrets:
 
 ```ts
 auth: {
@@ -651,9 +651,9 @@ Deferred: multi-provider auth, per-capability provider selection, refresh-token 
 
 Slice A landed in Phase 3D-A (next-plan.md). The behavior in this doc is authoritative; the notes below trace the implementation:
 
-- `@lili/core`: `SecretString` + `secret()` (`packages/core/src/auth/secret.ts`); env-only `resolveAuth`, `resolveContext`, and `applyAuth` (`packages/core/src/auth/resolve.ts`); `AUTH_MISSING` / `AUTH_CI_TOKEN_MISSING` / `AUTH_CONTEXT_REQUIRED` / `AUTH_SCOPE_MISSING` / `AUTH_PERMISSION_DENIED` / `AUTH_INVALID` / `AUTH_EXPIRED` factories built on internal `LiliError` (`packages/core/src/auth/errors.ts`) and normalized to public `CommandError` objects at the executor boundary. `LiliError.details` and `CommandError.details` carry structured auth payloads through the envelope. `RunContext.invocation` carries `cli` / `ci` / `agent` / `mcp` into generated code so CI-mode token sources are reachable without process-global env mutation.
-- `@lili/product`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.permission.scope`, `Auth.context.env|remote` (`packages/product/src/auth.ts`); `defineProduct({ auth, permissions, contexts })` (`packages/product/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` validates capability `requires` against declared contexts, declared product permissions, and auth posture (`packages/product/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/product/src/manifest.ts`).
-- Generated CLI (`packages/product/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `resolveAuth` / `resolveContext` from `@lili/core`, emits top-level `PRODUCT_ID` / `PROFILE_ENV_VAR` / `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env > stored profile fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.global` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and resolves auth/context before remote dispatch. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements still avoid auth-runtime imports.
-- Slice B/C now landed: `@lili/core` exposes `SessionStore`, `createFileSessionStore`, profile/session helpers, identity probing, and OAuth device login helpers. The file store writes restricted JSON under `LILI_HOME` or the platform config root, supports active profiles and selected contexts, quarantines corrupt files, and throws `AUTH_SESSION_CORRUPT` / `AUTH_SESSION_LOCKED` where appropriate. Generated CLIs parse `--profile`, `--non-interactive`, and `--no-session`, emit generated `whoami` / `switch` / `login` / `logout` commands when the auth provider opts in, and hide interactive `login` / `logout` / `switch` from MCP tools. Normal auth-required commands still call `resolveAuth` only; CLI/CI/agent/MCP paths never start OAuth device login implicitly.
+- `@liche/core`: `SecretString` + `secret()` (`packages/core/src/auth/secret.ts`); env-only `resolveAuth`, `resolveContext`, and `applyAuth` (`packages/core/src/auth/resolve.ts`); `AUTH_MISSING` / `AUTH_CI_TOKEN_MISSING` / `AUTH_CONTEXT_REQUIRED` / `AUTH_SCOPE_MISSING` / `AUTH_PERMISSION_DENIED` / `AUTH_INVALID` / `AUTH_EXPIRED` factories built on internal `LicheError` (`packages/core/src/auth/errors.ts`) and normalized to public `CommandError` objects at the executor boundary. `LicheError.details` and `CommandError.details` carry structured auth payloads through the envelope. `RunContext.invocation` carries `cli` / `ci` / `agent` / `mcp` into generated code so CI-mode token sources are reachable without process-global env mutation.
+- `@liche/product`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.permission.scope`, `Auth.context.env|remote` (`packages/product/src/auth.ts`); `defineProduct({ auth, permissions, contexts })` (`packages/product/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` validates capability `requires` against declared contexts, declared product permissions, and auth posture (`packages/product/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/product/src/manifest.ts`).
+- Generated CLI (`packages/product/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `resolveAuth` / `resolveContext` from `@liche/core`, emits top-level `PRODUCT_ID` / `PROFILE_ENV_VAR` / `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env > stored profile fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.global` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and resolves auth/context before remote dispatch. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements still avoid auth-runtime imports.
+- Slice B/C now landed: `@liche/core` exposes `SessionStore`, `createFileSessionStore`, profile/session helpers, identity probing, and OAuth device login helpers. The file store writes restricted JSON under `LICHE_HOME` or the platform config root, supports active profiles and selected contexts, quarantines corrupt files, and throws `AUTH_SESSION_CORRUPT` / `AUTH_SESSION_LOCKED` where appropriate. Generated CLIs parse `--profile`, `--non-interactive`, and `--no-session`, emit generated `whoami` / `switch` / `login` / `logout` commands when the auth provider opts in, and hide interactive `login` / `logout` / `switch` from MCP tools. Normal auth-required commands still call `resolveAuth` only; CLI/CI/agent/MCP paths never start OAuth device login implicitly.
 
 Still deferred: refresh tokens, refresh rotation, OS keychain integration, remote context picker/list runtime calls, hosted policy/session sync, and agent-triggered login.

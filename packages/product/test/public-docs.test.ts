@@ -41,12 +41,12 @@ describe('public docs', () => {
       for (const block of codeBlocks(read(path))) {
         if (block.lang === 'ts') {
           expect(block.code).not.toMatch(/from ["']\.\.?\/|from ["']packages\//)
-          expect(block.code).not.toMatch(/@lili\/(?:core|build|product|releases)\/src/)
+          expect(block.code).not.toMatch(/@liche\/(?:core|build|product|releases)\/src/)
         }
         if (block.lang === 'sh') {
           expect(block.code).not.toMatch(/packages\/[^/\s]+\/src/)
           expect(block.code).not.toMatch(/docs\//)
-          expect(block.code).toMatch(/^(li-build|li-product|li-release|bun add|bun run|bun test)/m)
+          expect(block.code).toMatch(/^(liche-build|liche-product|liche-release|bun add|bun run|bun test)/m)
         }
       }
     }

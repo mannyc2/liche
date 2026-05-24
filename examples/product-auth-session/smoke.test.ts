@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkAgainstDir, generateToDir } from '@lili/product'
+import { checkAgainstDir, generateToDir } from '@liche/product'
 import product from './product.js'
 
 type GeneratedCli = {
@@ -25,13 +25,13 @@ describe('product-auth-session example', () => {
   beforeEach(() => {
     mkdirSync(join(import.meta.dir, '.tmp'), { recursive: true })
     outDir = mkdtempSync(join(import.meta.dir, '.tmp/generated-'))
-    savedHome = process.env.LILI_HOME
-    process.env.LILI_HOME = join(outDir, 'home')
+    savedHome = process.env.LICHE_HOME
+    process.env.LICHE_HOME = join(outDir, 'home')
   })
 
   afterEach(() => {
-    if (savedHome === undefined) delete process.env.LILI_HOME
-    else process.env.LILI_HOME = savedHome
+    if (savedHome === undefined) delete process.env.LICHE_HOME
+    else process.env.LICHE_HOME = savedHome
     rmSync(outDir, { recursive: true, force: true })
   })
 

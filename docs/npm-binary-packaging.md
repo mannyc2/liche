@@ -1,6 +1,6 @@
 # npm binary packaging requirements
 
-`@lili/releases` owns npm binary distribution as one selectable renderer.
+`@liche/releases` owns npm binary distribution as one selectable renderer.
 
 The npm renderer is directory-first. It writes one unpacked package directory per npm package so CI and humans can inspect the exact `package.json`, README, shim, and binary tree before publish. A separate pack step can then derive `.tgz` files from those directories when a workflow wants exact packed bytes or a flat publish-artifact set.
 

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import type { ServeOptions } from '@lili/core'
+import type { ServeOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
 import { shipRelease } from '../src/cli-commands.js'
 import type {
@@ -95,9 +95,9 @@ function writePublishFixture(dir: string, options: { tamperNpmSha?: boolean } = 
     : npmPlatformArtifact
 
   const packages: PackageRecord[] = [
-    pkg('npm:@lili/workers-linux-x64', 'npm', 'npm-platform', '@lili/workers-linux-x64', npmPlatformVerified),
-    pkg('npm:@lili/workers', 'npm', 'npm-umbrella', '@lili/workers', npmUmbrellaArtifact),
-    pkg('pypi:lili-workers', 'pypi', 'pypi-wheel', 'lili-workers', pypiArtifact),
+    pkg('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64', npmPlatformVerified),
+    pkg('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers', npmUmbrellaArtifact),
+    pkg('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers', pypiArtifact),
     pkg('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers', homebrewArtifact),
   ]
 
@@ -146,11 +146,11 @@ function optionValue(argv: readonly string[], option: string): string {
   return value
 }
 
-describe('li-release CLI', () => {
+describe('liche-release CLI', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'lili-release-cli-'))
+    dir = mkdtempSync(join(tmpdir(), 'liche-release-cli-'))
   })
 
   afterEach(() => {
@@ -159,7 +159,7 @@ describe('li-release CLI', () => {
 
   test('package writes one manifest with embedded package records', async () => {
     const buildRecordPath = writeBuildRecordFixture(dir)
-    const configPath = join(dir, 'lili.releases.json')
+    const configPath = join(dir, 'liche.releases.json')
     writeFileSync(configPath, `${JSON.stringify({
       subject: { id: 'workers', name: 'Workers CLI', command: 'workers' },
       metadata: { description: 'Workers CLI' },
@@ -190,7 +190,7 @@ describe('li-release CLI', () => {
   test('package command consumes explicit createConfig release config', async () => {
     const buildRecordPath = writeBuildRecordFixture(dir)
     const outDir = join(dir, 'dist-config')
-    const configPath = join(dir, 'lili.releases.jsonc')
+    const configPath = join(dir, 'liche.releases.jsonc')
     writeFileSync(configPath, `{
       "subject": { "id": "workers", "name": "Workers CLI", "command": "workers" },
       "metadata": { "description": "Workers CLI" },
@@ -233,17 +233,17 @@ describe('li-release CLI', () => {
     expect(body.dryRun).toBe(true)
     expect(body.packagePublish.cleared).toEqual(['npm'])
     expect(body.packagePublish.plan.steps.map((step: { packageId: string }) => step.packageId)).toEqual([
-      'npm:@lili/workers-linux-x64',
-      'npm:@lili/workers',
+      'npm:@liche/workers-linux-x64',
+      'npm:@liche/workers',
     ])
   })
 
   test('publish command consumes explicit createConfig release config', async () => {
     const fixture = writePublishFixture(dir)
-    const configPath = join(dir, 'lili.releases.json')
+    const configPath = join(dir, 'liche.releases.json')
     writeFileSync(configPath, `${JSON.stringify({
       ecosystems: {
-        homebrew: { tap: 'lili/homebrew-tap', formula: 'workers' },
+        homebrew: { tap: 'liche/homebrew-tap', formula: 'workers' },
       },
     }, null, 2)}\n`)
     const result = await runCli([
@@ -264,7 +264,7 @@ describe('li-release CLI', () => {
       expect.objectContaining({
         ecosystem: 'homebrew',
         kind: 'homebrew-write-formula',
-        tap: { owner: 'lili', repo: 'homebrew-tap', branch: 'main' },
+        tap: { owner: 'liche', repo: 'homebrew-tap', branch: 'main' },
       }),
     ])
   })
@@ -340,11 +340,11 @@ describe('li-release CLI', () => {
       },
       runner: async (argv) => {
         calls.push([...argv])
-        if (argv[0] === 'bun' && argv[1] === 'li-product') {
+        if (argv[0] === 'bun' && argv[1] === 'liche-product') {
           const out = optionValue(argv, '--out')
           mkdirSync(out, { recursive: true })
-          const manifestPath = join(out, 'lili.generated.manifest.json')
-          const compileEntrypointPath = join(out, 'lili.compile-entry.ts')
+          const manifestPath = join(out, 'liche.generated.manifest.json')
+          const compileEntrypointPath = join(out, 'liche.compile-entry.ts')
           writeFileSync(compileEntrypointPath, '#!/usr/bin/env bun\n')
           writeFileSync(manifestPath, `${JSON.stringify({
             manifestVersion: 1,
@@ -358,12 +358,12 @@ describe('li-release CLI', () => {
             stderr: '',
             stdout: `${JSON.stringify({
               compileEntrypointPath,
-              generatedPath: join(out, 'lili.generated.ts'),
+              generatedPath: join(out, 'liche.generated.ts'),
               manifestPath,
             })}\n`,
           }
         }
-        if (argv[0] === 'bun' && argv[1] === 'li-build') {
+        if (argv[0] === 'bun' && argv[1] === 'liche-build') {
           const recordPath = optionValue(argv, '--record')
           mkdirSync(dirname(recordPath), { recursive: true })
           writeFileSync(recordPath, `${JSON.stringify({
@@ -387,7 +387,7 @@ describe('li-release CLI', () => {
     if (!result.ok) return
     expect(calls[0]).toEqual([
       'bun',
-      'li-product',
+      'liche-product',
       'generate',
       'src/product.ts',
       '--out',
@@ -396,9 +396,9 @@ describe('li-release CLI', () => {
     ])
     expect(calls[1]).toEqual([
       'bun',
-      'li-build',
+      'liche-build',
       'build',
-      join(dir, 'dist/generated/lili.compile-entry.ts'),
+      join(dir, 'dist/generated/liche.compile-entry.ts'),
       '--targets',
       'all',
       '--release-version',
@@ -449,7 +449,7 @@ describe('li-release CLI', () => {
             code: 0,
             stderr: '',
             stdout: `${JSON.stringify({
-              manifestVersion: 'lili.v1',
+              manifestVersion: 'liche.v1',
               name: 'shipyard',
               version: '0.4.0',
               commands: [{ name: 'deployments' }, { name: 'promote' }],
@@ -459,7 +459,7 @@ describe('li-release CLI', () => {
         if (argv[0] === 'git' && argv[1] === 'describe') {
           return { code: 1, stderr: 'no tags', stdout: '' }
         }
-        if (argv[0] === 'bun' && argv[1] === 'li-build') {
+        if (argv[0] === 'bun' && argv[1] === 'liche-build') {
           const recordPath = optionValue(argv, '--record')
           mkdirSync(dirname(recordPath), { recursive: true })
           writeFileSync(recordPath, `${JSON.stringify({
@@ -482,14 +482,14 @@ describe('li-release CLI', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
-    expect(calls.some((call) => call[1] === 'li-product')).toBe(false)
+    expect(calls.some((call) => call[1] === 'liche-product')).toBe(false)
     expect(calls[0]).toEqual(['bun', join(dir, 'src/cli.ts'), '--llms', '--json'])
-    const buildCall = calls.find((call) => call[0] === 'bun' && call[1] === 'li-build')
+    const buildCall = calls.find((call) => call[0] === 'bun' && call[1] === 'liche-build')
     expect(buildCall).toBeDefined()
     expect(buildCall![3]).toBe(join(dir, 'src/cli.ts'))
     expect(optionValue(buildCall!, '--release-version')).toBe('0.4.0')
     expect(optionValue(buildCall!, '--contract-digest').startsWith('sha256:')).toBe(true)
-    expect(result.value.generated.manifest).toBe(join(dir, 'dist/generated/lili.command-manifest.json'))
+    expect(result.value.generated.manifest).toBe(join(dir, 'dist/generated/liche.command-manifest.json'))
 
     const manifest = JSON.parse(readFileSync(result.value.package.manifest, 'utf8'))
     expect(manifest.subject.contract.kind).toBe('core-command-manifest')

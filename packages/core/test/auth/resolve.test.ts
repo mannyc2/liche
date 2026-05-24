@@ -6,7 +6,7 @@ import { isSecretString } from '../../src/auth/secret.js'
 import { createFileSessionStore, secret } from '../../src/index.js'
 import { applyAuth, resolveAuth, resolveContext } from '../../src/auth/resolve.js'
 import type { AuthProviderRuntime, ContextRuntime } from '../../src/auth/types.js'
-import { LiliError } from '../../src/errors/error.js'
+import { LicheError } from '../../src/errors/error.js'
 
 const bearerProvider: AuthProviderRuntime = {
   id: 'acme',
@@ -78,9 +78,9 @@ describe('resolveAuth (env-only, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect(caught).toBeInstanceOf(LiliError)
-    expect((caught as LiliError).code).toBe('AUTH_MISSING')
-    expect((caught as LiliError).details).toMatchObject({ envVars: ['ACME_TOKEN'] })
+    expect(caught).toBeInstanceOf(LicheError)
+    expect((caught as LicheError).code).toBe('AUTH_MISSING')
+    expect((caught as LicheError).details).toMatchObject({ envVars: ['ACME_TOKEN'] })
   })
 
   test('missing env credential in CI invocation → AUTH_CI_TOKEN_MISSING', async () => {
@@ -90,8 +90,8 @@ describe('resolveAuth (env-only, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect(caught).toBeInstanceOf(LiliError)
-    expect((caught as LiliError).code).toBe('AUTH_CI_TOKEN_MISSING')
+    expect(caught).toBeInstanceOf(LicheError)
+    expect((caught as LicheError).code).toBe('AUTH_CI_TOKEN_MISSING')
   })
 
   test('not-required returns undefined silently when env is missing', async () => {
@@ -126,7 +126,7 @@ describe('resolveAuth (env-only, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect((caught as LiliError).code).toBe('AUTH_MISSING')
+    expect((caught as LicheError).code).toBe('AUTH_MISSING')
   })
 
   test('source order is respected: first declared env wins when both are set', async () => {
@@ -166,9 +166,9 @@ describe('resolveAuth (env-only, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect(caught).toBeInstanceOf(LiliError)
-    expect((caught as LiliError).code).toBe('AUTH_SCOPE_MISSING')
-    expect((caught as LiliError).details).toMatchObject({
+    expect(caught).toBeInstanceOf(LicheError)
+    expect((caught as LicheError).code).toBe('AUTH_SCOPE_MISSING')
+    expect((caught as LicheError).details).toMatchObject({
       missingScopes: ['cache.write'],
       requiredPermissions: ['cache:write'],
     })
@@ -187,8 +187,8 @@ describe('resolveAuth (env-only, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect((caught as LiliError).code).toBe('AUTH_MISSING')
-    expect((caught as LiliError).details).toMatchObject({ requiredPermissions: ['cache:write'] })
+    expect((caught as LicheError).code).toBe('AUTH_MISSING')
+    expect((caught as LicheError).details).toMatchObject({ requiredPermissions: ['cache:write'] })
   })
 })
 
@@ -231,8 +231,8 @@ describe('resolveContext (env+flag, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect((caught as LiliError).code).toBe('AUTH_CONTEXT_REQUIRED')
-    const details = (caught as LiliError).details as { requiredContexts: { id: string; envVar?: string; flag?: string }[] }
+    expect((caught as LicheError).code).toBe('AUTH_CONTEXT_REQUIRED')
+    const details = (caught as LicheError).details as { requiredContexts: { id: string; envVar?: string; flag?: string }[] }
     expect(details.requiredContexts).toEqual([
       { id: 'org', envVar: 'ACME_ORG_ID', flag: 'org' },
       { id: 'project', envVar: 'ACME_PROJECT_ID', flag: 'project' },
@@ -246,7 +246,7 @@ describe('resolveContext (env+flag, 3D-A)', () => {
     } catch (e) {
       caught = e
     }
-    expect((caught as LiliError).code).toBe('AUTH_CONTEXT_REQUIRED')
+    expect((caught as LicheError).code).toBe('AUTH_CONTEXT_REQUIRED')
   })
 
   test('returns empty object when no contexts are required', async () => {
@@ -305,7 +305,7 @@ describe('resolveAuth (file sessions, no implicit login)', () => {
   }
 
   async function withStore(fn: (root: string, store: ReturnType<typeof createFileSessionStore>) => Promise<void>) {
-    const root = mkdtempSync(join(tmpdir(), 'lili-resolve-'))
+    const root = mkdtempSync(join(tmpdir(), 'liche-resolve-'))
     try {
       await fn(root, createFileSessionStore({ root }))
     } finally {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkAgainstDir, generateToDir } from '@lili/product'
+import { checkAgainstDir, generateToDir } from '@liche/product'
 import product from './product.js'
 
 type GeneratedCli = {

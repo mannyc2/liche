@@ -41,8 +41,8 @@ export type LocalTelemetrySinkOptions = {
 }
 
 const DEFAULT_PACKAGE_MANAGERS: readonly LocalDoctorPackageManager[] = ['bun', 'npm', 'pnpm', 'yarn']
-const DEFAULT_TELEMETRY_ENABLED_ENV = 'LILI_TELEMETRY'
-const DEFAULT_TELEMETRY_FILE_ENV = 'LILI_TELEMETRY_FILE'
+const DEFAULT_TELEMETRY_ENABLED_ENV = 'LICHE_TELEMETRY'
+const DEFAULT_TELEMETRY_FILE_ENV = 'LICHE_TELEMETRY_FILE'
 
 export async function runLocalDoctor(input: LocalDoctorInput): Promise<LocalDoctorReport> {
   const env = input.env ?? (Bun.env as Record<string, string | undefined>)

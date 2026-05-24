@@ -21,12 +21,12 @@ Do not generate a CLI directly from frontend routes. A TanStack route tree descr
 A developer with a Vite/TanStack app should:
 
 1. Identify product capabilities and durable preferences: resources, commands, general config, and bindings.
-2. Define those capabilities in `lili.schema.ts`.
+2. Define those capabilities in `liche.schema.ts`.
 3. Implement matching API routes and local handlers in the app's server/runtime layer.
-4. Generate CLI/OpenAPI/MCP/docs/Agent Skill/config surfaces with `@lili/product`.
+4. Generate CLI/OpenAPI/MCP/docs/Agent Skill/config surfaces with `@liche/product`.
 5. Run server conformance against the local dev server and, when appropriate, deployed environments.
-6. Compile the generated or handwritten CLI with `@lili/build`.
-7. Package the final binaries with `@lili/releases`.
+6. Compile the generated or handwritten CLI with `@liche/build`.
+7. Package the final binaries with `@liche/releases`.
 
 Example capabilities:
 
@@ -65,11 +65,11 @@ The MVP supports an external server in the sense that the server is outside the 
 
 ## Product-schema systems
 
-A Cloudflare-style product-schema system maps cleanly to the lili plan when the source-of-truth boundary stays explicit:
+A Cloudflare-style product-schema system maps cleanly to the liche plan when the source-of-truth boundary stays explicit:
 
 ```txt
 owned product schema
-  -> canonical lili catalog for capabilities
+  -> canonical liche catalog for capabilities
   -> generated CLI, OpenAPI, MCP command tools, Agent Skills, docs, and config schema
   -> generated OpenAPI downstream surfaces when those adapters exist
 ```
@@ -84,7 +84,7 @@ Do not treat those surfaces as generic MVP behavior. Each product-specific surfa
 - how conformance is proven against the owned API or platform runtime
 - who owns publication and rollback
 
-Generating the product API itself is a separate server-adapter track. Until that adapter exists, the app implements API routes manually and `li-product conform` proves the implementation matches the schema.
+Generating the product API itself is a separate server-adapter track. Until that adapter exists, the app implements API routes manually and `liche-product conform` proves the implementation matches the schema.
 
 ## Resources and commands
 
@@ -95,7 +95,7 @@ Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`,
 ## Example schema
 
 ```ts
-import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@liche/product";
 
 export default defineProduct({
   id: "myapp",
@@ -170,7 +170,7 @@ The app implements `GET /api/projects` and the `myapp.deploy` handler manually i
 
 ## Package usage
 
-### `@lili/core`
+### `@liche/core`
 
 Use directly for handwritten CLIs or shared runtime behavior.
 
@@ -181,9 +181,9 @@ In an app integration, core owns:
 - outbound HTTP operation transport
 - response parsing and output validation
 
-### `@lili/product`
+### `@liche/product`
 
-Use to generate CLI and machine-readable surfaces from `lili.schema.ts`.
+Use to generate CLI and machine-readable surfaces from `liche.schema.ts`.
 
 It generates:
 
@@ -197,7 +197,7 @@ It generates:
 - generated surface manifest for drift and provenance
 - conformance plans from capability examples and HTTP bindings
 
-### `@lili/build`
+### `@liche/build`
 
 Use to compile a generated or handwritten CLI entrypoint into standalone Bun executables.
 
@@ -209,7 +209,7 @@ It owns:
 - build-time constants for release version, contract digest, source commit, and build-tool version
 - path-independent compile provenance consumed by release manifests
 
-### `@lili/releases`
+### `@liche/releases`
 
 Use when shipping the CLI.
 
@@ -228,7 +228,7 @@ No framework-specific package is required for Vite or TanStack Router.
 
 The app only needs to expose HTTP routes and handlers that implement the product schema capabilities.
 
-If the same `lili.schema.ts` can target:
+If the same `liche.schema.ts` can target:
 
 - a Vite dev server
 - a TanStack Start server

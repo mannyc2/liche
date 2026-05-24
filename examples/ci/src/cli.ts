@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { createConfig, defineCli, defineCommand, z } from '@lili/core'
+import { createConfig, defineCli, defineCommand, z } from '@liche/core'
 
 const DeploymentSchema = z.object({
   id: z.string(),

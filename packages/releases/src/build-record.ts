@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // This schema mirrors the BuildRecord shape emitted by the build package
-// (li-build build --record). We keep a local copy so this package stays
+// (liche-build build --record). We keep a local copy so this package stays
 // consumable standalone; both schemas must stay in sync — any new field on
 // the build side must land here too.
 

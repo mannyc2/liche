@@ -99,7 +99,7 @@ export async function writeMcp(name: string, optionsOrCommand: string | WriteMcp
 function skillDir(name: string, agent: string, isGlobal: boolean, env: Env, cwd: string): string {
   const adapterPath = AGENT_INSTALL_ADAPTERS[agent]?.skillDir?.({ cwd, env, global: isGlobal, name })
   if (adapterPath) return adapterPath
-  return `${home(env)}/.config/lili/skills/${name}`
+  return `${home(env)}/.config/liche/skills/${name}`
 }
 
 function mcpTarget(
@@ -115,7 +115,7 @@ function mcpTarget(
     : undefined
   if (adapterTarget) return adapterTarget
 
-  const dir = `${home(env)}/.config/lili/mcp`
+  const dir = `${home(env)}/.config/liche/mcp`
   return {
     dir,
     file: `${dir}/${name}.json`,

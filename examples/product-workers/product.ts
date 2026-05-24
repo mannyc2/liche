@@ -1,4 +1,4 @@
-import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from '@lili/product'
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from '@liche/product'
 
 export default defineProduct({
   id: 'workers',

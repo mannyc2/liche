@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ServeOptions } from '@lili/core'
+import type { ServeOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
 
 async function runCli(
@@ -22,11 +22,11 @@ async function runCli(
   return { exitCode, stderr, stdout }
 }
 
-describe('li-build CLI config', () => {
+describe('liche-build CLI config', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'lili-build-cli-'))
+    dir = mkdtempSync(join(tmpdir(), 'liche-build-cli-'))
   })
 
   afterEach(() => {
@@ -34,7 +34,7 @@ describe('li-build CLI config', () => {
   })
 
   test('build command consumes explicit createConfig option bindings', async () => {
-    const configPath = join(dir, 'li-build.jsonc')
+    const configPath = join(dir, 'liche-build.jsonc')
     writeFileSync(configPath, `{
       // Config backs durable build defaults, not release identity.
       "build": {

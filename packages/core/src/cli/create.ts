@@ -19,7 +19,7 @@ import { fetchCli } from './fetch.js'
 import { normalizeEvents, normalizeHooks } from './lifecycle.js'
 import { serveCli } from './serve.js'
 
-export const stateSymbol: unique symbol = Symbol('lili.cli.state')
+export const stateSymbol: unique symbol = Symbol('liche.cli.state')
 export type InternalCli = CliInstance & { [stateSymbol]: CliState }
 
 function create(definition: CreateOptions & { name: string }): CliInstance {

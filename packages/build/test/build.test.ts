@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { buildBinaries, parseBuildRecord } from '../src/index.js'
 import type { BuildBinariesInput, BunBuildFn } from '../src/index.js'
 
-const tmp = mkdtempSync(join(tmpdir(), 'lili-build-build-'))
+const tmp = mkdtempSync(join(tmpdir(), 'liche-build-build-'))
 
 afterAll(() => {
   rmSync(tmp, { recursive: true, force: true })
@@ -69,7 +69,7 @@ function freshOutDir(label: string): string {
 
 function inputFor(label: string, overrides: Partial<BuildBinariesInput>): BuildBinariesInput {
   return {
-    entrypoint: '/virtual/lili.compile-entry.ts',
+    entrypoint: '/virtual/liche.compile-entry.ts',
     targets: ['darwin-arm64'],
     constants,
     outDir: freshOutDir(label),

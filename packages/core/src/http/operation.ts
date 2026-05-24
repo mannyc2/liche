@@ -1,7 +1,7 @@
 import { authInvalid, authPermissionDenied } from '../auth/errors.js'
 import { applyAuth } from '../auth/resolve.js'
 import type { AuthCredential } from '../auth/types.js'
-import { LiliError, ValidationError } from '../errors/error.js'
+import { LicheError, ValidationError } from '../errors/error.js'
 import { parseSchema } from '../schema/zod.js'
 import type { Schema } from '../types.js'
 
@@ -408,7 +408,7 @@ function mapStatusError<TInput extends Record<string, unknown>, TOutput>(
   options: HttpOperationCall<TInput, TOutput>,
   secrets: string[],
   safeBodyBytes: number,
-): LiliError {
+): LicheError {
   if (response.status === 401 && options.auth?.kind === 'resolved') {
     return authInvalid({ providerId: options.auth.credential.providerId, status: 401 })
   }
@@ -523,9 +523,9 @@ function remoteError(
   details?: RemoteErrorDetails | undefined,
   extra?: Record<string, unknown> | undefined,
   options?: { cause?: Error | undefined; retryable?: boolean | undefined } | undefined,
-): LiliError {
+): LicheError {
   const mergedDetails = compactDetails(details, extra)
-  return new LiliError({
+  return new LicheError({
     code,
     details: mergedDetails,
     message,
@@ -540,7 +540,7 @@ function remoteRecovery(
   code: string,
   details: Record<string, unknown> | undefined,
   options: { retryable?: boolean | undefined } | undefined,
-): Pick<LiliError.Options, 'retry_after' | 'suggested_fix'> {
+): Pick<LicheError.Options, 'retry_after' | 'suggested_fix'> {
   if (code === 'REMOTE_CONFIG_MISSING_BASE_URL') {
     const envVar = typeof details?.['envVar'] === 'string' ? details['envVar'] : undefined
     return {

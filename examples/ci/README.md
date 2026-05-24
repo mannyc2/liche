@@ -2,10 +2,10 @@
 
 This directory is a minimal production-shaped repository for a handwritten CLI:
 
-- `src/cli.ts` defines a remote HTTP-backed deployment CLI with `@lili/core`.
+- `src/cli.ts` defines a remote HTTP-backed deployment CLI with `@liche/core`.
 - `shipyard.jsonc` is the project config file the CLI can read.
-- `lili.releases.json` declares release metadata, binary hosting, and package ecosystems.
-- `.github/workflows/release.yml` runs checks, tests, `li-release ship`, and the PyPA publish action.
+- `liche.releases.json` declares release metadata, binary hosting, and package ecosystems.
+- `.github/workflows/release.yml` runs checks, tests, `liche-release ship`, and the PyPA publish action.
 
 The CLI exposes `shipyard deployments list` and `shipyard deployments promote <id>`.
 

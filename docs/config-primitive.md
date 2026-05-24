@@ -6,7 +6,7 @@ The current core runtime already accepts `--config`, `--no-config`, a low-level 
 
 ## Success criteria
 
-- Handwritten CLIs can declare config through public `@lili/core` APIs without installing `@lili/product`.
+- Handwritten CLIs can declare config through public `@liche/core` APIs without installing `@liche/product`.
 - Generated Product CLIs lower product config declarations into the same core primitive as handwritten CLIs.
 - General config and product bindings remain separate authoring concepts.
 - Auth/session/profile state remains outside general config.
@@ -18,7 +18,7 @@ The current core runtime already accepts `--config`, `--no-config`, a low-level 
 Use the public `createConfig` helper:
 
 ```ts
-import { createConfig, defineCli, defineCommand, z } from "@lili/core";
+import { createConfig, defineCli, defineCommand, z } from "@liche/core";
 
 const cli = defineCli({
   name: "acme",
@@ -177,7 +177,7 @@ Secrets and stored sessions belong to auth/session primitives. Cache and machine
 Product exposes config and bindings as sibling fields on `defineProduct(...)`.
 
 ```ts
-import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@lili/product";
+import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@liche/product";
 
 export default defineProduct({
   id: "workers",
@@ -275,7 +275,7 @@ Verification:
 
 ### Slice B: Product config catalog
 
-- Add `createConfig` export in `@lili/product`.
+- Add `createConfig` export in `@liche/product`.
 - Add `defineProduct({ config })`.
 - Normalize config separately from bindings.
 - Generate config JSON Schema from general config and bindings.

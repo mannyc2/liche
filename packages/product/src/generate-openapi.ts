@@ -49,10 +49,10 @@ export function generateOpenapi(catalog: Catalog, options: GenerateOpenapiOption
     version: catalog.product.version,
   }
   if (catalog.product.description) info.description = catalog.product.description
-  info['x-lili-generator-version'] = options.generatorVersion
-  info['x-lili-catalog-digest'] = options.canonicalIrDigest
-  info['x-lili-generation-options-digest'] = options.generationOptionsDigest
-  info['x-lili-surface-id'] = options.surfaceId ?? 'openapi'
+  info['x-liche-generator-version'] = options.generatorVersion
+  info['x-liche-catalog-digest'] = options.canonicalIrDigest
+  info['x-liche-generation-options-digest'] = options.generationOptionsDigest
+  info['x-liche-surface-id'] = options.surfaceId ?? 'openapi'
 
   const document = {
     openapi: '3.1.0',

@@ -1,6 +1,6 @@
-import { callHttpOperation, serializeHttpOperationRequest, z } from '@lili/core'
-import type { HttpFetch, HttpOperationBind, HttpOperationCall, HttpOperationRequestSpec, Schema } from '@lili/core'
-import { canonicalDigest } from '@lili/build'
+import { callHttpOperation, serializeHttpOperationRequest, z } from '@liche/core'
+import type { HttpFetch, HttpOperationBind, HttpOperationCall, HttpOperationRequestSpec, Schema } from '@liche/core'
+import { canonicalDigest } from '@liche/build'
 import {
   normalizeProduct,
   resolveListShape,

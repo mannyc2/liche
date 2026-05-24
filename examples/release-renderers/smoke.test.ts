@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { packageRelease, manifestFromBuildRecord, parseBuildRecord } from '@lili/releases'
-import { createDefaultRendererRegistry } from '@lili/releases/renderers/all'
+import { packageRelease, manifestFromBuildRecord, parseBuildRecord } from '@liche/releases'
+import { createDefaultRendererRegistry } from '@liche/releases/renderers/all'
 
 describe('release-renderers example', () => {
   let outDir: string

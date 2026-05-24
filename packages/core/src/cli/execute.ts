@@ -15,7 +15,7 @@ import type {
   ConfigValueSource,
   OptionValueSource,
 } from '../types.js'
-import { fail, isRuntimeResult, LiliError, ok, toCommandError } from '../errors/error.js'
+import { fail, isRuntimeResult, LicheError, ok, toCommandError } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
 import type { LoadedConfig } from '../parser/config.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
@@ -56,7 +56,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       return result
     }
     if (!isCommand(selected.entry)) {
-      throw new LiliError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
+      throw new LicheError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
     }
     const runtime = selected.entry.runtime
 
@@ -125,7 +125,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
     }
 
     const result = await runStack(context, [...input.middlewares, ...(runtime.middleware ?? [])], async () => {
-      if (!runtime.run) throw new LiliError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
+      if (!runtime.run) throw new LicheError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
       return await runtime.run(context)
     })
 

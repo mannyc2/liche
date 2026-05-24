@@ -115,10 +115,10 @@ export function createFileSessionStore(options: FileSessionStoreOptions = {}): S
 }
 
 function defaultSessionRoot(env: Record<string, string | undefined> = process.env): string {
-  if (env['LILI_HOME']) return env['LILI_HOME']
-  if (platform() === 'darwin') return join(homedir(), 'Library', 'Application Support', 'lili')
-  if (platform() === 'win32') return join(env['APPDATA'] ?? join(homedir(), 'AppData', 'Roaming'), 'lili')
-  return join(env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config'), 'lili')
+  if (env['LICHE_HOME']) return env['LICHE_HOME']
+  if (platform() === 'darwin') return join(homedir(), 'Library', 'Application Support', 'liche')
+  if (platform() === 'win32') return join(env['APPDATA'] ?? join(homedir(), 'AppData', 'Roaming'), 'liche')
+  return join(env['XDG_CONFIG_HOME'] ?? join(homedir(), '.config'), 'liche')
 }
 
 function isValidProfileName(profile: string): boolean {

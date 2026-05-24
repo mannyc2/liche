@@ -27,7 +27,7 @@ export type ConfigScopesDeclaration = {
 }
 
 export type ConfigObjectDefinition<T = Record<string, unknown>> = {
-  kind: 'lili.config.object'
+  kind: 'liche.config.object'
   files?: readonly string[] | undefined
   flag?: string | undefined
   schema?: Schema<T> | undefined

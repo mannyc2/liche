@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { renderCompileEntrypoint } from '@lili/build'
-import type { BunBuildFn } from '@lili/build'
+import { renderCompileEntrypoint } from '@liche/build'
+import type { BunBuildFn } from '@liche/build'
 import {
   canonicalDigest,
   compileProduct,
@@ -31,7 +31,7 @@ describe('compileProduct', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'lili-product-compile-'))
+    dir = mkdtempSync(join(tmpdir(), 'liche-product-compile-'))
   })
 
   afterEach(() => {
@@ -56,15 +56,15 @@ describe('compileProduct', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(await Bun.file(result.compileEntrypointPath).text()).toBe(renderCompileEntrypoint())
-    expect(result.generated.generatedPath).toBe(join(dir, 'lili.generated.ts'))
-    expect(result.plan.flags.define.LILI_CONTRACT_DIGEST).toBe(
+    expect(result.generated.generatedPath).toBe(join(dir, 'liche.generated.ts'))
+    expect(result.plan.flags.define.LICHE_CONTRACT_DIGEST).toBe(
       JSON.stringify(canonicalDigest(normalizeProduct(product))),
     )
 
     const options = captured[0]
     expect(options).toBeDefined()
     if (options === undefined) return
-    expect(options.entrypoints).toEqual([join(dir, 'lili.compile-entry.ts')])
+    expect(options.entrypoints).toEqual([join(dir, 'liche.compile-entry.ts')])
     expect(options.compile).toMatchObject({
       target: 'bun-linux-x64-baseline',
       outfile: join(dir, 'workers'),

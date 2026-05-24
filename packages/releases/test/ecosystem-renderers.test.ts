@@ -9,7 +9,7 @@ import { readTarGzEntries } from '../src/renderers/archives/tar.js'
 import { readZipEntries } from '../src/renderers/archives/zip.js'
 import type { CliReleaseManifestInput } from '../src/index.js'
 
-const tmp = mkdtempSync(join(tmpdir(), 'lili-releases-renderers-'))
+const tmp = mkdtempSync(join(tmpdir(), 'liche-releases-renderers-'))
 
 const binaryBytes = {
   'workers-darwin-arm64': Buffer.from('DARWIN_ARM64_BINARY'),

@@ -1,9 +1,9 @@
 {
-  "name": "@lili/product",
+  "name": "@liche/product",
   "version": "0.2.0",
   "type": "module",
   "license": "MIT",
-  "description": "Product schema authoring, generated CLI surfaces, and conformance for Lili.",
+  "description": "Product schema authoring, generated CLI surfaces, and conformance for Liche.",
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"
@@ -15,7 +15,7 @@
     }
   },
   "bin": {
-    "li-product": "./src/cli.ts"
+    "liche-product": "./src/cli.ts"
   },
   "files": ["src", "README.md", "LICENSE"],
   "publishConfig": {
@@ -27,8 +27,8 @@
     "mutate": "stryker run"
   },
   "dependencies": {
-    "@lili/build": "^0.2.0",
-    "@lili/core": "^0.2.0",
+    "@liche/build": "^0.2.0",
+    "@liche/core": "^0.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

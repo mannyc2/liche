@@ -9,7 +9,7 @@ export type JsonSchemaNode = {
   enum?: unknown[]
   default?: unknown
   additionalProperties?: boolean
-  // OpenAPI/JSON Schema vendor extension keys (e.g., x-lili-secret).
+  // OpenAPI/JSON Schema vendor extension keys (e.g., x-liche-secret).
   // We don't enumerate them; the catalog adds and the generator preserves.
   [extensionKey: `x-${string}`]: unknown
 }

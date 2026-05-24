@@ -1,13 +1,13 @@
-# @lili/releases
+# @liche/releases
 
-Release manifests, package renderers, artifact verification, official-flow handoffs, publish planning, and yank planning for Lili CLIs.
+Release manifests, package renderers, artifact verification, official-flow handoffs, publish planning, and yank planning for Liche CLIs.
 
 This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
 
-Use `@lili/releases` after `@lili/build` has produced a build record and final binary bytes. The release package validates the manifest, verifies binary bytes, renders package-manager artifacts, verifies package artifacts, and creates dry-run publisher plans.
+Use `@liche/releases` after `@liche/build` has produced a build record and final binary bytes. The release package validates the manifest, verifies binary bytes, renders package-manager artifacts, verifies package artifacts, and creates dry-run publisher plans.
 
 ```ts
-import { parseCliReleaseManifest } from "@lili/releases";
+import { parseCliReleaseManifest } from "@liche/releases";
 
 const parsed = parseCliReleaseManifest({
   manifestVersion: 1,
@@ -36,8 +36,8 @@ console.log(parsed.manifest.subject.id);
 ## CLI
 
 ```sh
-li-release package ./dist/build-record.json --out ./dist/release --json
-li-release publish ./dist/release/manifest.json --ecosystems npm --dry-run --json
+liche-release package ./dist/build-record.json --out ./dist/release --json
+liche-release publish ./dist/release/manifest.json --ecosystems npm --dry-run --json
 ```
 
 ## Renderer Subpaths
@@ -45,9 +45,9 @@ li-release publish ./dist/release/manifest.json --ecosystems npm --dry-run --jso
 Concrete renderers are public subpath exports so integrations can load one ecosystem at a time.
 
 ```ts
-import { npmRenderer } from "@lili/releases/renderers/npm";
+import { npmRenderer } from "@liche/releases/renderers/npm";
 ```
 
-`@lili/releases/renderers/all` exports `createDefaultRendererRegistry()` for npm, PyPI, Homebrew, and Scoop together. `@lili/releases/publishers` exports publisher planning, preflight, credential loading, and execution helpers.
+`@liche/releases/renderers/all` exports `createDefaultRendererRegistry()` for npm, PyPI, Homebrew, and Scoop together. `@liche/releases/publishers` exports publisher planning, preflight, credential loading, and execution helpers.
 
 Publishing remains aligned with official package-manager flows. CI should consume the release handoff artifacts rather than reconstruct package order or release intent in workflow YAML.

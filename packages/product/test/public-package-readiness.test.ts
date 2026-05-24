@@ -9,14 +9,14 @@ const PUBLIC_PACKAGE_VERSION = '0.2.0'
 const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
-  { name: '@lili/core', dir: 'packages/core', bin: undefined },
-  { name: '@lili/build', dir: 'packages/build', bin: 'li-build' },
-  { name: '@lili/product', dir: 'packages/product', bin: 'li-product' },
-  { name: '@lili/releases', dir: 'packages/releases', bin: 'li-release' },
+  { name: '@liche/core', dir: 'packages/core', bin: undefined },
+  { name: '@liche/build', dir: 'packages/build', bin: 'liche-build' },
+  { name: '@liche/product', dir: 'packages/product', bin: 'liche-product' },
+  { name: '@liche/releases', dir: 'packages/releases', bin: 'liche-release' },
 ] as const
 
 const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
-  '@lili/core': [
+  '@liche/core': [
     'Formatter',
     'applyAuth',
     'authSwitch',
@@ -40,7 +40,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'serializeHttpOperationRequest',
     'z',
   ],
-  '@lili/build': [
+  '@liche/build': [
     'BuildRecordSchema',
     'TARGETS',
     'TARGET_PRESETS',
@@ -56,7 +56,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'renderCompileEntrypoint',
     'resolveTargets',
   ],
-  '@lili/product': [
+  '@liche/product': [
     'Auth',
     'Command',
     'DEFAULT_GENERATED_VOCABULARY',
@@ -89,7 +89,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'vocabulary',
     'z',
   ],
-  '@lili/releases': [
+  '@liche/releases': [
     'BuildRecordSchema',
     'CliReleaseManifestSchema',
     'DEFAULT_NPM_REGISTRY_AUDIENCE',
@@ -116,24 +116,24 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'verifyPackageArtifacts',
     'verifyReleaseBinaries',
   ],
-  '@lili/releases/manifest': ['CliReleaseManifestSchema', 'parseCliReleaseManifest'],
-  '@lili/releases/binary': ['verifyReleaseBinaries'],
-  '@lili/releases/artifacts': ['verifyPackageArtifacts'],
-  '@lili/releases/package': ['packageRelease'],
-  '@lili/releases/yank': ['planReleaseYank'],
-  '@lili/releases/renderers': ['PACKAGE_ECOSYSTEMS', 'isPackageEcosystem', 'resolveReleaseRenderers'],
-  '@lili/releases/renderers/all': [
+  '@liche/releases/manifest': ['CliReleaseManifestSchema', 'parseCliReleaseManifest'],
+  '@liche/releases/binary': ['verifyReleaseBinaries'],
+  '@liche/releases/artifacts': ['verifyPackageArtifacts'],
+  '@liche/releases/package': ['packageRelease'],
+  '@liche/releases/yank': ['planReleaseYank'],
+  '@liche/releases/renderers': ['PACKAGE_ECOSYSTEMS', 'isPackageEcosystem', 'resolveReleaseRenderers'],
+  '@liche/releases/renderers/all': [
     'createDefaultRendererRegistry',
     'homebrewRenderer',
     'npmRenderer',
     'pypiRenderer',
     'scoopRenderer',
   ],
-  '@lili/releases/renderers/npm': ['npmRenderer'],
-  '@lili/releases/renderers/pypi': ['pypiRenderer'],
-  '@lili/releases/renderers/homebrew': ['homebrewRenderer'],
-  '@lili/releases/renderers/scoop': ['scoopRenderer'],
-  '@lili/releases/publishers': [
+  '@liche/releases/renderers/npm': ['npmRenderer'],
+  '@liche/releases/renderers/pypi': ['pypiRenderer'],
+  '@liche/releases/renderers/homebrew': ['homebrewRenderer'],
+  '@liche/releases/renderers/scoop': ['scoopRenderer'],
+  '@liche/releases/publishers': [
     'DEFAULT_NPM_REGISTRY_AUDIENCE',
     'OIDC_EXECUTOR_FAILURE_CODES',
     'OIDC_PROVIDERS',
@@ -206,7 +206,7 @@ describe('public package readiness', () => {
         default: './src/index.ts',
       })
       for (const [dependencyName, version] of Object.entries(json.dependencies ?? {})) {
-        if (dependencyName.startsWith('@lili/')) expect(version).toBe(`^${PUBLIC_PACKAGE_VERSION}`)
+        if (dependencyName.startsWith('@liche/')) expect(version).toBe(`^${PUBLIC_PACKAGE_VERSION}`)
       }
       if (pkg.bin) expect(json.bin?.[pkg.bin]).toMatch(/^\.\/src\/.*\.ts$/)
       expect(readFileSync(join(REPO_ROOT, pkg.dir, 'README.md'), 'utf8')).toContain(`# ${pkg.name}`)
@@ -214,7 +214,7 @@ describe('public package readiness', () => {
   })
 
   test('packed packages install in a temp Bun consumer and expose documented imports', () => {
-    const root = mkdtempSync(join(tmpdir(), 'lili-public-packages-'))
+    const root = mkdtempSync(join(tmpdir(), 'liche-public-packages-'))
     const packDir = join(root, 'packs')
     const consumerDir = join(root, 'consumer')
     try {
@@ -242,7 +242,7 @@ describe('public package readiness', () => {
       }
 
       writeFileSync(join(consumerDir, 'package.json'), `${JSON.stringify({
-        name: 'lili-public-consumer',
+        name: 'liche-public-consumer',
         private: true,
         type: 'module',
         dependencies: Object.fromEntries(
@@ -255,43 +255,43 @@ describe('public package readiness', () => {
       run('bun', ['install'], consumerDir)
 
       writeFileSync(join(consumerDir, 'smoke.ts'), `
-import * as Core from '@lili/core'
-import * as Build from '@lili/build'
-import * as Product from '@lili/product'
-import * as Releases from '@lili/releases'
-import * as ReleaseManifest from '@lili/releases/manifest'
-import * as ReleaseBinary from '@lili/releases/binary'
-import * as ReleaseArtifacts from '@lili/releases/artifacts'
-import * as ReleasePackage from '@lili/releases/package'
-import * as ReleaseYank from '@lili/releases/yank'
-import * as ReleaseRenderers from '@lili/releases/renderers'
-import * as ReleaseRendererAll from '@lili/releases/renderers/all'
-import * as ReleaseRendererNpm from '@lili/releases/renderers/npm'
-import * as ReleaseRendererPypi from '@lili/releases/renderers/pypi'
-import * as ReleaseRendererHomebrew from '@lili/releases/renderers/homebrew'
-import * as ReleaseRendererScoop from '@lili/releases/renderers/scoop'
-import * as ReleasePublishers from '@lili/releases/publishers'
+import * as Core from '@liche/core'
+import * as Build from '@liche/build'
+import * as Product from '@liche/product'
+import * as Releases from '@liche/releases'
+import * as ReleaseManifest from '@liche/releases/manifest'
+import * as ReleaseBinary from '@liche/releases/binary'
+import * as ReleaseArtifacts from '@liche/releases/artifacts'
+import * as ReleasePackage from '@liche/releases/package'
+import * as ReleaseYank from '@liche/releases/yank'
+import * as ReleaseRenderers from '@liche/releases/renderers'
+import * as ReleaseRendererAll from '@liche/releases/renderers/all'
+import * as ReleaseRendererNpm from '@liche/releases/renderers/npm'
+import * as ReleaseRendererPypi from '@liche/releases/renderers/pypi'
+import * as ReleaseRendererHomebrew from '@liche/releases/renderers/homebrew'
+import * as ReleaseRendererScoop from '@liche/releases/renderers/scoop'
+import * as ReleasePublishers from '@liche/releases/publishers'
 import { mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 const expectedPublicValues = ${JSON.stringify(EXPECTED_PUBLIC_VALUES, null, 2)}
 const modules = {
-  '@lili/core': Core,
-  '@lili/build': Build,
-  '@lili/product': Product,
-  '@lili/releases': Releases,
-  '@lili/releases/manifest': ReleaseManifest,
-  '@lili/releases/binary': ReleaseBinary,
-  '@lili/releases/artifacts': ReleaseArtifacts,
-  '@lili/releases/package': ReleasePackage,
-  '@lili/releases/yank': ReleaseYank,
-  '@lili/releases/renderers': ReleaseRenderers,
-  '@lili/releases/renderers/all': ReleaseRendererAll,
-  '@lili/releases/renderers/npm': ReleaseRendererNpm,
-  '@lili/releases/renderers/pypi': ReleaseRendererPypi,
-  '@lili/releases/renderers/homebrew': ReleaseRendererHomebrew,
-  '@lili/releases/renderers/scoop': ReleaseRendererScoop,
-  '@lili/releases/publishers': ReleasePublishers,
+  '@liche/core': Core,
+  '@liche/build': Build,
+  '@liche/product': Product,
+  '@liche/releases': Releases,
+  '@liche/releases/manifest': ReleaseManifest,
+  '@liche/releases/binary': ReleaseBinary,
+  '@liche/releases/artifacts': ReleaseArtifacts,
+  '@liche/releases/package': ReleasePackage,
+  '@liche/releases/yank': ReleaseYank,
+  '@liche/releases/renderers': ReleaseRenderers,
+  '@liche/releases/renderers/all': ReleaseRendererAll,
+  '@liche/releases/renderers/npm': ReleaseRendererNpm,
+  '@liche/releases/renderers/pypi': ReleaseRendererPypi,
+  '@liche/releases/renderers/homebrew': ReleaseRendererHomebrew,
+  '@liche/releases/renderers/scoop': ReleaseRendererScoop,
+  '@liche/releases/publishers': ReleasePublishers,
 }
 
 for (const [specifier, mod] of Object.entries(modules)) {

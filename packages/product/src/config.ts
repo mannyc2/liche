@@ -13,7 +13,7 @@ export type ConfigScopesSpec = {
 }
 
 export type ProductConfigSpec = {
-  kind: 'lili.product.config.object'
+  kind: 'liche.product.config.object'
   files?: readonly string[] | undefined
   fields: Shape
   scopes?: ConfigScopesSpec | undefined
@@ -27,7 +27,7 @@ export type ProductConfigDefinition = {
 
 export function createConfig(definition: ProductConfigDefinition): ProductConfigSpec {
   const out: ProductConfigSpec = {
-    kind: 'lili.product.config.object',
+    kind: 'liche.product.config.object',
     fields: definition.fields,
   }
   if (definition.files) out.files = [...definition.files]

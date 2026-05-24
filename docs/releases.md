@@ -1,8 +1,8 @@
 # Release renderer requirements
 
-All first-party release renderers live in `@lili/releases`.
+All first-party release renderers live in `@liche/releases`.
 
-There is no `@lili/release-extra` package. npm is one renderer, not the privileged package boundary. Users choose zero to all renderers through release configuration.
+There is no `@liche/release-extra` package. npm is one renderer, not the privileged package boundary. Users choose zero to all renderers through release configuration.
 
 ## Renderer selection
 
@@ -25,7 +25,7 @@ The current implementation provides the shared registry and selection API in `pa
 
 ## Package boundary
 
-`@lili/releases` owns:
+`@liche/releases` owns:
 
 - release manifest schema
 - shared renderer interface
@@ -40,9 +40,9 @@ The current implementation provides the shared registry and selection API in `pa
 - future WinGet helper flow when explicitly in scope
 - manifest-based yank and rollback planning
 
-Renderer dependencies must stay out of `@lili/core`, `@lili/build`, and `@lili/product`. If an ecosystem needs heavyweight tooling, load or invoke it only when that renderer is selected; do not create another first-party release package to hide the dependency problem.
+Renderer dependencies must stay out of `@liche/core`, `@liche/build`, and `@liche/product`. If an ecosystem needs heavyweight tooling, load or invoke it only when that renderer is selected; do not create another first-party release package to hide the dependency problem.
 
-Renderer implementations must stay behind renderer subpath exports so users who only need the manifest/package spine do not import every ecosystem renderer. Publisher adapters also live in `@lili/releases`, but they are not renderers. A publisher consumes one release manifest plus verified package artifact records and then mutates npm, PyPI, tap, bucket, or other registry state. Publisher dependencies and credential handling must stay behind publisher subpaths and publisher selection.
+Renderer implementations must stay behind renderer subpath exports so users who only need the manifest/package spine do not import every ecosystem renderer. Publisher adapters also live in `@liche/releases`, but they are not renderers. A publisher consumes one release manifest plus verified package artifact records and then mutates npm, PyPI, tap, bucket, or other registry state. Publisher dependencies and credential handling must stay behind publisher subpaths and publisher selection.
 
 The implemented package orchestration API is `packageRelease(...)`. It consumes manifest input plus explicit final binary paths, invokes selected renderers with only `{ manifest, binaries, outDir, config? }`, and verifies final package artifact bytes through package records. It does not rebuild binaries, reread Product/build source, or publish to registries.
 
@@ -184,6 +184,6 @@ scoop/final-json-matches-manifest
 
 ## WinGet
 
-WinGet is planned but must not block the initial `@lili/releases` package.
+WinGet is planned but must not block the initial `@liche/releases` package.
 
 It usually requires repository PR workflow and should be treated as an asynchronous release follow-up unless explicitly prioritized.

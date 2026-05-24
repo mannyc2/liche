@@ -5,13 +5,13 @@ This is the smallest useful generated-product example. It defines one resource, 
 Generate surfaces in place:
 
 ```sh
-li-product generate examples/product-workers/product.ts --out examples/product-workers
+liche-product generate examples/product-workers/product.ts --out examples/product-workers
 ```
 
 Check generated surfaces:
 
 ```sh
-li-product generate examples/product-workers/product.ts --out examples/product-workers --check --json
+liche-product generate examples/product-workers/product.ts --out examples/product-workers --check --json
 ```
 
 Run the generated CLI:

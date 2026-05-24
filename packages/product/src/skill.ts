@@ -1,18 +1,18 @@
 export const LI_PRODUCT_SKILL_MARKDOWN = `---
-name: li-product
-description: Author and maintain lili product schemas
+name: liche-product
+description: Author and maintain liche product schemas
 ---
 
-# li-product
+# liche-product
 
-Use this skill when authoring or maintaining a lili product schema and its generated surfaces.
+Use this skill when authoring or maintaining a liche product schema and its generated surfaces.
 
 ## Product Model
 
-\`@lili/product\` is a product-schema compiler. Author products with sibling resources, commands, and bindings; the product package normalizes them into a canonical capability catalog and projects that catalog into generated surfaces.
+\`@liche/product\` is a product-schema compiler. Author products with sibling resources, commands, and bindings; the product package normalizes them into a canonical capability catalog and projects that catalog into generated surfaces.
 
 \`\`\`ts
-import { Command, Field, Shape, defineProduct } from '@lili/product'
+import { Command, Field, Shape, defineProduct } from '@liche/product'
 
 export default defineProduct({
   id: 'workers',
@@ -54,10 +54,10 @@ The verb on a resource operation must be in the product vocabulary. Defaults are
 
 ## Commands
 
-- \`li-product generate <product.ts>\`: generate surfaces next to the product schema.
-- \`li-product generate <product.ts> --out <dir>\`: write generated artifacts to a specific directory.
-- \`li-product generate <product.ts> --check\`: fail when generated artifacts are out of sync.
-- \`li-product compile <product.ts>\`: generate the product CLI, then compile it through \`@lili/build\`'s Bun compile spine.
+- \`liche-product generate <product.ts>\`: generate surfaces next to the product schema.
+- \`liche-product generate <product.ts> --out <dir>\`: write generated artifacts to a specific directory.
+- \`liche-product generate <product.ts> --check\`: fail when generated artifacts are out of sync.
+- \`liche-product compile <product.ts>\`: generate the product CLI, then compile it through \`@liche/build\`'s Bun compile spine.
 
 Prefer \`--json\` when another tool or agent will read the result.
 
@@ -67,12 +67,12 @@ Prefer \`--json\` when another tool or agent will read the result.
 - Keep execution mode explicit. \`Command.local\` for purely local handlers, \`Command.remoteHttp\` for pure HTTP calls, \`Command.workflow\` for hybrid workflows that combine local work and HTTP steps.
 - Local and hybrid handler strings use the form \`module.export\`; generated code imports the export from \`./impl/<module>.js\`.
 - Use \`Shape.list(resourceId)\` to return a list of a declared resource. The catalog keeps the reference; OpenAPI and generators resolve it through the catalog.
-- Treat generated artifacts as owned by \`li-product\`; edit the product schema, then regenerate.
+- Treat generated artifacts as owned by \`liche-product\`; edit the product schema, then regenerate.
 `
 
-export const LI_PRODUCT_SKILL_INDEX = `# li-product
-Author and maintain lili product schemas.
+export const LI_PRODUCT_SKILL_INDEX = `# liche-product
+Author and maintain liche product schemas.
 
 - Define product schemas with defineProduct({ resources, commands, bindings }).
-- Generate and check surfaces with li-product generate.
+- Generate and check surfaces with liche-product generate.
 - Pick the right capability kind: resources for CRUD, commands for workflows.`

@@ -1,4 +1,4 @@
-import { LiliError } from '../errors/error.js'
+import { LicheError } from '../errors/error.js'
 
 export const AUTH_CODES = {
   MISSING: 'AUTH_MISSING',
@@ -31,9 +31,9 @@ function authError(
   code: AuthErrorCode,
   message: string,
   details?: AuthErrorDetails,
-  recovery: Pick<LiliError.Options, 'code_actions' | 'hint' | 'suggested_fix'> = {},
-): LiliError {
-  return new LiliError({ code, message, details, exitCode: 1, ...recovery })
+  recovery: Pick<LicheError.Options, 'code_actions' | 'hint' | 'suggested_fix'> = {},
+): LicheError {
+  return new LicheError({ code, message, details, exitCode: 1, ...recovery })
 }
 
 export function authMissing(input: {
@@ -41,7 +41,7 @@ export function authMissing(input: {
   envVars: string[]
   loginCommand?: string | undefined
   requiredPermissions?: string[] | undefined
-}): LiliError {
+}): LicheError {
   const remedies: string[] = []
   if (input.loginCommand) remedies.push(`run \`${input.loginCommand}\``)
   if (input.envVars.length > 0) remedies.push(`set ${input.envVars.join(' or ')}`)
@@ -68,7 +68,7 @@ export function authMissing(input: {
   })
 }
 
-export function authCiTokenMissing(input: { providerId: string; envVars: string[] }): LiliError {
+export function authCiTokenMissing(input: { providerId: string; envVars: string[] }): LicheError {
   const message =
     input.envVars.length > 0
       ? `CI token required. Set ${input.envVars.join(' or ')}.`
@@ -86,7 +86,7 @@ export function authCiTokenMissing(input: { providerId: string; envVars: string[
 export function authContextRequired(input: {
   providerId: string
   contexts: { id: string; envVar?: string | undefined; flag?: string | undefined }[]
-}): LiliError {
+}): LicheError {
   const ids = input.contexts.map((c) => c.id).join(', ')
   const message = `Required context missing: ${ids}.`
   return authError(AUTH_CODES.CONTEXT_REQUIRED, message, {
@@ -101,7 +101,7 @@ export function authScopeMissing(input: {
   providerId: string
   missingScopes: string[]
   requiredPermissions?: string[] | undefined
-}): LiliError {
+}): LicheError {
   const message = `Credential is missing required scopes: ${input.missingScopes.join(', ')}.`
   return authError(AUTH_CODES.SCOPE_MISSING, message, {
     providerId: input.providerId,
@@ -116,7 +116,7 @@ export function authPermissionDenied(input: {
   providerId: string
   requiredPermissions?: string[] | undefined
   status?: number | undefined
-}): LiliError {
+}): LicheError {
   return authError(AUTH_CODES.PERMISSION_DENIED, 'Permission denied.', {
     providerId: input.providerId,
     requiredPermissions: input.requiredPermissions,
@@ -128,7 +128,7 @@ export function authPermissionDenied(input: {
   })
 }
 
-export function authInvalid(input: { providerId: string; status?: number | undefined }): LiliError {
+export function authInvalid(input: { providerId: string; status?: number | undefined }): LicheError {
   return authError(AUTH_CODES.INVALID, 'Authentication rejected by server.', {
     providerId: input.providerId,
     status: input.status ?? 401,
@@ -137,7 +137,7 @@ export function authInvalid(input: { providerId: string; status?: number | undef
   })
 }
 
-export function authExpired(input: { providerId: string; loginCommand?: string | undefined }): LiliError {
+export function authExpired(input: { providerId: string; loginCommand?: string | undefined }): LicheError {
   return authError(AUTH_CODES.EXPIRED, 'Authentication expired.', {
     providerId: input.providerId,
     loginCommand: input.loginCommand,
@@ -149,7 +149,7 @@ export function authExpired(input: { providerId: string; loginCommand?: string |
   })
 }
 
-export function authInteractiveRequired(input: { providerId: string; loginCommand?: string | undefined }): LiliError {
+export function authInteractiveRequired(input: { providerId: string; loginCommand?: string | undefined }): LicheError {
   return authError(AUTH_CODES.INTERACTIVE_REQUIRED, 'Interactive login is required for this command.', {
     providerId: input.providerId,
     loginCommand: input.loginCommand,
@@ -161,14 +161,14 @@ export function authInteractiveRequired(input: { providerId: string; loginComman
   })
 }
 
-export function authSessionCorrupt(input: { providerId?: string; profile?: string }): LiliError {
+export function authSessionCorrupt(input: { providerId?: string; profile?: string }): LicheError {
   return authError(AUTH_CODES.SESSION_CORRUPT, 'Stored auth session is corrupt.', {
     providerId: input.providerId,
     profile: input.profile,
   })
 }
 
-export function authSessionLocked(input: { providerId?: string; profile?: string }): LiliError {
+export function authSessionLocked(input: { providerId?: string; profile?: string }): LicheError {
   return authError(AUTH_CODES.SESSION_LOCKED, 'Stored auth session is locked by another process.', {
     providerId: input.providerId,
     profile: input.profile,

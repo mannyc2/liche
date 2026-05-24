@@ -1,13 +1,13 @@
-# @lili/core
+# @liche/core
 
-Bun-native CLI runtime for handwritten and generated Lili CLIs.
+Bun-native CLI runtime for handwritten and generated Liche CLIs.
 
 This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
 
-Use `@lili/core` when you want to own the command implementation directly and still get typed parsing, config discovery, JSON/JSONL/YAML/Markdown output envelopes, direct MCP tools, serializable command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics and telemetry sinks are opt-in; nonessential renderers and client/vendor installers are not required core behavior.
+Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, config discovery, JSON/JSONL/YAML/Markdown output envelopes, direct MCP tools, serializable command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics and telemetry sinks are opt-in; nonessential renderers and client/vendor installers are not required core behavior.
 
 ```ts
-import { defineCli, defineCommand, z } from "@lili/core";
+import { defineCli, defineCommand, z } from "@liche/core";
 
 export const cli = defineCli({
   name: "shipyard",
@@ -49,4 +49,4 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 
 Core formats are `json`, `jsonl`, `yaml`, and `md`. Additional renderers belong in optional packages that consume `CommandContract` or generated Product artifacts.
 
-`@lili/product` generates Product CLIs on top of this runtime. `@lili/build` compiles CLIs. `@lili/releases` packages compiled artifacts.
+`@liche/product` generates Product CLIs on top of this runtime. `@liche/build` compiles CLIs. `@liche/releases` packages compiled artifacts.

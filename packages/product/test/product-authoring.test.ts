@@ -169,9 +169,9 @@ describe('Command factories', () => {
 })
 
 describe('defineProduct', () => {
-  test('returns a declarative product record with kind="lili.product"', () => {
+  test('returns a declarative product record with kind="liche.product"', () => {
     const product = defineProduct({ id: 'workers', name: 'Workers', version: '1.0.0' })
-    expect(product.kind).toBe('lili.product')
+    expect(product.kind).toBe('liche.product')
     expect(product.id).toBe('workers')
     expect(product.name).toBe('Workers')
     expect(product.version).toBe('1.0.0')

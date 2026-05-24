@@ -8,16 +8,16 @@ The current package split is:
 
 | Package | Responsibility |
 |---|---|
-| `@lili/core` | Runtime primitives for handwritten CLIs: command registration, parsing, env validation, output formatting, fetch/MCP serving, generated-code runtime helpers. |
-| `@lili/product` | Product schema authoring and compiler: normalize product resources, workflow commands, auth/context declarations, bindings, and generated surfaces such as CLI, OpenAPI, MCP tools, Agent references, docs, and config schema. |
-| `@lili/build` | Bun compile primitives and build records for executable output. |
-| `@lili/releases` | Release manifest, binary verification, ecosystem package renderers, and publisher planning. |
+| `@liche/core` | Runtime primitives for handwritten CLIs: command registration, parsing, env validation, output formatting, fetch/MCP serving, generated-code runtime helpers. |
+| `@liche/product` | Product schema authoring and compiler: normalize product resources, workflow commands, auth/context declarations, bindings, and generated surfaces such as CLI, OpenAPI, MCP tools, Agent references, docs, and config schema. |
+| `@liche/build` | Bun compile primitives and build records for executable output. |
+| `@liche/releases` | Release manifest, binary verification, ecosystem package renderers, and publisher planning. |
 
 We are revisiting config as a first-class primitive.
 
 Current state:
 
-- `@lili/core` already has a low-level config hook with `files`, `flag`, and `loader`.
+- `@liche/core` already has a low-level config hook with `files`, `flag`, and `loader`.
 - Core accepts global `--config <path>` and `--no-config`.
 - Core can load JSON/YAML config and merge command options using the current precedence:
 
@@ -39,7 +39,7 @@ argv flag > optionEnv > config file > schema default
 }
 ```
 
-- `@lili/product` currently has `.binding({ key, fields })`, and generated config schema is binding-derived only. This is useful for product-specific structured bindings such as Workers `kv_namespaces`, but it does not cover normal CLI config needs like `baseUrl`, `timeoutMs`, `defaultOrg`, project root, profile defaults, output preferences, telemetry posture, update channel, or release defaults.
+- `@liche/product` currently has `.binding({ key, fields })`, and generated config schema is binding-derived only. This is useful for product-specific structured bindings such as Workers `kv_namespaces`, but it does not cover normal CLI config needs like `baseUrl`, `timeoutMs`, `defaultOrg`, project root, profile defaults, output preferences, telemetry posture, update channel, or release defaults.
 
 Working thesis:
 
@@ -53,7 +53,7 @@ We need external evidence before locking the API.
 
 ## Primary question
 
-How should `@lili/core` expose an opt-in, first-class config primitive for CLI authors, and how should `@lili/product` layer product-schema abstractions on top of it?
+How should `@liche/core` expose an opt-in, first-class config primitive for CLI authors, and how should `@liche/product` layer product-schema abstractions on top of it?
 
 The answer should recommend one concrete direction for:
 
@@ -74,7 +74,7 @@ The recommendation must preserve these boundaries unless the research finds stro
 - Selected context defaults such as `defaultOrg` or `defaultProject` may be config, but active runtime session/profile state must remain separate.
 - Env vars that act as option defaults should remain visible as env-backed option defaults. Env vars that are true ambient runtime requirements should remain `env` schema fields.
 - Generated Product CLIs should not invent a second config system. Product config declarations should lower into the same core config primitive used by handwritten CLIs.
-- Core must keep working for handwritten CLIs without requiring `@lili/product`.
+- Core must keep working for handwritten CLIs without requiring `@liche/product`.
 
 ## Research targets
 
@@ -223,7 +223,7 @@ argv > env-backed option defaults > project config > user config > global config
 
 ### C. Product abstraction
 
-Research and recommend the higher-level `@lili/product` API.
+Research and recommend the higher-level `@liche/product` API.
 
 Candidate:
 
@@ -279,7 +279,7 @@ Answer:
 2. Which values commonly do live in config despite being sensitive?
 3. What security warnings or migration stories exist around plaintext config?
 4. Are users better served by a strict separation, or by a policy-based system with explicit plaintext/env/secure-store modes?
-5. What should `lili` document as the default without blocking legitimate plaintext/env-only workflows?
+5. What should `liche` document as the default without blocking legitimate plaintext/env-only workflows?
 
 ### E. CLI UX
 
@@ -294,7 +294,7 @@ Research common UX patterns for config:
 7. `--cwd`, `--project`, `--workspace`, or equivalent for config root selection.
 8. Explicit `--profile` versus config-stored defaults.
 
-Recommend which of these belong in `@lili/core` as reusable generated/helper behavior, which belong in `@lili/product`, and which should be application-owned.
+Recommend which of these belong in `@liche/core` as reusable generated/helper behavior, which belong in `@liche/product`, and which should be application-owned.
 
 ## Evidence requirements
 
@@ -316,7 +316,7 @@ The ideal output is one document, 3000-6000 words, containing:
 5. **Precedence matrix** showing how leading tools order flags, env, project config, user config, global config, and defaults.
 6. **File-discovery matrix** showing explicit flags, auto-discovered names, search roots, and escape hatches.
 7. **State-boundary summary** for config vs secrets vs sessions vs cache.
-8. **API sketch** for `@lili/core` and `@lili/product`, including at least one handwritten CLI example and one Product-generated CLI example.
+8. **API sketch** for `@liche/core` and `@liche/product`, including at least one handwritten CLI example and one Product-generated CLI example.
 9. **Testable behavior contract**: 8-15 requirements we can convert into docs and tests.
 10. **Open questions** the research could not resolve.
 
@@ -324,8 +324,8 @@ The ideal output is one document, 3000-6000 words, containing:
 
 The research is successful if it lets us make a hard design call on:
 
-- whether `createConfig` is public `@lili/core` API
-- whether `createConfig` is also exported by `@lili/product`
+- whether `createConfig` is public `@liche/core` API
+- whether `createConfig` is also exported by `@liche/product`
 - whether config can feed `ctx.config`, command options, or both
 - which file formats and search scopes are MVP
 - whether config mutation commands are MVP or deferred

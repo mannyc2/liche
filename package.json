@@ -1,5 +1,5 @@
 {
-  "name": "lili",
+  "name": "liche",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -27,10 +27,10 @@
     }
   },
   "dependencies": {
-    "@lili/build": "workspace:*",
-    "@lili/core": "workspace:*",
-    "@lili/product": "workspace:*",
-    "@lili/releases": "workspace:*"
+    "@liche/build": "workspace:*",
+    "@liche/core": "workspace:*",
+    "@liche/product": "workspace:*",
+    "@liche/releases": "workspace:*"
   },
   "scripts": {
     "check": "bun run --filter '*' check",
@@ -40,7 +40,7 @@
     "release:metadata": "bun scripts/release-metadata-check.ts",
     "release:names": "bun scripts/check-npm-package-availability.ts",
     "test": "bun run --filter '*' test",
-    "test:core": "bun run --filter @lili/core test",
+    "test:core": "bun run --filter @liche/core test",
     "test:examples": "bun test examples"
   }
 }

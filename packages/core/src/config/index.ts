@@ -8,7 +8,7 @@ export type ConfigObjectOptions<T = Record<string, unknown>> = {
 }
 
 export function createConfig<T = Record<string, unknown>>(options: ConfigObjectOptions<T>): ConfigObjectDefinition<T> {
-  const out: ConfigObjectDefinition<T> = { kind: 'lili.config.object' }
+  const out: ConfigObjectDefinition<T> = { kind: 'liche.config.object' }
   if (options.files) out.files = [...options.files]
   if (options.flag) out.flag = options.flag
   if (options.schema) out.schema = options.schema

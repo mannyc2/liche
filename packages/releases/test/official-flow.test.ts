@@ -39,31 +39,31 @@ describe('createOfficialFlowHandoff', () => {
     const handoff = createOfficialFlowHandoff({
       packageRoot: 'dist/release/packages',
       packages: [
-        pkg('npm:@lili/workers', 'npm', 'npm-umbrella', '@lili/workers'),
-        pkg('npm:@lili/workers-linux-x64', 'npm', 'npm-platform', '@lili/workers-linux-x64'),
-        pkg('npm:@lili/workers-darwin-arm64', 'npm', 'npm-platform', '@lili/workers-darwin-arm64'),
+        pkg('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers'),
+        pkg('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64'),
+        pkg('npm:@liche/workers-darwin-arm64', 'npm', 'npm-platform', '@liche/workers-darwin-arm64'),
       ],
       packageArtifacts: [],
     })
 
     expect(handoff.npm?.packageDirs).toEqual([
       {
-        packageId: 'npm:@lili/workers-darwin-arm64',
-        name: '@lili/workers-darwin-arm64',
+        packageId: 'npm:@liche/workers-darwin-arm64',
+        name: '@liche/workers-darwin-arm64',
         role: 'platform',
-        path: 'dist/release/packages/npm/package-dirs/lili-workers-darwin-arm64',
+        path: 'dist/release/packages/npm/package-dirs/liche-workers-darwin-arm64',
       },
       {
-        packageId: 'npm:@lili/workers-linux-x64',
-        name: '@lili/workers-linux-x64',
+        packageId: 'npm:@liche/workers-linux-x64',
+        name: '@liche/workers-linux-x64',
         role: 'platform',
-        path: 'dist/release/packages/npm/package-dirs/lili-workers-linux-x64',
+        path: 'dist/release/packages/npm/package-dirs/liche-workers-linux-x64',
       },
       {
-        packageId: 'npm:@lili/workers',
-        name: '@lili/workers',
+        packageId: 'npm:@liche/workers',
+        name: '@liche/workers',
         role: 'umbrella',
-        path: 'dist/release/packages/npm/package-dirs/lili-workers',
+        path: 'dist/release/packages/npm/package-dirs/liche-workers',
       },
     ])
   })
@@ -72,12 +72,12 @@ describe('createOfficialFlowHandoff', () => {
     const handoff = createOfficialFlowHandoff({
       packageRoot: 'dist/release/packages',
       packages: [
-        pkg('pypi:lili-workers', 'pypi', 'wheel', 'lili-workers'),
+        pkg('pypi:liche-workers', 'pypi', 'wheel', 'liche-workers'),
         pkg('homebrew:workers', 'homebrew', 'formula', 'workers'),
         pkg('scoop:workers', 'scoop', 'scoop-manifest', 'workers'),
       ],
       packageArtifacts: [
-        artifact('pypi:lili-workers', 'pypi', 'wheel', 'lili-workers', 'lili_workers-0.1.0.whl'),
+        artifact('pypi:liche-workers', 'pypi', 'wheel', 'liche-workers', 'lili_workers-0.1.0.whl'),
         artifact('homebrew:workers', 'homebrew', 'formula', 'workers', 'workers.rb'),
         artifact('scoop:workers', 'scoop', 'scoop-manifest', 'workers', 'workers.json'),
       ],

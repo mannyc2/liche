@@ -59,7 +59,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
         exitCode: 1,
         message: 'failed',
         title: 'Nope',
-        type: 'urn:lili:error:nope',
+        type: 'urn:liche:error:nope',
       },
     })
   })

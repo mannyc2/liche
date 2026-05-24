@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Lili has not published a public stable release yet. Before the first public v1 release, security fixes apply to the current default branch and the release-candidate branch being prepared.
+Liche has not published a public stable release yet. Before the first public v1 release, security fixes apply to the current default branch and the release-candidate branch being prepared.
 
 After v1 is published, supported versions are:
 

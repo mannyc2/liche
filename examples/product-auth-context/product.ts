@@ -1,4 +1,4 @@
-import { Auth, Command, Field, Runtime, Shape, defineProduct } from '@lili/product'
+import { Auth, Command, Field, Runtime, Shape, defineProduct } from '@liche/product'
 
 export default defineProduct({
   id: 'acme-cache',

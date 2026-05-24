@@ -36,16 +36,16 @@ export function generateConfigSchema(
 
   return jsonArtifact({
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: `lili://${catalog.product.id}/config.schema.json`,
+    $id: `liche://${catalog.product.id}/config.schema.json`,
     title: `${catalog.product.name} config`,
     type: 'object',
     additionalProperties: false,
     properties,
     ...(requiredList.length > 0 ? { required: requiredList } : undefined),
-    'x-lili-manifest-version': 'lili.config-schema.v1',
-    'x-lili-product': catalog.product,
-    'x-lili-catalog-digest': options.canonicalCatalogDigest,
-    'x-lili-generator-version': options.generatorVersion,
-    'x-lili-surface-id': options.surfaceId ?? 'config-schema',
+    'x-liche-manifest-version': 'liche.config-schema.v1',
+    'x-liche-product': catalog.product,
+    'x-liche-catalog-digest': options.canonicalCatalogDigest,
+    'x-liche-generator-version': options.generatorVersion,
+    'x-liche-surface-id': options.surfaceId ?? 'config-schema',
   })
 }

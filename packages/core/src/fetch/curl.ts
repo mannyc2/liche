@@ -7,7 +7,7 @@ export async function callFetch(entry: FetchEntry, args: string[]): Promise<Resu
     .map((segment) => String(segment).replace(/^\/+|\/+$/g, ''))
     .join('/')
   const requestInit: RequestInit = body === undefined ? { headers, method } : { body, headers, method }
-  const response = await entry.fetch(new Request(`http://lili.local/${joinedPath}`, requestInit))
+  const response = await entry.fetch(new Request(`http://liche.local/${joinedPath}`, requestInit))
   const data = await responseData(response)
 
   if (response.ok) return { ok: true, data, error: null }

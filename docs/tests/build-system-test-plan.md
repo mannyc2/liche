@@ -29,7 +29,7 @@ Do not start with OpenAPI, package rendering, or a broad generator framework.
 
 ## Product schema refactor slice
 
-Before implementing OpenAPI, refactor `@lili/product` around product-schema authoring:
+Before implementing OpenAPI, refactor `@liche/product` around product-schema authoring:
 
 - `defineProduct()` with sibling resources, commands, and bindings
 - static class helpers for `Field`, `Shape`, and `Command`
@@ -86,19 +86,19 @@ The conformance slice should prove:
 
 The Product mutation testing slice should prove:
 
-- `@lili/product` has the same package-local `mutate` workflow shape as `@lili/core`
+- `@liche/product` has the same package-local `mutate` workflow shape as `@liche/core`
 - Stryker uses the Bun runner and TypeScript checker from the root workspace catalog
 - mutation input is limited to implementation modules, not public barrels, CLI wrappers, skill text, generated fixtures, or tests
-- `bun run --filter @lili/product check` typechecks the Stryker config
-- `bun run --filter @lili/product mutate` completes an initial report and does not commit mutation output artifacts
+- `bun run --filter @liche/product check` typechecks the Stryker config
+- `bun run --filter @liche/product mutate` completes an initial report and does not commit mutation output artifacts
 
 ## Compile slice
 
 The compile slice should prove:
 
-- `@lili/build` constructs a plain compile flag profile, then derives both `Bun.build()` options and `compileFlagsDigest` from that profile
-- `@lili/build` has no dependency on `@lili/product` or `@lili/releases`
+- `@liche/build` constructs a plain compile flag profile, then derives both `Bun.build()` options and `compileFlagsDigest` from that profile
+- `@liche/build` has no dependency on `@liche/product` or `@liche/releases`
 - local paths, temp directories, output paths, metafile paths, and build logs do not affect `compileFlagsDigest`
 - compile writes an internal entrypoint that imports the generated CLI and calls `cli.serve(process.argv.slice(2))`
 - `Bun.build()` is injected in tests so profile construction and error handling are verified without compiling a real binary on every unit-test run
-- `@lili/releases` remains outside this path and consumes only final binary facts plus the compile flag digest
+- `@liche/releases` remains outside this path and consumes only final binary facts plus the compile flag digest

@@ -2,7 +2,7 @@ import type { CliState, CommandContract, CommandManifest, Entry, RuntimeEntry, S
 import { isAlias, isGroup, resolveAlias } from './guards.js'
 import { commandContract } from './contract.js'
 
-export const MANIFEST_VERSION = 'lili.v1'
+export const MANIFEST_VERSION = 'liche.v1'
 
 export type CommandScope = {
   aliases: string[]

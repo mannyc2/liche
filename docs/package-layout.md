@@ -5,7 +5,7 @@ This document describes the target rewrite layout. The pre-cutover source was an
 ## Target layout
 
 ```txt
-lili/
+liche/
   package.json
   bun.lock
   tsconfig.base.json
@@ -97,7 +97,7 @@ Owns:
 - outbound HTTP operation transport
 - auth/session runtime primitives (`SecretString`, auth/context resolution, session store, auth header application)
 
-Must not depend on `@lili/build`, `@lili/product`, or `@lili/releases`.
+Must not depend on `@liche/build`, `@liche/product`, or `@liche/releases`.
 
 ### `packages/build`
 
@@ -112,7 +112,7 @@ Owns:
 - internal compile entrypoint rendering for CLIs
 - build metadata useful to release manifests
 
-May depend on `@lili/core` for its developer CLI.
+May depend on `@liche/core` for its developer CLI.
 
 Does not own product schemas, generated surfaces, server conformance, release manifests, or package-manager renderers.
 
@@ -121,7 +121,7 @@ Does not own product schemas, generated surfaces, server conformance, release ma
 Owns:
 
 - runtime product schema authoring API
-- general product config declarations that lower into `@lili/core` config
+- general product config declarations that lower into `@liche/core` config
 - auth provider, permission, context, and capability requirement declarations
 - canonical catalog normalization
 - schema lints
@@ -131,10 +131,10 @@ Owns:
 - generated surface manifest and surface drift checks
 - generated provenance headers
 - drift checks
-- product-to-compile wrapper that delegates to `@lili/build`
+- product-to-compile wrapper that delegates to `@liche/build`
 - server conformance against owned HTTP deployments
 
-May depend on `@lili/core` and `@lili/build`.
+May depend on `@liche/core` and `@liche/build`.
 
 Does not own outbound HTTP operation transport.
 
@@ -167,8 +167,8 @@ Examples must prove the package boundaries:
 
 | Example | Purpose |
 |---|---|
-| `examples/handwritten-cli` | Uses only `@lili/core`. |
-| `examples/generated-cli` | Uses `@lili/product` to generate a CLI from schema. |
+| `examples/handwritten-cli` | Uses only `@liche/core`. |
+| `examples/generated-cli` | Uses `@liche/product` to generate a CLI from schema. |
 | `examples/fetch-backed-cli` | Demonstrates existing inbound/in-process fetch behavior without outbound remote transport confusion. |
 | `examples/remote-backed-cli` | Demonstrates core-owned outbound HTTP operation transport, with and without generated wiring. |
 | `examples/vite-tanstack-app` | Demonstrates capability-first integration for a web app: product schema, API routes, local handlers, generated CLI, conformance against dev server. |

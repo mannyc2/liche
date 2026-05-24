@@ -6,26 +6,26 @@ import {
   z,
 } from '../src/index.js'
 import type { AuthCredential } from '../src/index.js'
-import { LiliError } from '../src/errors/error.js'
+import { LicheError } from '../src/errors/error.js'
 
-function expectLiliError(fn: () => unknown, code: string): LiliError {
+function expectLicheError(fn: () => unknown, code: string): LicheError {
   try {
     fn()
   } catch (error) {
-    expect(error).toBeInstanceOf(LiliError)
-    expect((error as LiliError).code).toBe(code)
-    return error as LiliError
+    expect(error).toBeInstanceOf(LicheError)
+    expect((error as LicheError).code).toBe(code)
+    return error as LicheError
   }
   throw new Error(`Expected ${code}`)
 }
 
-async function expectRejectedLiliError(promise: Promise<unknown>, code: string): Promise<LiliError> {
+async function expectRejectedLicheError(promise: Promise<unknown>, code: string): Promise<LicheError> {
   try {
     await promise
   } catch (error) {
-    expect(error).toBeInstanceOf(LiliError)
-    expect((error as LiliError).code).toBe(code)
-    return error as LiliError
+    expect(error).toBeInstanceOf(LicheError)
+    expect((error as LicheError).code).toBe(code)
+    return error as LicheError
   }
   throw new Error(`Expected ${code}`)
 }
@@ -67,7 +67,7 @@ describe('HTTP operation transport', () => {
   })
 
   test('fails missing base URL, invalid base URL, and missing auth with structured errors', () => {
-    const missingBaseUrl = expectLiliError(() => serializeHttpOperationRequest({
+    const missingBaseUrl = expectLicheError(() => serializeHttpOperationRequest({
       baseUrl: { envVar: 'ACME_API_URL' },
       method: 'GET',
       path: '/status',
@@ -76,7 +76,7 @@ describe('HTTP operation transport', () => {
     }), 'REMOTE_CONFIG_MISSING_BASE_URL')
     expect(missingBaseUrl.suggested_fix).toBe('Set ACME_API_URL to the remote API base URL before retrying.')
 
-    expectLiliError(() => serializeHttpOperationRequest({
+    expectLicheError(() => serializeHttpOperationRequest({
       baseUrl: 'not a url',
       method: 'GET',
       path: '/status',
@@ -84,7 +84,7 @@ describe('HTTP operation transport', () => {
       input: {},
     }), 'REMOTE_CONFIG_INVALID_BASE_URL')
 
-    expectLiliError(() => serializeHttpOperationRequest({
+    expectLicheError(() => serializeHttpOperationRequest({
       baseUrl: 'https://api.example.test',
       auth: { kind: 'bearer', envVar: 'ACME_TOKEN' },
       method: 'GET',
@@ -95,7 +95,7 @@ describe('HTTP operation transport', () => {
   })
 
   test('fails path, unknown field, conflict, and body binding errors before fetch', () => {
-    expectLiliError(() => serializeHttpOperationRequest({
+    expectLicheError(() => serializeHttpOperationRequest({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/projects/{projectId}',
@@ -103,7 +103,7 @@ describe('HTTP operation transport', () => {
       input: { projectId: undefined },
     }), 'REMOTE_BIND_MISSING_PATH_PARAM')
 
-    expectLiliError(() => serializeHttpOperationRequest<Record<string, unknown>>({
+    expectLicheError(() => serializeHttpOperationRequest<Record<string, unknown>>({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/projects',
@@ -112,7 +112,7 @@ describe('HTTP operation transport', () => {
       input: { projectId: 'p1' },
     }), 'REMOTE_BIND_UNKNOWN_FIELD')
 
-    expectLiliError(() => serializeHttpOperationRequest({
+    expectLicheError(() => serializeHttpOperationRequest({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/projects/{projectId}',
@@ -120,7 +120,7 @@ describe('HTTP operation transport', () => {
       input: { projectId: 'p1' },
     }), 'REMOTE_BIND_CONFLICT')
 
-    expectLiliError(() => serializeHttpOperationRequest({
+    expectLicheError(() => serializeHttpOperationRequest({
       baseUrl: 'https://api.example.test',
       method: 'POST',
       path: '/projects',
@@ -154,7 +154,7 @@ describe('HTTP operation transport', () => {
   })
 
   test('maps network failures and timeouts to retryable remote errors', async () => {
-    const network = await expectRejectedLiliError(callHttpOperation({
+    const network = await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/status',
@@ -169,7 +169,7 @@ describe('HTTP operation transport', () => {
     expect(network.retry_after).toBe(5)
     expect(network.suggested_fix).toContain('retry')
 
-    const timeout = await expectRejectedLiliError(callHttpOperation({
+    const timeout = await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/status',
@@ -190,7 +190,7 @@ describe('HTTP operation transport', () => {
   })
 
   test('maps non-2xx responses to structured HTTP errors with sanitized body preview', async () => {
-    const error = await expectRejectedLiliError(callHttpOperation({
+    const error = await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       auth: { kind: 'bearer', envVar: 'ACME_TOKEN' },
       env: { ACME_TOKEN: 'secret-token' },
@@ -220,7 +220,7 @@ describe('HTTP operation transport', () => {
   })
 
   test('maps unsupported, malformed, and schema-invalid success bodies', async () => {
-    await expectRejectedLiliError(callHttpOperation({
+    await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/status',
@@ -230,7 +230,7 @@ describe('HTTP operation transport', () => {
       fetch: async () => new Response('ok', { headers: { 'content-type': 'text/plain' } }),
     }), 'REMOTE_RESPONSE_UNSUPPORTED_CONTENT_TYPE')
 
-    await expectRejectedLiliError(callHttpOperation({
+    await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/status',
@@ -240,7 +240,7 @@ describe('HTTP operation transport', () => {
       fetch: async () => new Response('{', { headers: { 'content-type': 'application/json' } }),
     }), 'REMOTE_RESPONSE_MALFORMED')
 
-    const schema = await expectRejectedLiliError(callHttpOperation({
+    const schema = await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       method: 'GET',
       path: '/status',
@@ -265,7 +265,7 @@ describe('HTTP operation transport', () => {
       refreshAvailable: false,
     }
 
-    await expectRejectedLiliError(callHttpOperation({
+    await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
       auth: { kind: 'resolved', credential },
       method: 'GET',

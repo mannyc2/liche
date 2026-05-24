@@ -6,7 +6,7 @@ import { createLocalTelemetrySink, runLocalDoctor } from '../src/index.js'
 
 describe('local ops doctor', () => {
   test('reports PATH and package-manager checks as structured diagnostics', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'lili-doctor-'))
+    const root = mkdtempSync(join(tmpdir(), 'liche-doctor-'))
     const bin = join(root, 'bin')
     const localBin = join(root, 'node_modules', '.bin')
     try {
@@ -53,7 +53,7 @@ describe('local telemetry sink', () => {
   test('writes JSONL only when opted in and redacts secret-shaped fields', async () => {
     const writes: string[] = []
     const sink = createLocalTelemetrySink({
-      env: { LILI_TELEMETRY: '1', LILI_TELEMETRY_FILE: '/tmp/lili-telemetry.jsonl' },
+      env: { LICHE_TELEMETRY: '1', LICHE_TELEMETRY_FILE: '/tmp/liche-telemetry.jsonl' },
       append: (_path, text) => {
         writes.push(text)
       },
@@ -82,7 +82,7 @@ describe('local telemetry sink', () => {
   test('does nothing without explicit opt-in', async () => {
     const writes: string[] = []
     const sink = createLocalTelemetrySink({
-      env: { LILI_TELEMETRY_FILE: '/tmp/lili-telemetry.jsonl' },
+      env: { LICHE_TELEMETRY_FILE: '/tmp/liche-telemetry.jsonl' },
       append: (_path, text) => {
         writes.push(text)
       },
@@ -104,7 +104,7 @@ describe('local telemetry sink', () => {
   test('redaction handles nested token fields and bearer strings', async () => {
     const writes: string[] = []
     const sink = createLocalTelemetrySink({
-      env: { LILI_TELEMETRY: '1', LILI_TELEMETRY_FILE: '/tmp/lili-telemetry.jsonl' },
+      env: { LICHE_TELEMETRY: '1', LICHE_TELEMETRY_FILE: '/tmp/liche-telemetry.jsonl' },
       append: (_path, text) => {
         writes.push(text)
       },

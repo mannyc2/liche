@@ -1,6 +1,6 @@
 # V2 platform goals
 
-V2 is the hosted service and platform layer for lili. It must consume the V1 contracts and artifacts; it must not replace the local package workflow or become necessary for generating, compiling, packaging, publishing, or running a CLI.
+V2 is the hosted service and platform layer for liche. It must consume the V1 contracts and artifacts; it must not replace the local package workflow or become necessary for generating, compiling, packaging, publishing, or running a CLI.
 
 ## V2 thesis
 
@@ -90,7 +90,7 @@ These concerns are V2 because they introduce uptime, security, compliance, suppo
 
 ## Non-goals
 
-- V2 must not require users to build generated CLIs on lili-hosted infrastructure.
+- V2 must not require users to build generated CLIs on liche-hosted infrastructure.
 - V2 must not replace package-manager registries as the default distribution path.
 - V2 must not make hosted telemetry mandatory.
 - V2 must not store local session files, access tokens, refresh tokens, env var values, selected local contexts, or raw authorization headers.

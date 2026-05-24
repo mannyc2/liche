@@ -1,10 +1,10 @@
 import type { CommandError, CtaBlock, FieldError, Result, ResultMeta } from '../types.js'
 
-const RESULT_BRAND: unique symbol = Symbol.for('lili.result') as any
+const RESULT_BRAND: unique symbol = Symbol.for('liche.result') as any
 type RuntimeResult = Result & { readonly [RESULT_BRAND]: true }
 
 export class BaseError extends Error {
-  override name = 'Lili.BaseError'
+  override name = 'Liche.BaseError'
   shortMessage: string
   details: string | Record<string, unknown> | undefined
 
@@ -25,8 +25,8 @@ export declare namespace BaseError {
   type Options = { cause?: Error | undefined }
 }
 
-export class LiliError extends BaseError {
-  override name = 'Lili.LiliError'
+export class LicheError extends BaseError {
+  override name = 'Liche.LicheError'
   code: string
   code_actions: CommandError['code_actions']
   detail: string | undefined
@@ -41,7 +41,7 @@ export class LiliError extends BaseError {
   type: string | undefined
   exitCode: number | undefined
 
-  constructor(options: LiliError.Options) {
+  constructor(options: LicheError.Options) {
     super(options.message, { cause: options.cause })
     this.code = options.code
     this.code_actions = options.code_actions
@@ -59,7 +59,7 @@ export class LiliError extends BaseError {
   }
 }
 
-export declare namespace LiliError {
+export declare namespace LicheError {
   type Options = {
     code: string
     message: string
@@ -80,7 +80,7 @@ export declare namespace LiliError {
 }
 
 export class ValidationError extends BaseError {
-  override name = 'Lili.ValidationError'
+  override name = 'Liche.ValidationError'
   fieldErrors: FieldError[]
 
   constructor(options: ValidationError.Options) {
@@ -98,7 +98,7 @@ export declare namespace ValidationError {
 }
 
 export class ParseError extends BaseError {
-  override name = 'Lili.ParseError'
+  override name = 'Liche.ParseError'
 
   constructor(options: ParseError.Options) {
     super(options.message, { cause: options.cause })
@@ -130,7 +130,7 @@ export function toCommandError(error: unknown): CommandError {
     })
   }
 
-  if (error instanceof LiliError) {
+  if (error instanceof LicheError) {
     const status = error.status ?? statusFromDetails(error.details)
     return commandError({
       code: error.code,
@@ -217,7 +217,7 @@ function isCommandErrorLike(error: unknown): error is CommandError {
 }
 
 function problemType(code: string): string {
-  return `urn:lili:error:${code.toLowerCase().replace(/_/g, '-')}`
+  return `urn:liche:error:${code.toLowerCase().replace(/_/g, '-')}`
 }
 
 function titleFromCode(code: string): string {

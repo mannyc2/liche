@@ -201,7 +201,7 @@ describe('format, filter, CTA, and schema behavior', () => {
 
 describe('runtime and config behavior', () => {
   test('loadConfig reads JSON, YAML, explicit paths, and disabled config', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'lili-config-'))
+    const root = await mkdtemp(join(tmpdir(), 'liche-config-'))
     const jsonPath = join(root, 'app.json')
     const yamlPath = join(root, 'app.yaml')
     await Bun.write(jsonPath, JSON.stringify({ mode: 'json' }))
@@ -333,7 +333,7 @@ describe('builtin metadata and skill sync behavior', () => {
   })
 
   test('skills add and mcp add write expected files under isolated HOME', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'lili-sync-'))
+    const root = await mkdtemp(join(tmpdir(), 'liche-sync-'))
     const previousHome = Bun.env['HOME']
     Bun.env['HOME'] = root
 
@@ -349,7 +349,7 @@ describe('builtin metadata and skill sync behavior', () => {
       expect(await Bun.file(skillPath).text()).toContain('### publish\npublish a release')
 
       const mcp = await runCliWithLocalImport(cli, ['mcp', 'add'])
-      const mcpPath = join(root, '.config/lili/mcp/ship.json')
+      const mcpPath = join(root, '.config/liche/mcp/ship.json')
       expect(mcp.stdout).toBe(`wrote ${mcpPath}\n`)
       expect(await Bun.file(mcpPath).json()).toEqual({ mcpServers: { ship: { args: ['--mcp'], command: 'ship-cli' } } })
     } finally {

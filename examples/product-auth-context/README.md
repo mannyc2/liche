@@ -5,7 +5,7 @@ This product demonstrates generated auth metadata and runtime credential/context
 Generate surfaces in place:
 
 ```sh
-li-product generate examples/product-auth-context/product.ts --out examples/product-auth-context
+liche-product generate examples/product-auth-context/product.ts --out examples/product-auth-context
 ```
 
 Run the generated CLI without credentials:

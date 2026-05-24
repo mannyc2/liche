@@ -1,6 +1,6 @@
 {
   "recordVersion": 1,
-  "entrypoint": "examples/product-workers/lili.compile-entry.ts",
+  "entrypoint": "examples/product-workers/liche.compile-entry.ts",
   "constants": {
     "releaseVersion": "0.1.0",
     "contractDigest": "sha256:example-product-catalog",

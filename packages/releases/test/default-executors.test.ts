@@ -18,7 +18,7 @@ function sha256Hex(bytes: Uint8Array): string {
 }
 
 function writeArtifact(name: string, content: string) {
-  const dir = mkdtempSync(join(tmpdir(), 'lili-release-default-executors-'))
+  const dir = mkdtempSync(join(tmpdir(), 'liche-release-default-executors-'))
   const path = join(dir, name)
   const bytes = new TextEncoder().encode(content)
   writeFileSync(path, bytes)
@@ -41,13 +41,13 @@ function recordingRunner(calls: CommandCall[]): ReleaseCommandRunner {
 function pypiStep(artifact: ReturnType<typeof writeArtifact>): PypiPublishStep {
   return {
     kind: 'pypi-upload',
-    packageId: 'pypi:lili-workers',
+    packageId: 'pypi:liche-workers',
     ecosystem: 'pypi',
     artifactPath: artifact.path,
     artifactFileName: 'lili_workers-0.1.0-py3-none-any.whl',
     sha256: artifact.sha256,
     size: artifact.size,
-    name: 'lili-workers',
+    name: 'liche-workers',
     version: '0.1.0',
     repositoryUrl: 'https://upload.pypi.org/legacy/',
   }
@@ -57,13 +57,13 @@ function npmStep(artifact: ReturnType<typeof writeArtifact>): NpmPublishStep {
   return {
     kind: 'npm-publish',
     role: 'umbrella',
-    packageId: 'npm:@lili/workers',
+    packageId: 'npm:@liche/workers',
     ecosystem: 'npm',
     artifactPath: artifact.path,
-    artifactFileName: 'lili-workers-0.1.0.tgz',
+    artifactFileName: 'liche-workers-0.1.0.tgz',
     sha256: artifact.sha256,
     size: artifact.size,
-    name: '@lili/workers',
+    name: '@liche/workers',
     version: '0.1.0',
     registry: 'https://registry.npmjs.org/',
     tag: 'latest',

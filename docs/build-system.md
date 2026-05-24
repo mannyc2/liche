@@ -2,15 +2,15 @@
 
 ## Type generation placement
 
-Core no longer ships a `gen` runtime helper. The old `li gen` path only emitted TypeScript module augmentation from command metadata, was not committed as source, and had no runtime or agent-facing consumer outside tests and the handwritten example. If this capability returns, it belongs in a build-time package or extension with an explicit consumer, not in `@lili/core`.
+Core no longer ships a `gen` runtime helper. The old `li gen` path only emitted TypeScript module augmentation from command metadata, was not committed as source, and had no runtime or agent-facing consumer outside tests and the handwritten example. If this capability returns, it belongs in a build-time package or extension with an explicit consumer, not in `@liche/core`.
 
-`@lili/build` is an opt-in package for reusable Bun build/compile behavior. It owns the programmatic `Bun.build()` wrapper, compile flag profile, build-time constants, compile entrypoint rendering, and path-independent `compileFlagsDigest`.
+`@liche/build` is an opt-in package for reusable Bun build/compile behavior. It owns the programmatic `Bun.build()` wrapper, compile flag profile, build-time constants, compile entrypoint rendering, and path-independent `compileFlagsDigest`.
 
-This is a deliberately narrow boundary, not a major product abstraction. Its value is only shared compile/provenance behavior for generated and handwritten CLI entrypoints. If that shared use case disappears, the code can be folded into `@lili/product` or `@lili/releases` without changing the release manifest contract.
+This is a deliberately narrow boundary, not a major product abstraction. Its value is only shared compile/provenance behavior for generated and handwritten CLI entrypoints. If that shared use case disappears, the code can be folded into `@liche/product` or `@liche/releases` without changing the release manifest contract.
 
-`@lili/product` is the opt-in package for Product schema generation. It consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, runs server conformance, and delegates standalone executable compilation to `@lili/build`.
+`@liche/product` is the opt-in package for Product schema generation. It consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, runs server conformance, and delegates standalone executable compilation to `@liche/build`.
 
-Neither package replaces `@lili/core`. Generated code must plug into core through public runtime APIs.
+Neither package replaces `@liche/core`. Generated code must plug into core through public runtime APIs.
 
 Detailed requirements live in:
 
@@ -41,13 +41,13 @@ The build system exists so a user with any CLI entrypoint can get:
 - build-time constants for release version, contract digest, source commit, and build-tool version
 - path-independent compile provenance for release manifests
 
-Handwritten CLIs remain valid without installing `@lili/build`.
+Handwritten CLIs remain valid without installing `@liche/build`.
 
-Handwritten CLIs that only want a standalone binary can use `@lili/build` without installing `@lili/product`.
+Handwritten CLIs that only want a standalone binary can use `@liche/build` without installing `@liche/product`.
 
-The product schema is authoritative for owned product capabilities. `@lili/product` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
+The product schema is authoritative for owned product capabilities. `@liche/product` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
 
-The `li-build` developer CLI is intentionally small: it exposes compile-entry behavior over the generic compile spine. The `li-product` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through `DefineCliOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
+The `liche-build` developer CLI is intentionally small: it exposes compile-entry behavior over the generic compile spine. The `liche-product` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through `DefineCliOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
 
 ## Generated surface graph
 
@@ -59,7 +59,7 @@ Required surface record:
 type GeneratedSurfaceRecord = {
   id: string;
   source: "catalog" | "openapi";
-  owner: "@lili/product" | "@lili/build" | "@lili/releases" | "adapter";
+  owner: "@liche/product" | "@liche/build" | "@liche/releases" | "adapter";
   generatorVersion: string;
   generationOptionsDigest: string;
   inputDigest: string;
@@ -111,7 +111,7 @@ Do not infer a broad generator framework from this requirement. The first vertic
 
 The Product API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
 
-The public authoring model is product-shaped, not CLI-program-shaped. `defineProduct({ resources, commands, bindings })` is the source API. Generated CLIs lower into `@lili/core` through declarative `defineCli()` / `defineCommand()` command graphs.
+The public authoring model is product-shaped, not CLI-program-shaped. `defineProduct({ resources, commands, bindings })` is the source API. Generated CLIs lower into `@liche/core` through declarative `defineCli()` / `defineCommand()` command graphs.
 
 The concrete product schema API, naming, defaults, and refactor path live in `docs/product-schema.md`.
 
@@ -125,7 +125,7 @@ Shape
 Field
 ```
 
-The class API is authoring sugar only. `li-product` loads a product schema module, checks its runtime tag, and normalizes it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
+The class API is authoring sugar only. `liche-product` loads a product schema module, checks its runtime tag, and normalizes it into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
 ## Canonical catalog
 
@@ -228,7 +228,7 @@ The rewrite must close these audit gaps:
 - resource actions and generated CLI control flags must be checked against the product vocabulary
 - command input fields are data shape fields, not vocabulary entries
 - `--format` is currently a global runtime option; generated product CLIs must make `--json` the canonical machine-output switch and must not advertise `--format` as the agent contract
-- built-in and generated helper commands must honor `--json` consistently; text such as `wrote ./lili.generated.ts` is not acceptable when JSON was explicitly requested
+- built-in and generated helper commands must honor `--json` consistently; text such as `wrote ./liche.generated.ts` is not acceptable when JSON was explicitly requested
 - generated JSON output for local, remote HTTP, or hybrid workflow capabilities must identify the execution mode that was applied
 - generated OpenAPI must come from HTTP-capable catalog entries and field metadata, not from the current runtime reflection shortcut that emits every command as a `POST`
 
@@ -262,7 +262,7 @@ For current core compatibility, handwritten CLIs may continue to use richer form
 
 Outbound HTTP operation transport is core runtime behavior.
 
-`@lili/core` exports documented `serializeHttpOperationRequest` and `callHttpOperation` primitives that can be used by handwritten CLIs and generated CLIs. `@lili/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. That contract is the first-class config primitive in `docs/config-primitive.md`; HTTP-backed capabilities without a product remote base URL fail linting and generation.
+`@liche/core` exports documented `serializeHttpOperationRequest` and `callHttpOperation` primitives that can be used by handwritten CLIs and generated CLIs. `@liche/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. That contract is the first-class config primitive in `docs/config-primitive.md`; HTTP-backed capabilities without a product remote base URL fail linting and generation.
 
 The primitive must own:
 
@@ -293,7 +293,7 @@ Execution mode is a runtime behavior, not only docs metadata.
 
 ```txt
 remote-http:
-  generated run() calls @lili/core outbound HTTP operation transport
+  generated run() calls @liche/core outbound HTTP operation transport
 
 local:
   generated run() imports or resolves the configured handler and executes local process/tool behavior
@@ -343,18 +343,18 @@ The linter can prove schema shape. Only server conformance can prove that a hand
 
 ## Generated-code seam
 
-Generated command code must be plain TypeScript that imports `@lili/core` and declares commands through the public `defineCli()` / `defineCommand()` API.
+Generated command code must be plain TypeScript that imports `@liche/core` and declares commands through the public `defineCli()` / `defineCommand()` API.
 
 Representative generated file:
 
 ```ts
-// generated by @lili/product
-// schema: ./lili.schema.ts
+// generated by @liche/product
+// schema: ./liche.schema.ts
 // contractDigest: sha256:<catalog-digest>
 // generatorVersion: <version>
 // do not edit by hand
 
-import { callHttpOperation, defineCli, defineCommand, z } from "@lili/core";
+import { callHttpOperation, defineCli, defineCommand, z } from "@liche/core";
 
 export const cli = defineCli({
   name: "workers",
@@ -463,13 +463,13 @@ remote/bind-coverage
   Fails when one input field is bound to conflicting locations unless explicitly allowed.
 ```
 
-OpenAPI generation must consume `bind`. Path, query, and header fields become parameters; body fields become request body schema. Field metadata becomes descriptions and `x-lili-*` extensions.
+OpenAPI generation must consume `bind`. Path, query, and header fields become parameters; body fields become request body schema. Field metadata becomes descriptions and `x-liche-*` extensions.
 
 Conformance must also consume `bind`. A bind bug is not visible in local mode because local mode does not serialize HTTP requests.
 
 ## Server conformance
 
-Server conformance is a named MVP capability owned by `@lili/product`.
+Server conformance is a named MVP capability owned by `@liche/product`.
 
 It verifies that an owned external HTTP deployment implements the HTTP-backed schema capabilities. It is separate from generated-file drift checks.
 
@@ -489,9 +489,9 @@ conform:
 Proposed CLI:
 
 ```sh
-li-product conform ./lili.schema.ts --base-url http://localhost:5173
-li-product conform ./lili.schema.ts --env staging
-li-product conform ./lili.schema.ts --report .lili/conformance.json
+liche-product conform ./liche.schema.ts --base-url http://localhost:5173
+liche-product conform ./liche.schema.ts --env staging
+liche-product conform ./liche.schema.ts --report .liche/conformance.json
 ```
 
 Conformance must assert:
@@ -515,11 +515,11 @@ Policy:
 | requires confirmation | Requires explicit conformance fixture and opt-in target. |
 | no examples or fixture | Report skipped with reason; do not silently pass. |
 
-`@lili/releases` may require or attach a conformance report before publishing, but `@lili/product` owns the conformance logic because it is schema-contract verification.
+`@liche/releases` may require or attach a conformance report before publishing, but `@liche/product` owns the conformance logic because it is schema-contract verification.
 
 ## Generated surfaces
 
-`@lili/product` generates:
+`@liche/product` generates:
 
 ```txt
 generated CLI command tree
@@ -537,7 +537,7 @@ OpenAPI is an output, not an input. In Phase 3C it is emitted only for `resource
 
 Local-only, interactive, `remote-http`, and hybrid workflow commands remain valid catalog capabilities even when no OpenAPI route is emitted.
 
-The generated surface manifest records every emitted surface record from the generated surface graph. It is a build artifact for drift checks and release provenance; it is not the release manifest owned by `@lili/releases`.
+The generated surface manifest records every emitted surface record from the generated surface graph. It is a build artifact for drift checks and release provenance; it is not the release manifest owned by `@liche/releases`.
 
 ## Command manifest
 
@@ -569,7 +569,7 @@ The build package may expose this as generated JSON, a built-in generated comman
 
 ## Mutation testing
 
-`@lili/product` must have package-local mutation testing wired the same way as `@lili/core`: a `mutate` script that runs Stryker through the Bun runner, a package-local `stryker.conf.mjs`, TypeScript checking enabled, and the root workspace catalog dependencies reused instead of adding one-off versions. `@lili/build` keeps its own focused mutation scope for generic compile primitives.
+`@liche/product` must have package-local mutation testing wired the same way as `@liche/core`: a `mutate` script that runs Stryker through the Bun runner, a package-local `stryker.conf.mjs`, TypeScript checking enabled, and the root workspace catalog dependencies reused instead of adding one-off versions. `@liche/build` keeps its own focused mutation scope for generic compile primitives.
 
 The initial mutation scope should target implementation modules where surviving mutants expose real generator or catalog risk:
 
@@ -588,7 +588,7 @@ packages/product/src/shape.ts
 packages/product/src/vocabulary.ts
 ```
 
-Exclude public barrels, the `li-product` CLI wrapper, packaged skill text, generated fixtures, and tests from mutation input. The first threshold should match core (`high: 90`, `low: 85`, `break: 80`) unless a measured baseline proves that too strict for the first landed config.
+Exclude public barrels, the `liche-product` CLI wrapper, packaged skill text, generated fixtures, and tests from mutation input. The first threshold should match core (`high: 90`, `low: 85`, `break: 80`) unless a measured baseline proves that too strict for the first landed config.
 
 The goal is not to chase 100% mutation score in the first slice. The goal is to make build-package regressions visible in the same local workflow as core and to turn meaningful surviving mutants into focused tests.
 
@@ -667,7 +667,7 @@ Schema lints are CI gates, not style suggestions.
 Drift check compares generated outputs to checked-in files:
 
 ```sh
-li-product generate ./lili.schema.ts --check
+liche-product generate ./liche.schema.ts --check
 ```
 
 It must fail when:
@@ -681,14 +681,14 @@ Drift check does not verify a deployed server. Server conformance is a separate 
 
 ## Build CLI
 
-`@lili/product` exposes Product authoring and generation commands only for users who install it:
+`@liche/product` exposes Product authoring and generation commands only for users who install it:
 
 ```sh
-li-product lint ./lili.schema.ts
-li-product generate ./lili.schema.ts --out .lili/generated
-li-product generate ./lili.schema.ts --check
-li-product conform ./lili.schema.ts --base-url http://localhost:5173
-li-product compile ./lili.schema.ts --target bun-linux-x64
+liche-product lint ./liche.schema.ts
+liche-product generate ./liche.schema.ts --out .liche/generated
+liche-product generate ./liche.schema.ts --check
+liche-product conform ./liche.schema.ts --base-url http://localhost:5173
+liche-product compile ./liche.schema.ts --target bun-linux-x64
 ```
 
 Pipeline:
@@ -700,7 +700,7 @@ Pipeline:
 4. Generate CLI source and byproduct surfaces.
 5. Run drift check if requested.
 6. Run server conformance if requested.
-7. Compile generated CLI entry by delegating to `@lili/build`.
+7. Compile generated CLI entry by delegating to `@liche/build`.
 8. Emit binary artifacts and internal build record.
 ```
 
@@ -708,13 +708,13 @@ Pipeline:
 
 The compile command must choose deterministic settings deliberately. Bun's `compile` option exposes settings that change runtime behavior of the resulting binary; the build pipeline must pin them explicitly rather than inherit defaults.
 
-`@lili/build` owns all `Bun.build()` calls. `@lili/releases` must not call `Bun.build()`, rebuild binaries, read generated source, or infer compile settings from a workspace. Releases receive final binary paths, final binary hashes/sizes, and the build record produced here.
+`@liche/build` owns all `Bun.build()` calls. `@liche/releases` must not call `Bun.build()`, rebuild binaries, read generated source, or infer compile settings from a workspace. Releases receive final binary paths, final binary hashes/sizes, and the build record produced here.
 
 Generated CLI files remain importable test fixtures. The compile path writes a small internal entrypoint next to the generated CLI that imports the generated default export and calls `cli.serve(process.argv.slice(2))`. That compile entrypoint is internal build-record data, not a generated surface artifact and not release-manifest data.
 
 ### Required compile flags
 
-For release builds, `@lili/build compile-entry` must invoke `Bun.build()` with a profile equivalent to:
+For release builds, `@liche/build compile-entry` must invoke `Bun.build()` with a profile equivalent to:
 
 ```sh
 bun build --compile \
@@ -724,10 +724,10 @@ bun build --compile \
   --bytecode \
   --no-compile-autoload-bunfig \
   --no-compile-autoload-dotenv \
-  --define LILI_BUILD_VERSION='"<release.version>"' \
-  --define LILI_CONTRACT_DIGEST='"<contract-digest>"' \
-  --define LILI_SOURCE_COMMIT='"<git-sha>"' \
-  --define LILI_BUILD_TOOL_VERSION='"<build-tool.version>"' \
+  --define LICHE_BUILD_VERSION='"<release.version>"' \
+  --define LICHE_CONTRACT_DIGEST='"<contract-digest>"' \
+  --define LICHE_SOURCE_COMMIT='"<git-sha>"' \
+  --define LICHE_BUILD_TOOL_VERSION='"<build-tool.version>"' \
   --outfile <out>
 ```
 
@@ -773,7 +773,7 @@ ARM64 targets have no baseline/modern split.
 The compiled binary inherits two Bun behaviors that the docs must surface:
 
 - `BUN_OPTIONS` env var injects runtime flags (e.g. `BUN_OPTIONS="--cpu-prof" ./acme ...`). Useful for profiling production binaries without rebuild. Must not be relied on for normal operation.
-- `BUN_BE_BUN=1` makes the binary act as the `bun` CLI itself. This is a Bun feature, not an lili feature. Users invoking the CLI with this env var are not running schema-driven code at all; document it as a known behavior and do not attempt to detect or block it.
+- `BUN_BE_BUN=1` makes the binary act as the `bun` CLI itself. This is a Bun feature, not an liche feature. Users invoking the CLI with this env var are not running schema-driven code at all; document it as a known behavior and do not attempt to detect or block it.
 
 ### Release record
 
@@ -795,11 +795,11 @@ The recorded flag set is what `release/binary-hash` reproducibility checks compa
 
 Build system MVP is accepted only when:
 
-- handwritten `@lili/core` CLI still works without `@lili/product` or `@lili/build`
+- handwritten `@liche/core` CLI still works without `@liche/product` or `@liche/build`
 - core exposes outbound HTTP operation transport for handwritten and generated CLIs
 - runtime product schema defines resources, commands, bindings, auth providers, permissions, contexts, field metadata, closed vocabulary, execution mode, effects, input schema, output schema, HTTP binding, and surface membership
 - schema linter rejects vocabulary drift, missing output contracts, missing execution modes, missing or inconsistent effects, incomplete HTTP bindings, invalid auth/context/permission requirements, unsupported portable schema shapes, and eager local imports
-- generated command tree registers commands through public `@lili/core` APIs
+- generated command tree registers commands through public `@liche/core` APIs
 - generated remote-http capability calls the core HTTP operation transport
 - generated local command imports implementation lazily at runtime
 - generated and equivalent handwritten command behavior converge for the same inputs and expected outputs

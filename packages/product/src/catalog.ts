@@ -289,7 +289,7 @@ export type NormalizedPermission = {
 }
 
 export type Catalog = {
-  kind: 'lili.catalog'
+  kind: 'liche.catalog'
   catalogVersion: 1
   product: {
     id: string
@@ -330,7 +330,7 @@ export function normalizeProduct(product: RuntimeProduct): Catalog {
   const authCapabilities = normalizeAuthCapabilities(auth, contexts)
   const bindings = product.bindings.map(normalizeBinding)
   return {
-    kind: 'lili.catalog',
+    kind: 'liche.catalog',
     catalogVersion: 1,
     product: normalizeProductHeader(product),
     vocabulary: normalizeVocabulary(product.vocabulary),
@@ -801,11 +801,11 @@ export function fieldToJsonSchema(field: NormalizedField): JsonSchemaNode {
   }
   if (field.description) base.description = field.description
   if (field.default !== undefined) base.default = field.default
-  if (field.configPath !== undefined) base['x-lili-config-path'] = field.configPath
-  if (field.secret) base['x-lili-secret'] = true
-  if (field.identifier) base['x-lili-identifier'] = true
-  if (field.humanLabel) base['x-lili-human-label'] = true
-  if (field.mutability !== 'mutable') base['x-lili-mutability'] = field.mutability
+  if (field.configPath !== undefined) base['x-liche-config-path'] = field.configPath
+  if (field.secret) base['x-liche-secret'] = true
+  if (field.identifier) base['x-liche-identifier'] = true
+  if (field.humanLabel) base['x-liche-human-label'] = true
+  if (field.mutability !== 'mutable') base['x-liche-mutability'] = field.mutability
   return base as JsonSchemaNode
 }
 

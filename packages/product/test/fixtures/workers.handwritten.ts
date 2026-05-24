@@ -1,4 +1,4 @@
-import { callHttpOperation, createConfig, defineCli, defineCommand, z } from '@lili/core'
+import { callHttpOperation, createConfig, defineCli, defineCommand, z } from '@liche/core'
 import { deploy, dev } from './impl/wrangler.js'
 
 const cli = defineCli({

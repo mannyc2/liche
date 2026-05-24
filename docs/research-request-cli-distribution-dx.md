@@ -17,7 +17,7 @@ The suite is split into two packages with a deliberate boundary:
 | Build | Compile a TypeScript entrypoint to native binaries for a target matrix. Emits a typed `BuildRecord` (per-binary path, sha256, size, target facts). |
 | Releases | Take a `BuildRecord` + distribution config, render ecosystem-specific package artifacts (npm tarballs/dirs, PyPI wheels, Homebrew formula, Scoop manifest), and write them to disk. |
 
-Both packages expose a programmatic API and a CLI (`li-build build`, `li-release package`). The downstream publish step uses standard ecosystem CI actions.
+Both packages expose a programmatic API and a CLI (`liche-build build`, `liche-release package`). The downstream publish step uses standard ecosystem CI actions.
 
 We have implemented this far enough to have a working end-to-end pipeline, but several design questions remain unresolved. This research request asks for evidence-grounded answers and concrete recommendations based on how widely-used multi-platform CLI projects actually ship today.
 

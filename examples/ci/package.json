@@ -4,14 +4,14 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "release": "li-release ship",
-    "release:dry-run": "li-release ship --dry-run",
+    "release": "liche-release ship",
+    "release:dry-run": "liche-release ship --dry-run",
     "test": "bun test"
   },
   "dependencies": {
-    "@lili/build": "0.2.0",
-    "@lili/core": "0.2.0",
-    "@lili/releases": "0.2.0"
+    "@liche/build": "0.2.0",
+    "@liche/core": "0.2.0",
+    "@liche/releases": "0.2.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

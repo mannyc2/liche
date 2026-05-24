@@ -25,7 +25,7 @@ export type NormalizedField = {
 // Authoring builder. Mutable, chainable. Catalog normalization reads the final
 // state via `toField()`; runtime code should not depend on instance identity.
 export class FieldBuilder {
-  readonly kind = 'lili.field' as const
+  readonly kind = 'liche.field' as const
   readonly type: FieldType
   readonly description: string
   #values?: readonly string[]

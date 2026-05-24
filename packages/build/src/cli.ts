@@ -2,7 +2,7 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import { createConfig, defineCli, defineCommand, z } from '@lili/core'
+import { createConfig, defineCli, defineCommand, z } from '@liche/core'
 import { buildBinaries } from './build.js'
 import { compileEntrypoint } from './compile.js'
 import type { CompileTarget } from './compile.js'
@@ -149,14 +149,14 @@ export const cli = defineCli({
     }),
   ],
   config: createConfig({
-    files: ['li-build.json', 'li-build.jsonc', 'li-build.yaml', 'li-build.yml', 'li-build.toml'],
+    files: ['liche-build.json', 'liche-build.jsonc', 'liche-build.yaml', 'liche-build.yml', 'liche-build.toml'],
     schema: BuildCliConfigSchema,
     scopes: {
       project: { discoverUpwards: true },
       user: { xdg: true },
     },
   }),
-  name: 'li-build',
+  name: 'liche-build',
   version: BUILD_TOOL_VERSION,
 })
 

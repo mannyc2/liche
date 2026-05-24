@@ -11,7 +11,7 @@ import type {
   ReleaseRendererInput,
 } from '../src/index.js'
 
-const tmp = mkdtempSync(join(tmpdir(), 'lili-releases-package-'))
+const tmp = mkdtempSync(join(tmpdir(), 'liche-releases-package-'))
 const binaryPath = join(tmp, 'workers-linux-x64')
 const binaryBytes = Buffer.from('FINAL-SIGNED-BINARY-BYTES')
 const binarySha256 = sha256Hex(binaryBytes)

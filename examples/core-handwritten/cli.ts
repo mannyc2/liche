@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, middleware, z } from '@lili/core'
-import type { CliEvent } from '@lili/core'
+import { defineCli, defineCommand, middleware, z } from '@liche/core'
+import type { CliEvent } from '@liche/core'
 
 export const observedEvents: Array<Pick<CliEvent, 'type' | 'command' | 'result'>> = []
 

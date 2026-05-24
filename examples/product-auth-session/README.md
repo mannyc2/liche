@@ -5,7 +5,7 @@ This product demonstrates generated OAuth device login, file-backed sessions, pr
 Generate surfaces in place:
 
 ```sh
-li-product generate examples/product-auth-session/product.ts --out examples/product-auth-session
+liche-product generate examples/product-auth-session/product.ts --out examples/product-auth-session
 ```
 
 Run the generated auth commands:
@@ -17,4 +17,4 @@ bun examples/product-auth-session/run-generated.ts whoami --json
 bun examples/product-auth-session/run-generated.ts logout --json
 ```
 
-The smoke test uses a fake OAuth device server and a temp `LILI_HOME` so no real credentials are stored.
+The smoke test uses a fake OAuth device server and a temp `LICHE_HOME` so no real credentials are stored.

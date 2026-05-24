@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { createCompilePlan } from '@lili/build'
+import { createCompilePlan } from '@liche/build'
 import { cli } from './src/cli.js'
 
 describe('ci release example', () => {
@@ -88,7 +88,7 @@ describe('ci release example', () => {
     ])
   })
 
-  test('documents a package-boundary compile plan through @lili/build', () => {
+  test('documents a package-boundary compile plan through @liche/build', () => {
     const plan = createCompilePlan({
       entrypoint: join(import.meta.dir, 'src/cli.ts'),
       outfile: join(tmpDir, 'shipyard'),

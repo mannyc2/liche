@@ -7,19 +7,19 @@ This document closes the public release metadata rules for v1. It is a release-c
 Checked on 2026-05-24 with:
 
 ```bash
-npm view @lili/core version --json
-npm view @lili/build version --json
-npm view @lili/product version --json
-npm view @lili/releases version --json
+npm view @liche/core version --json
+npm view @liche/build version --json
+npm view @liche/product version --json
+npm view @liche/releases version --json
 ```
 
-The public npm registry returned `E404` for all four names. That means no public package was returned by the registry at check time. It does not prove ownership of the `@lili` organization or publish rights.
+The public npm registry returned `E404` for all four names. That means no public package was returned by the registry at check time. It does not prove ownership of the `@liche` organization or publish rights.
 
 Final publication still requires:
 
 - `npm whoami` under the publishing account
-- confirmed membership or ownership for the `@lili` npm organization
-- package creation rights for `@lili/core`, `@lili/build`, `@lili/product`, and `@lili/releases`
+- confirmed membership or ownership for the `@liche` npm organization
+- package creation rights for `@liche/core`, `@liche/build`, `@liche/product`, and `@liche/releases`
 - trusted publisher configuration for the final release workflow
 
 The repeatable live check is:
@@ -38,7 +38,7 @@ Before the first public publish:
 - every publishable package declares `license: "MIT"`
 - every publishable package ships `README.md` and `LICENSE`
 - every publishable package keeps `publishConfig.access = "public"`
-- package-to-package `@lili/*` dependencies use the synchronized public version range
+- package-to-package `@liche/*` dependencies use the synchronized public version range
 - repository, homepage, bugs, and funding fields are either real or absent
 
 The offline check is:

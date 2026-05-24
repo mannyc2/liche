@@ -1,6 +1,6 @@
 # Core handwritten CLI example
 
-This example uses `@lili/core` directly. There is no product schema or generated catalog.
+This example uses `@liche/core` directly. There is no product schema or generated catalog.
 
 Run commands:
 

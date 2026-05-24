@@ -20,7 +20,7 @@ import type {
   ReleasePublishPlan,
 } from '../src/index.js'
 
-const tmp = mkdtempSync(join(tmpdir(), 'lili-releases-oidc-'))
+const tmp = mkdtempSync(join(tmpdir(), 'liche-releases-oidc-'))
 
 afterAll(() => {
   rmSync(tmp, { recursive: true, force: true })
@@ -61,13 +61,13 @@ function npmOnlyPlan(): Fixture {
   const step: NpmPublishStep = {
     kind: 'npm-publish',
     role: 'umbrella',
-    packageId: 'npm:@lili/workers',
+    packageId: 'npm:@liche/workers',
     ecosystem: 'npm',
     artifactPath: written.path,
     artifactFileName: written.fileName,
     sha256: written.sha256,
     size: written.size,
-    name: '@lili/workers',
+    name: '@liche/workers',
     version: '0.1.0',
     registry: 'https://registry.npmjs.org/',
     tag: 'latest',
@@ -88,13 +88,13 @@ function pypiOnlyPlan(): Fixture {
   const written = writeArtifact('wheel.whl', `pypi wheel ${counter}`)
   const step: PypiPublishStep = {
     kind: 'pypi-upload',
-    packageId: 'pypi:lili-workers',
+    packageId: 'pypi:liche-workers',
     ecosystem: 'pypi',
     artifactPath: written.path,
     artifactFileName: written.fileName,
     sha256: written.sha256,
     size: written.size,
-    name: 'lili-workers',
+    name: 'liche-workers',
     version: '0.1.0',
     repositoryUrl: 'https://upload.pypi.org/legacy/',
   }
@@ -144,8 +144,8 @@ describe('npmOidcExchangeUrl', () => {
   })
 
   test('percent-encodes scoped package names', () => {
-    expect(npmOidcExchangeUrl('https://registry.npmjs.org/', '@lili/workers')).toBe(
-      'https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/%40lili%2Fworkers',
+    expect(npmOidcExchangeUrl('https://registry.npmjs.org/', '@liche/workers')).toBe(
+      'https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/%40liche%2Fworkers',
     )
   })
 

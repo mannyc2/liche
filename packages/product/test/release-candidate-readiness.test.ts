@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
 
-const PUBLIC_PACKAGES = ['@lili/core', '@lili/build', '@lili/product', '@lili/releases']
+const PUBLIC_PACKAGES = ['@liche/core', '@liche/build', '@liche/product', '@liche/releases']
 
 function run(cmd: string, args: string[]): string {
   try {
@@ -62,7 +62,7 @@ describe('release candidate readiness gate', () => {
       expect(pkg.boundaryExceptions).toEqual([])
     }
 
-    const releases = metrics.packages.find((pkg: { name: string }) => pkg.name === '@lili/releases')
+    const releases = metrics.packages.find((pkg: { name: string }) => pkg.name === '@liche/releases')
     expect(releases.public.subpathExportNames).toContain('./publishers')
     expect(releases.public.subpathExportNames).toContain('./renderers/all')
   })

@@ -64,7 +64,7 @@ async function renderPypi(input: ReleaseRendererInput): Promise<RenderPackageRes
     ].filter((line) => line !== '').join('\n')
     const wheel = [
       'Wheel-Version: 1.0',
-      `Generator: @lili/releases ${input.manifest.release.generatorVersion}`,
+      `Generator: @liche/releases ${input.manifest.release.generatorVersion}`,
       'Root-Is-Purelib: false',
       `Tag: ${tag}`,
       '',

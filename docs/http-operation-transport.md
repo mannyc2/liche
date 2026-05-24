@@ -1,6 +1,6 @@
 # HTTP operation transport requirements
 
-`@lili/core` owns outbound HTTP operation transport. Both handwritten CLIs and generated CLIs use the same primitives.
+`@liche/core` owns outbound HTTP operation transport. Both handwritten CLIs and generated CLIs use the same primitives.
 
 ## NDJSON streaming for async generators
 
@@ -246,7 +246,7 @@ Do not include auth header values or secret env values in error details or confo
 ## Handwritten CLI example
 
 ```ts
-import { callHttpOperation, defineCli, defineCommand, z } from "@lili/core";
+import { callHttpOperation, defineCli, defineCommand, z } from "@liche/core";
 
 const input = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),

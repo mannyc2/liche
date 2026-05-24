@@ -1,12 +1,12 @@
 # Release renderers example
 
-This example shows `@lili/releases` consuming a build record and verified final binary bytes to render package-manager artifacts. The fixture binary is just a tiny file; renderers verify bytes and package wrappers, they do not execute it.
+This example shows `@liche/releases` consuming a build record and verified final binary bytes to render package-manager artifacts. The fixture binary is just a tiny file; renderers verify bytes and package wrappers, they do not execute it.
 
 Run the packaging command from the repository root:
 
 ```sh
-li-release package examples/release-renderers/build-record.json \
-  --config examples/release-renderers/lili.releases.json \
+liche-release package examples/release-renderers/build-record.json \
+  --config examples/release-renderers/liche.releases.json \
   --out examples/release-renderers/.tmp/release \
   --json
 ```

@@ -11,7 +11,7 @@ import { testCli, testCommand } from './helpers.js'
 const stateOf = (cli: unknown) => (cli as InternalCli)[stateSymbol]
 
 function tmp(): string {
-  return mkdtempSync(join(tmpdir(), 'lili-cfg-'))
+  return mkdtempSync(join(tmpdir(), 'liche-cfg-'))
 }
 
 describe('loadConfig', () => {
