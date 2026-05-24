@@ -1,6 +1,6 @@
 {
   "name": "@liche/extensions",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "license": "MIT",
   "description": "Official optional extensions for Liche CLIs.",
@@ -55,7 +55,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.3.0"
+    "@liche/core": "^0.3.1"
   },
   "devDependencies": {
     "@types/bun": "latest",

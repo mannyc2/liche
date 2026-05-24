@@ -22,7 +22,7 @@ const parsed = parseCliReleaseManifest({
   release: {
     version: "0.1.0",
     createdAt: new Date().toISOString(),
-    generatorVersion: "0.3.0",
+    generatorVersion: "0.3.1",
   },
   runtime: { command: "shipyard" },
   binaries: [],

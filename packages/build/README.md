@@ -14,7 +14,7 @@ const plan = createCompilePlan({
   outfile: "dist/shipyard",
   target: "bun-darwin-arm64",
   constants: {
-    buildToolVersion: "0.3.0",
+    buildToolVersion: "0.3.1",
     contractDigest: "sha256:example",
     releaseVersion: "0.1.0",
     sourceCommit: "0000000",
