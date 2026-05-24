@@ -43,7 +43,7 @@ Landed lanes:
 - `@liche/extensions/agents`: `agents()` bundle for MCP and skill installers.
 - `@liche/extensions/mcp`: `mcpInstaller()` and MCP config writing helpers.
 - `@liche/extensions/skills`: `skillsInstaller()` and skill writing helpers.
-- `@liche/extensions/support`: `runLocalDoctor()` and `createLocalTelemetrySink()`.
+- `@liche/extensions/telemetry`: `createLocalTelemetrySink()`.
 
 Auth-enabled CLIs install the auth lane to declare the standard profile/session globals:
 

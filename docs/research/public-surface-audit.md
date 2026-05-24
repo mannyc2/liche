@@ -30,7 +30,7 @@ These exports have clear non-test consumers or are required to type the main aut
 | `CliInstance`, `ServeOptions`, `RunContext`, handler/result/error/helper types | Used by package tests, release/product command wrappers, and public handler signatures. | Public type support. Keep unless signatures are reshaped. |
 | `callHttpOperation`, `serializeHttpOperationRequest`, HTTP operation types | Used by Product conformance and generated remote command fixtures. | Shared generated/runtime transport primitive. Keep. |
 | `resolveAuth`, `resolveContext`, `createFileSessionStore`, generated auth command helpers, auth/session types | Used or emitted by Product generated CLI source when auth/session is enabled. | Shared auth/session runtime. Keep. |
-| `createLocalTelemetrySink`, `runLocalDoctor`, local ops types | Used by Product generated ops surfaces and public package readiness fixtures. | Opt-in local ops primitives. Keep while generated ops imports them. |
+| `createLocalTelemetrySink` | Used by Product generated telemetry wiring and public package readiness fixtures. | Opt-in telemetry primitive under `@liche/extensions/telemetry`; generated doctor checks are Product-owned code, not a public extension helper. |
 | `ok`, `fail`, `commandError`, `CommandError` | Used for command-authored outcomes, hook policy failures, structured recovery, and public error envelopes. | Public recovery/error contract. Keep. |
 
 ## Watch List

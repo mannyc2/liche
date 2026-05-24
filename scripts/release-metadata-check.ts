@@ -245,10 +245,9 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
     checks,
     packages,
     remainingHumanGates: [
-      'Confirm npm organization ownership and package creation rights for the final scope.',
-      'Bootstrap the first public package versions before configuring npm trust; npm trust requires existing packages.',
+      'Confirm npm organization ownership and package publish rights for the final scope before each manual publish.',
       'Set package repository/homepage/bugs/funding only after canonical public URLs are real.',
-      'Configure npm trusted publishers for .github/workflows/publish.yml and npm-production after the first publish.',
+      'Configure or verify npm trusted publishers for .github/workflows/publish.yml and npm-production before relying on CI publishing.',
       'Configure PyPI trusted publishers for the final release workflow and environment when PyPI artifacts are published.',
       'Verify GitHub release asset layout and checksums against final release artifacts.',
     ],

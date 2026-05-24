@@ -79,13 +79,10 @@ describe('release candidate readiness gate', () => {
     expect(report.schemaVersion).toBe(1)
     expect(report.ok).toBe(true)
     expect(report.remainingHumanGates).toContain(
-      'Confirm npm organization ownership and package creation rights for the final scope.',
+      'Confirm npm organization ownership and package publish rights for the final scope before each manual publish.',
     )
     expect(report.remainingHumanGates).toContain(
-      'Bootstrap the first public package versions before configuring npm trust; npm trust requires existing packages.',
-    )
-    expect(report.remainingHumanGates).toContain(
-      'Configure npm trusted publishers for .github/workflows/publish.yml and npm-production after the first publish.',
+      'Configure or verify npm trusted publishers for .github/workflows/publish.yml and npm-production before relying on CI publishing.',
     )
 
     for (const pkg of report.packages) {

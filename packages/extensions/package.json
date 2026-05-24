@@ -1,6 +1,6 @@
 {
   "name": "@liche/extensions",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "license": "MIT",
   "description": "Official optional extensions for Liche CLIs.",
@@ -37,9 +37,9 @@
       "types": "./src/helpers.ts",
       "default": "./src/helpers.ts"
     },
-    "./support": {
-      "types": "./src/support.ts",
-      "default": "./src/support.ts"
+    "./telemetry": {
+      "types": "./src/telemetry.ts",
+      "default": "./src/telemetry.ts"
     }
   },
   "files": [
@@ -55,7 +55,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.3.1"
+    "@liche/core": "^0.4.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

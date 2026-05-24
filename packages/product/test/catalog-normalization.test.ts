@@ -130,7 +130,7 @@ describe('Catalog header', () => {
 })
 
 describe('Local ops normalization', () => {
-  test('ops are off until the product opts into generated local support', () => {
+  test('ops are off until the product opts into generated local operations', () => {
     const catalog = normalizeProduct(testProduct())
     expect(catalog.ops).toEqual({
       enabled: false,

@@ -1,55 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
-import { createLocalTelemetrySink, runLocalDoctor } from '../src/support.js'
+import { createLocalTelemetrySink } from '../src/telemetry.js'
 
-describe('@liche/extensions/support local ops doctor', () => {
-  test('reports PATH and package-manager checks as structured diagnostics', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'liche-doctor-'))
-    const bin = join(root, 'bin')
-    const localBin = join(root, 'node_modules', '.bin')
-    try {
-      await Bun.$`mkdir -p ${bin} ${localBin}`
-      writeFileSync(join(bin, 'bun'), '#!/bin/sh\n')
-      writeFileSync(join(localBin, 'npm'), '#!/bin/sh\n')
-
-      const report = await runLocalDoctor({
-        cliName: 'shipyard',
-        version: '1.0.0',
-        env: { PATH: [bin, localBin].join(delimiter) },
-        packageManagers: ['bun', 'npm', 'pnpm'],
-      })
-
-      expect(report.cli).toEqual({ name: 'shipyard', version: '1.0.0' })
-      expect(report.checks.find((check) => check.id === 'path.present')?.status).toBe('pass')
-      expect(report.checks.find((check) => check.id === 'path.local-bin')?.status).toBe('pass')
-      expect(report.checks.find((check) => check.id === 'package-manager.bun')?.status).toBe('pass')
-      expect(report.checks.find((check) => check.id === 'package-manager.npm')?.status).toBe('pass')
-      expect(report.checks.find((check) => check.id === 'package-manager.pnpm')?.status).toBe('warn')
-      expect(report.summary).toEqual({ pass: 4, warn: 1, fail: 0 })
-    } finally {
-      rmSync(root, { force: true, recursive: true })
-    }
-  })
-
-  test('empty PATH fails the required PATH and Bun checks', async () => {
-    const report = await runLocalDoctor({
-      cliName: 'shipyard',
-      env: { PATH: '' },
-      packageManagers: ['bun'],
-    })
-
-    expect(report.checks.map((check) => [check.id, check.status])).toEqual([
-      ['path.present', 'fail'],
-      ['path.local-bin', 'warn'],
-      ['package-manager.bun', 'fail'],
-    ])
-    expect(report.summary).toEqual({ pass: 0, warn: 1, fail: 2 })
-  })
-})
-
-describe('@liche/extensions/support local telemetry sink', () => {
+describe('@liche/extensions/telemetry local sink', () => {
   test('writes JSONL only when opted in and redacts secret-shaped fields', async () => {
     const writes: string[] = []
     const sink = createLocalTelemetrySink({

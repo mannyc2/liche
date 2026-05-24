@@ -32,7 +32,7 @@ Create one optional first-party package for official extension factories.
 Opt-in sentence:
 
 ```txt
-Install @liche/extensions when you want official optional CLI extensions such as config authoring, completions, MCP/skill installers, local diagnostics, or telemetry sinks. Without it, @liche/core still runs authored commands.
+Install @liche/extensions when you want official optional CLI extensions such as config authoring, completions, MCP/skill installers, auth/session workflows, or telemetry sinks. Without it, @liche/core still runs authored commands.
 ```
 
 Do not create one npm package per helper. Start with one package because the boundary is "official optional adapters over stable liche contracts", not "miscellaneous things not in core".
@@ -47,7 +47,7 @@ Use package subpath exports inside `@liche/extensions` for individual lanes:
 @liche/extensions/completions
 @liche/extensions/mcp
 @liche/extensions/skills
-@liche/extensions/support
+@liche/extensions/telemetry
 ```
 
 The package root may re-export the stable, low-dependency factories for convenience. Subpath exports are the default import style in docs and generated code because they keep dependencies and ownership visible without fragmenting the install story.
@@ -171,9 +171,9 @@ This removes config as a special construction field without pretending config ca
 
 Direct MCP runtime projection over the command contract can stay in core because it shares executor internals and command invocation semantics. Installer UX such as `mcp add`, provider-specific config files, bundles, and publishing belongs in `@liche/extensions` or later adapter packages.
 
-### 6. Move local support utilities out of core root
+### 6. Move telemetry and generated diagnostics out of core root
 
-`createLocalTelemetrySink` and `runLocalDoctor` should move behind extensions unless a package-root consumer proves they are required runtime primitives. They are support workflows, not command execution semantics.
+`createLocalTelemetrySink` belongs behind the telemetry extension. Generated Product doctor behavior belongs to Product-generated CLI code because it is a catalog supportability surface, not a reusable core or extension runtime primitive.
 
 ### 7. Split auth runtime from auth workflows
 
@@ -225,7 +225,7 @@ Does not own:
 - auth/session resolution UX
 - MCP/skill installer UX
 - telemetry sink presets
-- local support bundle/doctor workflows
+- Product-generated doctor workflows
 
 ## Cutover map
 
@@ -239,7 +239,7 @@ Does not own:
 | Agents | direct MCP runtime execution over `CommandContract`; agent-safe result/error envelopes | `agents()` bundle, agent readiness checks, skill installer, MCP installer, provider/client setup UX |
 | Auth | `secret()` / `SecretString`, non-secret auth metadata, invocation posture, redaction, transport-safe auth/header application contract | `auth(...)` workflow extension, `resolveAuth`, `resolveContext`, sessions, OAuth device login, whoami/switch/logout, identity probing |
 | HTTP transport | request serialization, remote error normalization, output validation, timeout/network/status handling | provider credential resolution and login/session flows |
-| Support and telemetry | local event and hook lanes; redacted event shape | telemetry sink presets, local doctor/support bundle commands |
+| Telemetry and generated supportability | local event and hook lanes; redacted event shape | telemetry sink presets in `@liche/extensions/telemetry`; Product-generated doctor checks in `@liche/product` |
 | Product surfaces | no Product catalog generation in core | Product imports extensions only for required runtime surface; Product-owned MCP/docs/Agent artifacts stay in `@liche/product` |
 
 ### `@liche/extensions`
@@ -253,7 +253,7 @@ Owns official optional extensions that consume public core lanes:
 - config doctor command
 - MCP installer command
 - skill installer command
-- local diagnostics and telemetry sink adapters
+- telemetry sink adapters
 
 Uses subpath exports to keep each lane independently importable while staying one published package until a real package-boundary reason appears.
 
@@ -261,7 +261,7 @@ Must not import `packages/core/src/*`, mutate `CliState`, or depend on Product/B
 
 ### `@liche/product`
 
-Generated CLIs use `@liche/extensions` only when the catalog requires optional runtime surface such as auth/session resolution, config-backed remote base URLs, generated local support commands, or explicit agent setup commands. Product-owned generated MCP/docs/Agent surfaces stay Product outputs, not core extensions.
+Generated CLIs use `@liche/extensions` only when the catalog requires optional runtime surface such as auth/session resolution, config-backed remote base URLs, telemetry sinks, or explicit agent setup commands. Product-owned generated doctor/MCP/docs/Agent surfaces stay Product outputs, not core extensions.
 
 ## Implementation slices
 
@@ -274,7 +274,7 @@ Generated CLIs use `@liche/extensions` only when the catalog requires optional r
    Verify: `defineGlobal(...)` and object-literal `defineCli().globals` both feed the same normalized registry as `CliExtension.globals`; parser acceptance, help output, duplicate-global rejection, disabled globals, and `ctx.global` are generated from that registry; globals do not appear in MCP tool input schemas.
 
 3. Create `@liche/extensions`.
-   Status: landed with root exports plus `@liche/extensions/agents`, `@liche/extensions/auth`, `@liche/extensions/config`, `@liche/extensions/completions`, `@liche/extensions/mcp`, `@liche/extensions/skills`, and `@liche/extensions/support`.
+   Status: landed with root exports plus `@liche/extensions/agents`, `@liche/extensions/auth`, `@liche/extensions/config`, `@liche/extensions/completions`, `@liche/extensions/mcp`, `@liche/extensions/skills`, and `@liche/extensions/telemetry`.
    Verify: package boundary tests prove `@liche/core` does not depend on it, while `@liche/extensions` imports only `@liche/core` package-root APIs.
 
 4. Move helper commands.
@@ -290,7 +290,7 @@ Generated CLIs use `@liche/extensions` only when the catalog requires optional r
    Verify: auth-free generated CLIs import no auth extension; auth-enabled generated CLIs import `@liche/extensions/auth`; `resolveAuth`, sessions, OAuth device login, and generated auth commands keep current behavior while auth globals come from the extension.
 
 7. Update Product/Build/Releases/examples.
-   Status: landed for package CLIs, examples, generated fixtures, package-consumer snapshots, and public-package readiness gates. Product imports config/support/auth extensions only when the normalized catalog needs them.
+   Status: landed for package CLIs, examples, generated fixtures, package-consumer snapshots, and public-package readiness gates. Product imports config, telemetry, and auth extensions only when the normalized catalog needs them; generated doctor checks are Product-owned code.
    Verify: generated Product CLIs import `@liche/extensions` only when needed; handwritten examples show explicit extension composition; package-consumer API snapshots are updated.
 
 8. Re-freeze core API.

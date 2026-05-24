@@ -2,7 +2,7 @@
 
 Liche is a Bun-native toolkit for building CLIs that are useful to humans, scripts, and agents.
 
-The v1 packages are Bun-only source publications. They export TypeScript source and Bun entrypoints directly, require Bun `>= 1.3.0`, and do not publish `dist` or declaration artifacts.
+The current public packages are Bun-only source publications. They export TypeScript source and Bun entrypoints directly, require Bun `>= 1.3.0`, and do not publish `dist` or declaration artifacts.
 
 ```sh
 bun add @liche/core
@@ -10,7 +10,7 @@ bun add @liche/extensions
 bun add -d @liche/product @liche/build @liche/releases
 ```
 
-The v1 workflow is:
+The current package workflow is:
 
 1. Write a CLI directly with `@liche/core`, or describe a product once with `@liche/product`.
 2. Generate runtime surfaces from the Product catalog when you need CLI, OpenAPI, MCP, docs, conformance, diagnostics, or telemetry wiring.
@@ -52,7 +52,7 @@ export const cli = defineCli({
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@liche/core` provides declarative command graphs, typed args/options/env parsing, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, `mcp add`, `skills add`, auth/session workflows, diagnostics, and telemetry sinks live in `@liche/extensions`.
+`@liche/core` provides declarative command graphs, typed args/options/env parsing, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, `mcp add`, `skills add`, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
 
 Core command handlers usually return plain data. Use `ctx.ok()` when a command needs result metadata, `ctx.error()` for expected structured failures, and async generators for streaming. Do not hand-write result-shaped objects; only the result factories create runtime envelopes.
 
@@ -148,7 +148,7 @@ The examples cover handwritten CLIs, generated Product CLIs, auth/context resolu
 ## Packages
 
 - `@liche/core`: CLI runtime, global inputs, extension protocol, HTTP transport, command contracts, direct MCP projection, and low-level redaction/auth header primitives.
-- `@liche/extensions`: optional first-party config, completions, agent helper installers, auth/session workflows, diagnostics, and telemetry adapters.
+- `@liche/extensions`: optional first-party config, completions, agent helper installers, auth/session workflows, and telemetry adapters.
 - `@liche/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
 - `@liche/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
 - `@liche/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.

@@ -2,9 +2,9 @@
 
 Bun-native CLI runtime for handwritten and generated Liche CLIs.
 
-This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
+This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; the current package format does not ship `dist` or declaration artifacts.
 
-Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, JSON/JSONL/YAML/Markdown output envelopes, direct MCP tools, serializable command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skill installers, auth/session workflows, diagnostics, and telemetry sinks live in `@liche/extensions`.
+Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, JSON/JSONL/YAML/Markdown output envelopes, direct MCP tools, serializable command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skill installers, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
 
 ```ts
 import { defineCli, defineCommand, z } from "@liche/core";

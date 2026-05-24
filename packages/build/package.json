@@ -1,6 +1,6 @@
 {
   "name": "@liche/build",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "license": "MIT",
   "description": "Build and compile planning primitives for Bun-native Liche CLIs.",
@@ -31,8 +31,8 @@
     "mutate": "stryker run"
   },
   "dependencies": {
-    "@liche/core": "^0.3.1",
-    "@liche/extensions": "^0.3.1",
+    "@liche/core": "^0.4.0",
+    "@liche/extensions": "^0.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

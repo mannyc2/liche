@@ -3,11 +3,23 @@
 This project follows one changelog for the synchronized first-party package suite:
 
 - `@liche/core`
+- `@liche/extensions`
 - `@liche/product`
 - `@liche/build`
 - `@liche/releases`
 
 ## Unreleased
+
+## 0.4.0 - 2026-05-24
+
+### Changed
+
+- Removed the broad `@liche/extensions/support` subpath.
+- Moved local telemetry to `@liche/extensions/telemetry`.
+- Made Product-generated `doctor` checks Product-owned generated code instead of a public extension helper.
+- Published synchronized `0.4.0` packages for `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/product`, and `@liche/releases`.
+
+## 0.3.1 - 2026-05-24
 
 ### Added
 

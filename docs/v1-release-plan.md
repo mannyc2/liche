@@ -1,32 +1,42 @@
-# V1 release plan
+# Public package release plan
 
-This plan defines the public-readiness work after the release renderer spine. It assumes the package architecture stays hard-cut: no legacy package shape, no `release-extra`, and no hosted service as a prerequisite for v1.
+This plan defines the public-readiness work after the release renderer spine. The old "v1" name is a milestone label for the self-contained package workflow, not a semver target. The package line should stay pre-`1.0.0` until the public APIs and generated workflow have enough downstream evidence to freeze.
 
-V1 is the self-contained toolchain. It should let a team define, generate, compile, package, publish, inspect, and operate an agent-ready CLI from local packages and standard registries. V2 is the hosted service and platform layer.
+The current public target is the self-contained toolchain. It should let a team define, generate, compile, package, publish, inspect, and operate an agent-ready CLI from local packages and standard registries. V2 is the hosted service and platform layer.
 
 ## Recommendation
 
-V1 should publish the package suite, not a single generic end-user CLI.
+The package release should publish the package suite, not a single generic end-user CLI.
 
 The public product is:
 
 ```txt
 @liche/core       runtime CLI framework
-@liche/extensions official optional config/auth/support/helper extensions
+@liche/extensions official optional config/auth/telemetry/helper extensions
 @liche/product    Product schema, generated surfaces, drift checks, conformance
 @liche/build      Bun compile/provenance helpers
 @liche/releases   manifest, renderers, publisher planning/execution, rollback planning
 ```
 
-`liche-product` and `liche-build` are developer tool binaries that ship with their packages. They are not the v1 positioning by themselves. A later hosted product or website can dogfood these packages, but it must not block v1 package publication.
+`liche-product` and `liche-build` are developer tool binaries that ship with their packages. They are not the whole product by themselves. A later hosted product or website can dogfood these packages, but it must not block package publication.
 
-The v1 story should be:
+The current package story is:
 
 ```txt
 define capabilities -> generate surfaces -> compile binary -> package/publish artifacts
 ```
 
-The hosted/API idea is the V2 product track. It can become the best demo and commercial surface, but adding it before v1 would introduce auth, tenancy, billing, uptime, and external API compatibility concerns that are not needed to prove the packages.
+The hosted/API idea is the V2 product track. It can become the best demo and commercial surface, but adding it before the package workflow is stable would introduce auth, tenancy, billing, uptime, and external API compatibility concerns that are not needed to prove the packages.
+
+## Versioning Direction
+
+Use low synchronized package versions for now. The current public line is `0.4.x`, and the next normal maintenance release should be `0.4.1`.
+
+- Use patch bumps for compatible fixes, documentation, metadata, tests, and internal refactors.
+- Use minor bumps for public API changes, generated artifact contract changes, command behavior changes, release workflow changes, or package-boundary moves.
+- Do not use `1.0.0` as a symbolic "done" marker. Reserve it for a later API freeze after real downstream use.
+- Keep all first-party packages synchronized unless a package is intentionally held back as experimental.
+- Keep publishing manual until the repo-wide release CLI exists and has proven itself on the package suite.
 
 ## Success criteria
 
@@ -41,7 +51,7 @@ The hosted/API idea is the V2 product track. It can become the best demo and com
 
 ## Current support areas
 
-Before v1 can claim an agent-ready Product workflow, each local support area below must be implemented and verified. The only category intentionally excluded from v1 is the hosted service/platform layer: hosted dashboards, hosted telemetry ingestion, hosted policy sync, org/team administration, billing, and multi-tenant uptime commitments.
+Before v1 can claim an agent-ready Product workflow, each local operation area below must be implemented and verified. The only category intentionally excluded from v1 is the hosted service/platform layer: hosted dashboards, hosted telemetry ingestion, hosted policy sync, org/team administration, billing, and multi-tenant uptime commitments.
 
 Public docs may mark a specific adapter or edge-case integration experimental, but they must not present an incomplete local capability as finished.
 
@@ -96,9 +106,9 @@ Verification:
 
 ## CLI and V2 cutline
 
-Do not invent one top-level `li` CLI as the v1 centerpiece unless it has a clear job that is not already owned by `liche-product` or `liche-build`.
+Do not invent one top-level `li` CLI as a release centerpiece unless it has a clear job that is not already owned by `liche-product` or `liche-build`.
 
-For v1:
+For the current package line:
 
 - `liche-product` owns schema loading, generation, drift checks, and conformance.
 - `liche-build` owns compile/provenance helpers.
@@ -107,7 +117,15 @@ For v1:
 
 A V2 hosted surface can expose schema management, hosted generation, API keys, docs hosting, release dashboards, artifact distribution, hosted telemetry ingestion, team administration, policy sync, and audit logs. That is a separate product, not the proof that the packages work.
 
-Dogfood v1 through local examples and a real generated sample CLI. Dogfood the hosted service in V2 after the package workflow is already solid.
+Near-term repo-wide CLI direction:
+
+- Keep release publication manual while the workflow is still small and package versions are pre-`1.0.0`.
+- When the repo needs one operator command, define it as a Product schema and generate the CLI through `@liche/product`.
+- That generated repo CLI should orchestrate existing package commands and scripts first: checks, examples, version audit, build records, release packaging, dry-run publish planning, and post-publish registry verification.
+- It should use `@liche/releases` for release artifacts and receipts instead of duplicating release ordering or package metadata logic.
+- Treat that generated repo CLI as a `0.4.0`-class feature, not as a reason to call the package suite `1.0.0`.
+
+Dogfood the package workflow through local examples and a real generated sample CLI. Dogfood the hosted service in V2 after the package workflow is already solid.
 
 ## Telemetry and hooks contract
 
@@ -342,7 +360,7 @@ Verification:
 - catalog/discovery artifacts are versioned, packaged, and tracked by drift checks
 - install/update/channel metadata supports static yanked-version and out-of-date notices without hosted infrastructure
 
-Current status: generated Product `doctor --json` combines `runLocalDoctor(...)` with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, static `ops.release` metadata, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. `ops.release` is Product-owned static metadata, not a runtime dependency on `@liche/releases`: generated docs, discovery JSON, `release --json`, and `doctor --json` can explain install commands, channel, latest known version, packages, and yanked versions without a hosted update service.
+Current status: generated Product `doctor --json` owns its local PATH/package-manager checks inline and combines them with catalog-derived checks for config fields, remote base URL source/provenance, auth provider metadata, token env vars, file-session support, context env selectors, static update/channel/yank notices, static `ops.release` metadata, and agent-visible command annotation quality. The command declares every inspected env var in its own env schema and redacts token values by construction. `ops.release` is Product-owned static metadata, not a runtime dependency on `@liche/releases`: generated docs, discovery JSON, `release --json`, and `doctor --json` can explain install commands, channel, latest known version, packages, and yanked versions without a hosted update service.
 
 ### Phase 8E: release publish closure
 
@@ -385,7 +403,7 @@ Current status: `bun run test:examples` is the example smoke gate. Existing exam
 
 ### Phase 8H: public docs pass
 
-Rewrite README and package READMEs around the v1 workflow. Curate public docs separately from internal requirements.
+Rewrite README and package READMEs around the package workflow. Curate public docs separately from internal requirements.
 
 Verification:
 
@@ -393,7 +411,7 @@ Verification:
 - package READMEs link to examples
 - package files do not ship internal requirement docs
 
-Current status: public README/package README tests check that root and package READMEs describe the v1 workflow, avoid internal planning-doc dependencies, and keep package file lists narrow.
+Current status: public README/package README tests check that root and package READMEs describe the package workflow, avoid internal planning-doc dependencies, and keep package file lists narrow.
 
 ### Phase 8I: simplification pass
 

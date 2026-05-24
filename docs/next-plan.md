@@ -105,7 +105,7 @@ Narrow runtime exception:
 
 - Direct MCP runtime execution over the command contract stays in core because it shares executor semantics.
 - Config loading/provenance semantics stay in core, while config authoring and inspection commands move behind extensions.
-- `mcp add`, `skills add`, config diagnostics, completions, agent setup helpers, auth workflows, and local support commands move behind `@liche/extensions` subpaths.
+- `mcp add`, `skills add`, config diagnostics, completions, agent setup helpers, auth workflows, and telemetry sinks move behind `@liche/extensions` subpaths.
 
 Implementation target:
 
@@ -122,7 +122,7 @@ Verification:
 - A declarative fixture can execute direct and aliased nested command paths while manifest and MCP projection read safety metadata without executing the handler.
 - Public manifest JSON contains only serializable contract data and no `Entry`, `CliState`, function, absolute path, timestamp, or runtime handle.
 - Core package dependency and import tests prove `@liche/core` does not depend on plugin packages, Product, Build, or Releases.
-- Disabling optional extensions removes their registered commands (`completions`, `config doctor`, `skills add`, `skills list`, `mcp add`, auth workflow commands, and support commands); disabling optional adapters removes nonessential renderers and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
+- Disabling optional extensions removes their registered commands (`completions`, `config doctor`, `skills add`, `skills list`, `mcp add`, and auth workflow commands); disabling optional adapters removes nonessential renderers and telemetry sinks without changing command execution, JSON/JSONL output, config provenance, or structured errors.
 - Generated Product surfaces consume catalog outputs or `CommandContract` artifacts and do not rely on weaker runtime reflection when a canonical generated surface exists.
 
 ## Phase 3: product vertical slice

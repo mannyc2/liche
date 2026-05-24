@@ -110,7 +110,7 @@ Owns official optional extension factories over public `@liche/core` lanes:
 - coordinated agent helper bundle
 - MCP and skill installer commands
 - auth/session workflow extension
-- local diagnostics, doctor, support bundle, and telemetry sink adapters
+- telemetry sink adapters
 
 May depend on `@liche/core` through package-root imports only.
 

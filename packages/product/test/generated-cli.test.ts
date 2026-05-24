@@ -86,7 +86,10 @@ describe('generated CLI — boundary discipline', () => {
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, z')
     expect(source).toContain(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
-    expect(source).toContain(`import { createLocalTelemetrySink, runLocalDoctor } from '@liche/extensions/support'`)
+    expect(source).toContain(`import { createLocalTelemetrySink } from '@liche/extensions/telemetry'`)
+    expect(source).toContain(`async function runGeneratedLocalDoctor`)
+    expect(source).not.toContain(`@liche/extensions/support`)
+    expect(source).not.toContain(`runLocalDoctor`)
   })
 
   test('generated source does not import from @liche/core subpaths or internals', () => {

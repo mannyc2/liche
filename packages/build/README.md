@@ -2,7 +2,7 @@
 
 Build and compile planning primitives for Bun-native Liche CLIs.
 
-This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; v1 does not ship `dist` or declaration artifacts.
+This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; the current package format does not ship `dist` or declaration artifacts.
 
 Use `@liche/build` when you need deterministic Bun compile plans, compile flag profiles, target resolution, path-independent compile digests, and build records that release tooling can consume.
 
@@ -14,7 +14,7 @@ const plan = createCompilePlan({
   outfile: "dist/shipyard",
   target: "bun-darwin-arm64",
   constants: {
-    buildToolVersion: "0.3.1",
+    buildToolVersion: "0.4.0",
     contractDigest: "sha256:example",
     releaseVersion: "0.1.0",
     sourceCommit: "0000000",

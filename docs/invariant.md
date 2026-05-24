@@ -48,7 +48,7 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
 | `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser/config engine, standard formatter, extension protocol, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the liche runtime itself, including handwritten CLIs, direct MCP execution, and the shared remote HTTP transport. |
-| `@liche/extensions` | no | Official optional extensions over public core lanes: config authoring, completions, agent setup helpers, auth/session workflows, local diagnostics, and support adapters. | They give up first-party optional factories and helper workflows. Handwritten core CLIs still run, and Product can still generate catalog-owned surfaces. |
+| `@liche/extensions` | no | Official optional extensions over public core lanes: config authoring, completions, agent setup helpers, auth/session workflows, and telemetry adapters. | They give up first-party optional factories and helper workflows. Handwritten core CLIs still run, and Product can still generate catalog-owned surfaces. |
 | `@liche/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
 | `@liche/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up liche's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
 | `@liche/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
@@ -80,7 +80,7 @@ These are optional extensions/adapters, even when they are useful first-party wo
 - agent/vendor publishing workflows, including `mcp add` and `skills add`
 - auth/session workflows such as credential resolution, session storage, OAuth device login, identity probing, and generated auth command factories
 - config mutation UX such as `config set`, `config edit`, and comment-preserving writes
-- extended doctor checks, hosted/export telemetry sinks, local support bundles, and hosted ingestion clients
+- hosted/export telemetry sinks, Product-generated diagnostics, and hosted ingestion clients
 - release, build, Product surface, server adapter, dashboard, SDK, Terraform, or framework-specific behavior
 
 The narrow core exception is direct runtime projection that must share executor internals, such as MCP tool execution over the command contract. Command-shaped helpers register through extensions as normal commands, must stay disabled unless requested by the CLI author, and must not pull in broader vendor publishing adapters.

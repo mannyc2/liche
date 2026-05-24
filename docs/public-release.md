@@ -1,6 +1,6 @@
-# Public Release Metadata
+# Public Release And Versioning
 
-This document closes the public release metadata rules for v1. It is a release-candidate gate, not a hosted-service plan.
+This document defines public release metadata, manual publishing, and package versioning rules. The old "v1" label is a release-readiness milestone, not a requirement to publish `1.0.0`.
 
 ## Current Registry Fact
 
@@ -8,25 +8,70 @@ Checked on 2026-05-24 with:
 
 ```bash
 npm view @liche/core version --json
+npm view @liche/extensions version --json
 npm view @liche/build version --json
 npm view @liche/product version --json
 npm view @liche/releases version --json
 ```
 
-The public npm registry returned `E404` for all four names. That means no public package was returned by the registry at check time. It does not prove ownership of the `@liche` organization or publish rights.
+The public npm registry returned `0.4.0` for all five packages. The first public npm bootstrap is complete for:
 
-Final publication still requires:
+- `@liche/core`
+- `@liche/extensions`
+- `@liche/build`
+- `@liche/product`
+- `@liche/releases`
 
-- `npm whoami` under the publishing account
+Operational publication still requires:
+
+- `npm whoami` under the publishing account before manual publishes
 - confirmed membership or ownership for the `@liche` npm organization
-- package creation rights for `@liche/core`, `@liche/build`, `@liche/product`, and `@liche/releases`
-- trusted publisher configuration for the final release workflow
+- package publish rights for `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/product`, and `@liche/releases`
+- trusted publisher configuration before relying on the final CI release workflow
 
 The repeatable live check is:
 
 ```bash
 bun run --silent release:names
 ```
+
+## Versioning Policy
+
+Keep the package suite pre-`1.0.0` until there is enough downstream use to freeze the public API and generated workflow. The current low version line is intentional; do not jump to `1.0.0` just because the first public package lane exists.
+
+Rules:
+
+- Use synchronized versions across all five packages by default. This keeps examples, package-to-package dependency ranges, generated-tool constants, and release troubleshooting simple.
+- Treat `0.x` minor bumps as the breaking-change lane. Public API removals, generated output contract changes, command behavior changes, or a repo-wide generated release CLI should move from `0.4.x` to `0.5.0`.
+- Treat `0.x` patch bumps as the compatible lane. Documentation fixes, metadata fixes, test-only hardening, internal refactors, and bug fixes that preserve public imports and command behavior should move from `0.4.0` to `0.4.1`.
+- Use prerelease suffixes only for intentionally unstable public artifacts, for example `0.4.0-rc.1`. Do not use a prerelease suffix for normal manual patch releases.
+- Keep package dependencies on matching caret ranges, such as `@liche/core: ^0.4.1`, after each synchronized bump.
+
+Manual bump checklist:
+
+- Update all package `version` fields.
+- Update package-to-package `@liche/*` dependency ranges.
+- Update tool version constants in `packages/build/src/cli.ts`, `packages/product/src/cli.ts`, `packages/releases/src/cli.ts`, and generated release config defaults.
+- Update checked examples that pin public package versions.
+- Update package-readiness tests that assert the public package version.
+- Run `bun run release:check`, then `bun run --silent release:names`.
+
+The next normal maintenance release after this hard cutover should be `0.4.1`. A repo-wide Liche CLI that is generated through `@liche/product` and released through `@liche/releases` is large enough for the next minor line.
+
+## Manual Publish Path
+
+Publishing remains manual for now. Use the local checks and npm's official publishing path rather than adding custom version automation in this slice.
+
+Manual release order:
+
+1. Choose the next synchronized version using the versioning policy.
+2. Apply the manual bump checklist.
+3. Run `bun run release:check`.
+4. Run `bun run --silent release:names`.
+5. Publish packages in dependency order: `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/releases`, `@liche/product`.
+6. Re-run `bun run --silent release:names` and verify every package reports the new version.
+
+The committed `.github/workflows/publish.yml` is the intended CI path once trusted publishing is configured, but manual publishing stays the source of truth until that credential path is proven.
 
 ## Package Metadata Rule
 
@@ -130,7 +175,7 @@ Rules:
 - GitHub release assets must match the manifest records and `checksums.sha256`.
 - registry or repository attestations do not replace local sha256 checks.
 
-## Local Release Candidate Gate
+## Local Release Gate
 
 The local gate is:
 

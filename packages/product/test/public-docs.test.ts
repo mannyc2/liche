@@ -21,7 +21,7 @@ function codeBlocks(markdown: string): Array<{ lang: string; code: string }> {
 }
 
 describe('public docs', () => {
-  test('root and package READMEs describe the v1 workflow instead of internal planning docs', () => {
+  test('root and package READMEs describe the package workflow instead of internal planning docs', () => {
     const root = read('README.md')
     expect(root).toContain('Handwritten CLI')
     expect(root).toContain('Product Schema')

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
-const PUBLIC_PACKAGE_VERSION = '0.3.1'
+const PUBLIC_PACKAGE_VERSION = '0.4.0'
 const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
@@ -54,7 +54,6 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'oauthDeviceLogin',
     'resolveAuth',
     'resolveContext',
-    'runLocalDoctor',
     'skillsInstaller',
   ],
   '@liche/extensions/agents': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
@@ -73,7 +72,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
   '@liche/extensions/completions': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
   '@liche/extensions/mcp': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
   '@liche/extensions/skills': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
-  '@liche/extensions/support': ['createLocalTelemetrySink', 'runLocalDoctor'],
+  '@liche/extensions/telemetry': ['createLocalTelemetrySink'],
   '@liche/build': [
     'BuildRecordSchema',
     'TARGETS',
@@ -297,7 +296,7 @@ import * as ExtensionsConfig from '@liche/extensions/config'
 import * as ExtensionsCompletions from '@liche/extensions/completions'
 import * as ExtensionsMcp from '@liche/extensions/mcp'
 import * as ExtensionsSkills from '@liche/extensions/skills'
-import * as ExtensionsSupport from '@liche/extensions/support'
+import * as ExtensionsTelemetry from '@liche/extensions/telemetry'
 import * as Build from '@liche/build'
 import * as Product from '@liche/product'
 import * as Releases from '@liche/releases'
@@ -326,7 +325,7 @@ const modules = {
   '@liche/extensions/completions': ExtensionsCompletions,
   '@liche/extensions/mcp': ExtensionsMcp,
   '@liche/extensions/skills': ExtensionsSkills,
-  '@liche/extensions/support': ExtensionsSupport,
+  '@liche/extensions/telemetry': ExtensionsTelemetry,
   '@liche/build': Build,
   '@liche/product': Product,
   '@liche/releases': Releases,
@@ -363,9 +362,9 @@ const cli = Core.defineCli({
     }),
   ],
 })
-const doctor = await Extensions.runLocalDoctor({ cliName: 'consumer', env: { PATH: '' }, packageManagers: ['bun'] })
 const sink = Extensions.createLocalTelemetrySink({ env: {}, append() {} })
 await sink({ type: 'version.rendered', occurredAt: new Date().toISOString(), cli: { name: 'consumer' }, format: 'json', formatExplicit: true, invocation: 'cli', agent: true, surface: { kind: 'version' } })
+if ('runLocalDoctor' in Extensions) throw new Error('runLocalDoctor leaked from @liche/extensions root')
 
 const plan = Build.createCompilePlan({
   entrypoint: 'src/cli.ts',
@@ -511,7 +510,7 @@ const parsed = Releases.parseCliReleaseManifest({
 
 const refs = [
   cli,
-  doctor,
+  sink,
   plan,
   generated,
   generatedResult,

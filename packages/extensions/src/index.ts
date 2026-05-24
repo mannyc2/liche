@@ -19,7 +19,7 @@ export type {
 } from './auth.js'
 export { config, configDoctor } from './config.js'
 export { agents, completions, mcpInstaller, skillsInstaller } from './helpers.js'
-export { createLocalTelemetrySink, runLocalDoctor } from './support.js'
+export { createLocalTelemetrySink } from './telemetry.js'
 export type { ConfigExtensionOptions } from './config.js'
 export type {
   CompletionsOptions,
@@ -29,11 +29,4 @@ export type {
   WriteMcpOptions,
   WriteSkillOptions,
 } from './helpers.js'
-export type {
-  LocalDoctorCheck,
-  LocalDoctorCheckStatus,
-  LocalDoctorInput,
-  LocalDoctorPackageManager,
-  LocalDoctorReport,
-  LocalTelemetrySinkOptions,
-} from './support.js'
+export type { LocalTelemetrySinkOptions } from './telemetry.js'

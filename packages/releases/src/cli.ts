@@ -9,7 +9,7 @@ import {
 } from './cli-commands.js'
 import { ReleasesConfigSchema } from './release-config.js'
 
-const RELEASE_TOOL_VERSION = '0.3.1'
+const RELEASE_TOOL_VERSION = '0.4.0'
 
 export const cli = defineCli({
   commands: [

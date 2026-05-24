@@ -126,6 +126,8 @@ function renderCatalogConstants(catalog: Catalog): string[] {
 
 function renderProductDoctorHelpers(): string[] {
   return [
+    `type GeneratedPackageManager = 'bun' | 'npm' | 'pnpm' | 'yarn'`,
+    ``,
     `type GeneratedDoctorCheck = {`,
     `  id: string`,
     `  status: 'pass' | 'warn' | 'fail'`,
@@ -133,10 +135,77 @@ function renderProductDoctorHelpers(): string[] {
     `  details?: Record<string, unknown> | undefined`,
     `}`,
     ``,
+    `type GeneratedLocalDoctorInput = {`,
+    `  cliName: string`,
+    `  version?: string | undefined`,
+    `  env: Record<string, string | undefined>`,
+    `  packageManagers: readonly GeneratedPackageManager[]`,
+    `}`,
+    ``,
     `type GeneratedDoctorContext = {`,
     `  config: Record<string, unknown>`,
     `  env: Record<string, string | undefined>`,
     `  sources: { config(path: string): { kind: string } }`,
+    `}`,
+    ``,
+    `async function runGeneratedLocalDoctor(input: GeneratedLocalDoctorInput): Promise<{ cli: { name: string; version?: string | undefined }; checks: GeneratedDoctorCheck[]; summary: { pass: number; warn: number; fail: number } }> {`,
+    `  const checks: GeneratedDoctorCheck[] = []`,
+    `  const pathEntries = splitGeneratedPath(input.env.PATH)`,
+    `  checks.push(pathEntries.length > 0`,
+    `    ? {`,
+    `        id: 'path.present',`,
+    `        status: 'pass',`,
+    `        message: 'PATH is configured.',`,
+    `        details: { entries: pathEntries.length },`,
+    `      }`,
+    `    : {`,
+    `        id: 'path.present',`,
+    `        status: 'fail',`,
+    `        message: 'PATH is empty or missing.',`,
+    `      })`,
+    `  checks.push(pathEntries.some(isGeneratedLocalBinPath)`,
+    `    ? {`,
+    `        id: 'path.local-bin',`,
+    `        status: 'pass',`,
+    `        message: 'PATH includes a local node_modules/.bin entry.',`,
+    `      }`,
+    `    : {`,
+    `        id: 'path.local-bin',`,
+    `        status: 'warn',`,
+    `        message: 'PATH does not include a local node_modules/.bin entry.',`,
+    `      })`,
+    `  for (const manager of input.packageManagers) {`,
+    `    const found = Bun.which(manager, { PATH: pathEntries.join(generatedPathDelimiter()) })`,
+    `    checks.push(found`,
+    `      ? {`,
+    `          id: ${'`package-manager.${manager}`'},`,
+    `          status: 'pass',`,
+    `          message: ${'`${manager} is available on PATH.`'},`,
+    `          details: { path: found },`,
+    `        }`,
+    `      : {`,
+    `          id: ${'`package-manager.${manager}`'},`,
+    `          status: manager === 'bun' ? 'fail' : 'warn',`,
+    `          message: ${'`${manager} was not found on PATH.`'},`,
+    `        })`,
+    `  }`,
+    `  return {`,
+    `    cli: input.version === undefined ? { name: input.cliName } : { name: input.cliName, version: input.version },`,
+    `    checks,`,
+    `    summary: countGeneratedDoctorChecks(checks),`,
+    `  }`,
+    `}`,
+    ``,
+    `function splitGeneratedPath(value: string | undefined): string[] {`,
+    `  return (value ?? '').split(generatedPathDelimiter()).map((entry) => entry.trim()).filter(Boolean)`,
+    `}`,
+    ``,
+    `function generatedPathDelimiter(): string {`,
+    `  return process.platform === 'win32' ? ';' : ':'`,
+    `}`,
+    ``,
+    `function isGeneratedLocalBinPath(path: string): boolean {`,
+    `  return path.endsWith('node_modules/.bin') || path.endsWith('node_modules\\\\.bin') || path.includes('node_modules/.bin')`,
     `}`,
     ``,
     `function withGeneratedProductDoctor(ctx: GeneratedDoctorContext, local: { cli: unknown; checks: GeneratedDoctorCheck[] }): { cli: unknown; checks: GeneratedDoctorCheck[]; summary: { pass: number; warn: number; fail: number } } {`,
@@ -453,12 +522,8 @@ function renderImports(catalog: Catalog): string[] {
   if (catalog.config) {
     out.push(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
   }
-  if (catalog.ops.enabled && (catalog.ops.telemetry !== false || catalog.ops.doctor !== false)) {
-    const supportNames = [
-      ...(catalog.ops.telemetry !== false ? ['createLocalTelemetrySink'] : []),
-      ...(catalog.ops.doctor !== false ? ['runLocalDoctor'] : []),
-    ].sort()
-    out.push(`import { ${supportNames.join(', ')} } from '@liche/extensions/support'`)
+  if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
+    out.push(`import { createLocalTelemetrySink } from '@liche/extensions/telemetry'`)
   }
   const byModule = new Map<string, Set<string>>()
   for (const h of collectLocalHandlers(catalog)) {
@@ -532,7 +597,7 @@ function renderOpsCommands(indent: string, catalog: Catalog): string[] {
     lines.push(`${indent}  output: z.unknown(),`)
     lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
     lines.push(`${indent}  async run({ ctx }) {`)
-    lines.push(`${indent}    const local = await runLocalDoctor({`)
+    lines.push(`${indent}    const local = await runGeneratedLocalDoctor({`)
     lines.push(`${indent}      cliName: PRODUCT_ID,`)
     lines.push(`${indent}      version: ${q(catalog.product.version)},`)
     lines.push(`${indent}      env: ctx.env as Record<string, string | undefined>,`)
