@@ -1,6 +1,6 @@
 {
   "name": "@liche/product",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "license": "MIT",
   "description": "Product schema authoring, generated CLI surfaces, and conformance for Liche.",
@@ -31,9 +31,9 @@
     "mutate": "stryker run"
   },
   "dependencies": {
-    "@liche/build": "^0.2.0",
-    "@liche/core": "^0.2.0",
-    "@liche/extensions": "^0.2.0",
+    "@liche/build": "^0.3.0",
+    "@liche/core": "^0.3.0",
+    "@liche/extensions": "^0.3.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
