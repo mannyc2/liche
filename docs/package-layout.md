@@ -33,6 +33,7 @@ liche/
 
   packages/
     core/
+    extensions/
     build/
     product/
     releases/
@@ -90,14 +91,30 @@ Owns:
 - middleware
 - observe-only lifecycle events and typed mutation hooks
 - parser/config/env validation
-- first-class opt-in config primitive for durable non-secret preferences
+- config resolution, file parsing, precedence, and provenance semantics
 - formatter/output envelope behavior
-- MCP basics (`--mcp` runtime support, direct command-contract execution, and opt-in `mcp add` config writing remain core)
-- skills/docs basics (core may expose packaged skill content, runtime reflection for handwritten CLIs, and opt-in `skills add`; broader agent installers and vendor publishing helpers are optional adapters)
+- extension protocol and extension merge rules
+- MCP basics (`--mcp` runtime support and direct command-contract execution remain core)
+- skills/docs basics (core may expose packaged skill content and runtime reflection for handwritten CLIs; installers move to extensions)
 - outbound HTTP operation transport
-- auth/session runtime primitives (`SecretString`, auth/context resolution, session store, auth header application)
+- auth redaction and transport-safety primitives (`SecretString`, non-secret auth metadata, and resolved auth/header application contracts)
 
-Must not depend on `@liche/build`, `@liche/product`, or `@liche/releases`.
+Must not depend on `@liche/extensions`, `@liche/build`, `@liche/product`, or `@liche/releases`.
+
+### `packages/extensions`
+
+Owns official optional extension factories over public `@liche/core` lanes:
+
+- config authoring factory
+- completions command
+- coordinated agent helper bundle
+- MCP and skill installer commands
+- auth/session workflow extension
+- local diagnostics, doctor, support bundle, and telemetry sink adapters
+
+May depend on `@liche/core` through package-root imports only.
+
+Must not import `packages/core/src/*`, mutate `CliState`, or depend on `@liche/build`, `@liche/product`, or `@liche/releases`.
 
 ### `packages/build`
 

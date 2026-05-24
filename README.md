@@ -6,6 +6,7 @@ The v1 packages are Bun-only source publications. They export TypeScript source 
 
 ```sh
 bun add @liche/core
+bun add @liche/extensions
 bun add -d @liche/product @liche/build @liche/releases
 ```
 
@@ -51,7 +52,29 @@ export const cli = defineCli({
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@liche/core` provides declarative command graphs, typed args/options/env parsing, config loading, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, auth/session helpers, and HTTP operation transport. Config-owned diagnostics such as `config doctor`, plus `mcp add` and `skills add`, are explicit opt-ins; broader provider workflows, telemetry sinks, and nonessential renderers stay outside the required core path.
+`@liche/core` provides declarative command graphs, typed args/options/env parsing, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, `mcp add`, `skills add`, auth/session workflows, diagnostics, and telemetry sinks live in `@liche/extensions`.
+
+Core command handlers usually return plain data. Use `ctx.ok()` when a command needs result metadata, `ctx.error()` for expected structured failures, and async generators for streaming. Do not hand-write result-shaped objects; only the result factories create runtime envelopes.
+
+Official extensions mount optional helper commands without making them part of the core runtime:
+
+```ts
+import { defineCli } from "@liche/core";
+import { agents, completions, config, configDoctor } from "@liche/extensions";
+
+defineCli({
+  name: "shipyard",
+  extensions: [
+    completions(),
+    config({ files: ["shipyard.jsonc"] }),
+    configDoctor(),
+    agents(),
+  ],
+  commands: [],
+});
+```
+
+Commands can set `format` to choose their default output format while still letting explicit globals win. `completions()` uses that path: it adds shell integration source generation and returns raw shell source by default because the command defaults to Markdown. `config()` declares the core config contract, `configDoctor()` adds `config doctor`, and `agents()` bundles MCP and skill installers. All extension helpers register as normal commands.
 
 ## Product Schema
 
@@ -124,7 +147,8 @@ The examples cover handwritten CLIs, generated Product CLIs, auth/context resolu
 
 ## Packages
 
-- `@liche/core`: CLI runtime, config, auth/session, HTTP transport, command contracts, direct MCP projection, config-owned diagnostics, and opt-in local telemetry primitives.
+- `@liche/core`: CLI runtime, global inputs, extension protocol, HTTP transport, command contracts, direct MCP projection, and low-level redaction/auth header primitives.
+- `@liche/extensions`: optional first-party config, completions, agent helper installers, auth/session workflows, diagnostics, and telemetry adapters.
 - `@liche/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
 - `@liche/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
 - `@liche/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.

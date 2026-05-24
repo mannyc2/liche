@@ -47,7 +47,7 @@ Handwritten CLIs that only want a standalone binary can use `@liche/build` witho
 
 The product schema is authoritative for owned product capabilities. `@liche/product` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
 
-The `liche-build` developer CLI is intentionally small: it exposes compile-entry behavior over the generic compile spine. The `liche-product` developer CLI opts into core helper built-ins for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through `DefineCliOptions.skill`. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
+The `liche-build` developer CLI is intentionally small: it exposes compile-entry behavior over the generic compile spine. The `liche-product` developer CLI opts into `@liche/extensions` helper commands for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through the skills extension. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
 
 ## Generated surface graph
 

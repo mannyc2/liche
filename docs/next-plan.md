@@ -6,10 +6,11 @@ This plan starts after the current Bun-native core builder work. It assumes a ha
 
 - Root repo is a Bun workspace monorepo.
 - Current core behavior lives in `packages/core` with no build or releases dependency.
+- `packages/extensions` owns official optional extension factories over public `@liche/core` lanes.
 - `packages/product` owns product schema authoring, canonical catalog normalization, generation, drift checks, Product compile orchestration, and server conformance.
 - `packages/build` owns reusable Bun build/compile primitives for generated and handwritten CLI entrypoints.
 - `packages/releases` owns release manifests, final binary verification, renderer selection, package-manager artifact rendering, and yank planning.
-- `@liche/core` exposes an opt-in first-class config primitive for handwritten CLIs, and generated Product CLIs lower product config into that same primitive.
+- `@liche/core` exposes the extension protocol plus config resolution/provenance semantics; `@liche/extensions` exposes the config authoring factory for handwritten CLIs, and generated Product CLIs import extensions only when needed.
 - There is no `release-extra` package. Users choose zero to all release renderers through release configuration.
 - Generated surfaces are tracked through a surface manifest with source digests, generator versions, generation options digests, output digests, and artifact lists.
 - Existing core tests pass after the package move, and new rewrite tests trace to `docs/coverage-rewrite.md`.
@@ -20,6 +21,7 @@ Move the current package into the target workspace shape:
 
 ```txt
 packages/core
+packages/extensions
 packages/build
 packages/product
 packages/releases
@@ -99,10 +101,11 @@ Plugin or separate-package responsibilities:
 - config mutation UX such as `config set`, `config edit`, and comment-preserving writes
 - extended doctor checks, hosted/export telemetry sinks, release/build helpers, and Product-specific generated surfaces
 
-Narrow core exception:
+Narrow runtime exception:
 
-- `config doctor` is config-owned and acceptable in core when a CLI enables the config primitive. It should inspect config loading and provenance without enabling unrelated helpers such as `mcp add`, `skills add`, plugin renderers, or broader telemetry/export sinks.
-- `mcp add` and `skills add` stay as explicitly opt-in core helper built-ins. They are not default command surface, and broader provider publishing workflows remain outside core.
+- Direct MCP runtime execution over the command contract stays in core because it shares executor semantics.
+- Config loading/provenance semantics stay in core, while config authoring and inspection commands move behind extensions.
+- `mcp add`, `skills add`, config diagnostics, completions, agent setup helpers, auth workflows, and local support commands move behind `@liche/extensions` subpaths.
 
 Implementation target:
 
@@ -110,7 +113,7 @@ Implementation target:
 2. Runtime entries are `CommandContract + runtime`; `run`, `fetch`, raw Zod handles, and middleware stay outside the serialized projection contract.
 3. `defineCli()` / `defineCommand()` are the canonical handwritten API, with command `path`, aliases, input schemas, output schema, safety metadata, docs metadata, and handler separated in one data-first object.
 4. Public manifest output excludes internal-state fields; the old fluent command builder is removed rather than kept as a compatibility adapter.
-5. Keep `mcp add` and `skills add` as opt-in core helper built-ins, while pushing broader vendor/provider workflows into adapters backed by `CommandContract`.
+5. Register extension-provided helper commands through the normal command registry, while pushing vendor/provider workflows into adapters backed by public contracts.
 6. Remove nonessential renderers from core; optional renderers belong in plugin packages.
 
 Verification:
@@ -119,7 +122,7 @@ Verification:
 - A declarative fixture can execute direct and aliased nested command paths while manifest and MCP projection read safety metadata without executing the handler.
 - Public manifest JSON contains only serializable contract data and no `Entry`, `CliState`, function, absolute path, timestamp, or runtime handle.
 - Core package dependency and import tests prove `@liche/core` does not depend on plugin packages, Product, Build, or Releases.
-- Disabling optional helper built-ins removes `skills add` and `mcp add`; disabling optional adapters removes nonessential renderers and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
+- Disabling optional extensions removes their registered commands (`completions`, `config doctor`, `skills add`, `skills list`, `mcp add`, auth workflow commands, and support commands); disabling optional adapters removes nonessential renderers and extended doctor behavior without changing command execution, JSON/JSONL output, config provenance, or structured errors.
 - Generated Product surfaces consume catalog outputs or `CommandContract` artifacts and do not rely on weaker runtime reflection when a canonical generated surface exists.
 
 ## Phase 3: product vertical slice
@@ -345,9 +348,9 @@ Verification:
 
 Status: the core config primitive, Product config catalog, and generated base URL wiring are implemented for declared remote sources. The hard cutover is complete: generated Product remote stubs are removed, and catalogs with HTTP-backed capabilities but no product-level remote base URL fail lint/generation.
 
-Core requirements:
+Core and extension requirements:
 
-- public `createConfig(...)`
+- `@liche/extensions/config` exposes `config(...)` for handwritten CLIs
 - typed `RunContext.config`
 - `RunContext.sources` for config and option provenance
 - explicit option-to-config bindings
@@ -369,10 +372,10 @@ Product requirements:
 
 Verification:
 
-- a handwritten CLI with config receives typed `ctx.config` and provenance
+- a handwritten CLI with `config(...)` receives typed `ctx.config` and provenance
 - a handwritten CLI without config rejects `--config` and `--no-config`
 - config-to-option binding is explicit; matching option names do not bind automatically
-- handwritten tool CLIs use the primitive: `liche-build` binds `build.*` and `compileEntry.*` defaults through `createConfig(...)`; `liche-release` binds `package.*` and `publish.*` defaults through `createConfig(...)`
+- handwritten tool CLIs use the extension primitive: `liche-build` binds `build.*` and `compileEntry.*` defaults through `config(...)`; `liche-release` binds `package.*` and `publish.*` defaults through `config(...)`
 - a Product with config but no bindings still emits a config schema
 - a generated Product remote command with a config-backed base URL calls the core HTTP transport and reports `meta.execution.source: "config"`
 - a generated Product remote command with an env-backed base URL calls the core HTTP transport and reports `meta.execution.source: "env"`

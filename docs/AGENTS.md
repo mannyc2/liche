@@ -12,22 +12,23 @@ Read these before editing rewrite implementation or tests:
 2. `docs/package-layout.md`
 3. `docs/next-plan.md`
 4. `docs/core-api-boundary.md`
-5. `docs/application-integration.md`
-6. `docs/product-schema.md`
-7. `docs/config-primitive.md`
-8. `docs/auth-session.md`
-9. `docs/http-operation-transport.md`
-10. `docs/schema-ir-openapi.md`
-11. `docs/server-conformance.md`
-12. `docs/build-system.md`
-13. `docs/distribution.md`
-14. `docs/npm-binary-packaging.md`
-15. `docs/releases.md`
-16. `docs/public-release.md`
-17. `docs/v1-release-plan.md`
-18. `docs/v2-platform-goals.md`
-19. `docs/coverage-rewrite.md`
-20. `docs/log.md`
+5. `docs/core-simplification-plan.md`
+6. `docs/application-integration.md`
+7. `docs/product-schema.md`
+8. `docs/config-primitive.md`
+9. `docs/auth-session.md`
+10. `docs/http-operation-transport.md`
+11. `docs/schema-ir-openapi.md`
+12. `docs/server-conformance.md`
+13. `docs/build-system.md`
+14. `docs/distribution.md`
+15. `docs/npm-binary-packaging.md`
+16. `docs/releases.md`
+17. `docs/public-release.md`
+18. `docs/v1-release-plan.md`
+19. `docs/v2-platform-goals.md`
+20. `docs/coverage-rewrite.md`
+21. `docs/log.md`
 
 `docs/coverage-current.md` and `docs/behavior-plan.md` describe the existing Bun-native core, not the rewrite.
 

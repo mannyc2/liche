@@ -43,9 +43,10 @@ The command resolves credential/context inputs before using the shared core HTTP
 
 - `defineCli()` / `defineCommand()`
 - typed args/options/env
+- CLI-wide globals via `defineGlobal()`
 - middleware state
 - lifecycle events
-- opt-in helper builtins
+- opt-in helper commands from `@liche/extensions`
 
 ## Release Renderers
 

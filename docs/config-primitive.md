@@ -1,46 +1,49 @@
 # CLI config primitive requirements
 
-Config is an opt-in core CLI primitive, not a product-only binding surface and not a loose application loader convention.
+Config is an opt-in core CLI runtime primitive declared through the extension lane, not a product-only binding surface and not a loose application loader convention.
 
 The current core runtime already accepts `--config`, `--no-config`, a low-level config hook, JSON/YAML file loading, and command-shaped option defaults. That is useful compatibility behavior, but it is not the target public model. The target model is a declared config contract that produces one typed `ctx.config`, explicit config-to-option bindings, and source provenance.
 
 ## Success criteria
 
-- Handwritten CLIs can declare config through public `@liche/core` APIs without installing `@liche/product`.
+- Handwritten CLIs can declare config through public `@liche/extensions/config` APIs without installing `@liche/product`.
 - Generated Product CLIs lower product config declarations into the same core primitive as handwritten CLIs.
 - General config and product bindings remain separate authoring concepts.
 - Auth/session/profile state remains outside general config.
 - Remote Product commands resolve base URLs and other durable non-secret defaults through declared sources; generation fails when an HTTP-backed capability has no product remote base URL.
 - JSON Schema/config surfaces include both general product config and bindings when Product declares either.
 
-## Public core API target
+## Public API target
 
-Use the public `createConfig` helper:
+Use the official config extension:
 
 ```ts
-import { createConfig, defineCli, defineCommand, z } from "@liche/core";
+import { defineCli, defineCommand, z } from "@liche/core";
+import { config } from "@liche/extensions/config";
 
 const cli = defineCli({
   name: "acme",
-  config: createConfig({
-    files: ["acme.json", "acme.jsonc", "acme.yaml", "acme.yml", "acme.toml"],
-    schema: z.object({
-      baseUrl: z.string().url().default("https://api.acme.dev"),
-      timeoutMs: z.number().int().positive().default(30_000),
-      defaultOrg: z.string().optional(),
-      output: z.object({
-        format: z.enum(["text", "json"]).default("text"),
-        color: z.enum(["auto", "always", "never"]).default("auto"),
+  extensions: [
+    config({
+      files: ["acme.json", "acme.jsonc", "acme.yaml", "acme.yml", "acme.toml"],
+      schema: z.object({
+        baseUrl: z.string().url().default("https://api.acme.dev"),
+        timeoutMs: z.number().int().positive().default(30_000),
+        defaultOrg: z.string().optional(),
+        output: z.object({
+          format: z.enum(["text", "json"]).default("text"),
+          color: z.enum(["auto", "always", "never"]).default("auto"),
+        }),
+        telemetry: z.object({
+          enabled: z.boolean().default(false),
+        }),
+      }).strict(),
+      scopes: {
+        project: { discoverUpwards: true },
+        user: { xdg: true },
       }),
-      telemetry: z.object({
-        enabled: z.boolean().default(false),
-      }),
-    }).strict(),
-    scopes: {
-      project: { discoverUpwards: true },
-      user: { xdg: true },
-    },
-  }),
+    }),
+  ],
   commands: [
     defineCommand({
       path: ["deploy"],
@@ -64,7 +67,7 @@ const cli = defineCli({
 });
 ```
 
-`schema` is typed as core's public `Schema<T>` contract. The example uses the current public `z` authoring helper, but config must not grow a config-only Zod coupling. If core later adds a value-level `Schema.object(...)` builder, `createConfig(...)` should accept it through the same `Schema<T>` boundary.
+`schema` is typed as core's public `Schema<T>` contract through `CliExtension.config`. The example uses the current public `z` authoring helper, but config must not grow a config-only Zod coupling. If core later adds a value-level `Schema.object(...)` builder, `config(...)` should accept it through the same `Schema<T>` boundary.
 
 Handlers receive `ctx.config` and source inspection separately:
 
@@ -253,10 +256,11 @@ Config participates in the catalog digest because it changes generated runtime b
 
 ## Implementation slices
 
-### Slice A: core primitive
+### Slice A: core primitive and extension authoring
 
-- Add public `createConfig(...)`.
-- Replace the low-level config hook shape with a typed declaration while preserving testable behavior through the new API.
+- Keep config resolution, provenance, and option binding in core.
+- Add `config(...)` in `@liche/extensions/config` as the public authoring helper.
+- Replace the low-level config hook shape with a typed declaration while preserving testable behavior through the extension API.
 - Add `RunContext.config` and `RunContext.sources`.
 - Add explicit option config bindings.
 - Add JSONC and TOML parsing.

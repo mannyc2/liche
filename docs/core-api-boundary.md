@@ -9,7 +9,7 @@ The first hard-cutover slice for the declarative core direction has shipped. The
 - `defineCommand({ path, aliases, input, output, safety, run })` declares the analyzable command surface before pairing it with a handler.
 - `defineCli({ name, version, commands })` mounts those command objects into the existing runtime executor.
 - `CommandInput`, `CommandSafety`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, and `DefineCliOptions` are public because the helpers expose them.
-- `CommandContract.path`, `CommandContract.summary`, and `CommandContract.safety` are public serializable metadata used by manifest and MCP projection.
+- `CommandContract.path`, `CommandContract.summary`, `CommandContract.safety`, and `CommandContract.format` are public serializable metadata used by manifest and MCP projection.
 
 The hard cutover removes the fluent command builder from the public API. New handwritten examples, generated CLI output, and package-consumer tests must use `defineCli()` and `defineCommand()`.
 
@@ -35,6 +35,31 @@ The public guarantee is the lane split, not a hosted telemetry product: event su
 
 Lifecycle events intentionally cover more local surfaces than telemetry exports: command execution, validation, parse failures, help/version/completion/schema rendering, MCP initialize/list/call, not-found, and hook failure. Hosted or file telemetry must consume an explicit allowlist rather than forwarding every event.
 
+## Global input re-freeze (landed)
+
+Deliberate, narrow widening so core-owned and extension-provided global flags share one parser/help/context registry:
+
+- `defineGlobal(...)` normalizes reusable global flag declarations. Object literals are still valid in `DefineCliOptions.globals`.
+- `DefineCliOptions.globals?: readonly GlobalInputDefinition[]` lets CLI authors declare shared flags directly without creating an extension.
+- `CliExtension.globals?: readonly GlobalInputDefinition[]` contributes to the same registry as root globals.
+- Help output, parser acceptance, disabled globals, and `RunContext.global` projection now come from the normalized registry rather than bespoke parser cases.
+- Config globals are registry entries and remain hidden when no config declaration is installed; passing `--config` / `--no-config` to a CLI without config still reaches the existing parse/config error path.
+- `@liche/extensions/auth` declares the standard auth globals `profile`, `nonInteractive`, and `noSession`; generated auth CLIs install that extension instead of declaring those globals inline.
+
+Global definitions are metadata only. They do not run side effects, load config, resolve auth, mutate sessions, or trigger hooks. Command-option/global collision enforcement is deferred until generated auth commands stop carrying command-local `profile` options; duplicate global flags and aliases are rejected now.
+
+## Extension protocol re-freeze (landed)
+
+Deliberate, narrow widening to make optional behavior compose through one public lane before helper commands and workflow utilities move out of core:
+
+- `DefineCliOptions.extensions?: readonly CliExtension[]` lets CLI authors install extension-provided commands, config declarations, lifecycle events, hooks, middleware, and packaged skill content.
+- New public type `CliExtension`.
+- Extension commands register through the same declarative command path as authored commands.
+- Extension events, hooks, and middleware are merged with root declarations before runtime state is created.
+- Extension-provided `config` and `skill` are single-provider fields. A CLI cannot declare the same field directly on `defineCli()` and through an extension in the same app.
+
+The follow-up core simplification cutover removed `DefineCliOptions.builtins`, author-facing top-level `config`, and auth/session workflow exports from the core package root. Extension composition remains the public lane for those optional surfaces.
+
 ## Phase 3 re-freeze (Commit 3)
 
 Deliberate, narrow widening to support generated CLIs:
@@ -42,7 +67,8 @@ Deliberate, narrow widening to support generated CLIs:
 - `ResultMeta` widened to `Record<string, unknown> & { cta?: CtaBlock }`. Arbitrary meta keys round-trip through `ctx.ok(data, meta)` to the result envelope.
 - `RunContext.ok` signature now accepts `meta?: ResultMeta` (was `meta?: { cta?: CtaBlock }`).
 - `DefineCliOptions.generated?: { machineOutput: 'envelope'; disabledGlobals?: readonly DisabledGlobal[] }` opts a CLI into envelope output under `--json` and global-flag rejection.
-- `DefineCliOptions.builtins?: { completions?: boolean; mcp?: boolean; skills?: boolean }` lets CLIs opt into helper built-ins. `completions` defaults on; `mcp` and `skills` default off. `config doctor` is exposed when config is declared unless explicitly disabled.
+- `CommandDefinition.format?: Format` lets a command choose its default output format. Explicit globals still win, so `--json` and `--format` override the command default before falling back to `DefineCliOptions.format` and the core default.
+- Helper built-ins were removed in the later core simplification cutover. `completions`, `config doctor`, `mcp add`, and `skills add/list` are extension-provided commands.
 - New public type `DisabledGlobal` (currently `'format'`).
 
 ## Result envelope hard cutover
@@ -52,7 +78,7 @@ Deliberate, narrow widening to support generated CLIs:
 - Success: `{ ok: true, data, error: null, meta? }`.
 - Failure: `{ ok: false, data: null, error, meta? }`.
 
-Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, fetch-backed commands, `cli.fetch()`, generated envelope mode, and write-side helper built-ins) must populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs, so agents and scripts can always find `error` without guessing whether stdout is a bare error object. Handwritten success output remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
+Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, fetch-backed commands, `cli.fetch()`, and generated envelope mode) must populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs, so agents and scripts can always find `error` without guessing whether stdout is a bare error object. Handwritten success output, including command-shaped helper commands, remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
 
 Executor control results are factory-branded, not structurally detected. Command handlers that want to finish early must return `ctx.ok(...)`, `ctx.error(...)`, `ok(...)`, or `fail(...)`; otherwise even full result-shaped objects are treated as ordinary domain data.
 
@@ -74,24 +100,22 @@ Out of scope: `ctx.sources.options` (per-option provenance). Locality source val
 
 ## Auth/session re-freeze target
 
-When the auth/session slice lands, `@liche/core` deliberately widens again to support generated and handwritten remote-operation CLIs. The planned top-level public additions are:
+The original auth/session target deliberately widened core for generated and handwritten remote-operation CLIs. The later simplification cutover moved workflow helpers to `@liche/extensions/auth`; core keeps only the pieces needed for command and transport safety:
 
 - `secret(value)` and `SecretString` — redaction boundary for token material. Stringification and JSON serialization must redact; only transport/session code may reveal.
-- `resolveAuth(input)` — async credential resolution over env and, in later slices, stored sessions.
-- `resolveContext(input)` — async context resolution over explicit flags/input, env, and allowed stored profile context.
-- `SessionStore` and `createFileSessionStore(options?)` — public session/profile storage interface and default file-backed implementation.
 - `applyAuth(headers, credential)` — transport-facing helper that mutates headers from a resolved credential.
-- Auth runtime types: `TokenSourceSpec`, `AuthProviderRuntime`, `AuthCredential`, `InvocationKind`, `ContextRuntime`, and `StoredProfile`.
+- Non-secret auth runtime types: `TokenSourceSpec`, `AuthProviderRuntime`, `AuthCredential`, `InvocationKind`, and `ContextRuntime`.
+- Structured error envelopes, invocation posture, and redaction rules.
 
-Generated auth-enabled CLIs may also require global generated flags `--profile`, `--non-interactive`, and `--no-session`. Those flags are generated CLI behavior, not handwritten core defaults.
+Generated auth-enabled CLIs may also require global flags `--profile`, `--non-interactive`, and `--no-session`. Those flags come from `@liche/extensions/auth`, not handwritten core defaults.
 
-This re-freeze does not make auth a separate package. The authoritative behavior and MVP staging live in `docs/auth-session.md`.
+Auth workflow behavior and MVP staging live in `docs/auth-session.md`; current generated CLIs import workflow helpers from `@liche/extensions/auth`.
 
 ### Phase 3D-A landed (env-only auth)
 
-The first staged slice from `docs/next-plan.md` has shipped. The following are now real public exports of `@liche/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+The first staged slice from `docs/next-plan.md` shipped, then was narrowed by the simplification cutover. The following remain public exports of `@liche/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
 
-- Values: `secret`, `resolveAuth`, `resolveContext`, `applyAuth`.
+- Values: `secret`, `applyAuth`.
 - Types: `SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `CommandAuthMetadata`.
 
 Deferred to 3D-B / 3D-C / later Phase 4 slices at the time of 3D-A: `SessionStore`, `createFileSessionStore`, `StoredProfile`, `--profile` / `--non-interactive` / `--no-session` global flags, `Auth.token.session`, OAuth device flow, identity endpoint resolution, and resolved account/session status metadata.
@@ -106,12 +130,12 @@ Internal `LicheError` gained a structured `details: Record<string, unknown>` slo
 
 ### Phase 3D-B/C landed (sessions, generated auth commands, OAuth device)
 
-The session and OAuth slices from `docs/auth-session.md` have shipped. The following are now real public exports of `@liche/core`, locked by `packages/core/test/api-snapshot.test.ts` and the package-consumer boundary test in `packages/product/test/core-consumer-boundary.test.ts`:
+The session and OAuth slices from `docs/auth-session.md` shipped, then were moved out of the core root by the simplification cutover:
 
-- Values: `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`.
-- Types: `SessionStore`, `StoredProfile`, `AuthCommandRuntime`, `AuthGlobalOptions`, `AuthIdentityProbeInput`, `AuthRuntimeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`, `FileSessionStoreOptions`, and `GlobalOptions`.
+- `@liche/extensions/auth` exports `resolveAuth`, `resolveContext`, `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, and `oauthDeviceLogin`.
+- `@liche/core` keeps non-secret auth metadata and transport-facing types such as `AuthCommandRuntime`, `AuthIdentityProbeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, and `IdentityRuntime`.
 
-`RunContext` now carries `global: { profile?, nonInteractive?, noSession? }` and `isTty` so generated auth commands can distinguish explicit login from CI/agent/MCP/noninteractive calls. Core parses `--profile`, `--non-interactive`, and `--no-session` as generated-global inputs; normal commands still call `resolveAuth` and never start OAuth device login implicitly.
+`RunContext` now carries `global: { profile?, nonInteractive?, noSession? }` and `isTty` so generated auth commands can distinguish explicit login from CI/agent/MCP/noninteractive calls. `@liche/extensions/auth` contributes `--profile`, `--non-interactive`, and `--no-session` to the core global registry; normal commands still call `resolveAuth` and never start OAuth device login implicitly.
 
 The file session store is intentionally plaintext JSON with restricted permissions for MVP. It supports profiles, active profile selection, selected context storage, access-token persistence, corrupt-file quarantine, and lock-timeout errors. Refresh tokens and keychain storage stay deferred.
 
@@ -128,10 +152,12 @@ This slice covers pure request serialization, env/literal base URL resolution, e
 
 The deliberate widening for generated remote wiring has shipped as the first-class config primitive described in `docs/config-primitive.md`.
 
-Top-level public additions:
+Current boundary after the simplification cutover:
 
-- `createConfig(...)` — public declaration helper for opt-in typed config.
-- Config declaration and provenance types exposed by `DefineCliOptions.config`, `RunContext.config`, and `RunContext.sources`.
+- The config resolution engine remains in core because parser order, option provenance, `ctx.config`, and `ctx.sources` are runtime semantics.
+- `@liche/extensions/config` exports `config(...)`, which contributes the config declaration through `CliExtension.config`.
+- `configDoctor()` owns the optional command UX.
+- Config declaration and provenance types are still public because `CliExtension.config`, `RunContext.config`, and `RunContext.sources` expose them.
 - Explicit option-to-config bindings so config never satisfies command options by automatic name matching.
 
 Runtime guarantees:
@@ -141,7 +167,7 @@ Runtime guarantees:
 - `--no-config` disables project and user discovery.
 - Project/user config, session/profile defaults, option env defaults, argv, and schema defaults keep distinct provenance.
 
-This re-freeze replaced the low-level loader-shaped config compatibility hook with a declarative public contract on `DefineCliOptions`. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should import only top-level `@liche/core` APIs.
+This re-freeze replaced the low-level loader-shaped config compatibility hook with a declarative runtime contract. Parser/config helpers stay internal implementation details; generated code and downstream handwritten CLIs should use the extension lane instead of `defineCli({ config })`.
 
 Public means importable from `@liche/core`. Tests may keep importing subpaths for white-box coverage, but those imports do not define the package API. The package export map exposes only `"."`, so no generated code or downstream package should depend on `packages/core/src/*` subpaths.
 
@@ -160,14 +186,15 @@ Public means importable from `@liche/core`. Tests may keep importing subpaths fo
 
 - `defineCli` — canonical handwritten CLI authoring helper for data-first command graphs.
 - `defineCommand` — canonical command declaration helper for analyzable command metadata plus a handler.
+- `defineGlobal` — canonical global flag declaration helper for reusable parser/help/context metadata.
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
 - `z` (`packages/core/src/schema/zod.ts:5`) — imported by many core tests and used in docs examples; public schema authoring convenience.
 - `Formatter` (`packages/core/src/format/index.ts:1`) — imported by `contract.test.ts`, `formatter-default.test.ts`, and `behavior-edges.test.ts`; docs require formatter/output envelope behavior.
 - `ok`, `fail`, and `commandError` (`packages/core/src/errors/error.ts`) — public object-first result/error factories for command-authored outcomes.
 - `Awaitable` (`packages/core/src/types.ts:4`) — keep only because public callback types name it.
-- `BuiltinsConfig` (`packages/core/src/types.ts:121`) — public because `DefineCliOptions.builtins` exposes it.
 - `CliInstance` (`packages/core/src/types.ts:203`) — public return type for `defineCli()`.
 - `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, and `CliEventSurface` — public because `DefineCliOptions.events` exposes the observe-only lifecycle event contract.
+- `CliExtension` — public because `DefineCliOptions.extensions` exposes the optional extension composition protocol.
 - `CliHookRegistration` and `BeforeExecuteHook` — public because `DefineCliOptions.hooks` exposes typed mutation points.
 - `CommandContract` — public serializable command metadata contract for manifest/schema/help/MCP projections. It must not expose `Entry`, `CliState`, handlers, or runtime registry handles.
 - `CommandEffectKind`, `CommandEffects`, and `CommandPolicy` — public because `DeclarativeCommand` and `CommandContract` expose safety metadata for command manifests and MCP annotations.
@@ -177,6 +204,7 @@ Public means importable from `@liche/core`. Tests may keep importing subpaths fo
 - `Example` (`packages/core/src/types.ts:99`) — public command help/docs metadata.
 - `FetchHandler` (`packages/core/src/types.ts:98`) — referenced by `docs/invariant.md`; public in-process fetch-backed command bridge.
 - `Format` (`packages/core/src/types.ts:5`) — public formatter/global flag vocabulary.
+- `GlobalInputDefinition` and `GlobalInputType` — public because `DefineCliOptions.globals` and `CliExtension.globals` expose the global-input registry.
 - `MiddlewareContext` (`packages/core/src/types.ts:92`) — public because `MiddlewareHandler` exposes it.
 - `MiddlewareHandler` (`packages/core/src/types.ts:93`) — public middleware authoring type.
 - `OutputPolicy` (`packages/core/src/types.ts:6`) — command definition/output envelope contract.

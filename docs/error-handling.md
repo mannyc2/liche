@@ -33,7 +33,7 @@ Use two lanes.
 
 ### Lane 1: command-authored outcomes return objects
 
-Command handlers, generated command code, helper built-ins, release/build/product CLI wrappers, and extension lanes should return standardized result objects for expected outcomes:
+Command handlers, generated command code, helper commands, release/build/product CLI wrappers, and extension lanes should return standardized result objects for expected outcomes:
 
 ```ts
 return ok(data, meta);
@@ -158,7 +158,7 @@ Disallowed throws:
 - normal command-domain failures in handwritten commands
 - generated command control flow such as locality conflicts or missing generated base URL
 - build/product/release CLI preflight errors that already know the stable `CommandError`
-- helper built-in write failures once they can be expressed as `CommandError`
+- helper-command write failures once they can be expressed as `CommandError`
 
 ## Implementation status
 

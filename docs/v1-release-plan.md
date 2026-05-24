@@ -12,6 +12,7 @@ The public product is:
 
 ```txt
 @liche/core       runtime CLI framework
+@liche/extensions official optional config/auth/support/helper extensions
 @liche/product    Product schema, generated surfaces, drift checks, conformance
 @liche/build      Bun compile/provenance helpers
 @liche/releases   manifest, renderers, publisher planning/execution, rollback planning
@@ -46,11 +47,11 @@ Public docs may mark a specific adapter or edge-case integration experimental, b
 
 First, fix the auth default contradiction: omitting the `auth` field must normalize to no auth. `Auth.none()` remains an optional explicit declaration, not required boilerplate. A no-auth product must not emit auth runtime imports, generated auth commands, a fake `none` provider in release-facing metadata, or auth globals. A capability that declares `requires.auth` when the product has no provider remains an authoring error.
 
-The agent-native release focus is now narrow. Declarative core and Product authoring are hard-cut, the core config primitive has landed, generated remote base URL wiring is implemented for declared literal/env/config sources, and `gen` is gone from core. The remaining agent-readiness work should optimize recovery and discovery instead of reopening the framework shape:
+The agent-native release focus is now narrow. Declarative core and Product authoring are hard-cut, config authoring moved to `@liche/extensions/config`, generated remote base URL wiring is implemented for declared literal/env/config sources, and `gen` is gone from core. The remaining agent-readiness work should optimize recovery and discovery instead of reopening the framework shape:
 
 - Structured recovery errors now cover the core envelope, auth failures, remote HTTP transport failures, generated config-backed remote failures, and the `liche-product` generate/compile/conform commands. Remaining work is to measure whether agents recover from those fields instead of prompting users with raw error text.
 - MCP metadata parity has landed. Direct core `tools/list` includes declared command output schemas, and Product-generated MCP tools mirror the MCP-standard `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` fields from catalog effects/policy.
-- Keep `mcp add` and `skills add` as opt-in core helpers only for narrow local registration/sync. `mcp add` owns the generic MCP executable/args config shape, including splitting command overrides and appending `--mcp` once. Broader provider workflows such as VS Code/Codex config formats, Claude Desktop app config, `.mcpb` bundles, URL skill installers, or vendor publishing should be adapter work unless a public-lane test proves core must widen.
+- Keep `mcp add` and `skills add` as opt-in extension helpers only for narrow local registration/sync. `mcp add` owns the generic MCP executable/args config shape, including splitting command overrides and appending `--mcp` once. Broader provider workflows such as VS Code/Codex config formats, Claude Desktop app config, `.mcpb` bundles, URL skill installers, or vendor publishing should be adapter work unless a public-lane test proves core must widen.
 - Use extension-lane tests to settle future boundary debates. If a feature can be implemented through `CommandContract`, `Catalog`, generated OpenAPI, lifecycle events, hooks, middleware, documented config, or release/build records without internals, it stays out of core.
 
 | Area | V1 posture | Required work | Verification |
@@ -70,15 +71,15 @@ The agent-native release focus is now narrow. Declarative core and Product autho
 
 ### Publishable packages
 
-Publish all four first-party packages together once the external-consumer checks pass. Use synchronized versions for v1 unless a package is explicitly held back as experimental. Synchronized versions make examples, docs, and release troubleshooting simpler.
+Publish all five first-party packages together once the external-consumer checks pass. Use synchronized versions for v1 unless a package is explicitly held back as experimental. Synchronized versions make examples, docs, and release troubleshooting simpler.
 
 Current package-state status:
 
-- Root workspace is private, which is correct. `@liche/core`, `@liche/build`, `@liche/product`, and `@liche/releases` are public package entries with explicit `publishConfig.access = "public"`.
+- Root workspace is private, which is correct. `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/product`, and `@liche/releases` are public package entries with explicit `publishConfig.access = "public"`.
 - Package versions are synchronized for the first public package lane. Package-to-package `@liche/*` dependencies use the matching caret range, and the package-readiness test enforces that relationship.
 - V1 package format is Bun-only source publication. Export maps point at checked-in TypeScript source, bins point at TypeScript Bun entrypoints, and every publishable package declares `engines.bun >= 1.3.0`.
 - V1 does not emit `dist` or `.d.ts` as published package artifacts. That avoids a second build/declaration pipeline while the product contract is explicitly Bun-native. A Node/npm-general package format is a future compatibility project, not a v1 blocker.
-- `files` lists are intentionally narrow: `src`, `README.md`, and `LICENSE`. Internal docs, tests, examples, and planning material must not be published from package tarballs.
+- `files` lists are intentionally narrow: every package publishes `src`, `README.md`, and `LICENSE`; `@liche/core` also publishes `SKILL.md` because the package README links to the agent-facing core authoring guide. Internal docs, tests, examples, and planning material must not be published from package tarballs.
 - Public API snapshots exist for core, product, build, and releases. The package-readiness test now also imports documented root and subpath exports from packed tarballs in a temp Bun consumer.
 
 Remaining package-readiness work:
@@ -144,7 +145,7 @@ Telemetry itself remains opt-in and narrower than the event stream. The default 
 
 ### Telemetry config integration
 
-Core now has a first-class opt-in config primitive for CLI authors: `createConfig(...)` declares a typed config contract, accepts JSON/JSONC/YAML/TOML files, exposes values through `ctx.config`, preserves provenance through `ctx.sources`, and feeds command options only through explicit `optionConfig` bindings. Runtime command execution keeps argv above option env and config, while auth/session state remains outside the durable config ladder.
+Core now has a first-class opt-in config runtime primitive declared through `@liche/extensions/config`: `config(...)` declares a typed config contract, accepts JSON/JSONC/YAML/TOML files, exposes values through `ctx.config`, preserves provenance through `ctx.sources`, and feeds command options only through explicit `optionConfig` bindings. Runtime command execution keeps argv above option env and config, while auth/session state remains outside the durable config ladder.
 
 Telemetry should use a reserved framework namespace in that same loaded config object, not command options:
 
@@ -246,11 +247,12 @@ Current measured baseline from the release-candidate metrics command:
 
 | Package | Source LOC | Source files | Test LOC | Test files | Root exports | Subpath exports | Runtime deps | Boundary exceptions |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `@liche/core` | 5287 | 53 | 5652 | 32 | 22 | 0 | 3 | 0 |
-| `@liche/build` | 714 | 7 | 596 | 6 | 14 | 0 | 2 | 0 |
-| `@liche/product` | 5294 | 27 | 6921 | 25 | 31 | 0 | 3 | 0 |
-| `@liche/releases` | 4582 | 28 | 4150 | 17 | 25 | 12 | 2 | 0 |
-| Total | 15877 | 115 | 17319 | 80 | 92 | 12 | 10 | 0 |
+| `@liche/core` | 5413 | 53 | 5533 | 32 | 13 | 0 | 3 | 0 |
+| `@liche/extensions` | 1493 | 5 | 453 | 5 | 17 | 7 | 1 | 0 |
+| `@liche/build` | 717 | 7 | 596 | 6 | 14 | 0 | 3 | 0 |
+| `@liche/product` | 5315 | 27 | 6984 | 25 | 31 | 0 | 4 | 0 |
+| `@liche/releases` | 4585 | 28 | 4150 | 17 | 25 | 12 | 3 | 0 |
+| Total | 17523 | 120 | 17716 | 85 | 100 | 19 | 14 | 0 |
 
 LOC is a pressure gauge, not a product goal. A package should shrink when simplification removes concepts, but a package can grow if it replaces hidden behavior with public guard rails. Track:
 
@@ -280,7 +282,7 @@ Verification:
 The main Product/runtime support gaps are closed enough that the next work is release-candidate hygiene, not another framework-shape pass. Before publishing:
 
 - Run the local release-candidate gate: `bun run release:check`.
-- Run `bun run --silent release:names` near publication time. The current npm registry check on 2026-05-24 returned no public packages for `@liche/core`, `@liche/build`, `@liche/product`, or `@liche/releases`, but that does not prove organization ownership or publish rights.
+- Run `bun run --silent release:names` near publication time. The current npm registry check on 2026-05-24 returned no public packages for the tracked first-party package names, but that does not prove organization ownership or publish rights.
 - Fill publisher-confirmed repository, homepage, funding/support, provenance, changelog, semver, and security metadata. Do not invent package metadata before the public URLs and support policy are real.
 - Run publisher plan/preflight/execute dry-runs in the actual publishing environment, including npm/PyPI trusted-publishing or explicit token fallback decisions.
 - Verify GitHub release artifact layout and checksums against the final release manifest.

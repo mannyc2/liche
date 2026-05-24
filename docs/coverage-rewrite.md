@@ -10,8 +10,8 @@ Implemented in current `src/` first; each behavior maps to a rewrite component:
 |---|---|---|
 | STREAM-001 | `@liche/core` runtime (cli/execute + cli/serve + cli/fetch) | `parity.test.ts` |
 | OPT-DEP-001 | `@liche/core` schema metadata + help renderer | `parity.test.ts` |
-| MCP-ADD-001 | `@liche/core` skills/sync resolver | `parity.test.ts` |
-| SKILLS-ADD-001 | `@liche/core` skills/sync resolver | `parity.test.ts` |
+| MCP-ADD-001 | `@liche/extensions` MCP installer | `packages/extensions/test/helpers.test.ts` |
+| SKILLS-ADD-001 | `@liche/extensions` skill installer | `packages/extensions/test/helpers.test.ts` |
 | MCP-NAME-001 | `@liche/core` mcp transport | `parity.test.ts` |
 | MCP-CONFORMANCE-001 | `@liche/core` MCP JSON-RPC transport + `@liche/product` generated MCP tools | `packages/core/test/mcp-conformance.test.ts`, `packages/product/test/generate-mcp-conformance.test.ts` |
 | AGENT-FLIP-001 | `@liche/core` execute context | `parity.test.ts` |
@@ -72,7 +72,7 @@ Before adding rewrite tests:
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|
-| CONFIG-PRIM-001 | Core exposes opt-in `createConfig(...)` for handwritten CLIs. | `docs/config-primitive.md` | Package consumer imports `createConfig` from `@liche/core`, declares config, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook or Product-only feature. |
+| CONFIG-PRIM-001 | Handwritten CLIs declare config through `@liche/extensions/config`; core owns runtime resolution and provenance. | `docs/config-primitive.md` | Package consumer imports `config` from `@liche/extensions/config`, declares config through `defineCli({ extensions })`, and receives typed `ctx.config`. | Public API snapshot | Config remains a private loader hook, Product-only feature, or root `defineCli({ config })` field. |
 | CONFIG-PRIM-002 | CLIs without config reject `--config` and `--no-config`. | `docs/config-primitive.md` | Invoke no-config CLI with each flag and assert parse errors. | CLI parser | Config flags silently no-op or become positionals. |
 | CONFIG-PRIM-003 | Explicit config path and disabled config behavior are exclusive and source-aware. | `docs/config-primitive.md` | `--config` loads only one file; `--no-config` disables discovery; both together fail. | Temp filesystem fixture | Explicit files are merged with discovered files or conflicting flags are accepted. |
 | CONFIG-PRIM-004 | Project/user discovery follows documented precedence. | `docs/config-primitive.md` | Create user and nested project config files, run from a child cwd, and inspect resolved values/provenance. | Temp filesystem fixture | User config beats project config or upward discovery misses the nearest project file. |
