@@ -2,7 +2,8 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import { createConfig, defineCli, defineCommand, z } from '@liche/core'
+import { defineCli, defineCommand, z } from '@liche/core'
+import { completions, config } from '@liche/extensions'
 import { buildBinaries } from './build.js'
 import { compileEntrypoint } from './compile.js'
 import type { CompileTarget } from './compile.js'
@@ -34,7 +35,6 @@ function parseTargets(raw: string): TargetSelection {
 }
 
 export const cli = defineCli({
-  builtins: { completions: true },
   commands: [
     defineCommand({
       path: ['compile-entry'],
@@ -148,14 +148,17 @@ export const cli = defineCli({
       },
     }),
   ],
-  config: createConfig({
-    files: ['liche-build.json', 'liche-build.jsonc', 'liche-build.yaml', 'liche-build.yml', 'liche-build.toml'],
-    schema: BuildCliConfigSchema,
-    scopes: {
-      project: { discoverUpwards: true },
-      user: { xdg: true },
-    },
-  }),
+  extensions: [
+    completions(),
+    config({
+      files: ['liche-build.json', 'liche-build.jsonc', 'liche-build.yaml', 'liche-build.yml', 'liche-build.toml'],
+      schema: BuildCliConfigSchema,
+      scopes: {
+        project: { discoverUpwards: true },
+        user: { xdg: true },
+      },
+    }),
+  ],
   name: 'liche-build',
   version: BUILD_TOOL_VERSION,
 })

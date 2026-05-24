@@ -1,5 +1,4 @@
-export { defineCli, defineCommand } from './cli/create.js'
-export { createConfig } from './config/index.js'
+export { defineCli, defineCommand, defineGlobal } from './cli/create.js'
 export { middleware } from './cli/context.js'
 export { z } from './schema/zod.js'
 
@@ -8,22 +7,12 @@ export * as Formatter from './format/index.js'
 export { commandError, fail, ok } from './errors/error.js'
 
 export { secret } from './auth/secret.js'
-export { applyAuth, resolveAuth, resolveContext } from './auth/resolve.js'
-export {
-  authSwitch,
-  authWhoami,
-  createFileSessionStore,
-  logoutAuthSession,
-  oauthDeviceLogin,
-} from './auth/index.js'
+export { applyAuth } from './auth/resolve.js'
 export { callHttpOperation, serializeHttpOperationRequest } from './http/index.js'
-export { createLocalTelemetrySink, runLocalDoctor } from './ops/local.js'
-export type { AuthRuntimeInput, FileSessionStoreOptions } from './auth/index.js'
 export type { SecretString } from './auth/secret.js'
 export type {
   AuthCommandRuntime,
   AuthCredential,
-  AuthGlobalOptions,
   AuthIdentityProbeInput,
   AuthProviderRuntime,
   ContextRuntime,
@@ -31,16 +20,13 @@ export type {
   IdentityRuntime,
   InvocationKind,
   OAuthDeviceRuntime,
-  SessionStore,
   SessionTokenSourceSpec,
-  StoredProfile,
   TokenSourceSpec,
 } from './auth/types.js'
 
 export type {
   Awaitable,
   BeforeExecuteHook,
-  BuiltinsConfig,
   CliEvent,
   CliEventCommand,
   CliEventCompletion,
@@ -51,6 +37,7 @@ export type {
   CliEventSurface,
   CliEventTarget,
   CliEventType,
+  CliExtension,
   CliHookRegistration,
   CommandAuthMetadata,
   CommandContract,
@@ -76,6 +63,8 @@ export type {
   FetchHandler,
   FieldError,
   Format,
+  GlobalInputDefinition,
+  GlobalInputType,
   GlobalOptions,
   InferSchema,
   MiddlewareContext,
@@ -103,11 +92,3 @@ export type {
   RuntimeValue,
   SerializedHttpRequest,
 } from './http/index.js'
-export type {
-  LocalDoctorCheck,
-  LocalDoctorCheckStatus,
-  LocalDoctorInput,
-  LocalDoctorPackageManager,
-  LocalDoctorReport,
-  LocalTelemetrySinkOptions,
-} from './ops/local.js'

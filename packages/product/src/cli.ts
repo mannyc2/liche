@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { dirname, isAbsolute, resolve } from 'node:path'
 import { defineCli, defineCommand, z } from '@liche/core'
+import { completions, mcpInstaller, skillsInstaller } from '@liche/extensions'
 import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
 import { conformProduct, type ConformanceCase } from './conformance.js'
@@ -32,7 +33,6 @@ async function loadFixtures(fixturePath: string | undefined): Promise<Conformanc
 }
 
 export const cli = defineCli({
-  builtins: { completions: true, mcp: true, skills: true },
   commands: [
     defineCommand({
       path: ['generate'],
@@ -176,11 +176,17 @@ export const cli = defineCli({
       },
     }),
   ],
+  extensions: [
+    completions(),
+    mcpInstaller(),
+    skillsInstaller({
+      skill: {
+        index: LI_PRODUCT_SKILL_INDEX,
+        markdown: LI_PRODUCT_SKILL_MARKDOWN,
+      },
+    }),
+  ],
   name: 'liche-product',
-  skill: {
-    index: LI_PRODUCT_SKILL_INDEX,
-    markdown: LI_PRODUCT_SKILL_MARKDOWN,
-  },
   version: GENERATOR_VERSION,
 })
 

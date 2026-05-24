@@ -89,10 +89,13 @@ function optionalConfigRemoteProduct(): RuntimeProduct {
 }
 
 describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertions', () => {
-  test('imports HTTP transport, resolveAuth, and resolveContext alongside declarative core helpers', () => {
+  test('imports HTTP transport, auth primitives, and the auth extension', () => {
     const source = generate(workersAuthProduct)
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, createFileSessionStore, defineCli, defineCommand, resolveAuth, resolveContext, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, z')
+    expect(source).toContain(`import { auth as authExtension, createFileSessionStore, resolveAuth, resolveContext } from '@liche/extensions/auth'`)
+    expect(source).toContain(`extensions: [authExtension()],`)
+    expect(source).not.toContain(`globals: [`)
   })
 
   test('emits AUTH_PROVIDER constant carrying id, kind, header (when present), and token sources', () => {
@@ -172,8 +175,11 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('CONTEXTS')
     expect(source).not.toContain('resolveAuth')
     expect(source).not.toContain('applyAuth')
+    expect(source).not.toContain('@liche/extensions/auth')
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, z')
+    expect(source).toContain(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
+    expect(source).toContain(`import { createLocalTelemetrySink, runLocalDoctor } from '@liche/extensions/support'`)
   })
 
   test('OAuth/session product emits file-session auth commands and OAuth runtime metadata', () => {
@@ -197,7 +203,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
   })
 })
 
-describe('generated CLI runtime — auth fixture executes resolveAuth/resolveContext via @liche/core', () => {
+describe('generated CLI runtime — auth fixture executes resolveAuth/resolveContext via @liche/extensions/auth', () => {
   let dir: string
   let modulePath: string
   let savedEnv: Record<string, string | undefined> = {}

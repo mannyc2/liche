@@ -1,6 +1,7 @@
 import type {
   CliInstance,
   CliState,
+  CliExtension,
   CommandEntry,
   CommandDefinition,
   CommandRuntime,
@@ -12,9 +13,14 @@ import type {
   Schema,
   ServeOptions,
   RuntimeEntry,
+  BeforeExecuteHook,
+  CliHookRegistration,
+  ConfigDefinition,
+  SkillDefinition,
 } from '../types.js'
 import { commandContractFromDefinition, groupContract } from '../command/contract.js'
 import { isCommand, isFetch } from '../command/guards.js'
+import { globalRegistryFor } from '../globals/registry.js'
 import { fetchCli } from './fetch.js'
 import { normalizeEvents, normalizeHooks } from './lifecycle.js'
 import { serveCli } from './serve.js'
@@ -29,6 +35,7 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
     commands: new Map(),
     def: definition,
     events: normalizeEvents(definition.events),
+    globals: globalRegistryFor(definition),
     hooks: normalizeHooks(definition.hooks),
     middlewares: definition.middleware ? [...definition.middleware] : [],
     root,
@@ -67,10 +74,87 @@ export function defineCommand<
 }
 
 export function defineCli(definition: DefineCliOptions): CliInstance {
-  const { commands = [], ...rootDefinition } = definition
+  const expanded = applyExtensions(definition)
+  const { commands = [], ...rootDefinition } = expanded
   const cli = create(rootDefinition as CreateOptions & { name: string }) as InternalCli
   for (const command of commands) registerDeclarative(cli, command)
   return cli
+}
+
+function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, 'extensions'> {
+  assertRemovedRootFields(definition)
+  const extensions = definition.extensions ?? []
+  const commands = [
+    ...(definition.commands ?? []),
+    ...extensions.flatMap((extension) => [...(extension.commands ?? [])]),
+  ]
+  const events = [
+    ...(definition.events ?? []),
+    ...extensions.flatMap((extension) => [...(extension.events ?? [])]),
+  ]
+  const middleware = [
+    ...(definition.middleware ?? []),
+    ...extensions.flatMap((extension) => [...(extension.middleware ?? [])]),
+  ]
+  const globals = [
+    ...(definition.globals ?? []),
+    ...extensions.flatMap((extension) => [...(extension.globals ?? [])]),
+  ]
+  const hooks = mergeHookRegistrations(definition.hooks, ...extensions.map((extension) => extension.hooks))
+  const config = singleExtensionValue('config', undefined, extensions)
+  const skill = singleExtensionValue('skill', definition.skill, extensions)
+  const { extensions: _extensions, ...rest } = definition
+
+  return {
+    ...rest,
+    ...(commands.length ? { commands } : undefined),
+    ...(config !== undefined ? { config } : undefined),
+    ...(events.length ? { events } : undefined),
+    ...(globals.length ? { globals } : undefined),
+    ...(hooks !== undefined ? { hooks } : undefined),
+    ...(middleware.length ? { middleware } : undefined),
+    ...(skill !== undefined ? { skill } : undefined),
+  }
+}
+
+export { defineGlobal } from '../globals/definition.js'
+
+function assertRemovedRootFields(definition: DefineCliOptions): void {
+  const input = definition as Record<string, unknown>
+  if (input['builtins'] !== undefined) {
+    throw new Error('defineCli({ builtins }) was removed; install helper commands through extensions')
+  }
+  if (input['config'] !== undefined) {
+    throw new Error('defineCli({ config }) was removed; install config through extensions')
+  }
+}
+
+function singleExtensionValue<K extends 'config' | 'skill'>(
+  key: K,
+  rootValue: K extends 'config' ? ConfigDefinition | undefined : DefineCliOptions['skill'],
+  extensions: readonly CliExtension[],
+): K extends 'config' ? ConfigDefinition | undefined : SkillDefinition | undefined {
+  const providers = extensions.filter((extension) => extension[key] !== undefined)
+  if (providers.length === 0) return rootValue as any
+  if (rootValue !== undefined) {
+    throw new Error(`Cannot declare ${key} on defineCli() and an extension`)
+  }
+  if (providers.length > 1) {
+    throw new Error(`Multiple extensions declare ${key}: ${providers.map((extension) => extension.id).join(', ')}`)
+  }
+  return providers[0]![key] as any
+}
+
+function mergeHookRegistrations(
+  ...registrations: Array<CliHookRegistration | undefined>
+): CliHookRegistration | undefined {
+  const beforeExecute = registrations.flatMap((registration) => hookList(registration?.beforeExecute))
+  return beforeExecute.length ? { beforeExecute } : undefined
+}
+
+function hookList(hook: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined): BeforeExecuteHook[] {
+  if (hook === undefined) return []
+  return typeof hook === 'function' ? [hook] : [...hook]
 }
 
 function setCommandEntry(commands: Map<string, any>, name: string, definition: CommandDefinition): void {

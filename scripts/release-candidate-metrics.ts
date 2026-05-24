@@ -6,6 +6,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core' },
+  { name: '@liche/extensions', dir: 'packages/extensions' },
   { name: '@liche/build', dir: 'packages/build' },
   { name: '@liche/product', dir: 'packages/product' },
   { name: '@liche/releases', dir: 'packages/releases' },

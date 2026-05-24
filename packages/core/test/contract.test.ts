@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createConfig, Formatter, middleware, z } from '../src/index.js'
+import { Formatter, middleware, z } from '../src/index.js'
+import { createConfig } from '../src/config/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
@@ -387,43 +388,47 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(result.stderr).toBe('')
   })
 
-  test('completion requests include top-level builtins', async () => {
+  test('completion requests include only registered top-level commands', async () => {
     const cli = testCli('app', [testCommand('run', { run: () => ({ ok: true }) })])
 
     const result = await runCli(cli, ['--'], { env: { COMPLETE: 'bash' } })
-    expect(result.stdout.trim().split('\n')).toEqual(['run', 'completions'])
+    expect(result.stdout.trim().split('\n')).toEqual(['run'])
   })
 
-  test('agent helper builtins are opt-in through public CLI behavior', async () => {
-    const cli = testCli('app', { builtins: { mcp: true, skills: true } }, [testCommand('list', { run: () => ({ command: 'list' }) }), testCommand('add', { run: () => ({ command: 'add' }) })])
+  test('completion install scripts use shell-specific dynamic adapters', () => {
+    const bash = Completions.completionScript('bash', 'app')
+    expect(bash).toContain('COMPLETE=bash app -- "${COMP_WORDS[@]:1}"')
+    expect(bash).toContain('complete -F _app_complete -- app')
 
-    const list = await runCli(cli, ['skills', 'list', '--json'])
-    expect(parseJsonOutput(list.stdout)).toEqual({ skills: [{ installed: false, name: 'app' }] })
+    const zsh = Completions.completionScript('zsh', 'app')
+    expect(zsh.split('\n')[0]).toBe('#compdef app')
+    expect(zsh).toContain('COMPLETE=zsh app -- "${words[@]:1}"')
+    expect(zsh).toContain('compdef _app_complete app')
+    expect(zsh).not.toContain('complete -F')
 
-    const plainList = await runCli(cli, ['list', '--json'])
-    expect(parseJsonOutput(plainList.stdout)).toEqual({ command: 'list' })
-
-    const plainAdd = await runCli(cli, ['add', '--json'])
-    expect(parseJsonOutput(plainAdd.stdout)).toEqual({ command: 'add' })
-
-    const defaultCompletions = await runCli(cli, ['completions'])
-    expect(defaultCompletions.stdout).toContain('COMPLETE=bash app --')
-
-    const completions = await runCli(cli, ['completions', 'zsh'])
-    expect(completions.stdout).toContain('COMPLETE=zsh app --')
-
-    const badShell = await runCli(cli, ['completions', 'powershell'])
-    expect(badShell.stdout).toBe('')
-    expect(badShell.stderr).toContain("Unknown shell 'powershell'")
-
-    const skillsHelp = await runCli(cli, ['skills', '--help'])
-    expect(skillsHelp.stdout).toBe('  app skills add  Sync skill file\n  app skills list  List available skills\n')
-
-    const mcpHelp = await runCli(cli, ['mcp'])
-    expect(mcpHelp.stdout).toBe('  app mcp add  Register MCP server config\n')
+    const fish = Completions.completionScript('fish', 'app')
+    expect(fish).toContain('env COMPLETE=fish app -- (commandline -opc)[2..-1]')
+    expect(fish).toContain('complete -c app -f -a "(_app_complete)"')
+    expect(fish).not.toContain('$(COMPLETE=fish app)')
   })
 
-  test('agent helper builtins are not available unless enabled', async () => {
+  test('command-level default format is used unless a global format is explicit', async () => {
+    const cli = testCli('app', [
+      testCommand('render', {
+        format: 'md',
+        output: z.string(),
+        run: () => '# rendered',
+      }),
+    ])
+
+    const plain = await runCli(cli, ['render'])
+    expect(plain.stdout).toBe('# rendered\n')
+
+    const json = await runCli(cli, ['render', '--json'])
+    expect(parseJsonOutput(json.stdout)).toBe('# rendered')
+  })
+
+  test('agent helper commands are not available unless enabled', async () => {
     const cli = testCli('app', [testCommand('list', { run: () => ({ command: 'list' }) })])
 
     const skills = await runCli(cli, ['skills', 'list', '--json'])
@@ -431,18 +436,13 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(skills.stdout).not.toContain('skills list')
   })
 
-  test('config can expose config doctor without unrelated helper builtins', async () => {
+  test('config loading does not register support commands in core', async () => {
     const configured = testCli('app', { config: createConfig({}) }, [testCommand('list', { run: () => ({ command: 'list' }) })])
 
     const help = await runCli(configured, ['--help'])
-    expect(help.stdout).toContain('config doctor')
+    expect(help.stdout).not.toContain('config doctor')
     expect(help.stdout).not.toContain('mcp add')
     expect(help.stdout).not.toContain('skills add')
-
-    const doctor = await runCli(configured, ['config', 'doctor', '--json'])
-    expect(parseJsonOutput(doctor.stdout)).toEqual({
-      config: { enabled: true, loaded: true, keys: [] },
-    })
 
     const minimal = testCli('minimal', [testCommand('list', { run: () => ({ command: 'list' }) })])
     const minimalHelp = await runCli(minimal, ['--help'])

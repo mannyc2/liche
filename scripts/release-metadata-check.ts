@@ -6,6 +6,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core' },
+  { name: '@liche/extensions', dir: 'packages/extensions' },
   { name: '@liche/build', dir: 'packages/build' },
   { name: '@liche/product', dir: 'packages/product' },
   { name: '@liche/releases', dir: 'packages/releases' },
@@ -93,6 +94,12 @@ function collectBinIssues(packageDir: string, bin: unknown): string[] {
   return issues
 }
 
+function expectedPackageFiles(packageName: string): string[] {
+  return packageName === '@liche/core'
+    ? ['src', 'README.md', 'SKILL.md', 'LICENSE']
+    : ['src', 'README.md', 'LICENSE']
+}
+
 export function collectReleaseMetadataCheck(): MetadataCheckReport {
   const checks: CheckResult[] = []
 
@@ -178,10 +185,11 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
         ? pass(`package-license-file:${pkg.name}`, `${pkg.name} ships LICENSE`)
         : fail(`package-license-file:${pkg.name}`, `${pkg.name} is missing LICENSE`),
     )
+    const expectedFiles = expectedPackageFiles(pkg.name)
     checks.push(
-      JSON.stringify(files) === JSON.stringify(['src', 'README.md', 'LICENSE'])
+      JSON.stringify(files) === JSON.stringify(expectedFiles)
         ? pass(`package-files:${pkg.name}`, `${pkg.name} has narrow publish files`)
-        : fail(`package-files:${pkg.name}`, `${pkg.name} files must be ["src","README.md","LICENSE"]`),
+        : fail(`package-files:${pkg.name}`, `${pkg.name} files must be ${JSON.stringify(expectedFiles)}`),
     )
     checks.push(
       json.publishConfig?.access === 'public'

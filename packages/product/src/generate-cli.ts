@@ -439,24 +439,27 @@ function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
 
 function renderImports(catalog: Catalog): string[] {
   const coreNames = new Set(['defineCli', 'defineCommand', 'z'])
-  if (catalog.config) coreNames.add('createConfig')
   if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
-  if (catalog.ops.enabled && catalog.ops.telemetry !== false) coreNames.add('createLocalTelemetrySink')
-  if (catalog.ops.enabled && catalog.ops.doctor !== false) coreNames.add('runLocalDoctor')
-  if (authRuntimeUsed(catalog)) {
-    coreNames.add('createFileSessionStore')
-    coreNames.add('resolveAuth')
-  }
-  if (catalog.capabilities.some(isAuthCommand)) {
-    coreNames.add('authSwitch')
-    coreNames.add('authWhoami')
-    coreNames.add('logoutAuthSession')
-    coreNames.add('oauthDeviceLogin')
-  }
-  if (contextRuntimeUsed(catalog)) {
-    coreNames.add('resolveContext')
-  }
   const out: string[] = [`import { ${[...coreNames].sort().join(', ')} } from '@liche/core'`]
+  if (needsAuthExtension(catalog)) {
+    const authNames = [
+      'auth as authExtension',
+      ...(catalog.capabilities.some(isAuthCommand) ? ['authSwitch', 'authWhoami', 'logoutAuthSession', 'oauthDeviceLogin'] : []),
+      ...(authRuntimeUsed(catalog) ? ['createFileSessionStore', 'resolveAuth'] : []),
+      ...(contextRuntimeUsed(catalog) ? ['resolveContext'] : []),
+    ].sort()
+    out.push(`import { ${authNames.join(', ')} } from '@liche/extensions/auth'`)
+  }
+  if (catalog.config) {
+    out.push(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
+  }
+  if (catalog.ops.enabled && (catalog.ops.telemetry !== false || catalog.ops.doctor !== false)) {
+    const supportNames = [
+      ...(catalog.ops.telemetry !== false ? ['createLocalTelemetrySink'] : []),
+      ...(catalog.ops.doctor !== false ? ['runLocalDoctor'] : []),
+    ].sort()
+    out.push(`import { ${supportNames.join(', ')} } from '@liche/extensions/support'`)
+  }
   const byModule = new Map<string, Set<string>>()
   for (const h of collectLocalHandlers(catalog)) {
     const exports = byModule.get(h.module) ?? new Set<string>()
@@ -486,10 +489,11 @@ function renderCli(catalog: Catalog): string[] {
   lines.push(`  name: ${q(catalog.product.id)},`)
   lines.push(`  version: ${q(catalog.product.version)},`)
   lines.push(`  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },`)
+  const extensions = renderExtensionDeclarations(catalog)
+  if (extensions.length > 0) lines.push(`  extensions: [${extensions.join(', ')}],`)
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
     lines.push(`  events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],`)
   }
-  if (catalog.config) lines.push(...renderConfigDeclaration('  ', catalog))
   lines.push(`  commands: [`)
   for (const cap of catalog.capabilities) {
     lines.push(...renderCapability('    ', catalog, cap))
@@ -500,6 +504,20 @@ function renderCli(catalog: Catalog): string[] {
   lines.push('')
   lines.push(`export default cli`)
   return lines
+}
+
+function renderExtensionDeclarations(catalog: Catalog): string[] {
+  const extensions: string[] = []
+  if (needsAuthExtension(catalog)) extensions.push('authExtension()')
+  if (catalog.config) {
+    extensions.push(renderConfigExtension(catalog))
+    extensions.push('configDoctor()')
+  }
+  return extensions
+}
+
+function needsAuthExtension(catalog: Catalog): boolean {
+  return authRuntimeUsed(catalog) || contextRuntimeUsed(catalog)
 }
 
 function renderOpsCommands(indent: string, catalog: Catalog): string[] {
@@ -936,14 +954,13 @@ function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability): 
   return lines
 }
 
-function renderConfigDeclaration(indent: string, catalog: Catalog): string[] {
+function renderConfigExtension(catalog: Catalog): string {
   const config = catalog.config!
-  const lines = [`${indent}config: createConfig({`]
-  if (config.files.length > 0) lines.push(`${indent}  files: ${renderStringArray(config.files)},`)
-  lines.push(`${indent}  schema: ${renderStrictObjectSchema(config.fields, `${indent}  `)},`)
-  lines.push(`${indent}  scopes: ${renderConfigScopes(config.scopes)},`)
-  lines.push(`${indent}}),`)
-  return lines
+  const fields: string[] = []
+  if (config.files.length > 0) fields.push(`files: ${renderStringArray(config.files)}`)
+  fields.push(`schema: ${renderStrictObjectSchema(config.fields, '  ')}`)
+  fields.push(`scopes: ${renderConfigScopes(config.scopes)}`)
+  return `configExtension({ ${fields.join(', ')} })`
 }
 
 function renderConfigScopes(scopes: NonNullable<Catalog['config']>['scopes']): string {

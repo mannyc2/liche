@@ -21,6 +21,7 @@ export function commandContractFromDefinition(
     description: definition.description,
     ...(definition.effects ? { effects: definition.effects } : undefined),
     ...(definition.examples ? { examples: definition.examples } : undefined),
+    ...(definition.format ? { format: definition.format } : undefined),
     ...(definition.hint ? { hint: definition.hint } : undefined),
     name,
     ...(definition.optionConfig ? { optionConfig: definition.optionConfig } : undefined),

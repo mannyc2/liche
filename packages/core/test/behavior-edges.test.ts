@@ -3,14 +3,14 @@ import { testCli, testCommand } from './helpers.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createConfig, Formatter, z, type CliInstance } from '../src/index.js'
+import { Formatter, z } from '../src/index.js'
+import { createConfig } from '../src/config/index.js'
 import * as Fetch from '../src/fetch/index.js'
 import * as Mcp from '../src/mcp/index.js'
 import * as Parser from '../src/parser/index.js'
 import * as Schema from '../src/schema/index.js'
 import * as Skill from '../src/skills/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
-import { builtinHelpLines, builtinSuggestions } from '../src/cli/builtin-metadata.js'
 import { camel, collectAsync, isAsyncIterable, isObject, kebab } from '../src/internal.js'
 import { handleMcpHttp } from '../src/mcp/http.js'
 import { childCommands, collectCommandContracts, commandScope, completionCommands, outputPolicy, selectCommand } from '../src/command/registry.js'
@@ -279,37 +279,7 @@ describe('command registry and guards behavior', () => {
   })
 })
 
-describe('builtin metadata and skill sync behavior', () => {
-  test('builtin metadata drives opt-in help and nested completion suggestions', () => {
-    expect(builtinSuggestions([''])).toEqual(['completions'])
-    const allBuiltins = { mcp: true, skills: true }
-    expect(builtinSuggestions([''], allBuiltins)).toEqual(['completions', 'mcp', 'skills'])
-    expect(builtinSuggestions(['m'], allBuiltins)).toEqual(['mcp'])
-    expect(builtinSuggestions(['skills', ''], allBuiltins)).toEqual(['add', 'list'])
-    expect(builtinSuggestions(['mcp', 'a'], allBuiltins)).toEqual(['add'])
-    expect(builtinSuggestions(['mcp', 'add', ''], allBuiltins)).toEqual([])
-    expect(builtinSuggestions(['run', ''])).toEqual([])
-    expect(builtinSuggestions([''], undefined, true)).toEqual(['completions', 'config'])
-    expect(builtinSuggestions(['config', ''], undefined, true)).toEqual(['doctor'])
-
-    expect(builtinHelpLines()).toEqual([
-      '  completions  Generate shell completion script',
-    ])
-    expect(builtinHelpLines(undefined, true)).toEqual([
-      '  completions  Generate shell completion script',
-      '  config doctor Inspect config loading',
-    ])
-    expect(builtinHelpLines({ config: false }, true)).toEqual([
-      '  completions  Generate shell completion script',
-    ])
-    expect(builtinHelpLines(allBuiltins)).toEqual([
-      '  completions  Generate shell completion script',
-      '  mcp add      Register MCP server config',
-      '  skills add   Sync skill file',
-      '  skills list  List available skills',
-    ])
-  })
-
+describe('skill rendering behavior', () => {
   test('skill markdown and index preserve frontmatter, descriptions, root commands, and command examples', () => {
     const cli = testCli('ship', {
       description: 'release helper',
@@ -330,33 +300,6 @@ describe('builtin metadata and skill sync behavior', () => {
     const unnamedState = (unnamed as InternalCli)[stateSymbol]
     expect(Skill.skillMarkdown('tool', unnamedState)).toContain('description: tool CLI')
     expect(Skill.skillIndex('tool', unnamedState)).toContain('- run: ')
-  })
-
-  test('skills add and mcp add write expected files under isolated HOME', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'liche-sync-'))
-    const previousHome = Bun.env['HOME']
-    Bun.env['HOME'] = root
-
-    try {
-      const cli = testCli('ship', { builtins: { mcp: true, skills: true }, description: 'release helper', mcp: { command: 'ship-cli' } }, [testCommand('publish', {
-        description: 'publish a release',
-        run: () => ({ ok: true }),
-      })])
-
-      const skill = await runCliWithLocalImport(cli, ['skills', 'add'])
-      const skillPath = join(root, '.claude/skills/ship/SKILL.md')
-      expect(skill.stdout).toBe(`wrote ${skillPath}\n`)
-      expect(await Bun.file(skillPath).text()).toContain('### publish\npublish a release')
-
-      const mcp = await runCliWithLocalImport(cli, ['mcp', 'add'])
-      const mcpPath = join(root, '.config/liche/mcp/ship.json')
-      expect(mcp.stdout).toBe(`wrote ${mcpPath}\n`)
-      expect(await Bun.file(mcpPath).json()).toEqual({ mcpServers: { ship: { args: ['--mcp'], command: 'ship-cli' } } })
-    } finally {
-      if (previousHome === undefined) delete Bun.env['HOME']
-      else Bun.env['HOME'] = previousHome
-      await rm(root, { force: true, recursive: true })
-    }
   })
 })
 
@@ -487,21 +430,3 @@ describe('parser globals and internal helpers', () => {
     })
   })
 })
-
-async function runCliWithLocalImport(cli: Pick<CliInstance, 'serve'>, argv: string[]) {
-  let stdout = ''
-  let stderr = ''
-  let exitCode = 0
-  await cli.serve(argv, {
-    exit(code: number) {
-      exitCode = code
-    },
-    stderr(chunk: string) {
-      stderr += chunk
-    },
-    stdout(chunk: string) {
-      stdout += chunk
-    },
-  })
-  return { exitCode, stderr, stdout }
-}

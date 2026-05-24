@@ -119,6 +119,7 @@ export function completionCommands(state: CliState, words: string[]): string[] {
   const scopeWords = words.slice(0, -1)
   const current = words.at(-1) ?? ''
   const scope = commandScope(state, scopeWords)
+  if (scope.path.length < scopeWords.length) return []
   if (scope.commands.size === 0 && scopeWords.length) return []
 
   const children = childCommands(scope)
@@ -126,6 +127,10 @@ export function completionCommands(state: CliState, words: string[]): string[] {
     ...children.map((command) => command.name),
     ...children.flatMap((command) => command.aliases ?? []),
   ].filter((name) => name.startsWith(current))
+}
+
+export function commandFormat(selected: SelectedCommand) {
+  return commandContract(selected.path.join(' ') || '(root)', selected.entry)?.format
 }
 
 export function outputPolicy(selected: SelectedCommand) {

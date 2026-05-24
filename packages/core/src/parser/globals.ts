@@ -1,7 +1,9 @@
 import type { DisabledGlobal, Format } from '../types.js'
 import { ParseError } from '../errors/error.js'
+import { globalRegistryFor, type RuntimeGlobalInput } from '../globals/registry.js'
 
 export type GlobalFlags = {
+  [key: string]: unknown
   configDisabled?: boolean | undefined
   configPath?: string | undefined
   filterOutput?: string | undefined
@@ -23,73 +25,71 @@ export type GlobalFlags = {
   version?: boolean | undefined
 }
 
-const validFormats: ReadonlySet<Format> = new Set(['json', 'yaml', 'md', 'jsonl'])
-
 export function parseGlobals(
   argv: string[],
   configFlag?: string | undefined,
   disabledGlobals?: readonly DisabledGlobal[] | undefined,
+  globals?: readonly RuntimeGlobalInput[] | undefined,
 ): GlobalFlags {
   const flags: GlobalFlags = { rest: [] }
-  const valueFlags = new Set(['format', 'filter-output', 'token-limit', 'token-offset', 'config', 'profile'])
-  if (configFlag) valueFlags.add(configFlag)
-  const disabled = new Set<string>(disabledGlobals ?? [])
+  const registry = globals ?? globalRegistryFor({
+    ...(configFlag ? { config: { kind: 'liche.config.object', flag: configFlag } } : undefined),
+    ...(disabledGlobals ? { generated: { machineOutput: 'envelope', disabledGlobals } } : undefined),
+  })
+  const byFlag = new Map(registry.map((global) => [global.flag, global]))
+  const byAlias = new Map(registry.flatMap((global) => global.alias ? [[global.alias, global] as const] : []))
 
   for (let index = 0; index < argv.length; index++) {
     const token = argv[index]!
     const long = token.startsWith('--') ? token.slice(2) : undefined
     const [key, equalsValue] = long?.split(/=(.*)/s) ?? []
+    const global = key !== undefined
+      ? byFlag.get(key)
+      : token.startsWith('-') && token.length === 2
+        ? byAlias.get(token.slice(1))
+        : undefined
+    if (!global) {
+      flags.rest.push(token)
+      continue
+    }
+
     const usesEquals = equalsValue !== undefined
-    const needsValue = key !== undefined && valueFlags.has(key)
+    const needsValue = global.type !== 'boolean'
+    if (!needsValue && usesEquals) {
+      flags.rest.push(token)
+      continue
+    }
     let value: string | undefined
     if (usesEquals) value = equalsValue
     else if (needsValue) value = argv[++index]
 
     if (needsValue && (value === undefined || value === '')) {
-      throw new ParseError({ message: `Missing value for flag: --${key}` })
+      throw new ParseError({ message: `Missing value for flag: --${global.flag}` })
     }
 
-    if (token === '-h' || token === '--help') flags.help = true
-    else if (token === '--json') {
-      flags.json = true
+    if (global.disabled) {
+      throw new ParseError({
+        message: `--${global.flag} is disabled for this CLI; use --json for machine output`,
+      })
+    }
+
+    try {
+      flags[global.key] = needsValue
+        ? global.parse
+          ? global.parse(value!, global.flag)
+          : value
+        : true
+    } catch (error) {
+      throw new ParseError({ message: error instanceof Error ? error.message : String(error) })
+    }
+
+    if (global.key === 'json') {
       flags.formatExplicit = true
-    } else if (key === 'format') {
-      if (disabled.has('format')) {
-        throw new ParseError({
-          message: `--format is disabled for this CLI; use --json for machine output`,
-        })
-      }
-      if (!validFormats.has(value as Format)) {
-        throw new ParseError({
-          message: `Invalid format: "${value}". Expected one of: ${[...validFormats].join(', ')}`,
-        })
-      }
-      flags.format = value as Format
+    } else if (global.key === 'format') {
       flags.formatExplicit = true
-    } else if (token === '--full-output') flags.fullOutput = true
-    else if (token === '--version') flags.version = true
-    else if (token === '--schema') flags.schema = true
-    else if (token === '--llms') flags.llms = true
-    else if (token === '--mcp') flags.mcp = true
-    else if (token === '--non-interactive') flags.nonInteractive = true
-    else if (token === '--no-session') flags.noSession = true
-    else if (key === 'profile') flags.profile = value
-    else if (token === '--token-count') flags.tokenCount = true
-    else if (key === 'token-limit') flags.tokenLimit = parseFiniteNumber(value!, '--token-limit')
-    else if (key === 'token-offset') flags.tokenOffset = parseFiniteNumber(value!, '--token-offset')
-    else if (key === 'filter-output') flags.filterOutput = value
-    else if (key === 'config' || (configFlag && key === configFlag)) flags.configPath = value
-    else if (key === 'no-config' || (configFlag && key === `no-${configFlag}`)) flags.configDisabled = true
-    else flags.rest.push(token)
+      flags.format = flags.format as Format
+    }
   }
 
   return flags
-}
-
-function parseFiniteNumber(value: string, flag: string): number {
-  const n = Number(value)
-  if (!Number.isFinite(n) || value.trim() === '') {
-    throw new ParseError({ message: `Invalid value for ${flag}: "${value}"` })
-  }
-  return n
 }

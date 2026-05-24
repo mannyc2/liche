@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createFileSessionStore, secret } from '../../src/index.js'
+import { secret } from '../../src/auth/secret.js'
+import { createFileSessionStore } from '../../src/auth/session-store.js'
 import { LicheError } from '../../src/errors/error.js'
 
 function tempRoot(): string {

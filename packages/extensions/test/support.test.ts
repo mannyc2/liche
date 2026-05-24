@@ -2,9 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { createLocalTelemetrySink, runLocalDoctor } from '../src/index.js'
+import { createLocalTelemetrySink, runLocalDoctor } from '../src/support.js'
 
-describe('local ops doctor', () => {
+describe('@liche/extensions/support local ops doctor', () => {
   test('reports PATH and package-manager checks as structured diagnostics', async () => {
     const root = mkdtempSync(join(tmpdir(), 'liche-doctor-'))
     const bin = join(root, 'bin')
@@ -49,7 +49,7 @@ describe('local ops doctor', () => {
   })
 })
 
-describe('local telemetry sink', () => {
+describe('@liche/extensions/support local telemetry sink', () => {
   test('writes JSONL only when opted in and redacts secret-shaped fields', async () => {
     const writes: string[] = []
     const sink = createLocalTelemetrySink({

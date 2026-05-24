@@ -180,11 +180,11 @@ describe('renderHelp — commands listing', () => {
     expect(help).toMatch(/build\s+build it \(b\)/)
   })
 
-  test('no commands → no top-level "Commands:" section (only "Built-in Commands:")', () => {
+  test('core does not add helper commands by default', () => {
     const cli = testCli('app', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).not.toMatch(/^Commands:$/m)
-    expect(help).toContain('Built-in Commands:')
+    expect(help).not.toContain('completions')
   })
 })
 
@@ -284,10 +284,10 @@ describe('renderHelp — hint and usage blocks', () => {
 })
 
 describe('renderHelp — global sections always present', () => {
-  test('includes "Built-in Commands:" section', () => {
+  test('does not include extension helper commands unless registered', () => {
     const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
-    expect(help).toContain('Built-in Commands:')
+    expect(help).not.toContain('completions')
   })
 
   test('includes "Global Options:" section with format/help/version', () => {

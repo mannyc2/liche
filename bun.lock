@@ -7,6 +7,7 @@
       "dependencies": {
         "@liche/build": "workspace:*",
         "@liche/core": "workspace:*",
+        "@liche/extensions": "workspace:*",
         "@liche/product": "workspace:*",
         "@liche/releases": "workspace:*",
       },
@@ -44,6 +45,17 @@
         "@stryker-mutator/typescript-checker": "^9.6.1",
         "@types/bun": "latest",
         "fast-check": "^4.8.0",
+        "typescript": "latest",
+      },
+    },
+    "packages/extensions": {
+      "name": "@liche/extensions",
+      "version": "0.2.0",
+      "dependencies": {
+        "@liche/core": "^0.2.0",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
         "typescript": "latest",
       },
     },
@@ -213,6 +225,8 @@
     "@liche/build": ["@liche/build@workspace:packages/build"],
 
     "@liche/core": ["@liche/core@workspace:packages/core"],
+
+    "@liche/extensions": ["@liche/extensions@workspace:packages/extensions"],
 
     "@liche/product": ["@liche/product@workspace:packages/product"],
 

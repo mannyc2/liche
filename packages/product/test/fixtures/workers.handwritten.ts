@@ -1,18 +1,22 @@
-import { callHttpOperation, createConfig, defineCli, defineCommand, z } from '@liche/core'
+import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'
+import { config as configExtension, configDoctor } from '@liche/extensions/config'
 import { deploy, dev } from './impl/wrangler.js'
 
 const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
   generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
-  config: createConfig({
-    files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
-    schema: z.strictObject({
-      accountId: z.string().optional(),
-      apiBaseUrl: z.string().default('https://api.cloudflare.test'),
+  extensions: [
+    configExtension({
+      files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
+      schema: z.strictObject({
+        accountId: z.string().optional(),
+        apiBaseUrl: z.string().default('https://api.cloudflare.test'),
+      }),
+      scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
     }),
-    scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
-  }),
+    configDoctor(),
+  ],
   commands: [
     defineCommand({
       path: ['script', 'list'],

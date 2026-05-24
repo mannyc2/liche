@@ -1,0 +1,57 @@
+import { describe, expect, test } from 'bun:test'
+import { defineCli, defineCommand, z } from '@liche/core'
+import { auth } from '../src/auth.js'
+
+describe('@liche/extensions/auth', () => {
+  test('declares auth globals through the extension lane', async () => {
+    const cli = defineCli({
+      name: 'ship',
+      extensions: [auth()],
+      commands: [
+        defineCommand({
+          output: z.object({
+            noSession: z.boolean().optional(),
+            nonInteractive: z.boolean().optional(),
+            profile: z.string().optional(),
+          }),
+          path: ['show'],
+          run({ ctx }) {
+            return {
+              noSession: ctx.global.noSession,
+              nonInteractive: ctx.global.nonInteractive,
+              profile: ctx.global.profile,
+            }
+          },
+        }),
+      ],
+    })
+
+    let stdout = ''
+    let exitCode = 0
+    await cli.serve(['show', '--profile', 'work', '--non-interactive', '--no-session', '--json'], {
+      exit(code) {
+        exitCode = code
+      },
+      stdout(chunk) {
+        stdout += chunk
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    expect(JSON.parse(stdout)).toEqual({
+      noSession: true,
+      nonInteractive: true,
+      profile: 'work',
+    })
+
+    let help = ''
+    await cli.serve(['--help'], {
+      stdout(chunk) {
+        help += chunk
+      },
+    })
+    expect(help).toContain('--profile <name>')
+    expect(help).toContain('--non-interactive')
+    expect(help).toContain('--no-session')
+  })
+})

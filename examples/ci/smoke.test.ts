@@ -85,6 +85,8 @@ describe('ci release example', () => {
     expect(JSON.parse(manifest.stdout).commands.map((command: { name: string }) => command.name)).toEqual([
       'deployments list',
       'deployments promote',
+      'completions',
+      'config doctor',
     ])
   })
 

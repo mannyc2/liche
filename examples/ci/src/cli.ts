@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-import { createConfig, defineCli, defineCommand, z } from '@liche/core'
+import { defineCli, defineCommand, z } from '@liche/core'
+import { completions, config, configDoctor } from '@liche/extensions'
 
 const DeploymentSchema = z.object({
   id: z.string(),
@@ -16,7 +17,7 @@ const CliConfigSchema = z.object({
 
 type CliConfig = z.infer<typeof CliConfigSchema>
 
-function config(ctx: { config: Record<string, unknown> }): CliConfig {
+function cliConfig(ctx: { config: Record<string, unknown> }): CliConfig {
   return ctx.config as CliConfig
 }
 
@@ -27,7 +28,7 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 async function apiFetch(ctx: { config: Record<string, unknown> }, path: string, init?: RequestInit): Promise<unknown> {
-  const baseUrl = config(ctx).apiBaseUrl.replace(/\/$/, '')
+  const baseUrl = cliConfig(ctx).apiBaseUrl.replace(/\/$/, '')
   const response = await fetch(`${baseUrl}${path}`, init)
   if (!response.ok) {
     throw new Error(`Shipyard API returned ${response.status}`)
@@ -36,7 +37,6 @@ async function apiFetch(ctx: { config: Record<string, unknown> }, path: string, 
 }
 
 export const cli = defineCli({
-  builtins: { completions: true, mcp: false, skills: false },
   commands: [
     defineCommand({
       path: ['deployments'],
@@ -53,7 +53,7 @@ export const cli = defineCli({
       },
       output: z.array(DeploymentSchema),
       async run({ ctx, input }) {
-        const url = new URL('/deployments', config(ctx).apiBaseUrl)
+        const url = new URL('/deployments', cliConfig(ctx).apiBaseUrl)
         if (input.options.project) url.searchParams.set('project', input.options.project)
         const body = await apiFetch(ctx, `${url.pathname}${url.search}`)
         return z.array(DeploymentSchema).parse(body)
@@ -85,12 +85,16 @@ export const cli = defineCli({
       },
     }),
   ],
-  config: createConfig({
-    files: ['shipyard.jsonc'],
-    schema: CliConfigSchema,
-    scopes: { project: { discoverUpwards: true }, user: false },
-  }),
   description: 'Inspect and promote application deployments.',
+  extensions: [
+    completions(),
+    config({
+      files: ['shipyard.jsonc'],
+      schema: CliConfigSchema,
+      scopes: { project: { discoverUpwards: true }, user: false },
+    }),
+    configDoctor(),
+  ],
   name: 'shipyard',
   version: '0.1.0',
 })

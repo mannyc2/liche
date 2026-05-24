@@ -22,9 +22,6 @@ Arguments:
 Options:
   --dry-run               skip side effects (default: false)
 
-Built-in Commands:
-  completions  Generate shell completion script
-
 Global Options:
   --format <json|yaml|md|jsonl>
   --json
@@ -63,9 +60,6 @@ Usage: ship <command>
 Commands:
   admin  admin tools
 
-Built-in Commands:
-  completions  Generate shell completion script
-
 Global Options:
   --format <json|yaml|md|jsonl>
   --json
@@ -89,9 +83,6 @@ Usage: ship admin <command>
 Commands:
   audit  inspect events
   ban    ban a user (block)
-
-Built-in Commands:
-  completions  Generate shell completion script
 
 Global Options:
   --format <json|yaml|md|jsonl>

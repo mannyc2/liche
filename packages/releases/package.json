@@ -79,6 +79,7 @@
   },
   "dependencies": {
     "@liche/core": "^0.2.0",
+    "@liche/extensions": "^0.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -1,0 +1,64 @@
+{
+  "name": "@liche/extensions",
+  "version": "0.2.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Official optional extensions for Liche CLIs.",
+  "sideEffects": false,
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./auth": {
+      "types": "./src/auth.ts",
+      "default": "./src/auth.ts"
+    },
+    "./config": {
+      "types": "./src/config.ts",
+      "default": "./src/config.ts"
+    },
+    "./agents": {
+      "types": "./src/helpers.ts",
+      "default": "./src/helpers.ts"
+    },
+    "./completions": {
+      "types": "./src/helpers.ts",
+      "default": "./src/helpers.ts"
+    },
+    "./mcp": {
+      "types": "./src/helpers.ts",
+      "default": "./src/helpers.ts"
+    },
+    "./skills": {
+      "types": "./src/helpers.ts",
+      "default": "./src/helpers.ts"
+    },
+    "./support": {
+      "types": "./src/support.ts",
+      "default": "./src/support.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@liche/core": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}

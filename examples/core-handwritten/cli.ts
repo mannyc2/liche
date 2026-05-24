@@ -1,11 +1,18 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, middleware, z } from '@liche/core'
+import { defineCli, defineCommand, defineGlobal, middleware, z } from '@liche/core'
 import type { CliEvent } from '@liche/core'
+import { completions } from '@liche/extensions'
 
 export const observedEvents: Array<Pick<CliEvent, 'type' | 'command' | 'result'>> = []
 
+const profile = defineGlobal({
+  description: 'Profile to use',
+  key: 'profile',
+  type: 'string',
+  valueLabel: 'name',
+})
+
 export const cli = defineCli({
-  builtins: { completions: true, mcp: false, skills: false },
   events: [(event) => {
     observedEvents.push({
       command: event.command,
@@ -13,6 +20,8 @@ export const cli = defineCli({
       type: event.type,
     })
   }],
+  extensions: [completions()],
+  globals: [profile],
   middleware: [middleware(async (ctx, next) => {
     ctx.set('requestId', 'example-request')
     await next()
@@ -34,6 +43,7 @@ export const cli = defineCli({
       output: z.object({
         authenticated: z.boolean(),
         file: z.string(),
+        profile: z.string().optional(),
         requestId: z.string(),
         summary: z.string(),
       }),
@@ -41,6 +51,7 @@ export const cli = defineCli({
         return {
           authenticated: input.env.NOTES_TOKEN !== undefined,
           file: input.args.file,
+          profile: typeof ctx.global.profile === 'string' ? ctx.global.profile : undefined,
           requestId: String(ctx.var.requestId),
           summary: `${input.options.style} summary for ${input.args.file}`,
         }

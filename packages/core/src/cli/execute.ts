@@ -75,10 +75,11 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
     const env = parseObject(runtime.env, input.env)
     const vars = parseObject((selected.rootDef as any)?.vars, {})
 
-    const context: MiddlewareContext = {
+    const context = {
       agent: input.agent,
       args: args as Dict,
       config: (input.config?.values ?? {}) as Dict,
+      configLoaded: !!input.config,
       displayName: input.displayName,
       env: env as Dict,
       error(error) {
@@ -106,7 +107,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
         },
       },
       var: vars as Dict,
-    }
+    } as MiddlewareContext
 
     for (const hook of input.hooks.beforeExecute) {
       try {

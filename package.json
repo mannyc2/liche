@@ -29,6 +29,7 @@
   "dependencies": {
     "@liche/build": "workspace:*",
     "@liche/core": "workspace:*",
+    "@liche/extensions": "workspace:*",
     "@liche/product": "workspace:*",
     "@liche/releases": "workspace:*"
   },

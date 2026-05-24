@@ -5,7 +5,13 @@ import { resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
 
-const PUBLIC_PACKAGES = ['@liche/core', '@liche/build', '@liche/product', '@liche/releases']
+const PUBLIC_PACKAGES = ['@liche/core', '@liche/extensions', '@liche/build', '@liche/product', '@liche/releases']
+
+function expectedPackageFiles(packageName: string): string[] {
+  return packageName === '@liche/core'
+    ? ['src', 'README.md', 'SKILL.md', 'LICENSE']
+    : ['src', 'README.md', 'LICENSE']
+}
 
 function run(cmd: string, args: string[]): string {
   try {
@@ -85,7 +91,7 @@ describe('release candidate readiness gate', () => {
     for (const pkg of report.packages) {
       expect(PUBLIC_PACKAGES).toContain(pkg.name)
       expect(pkg.license).toBe('MIT')
-      expect(pkg.files).toEqual(['src', 'README.md', 'LICENSE'])
+      expect(pkg.files).toEqual(expectedPackageFiles(pkg.name))
       expect(pkg.repository).toBeNull()
       expect(pkg.homepage).toBeNull()
       expect(pkg.bugs).toBeNull()

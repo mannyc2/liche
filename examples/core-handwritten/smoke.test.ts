@@ -7,13 +7,14 @@ describe('core-handwritten example', () => {
   })
 
   test('runs a typed command with middleware state and env validation', async () => {
-    const result = await runCli(['summarize', 'README.md', '--style', 'full', '--json'], {
+    const result = await runCli(['summarize', 'README.md', '--style', 'full', '--profile', 'work', '--json'], {
       NOTES_TOKEN: 'tok_example',
     })
     expect(result.exitCode).toBe(0)
     expect(JSON.parse(result.stdout)).toEqual({
       authenticated: true,
       file: 'README.md',
+      profile: 'work',
       requestId: 'example-request',
       summary: 'full summary for README.md',
     })
@@ -25,11 +26,12 @@ describe('core-handwritten example', () => {
     ])
   })
 
-  test('keeps agent helper builtins disabled', async () => {
+  test('keeps agent helper commands disabled', async () => {
     const help = await runCli(['--help'])
     expect(help.stdout).not.toContain('mcp add')
     expect(help.stdout).not.toContain('skills add')
     expect(help.stdout).not.toContain('gen')
+    expect(help.stdout).toContain('--profile <name>')
   })
 
   test('parses boolean options', async () => {

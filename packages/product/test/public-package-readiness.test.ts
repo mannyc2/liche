@@ -10,36 +10,70 @@ const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core', bin: undefined },
+  { name: '@liche/extensions', dir: 'packages/extensions', bin: undefined },
   { name: '@liche/build', dir: 'packages/build', bin: 'liche-build' },
   { name: '@liche/product', dir: 'packages/product', bin: 'liche-product' },
   { name: '@liche/releases', dir: 'packages/releases', bin: 'liche-release' },
 ] as const
 
+function expectedPackageFiles(packageName: string): string[] {
+  return packageName === '@liche/core'
+    ? ['src', 'README.md', 'SKILL.md', 'LICENSE']
+    : ['src', 'README.md', 'LICENSE']
+}
+
 const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
   '@liche/core': [
     'Formatter',
     'applyAuth',
-    'authSwitch',
-    'authWhoami',
     'callHttpOperation',
     'commandError',
-    'createConfig',
-    'createFileSessionStore',
-    'createLocalTelemetrySink',
     'defineCli',
     'defineCommand',
+    'defineGlobal',
     'fail',
-    'logoutAuthSession',
     'middleware',
-    'oauthDeviceLogin',
     'ok',
-    'resolveAuth',
-    'resolveContext',
-    'runLocalDoctor',
     'secret',
     'serializeHttpOperationRequest',
     'z',
   ],
+  '@liche/extensions': [
+    'agents',
+    'auth',
+    'authGlobals',
+    'authSwitch',
+    'authWhoami',
+    'completions',
+    'config',
+    'configDoctor',
+    'createFileSessionStore',
+    'createLocalTelemetrySink',
+    'logoutAuthSession',
+    'mcpInstaller',
+    'oauthDeviceLogin',
+    'resolveAuth',
+    'resolveContext',
+    'runLocalDoctor',
+    'skillsInstaller',
+  ],
+  '@liche/extensions/agents': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
+  '@liche/extensions/auth': [
+    'auth',
+    'authGlobals',
+    'authSwitch',
+    'authWhoami',
+    'createFileSessionStore',
+    'logoutAuthSession',
+    'oauthDeviceLogin',
+    'resolveAuth',
+    'resolveContext',
+  ],
+  '@liche/extensions/config': ['config', 'configDoctor'],
+  '@liche/extensions/completions': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
+  '@liche/extensions/mcp': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
+  '@liche/extensions/skills': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
+  '@liche/extensions/support': ['createLocalTelemetrySink', 'runLocalDoctor'],
   '@liche/build': [
     'BuildRecordSchema',
     'TARGETS',
@@ -200,7 +234,7 @@ describe('public package readiness', () => {
       expect(json.version).toBe(PUBLIC_PACKAGE_VERSION)
       expect(json.private).toBeUndefined()
       expect(json.engines?.bun).toBe(BUN_ENGINE)
-      expect(json.files).toEqual(['src', 'README.md', 'LICENSE'])
+      expect(json.files).toEqual(expectedPackageFiles(pkg.name))
       expect(json.exports?.['.']).toEqual({
         types: './src/index.ts',
         default: './src/index.ts',
@@ -256,6 +290,14 @@ describe('public package readiness', () => {
 
       writeFileSync(join(consumerDir, 'smoke.ts'), `
 import * as Core from '@liche/core'
+import * as Extensions from '@liche/extensions'
+import * as ExtensionsAgents from '@liche/extensions/agents'
+import * as ExtensionsAuth from '@liche/extensions/auth'
+import * as ExtensionsConfig from '@liche/extensions/config'
+import * as ExtensionsCompletions from '@liche/extensions/completions'
+import * as ExtensionsMcp from '@liche/extensions/mcp'
+import * as ExtensionsSkills from '@liche/extensions/skills'
+import * as ExtensionsSupport from '@liche/extensions/support'
 import * as Build from '@liche/build'
 import * as Product from '@liche/product'
 import * as Releases from '@liche/releases'
@@ -277,6 +319,14 @@ import { join } from 'node:path'
 const expectedPublicValues = ${JSON.stringify(EXPECTED_PUBLIC_VALUES, null, 2)}
 const modules = {
   '@liche/core': Core,
+  '@liche/extensions': Extensions,
+  '@liche/extensions/agents': ExtensionsAgents,
+  '@liche/extensions/auth': ExtensionsAuth,
+  '@liche/extensions/config': ExtensionsConfig,
+  '@liche/extensions/completions': ExtensionsCompletions,
+  '@liche/extensions/mcp': ExtensionsMcp,
+  '@liche/extensions/skills': ExtensionsSkills,
+  '@liche/extensions/support': ExtensionsSupport,
   '@liche/build': Build,
   '@liche/product': Product,
   '@liche/releases': Releases,
@@ -304,6 +354,7 @@ for (const [specifier, mod] of Object.entries(modules)) {
 
 const cli = Core.defineCli({
   name: 'consumer',
+  extensions: [Extensions.completions()],
   commands: [
     Core.defineCommand({
       path: ['ping'],
@@ -312,8 +363,8 @@ const cli = Core.defineCli({
     }),
   ],
 })
-const doctor = await Core.runLocalDoctor({ cliName: 'consumer', env: { PATH: '' }, packageManagers: ['bun'] })
-const sink = Core.createLocalTelemetrySink({ env: {}, append() {} })
+const doctor = await Extensions.runLocalDoctor({ cliName: 'consumer', env: { PATH: '' }, packageManagers: ['bun'] })
+const sink = Extensions.createLocalTelemetrySink({ env: {}, append() {} })
 await sink({ type: 'version.rendered', occurredAt: new Date().toISOString(), cli: { name: 'consumer' }, format: 'json', formatExplicit: true, invocation: 'cli', agent: true, surface: { kind: 'version' } })
 
 const plan = Build.createCompilePlan({

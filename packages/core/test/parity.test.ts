@@ -1,8 +1,6 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { createConfig, middleware, z } from '../src/index.js'
+import { describe, expect, test } from 'bun:test'
+import { middleware, z } from '../src/index.js'
+import { createConfig } from '../src/config/index.js'
 import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
@@ -83,70 +81,6 @@ describe('parity: deprecated option metadata', () => {
   })
 })
 
-describe('parity: mcp add and skills add flag handling', () => {
-  let home: string
-  let cwd: string
-  let originalCwd: string
-  beforeEach(() => {
-    originalCwd = process.cwd()
-    home = realpathSync(mkdtempSync(join(tmpdir(), 'liche-mcp-')))
-    cwd = realpathSync(mkdtempSync(join(tmpdir(), 'liche-cwd-')))
-  })
-  afterEach(() => {
-    process.chdir(originalCwd)
-    rmSync(home, { force: true, recursive: true })
-    rmSync(cwd, { force: true, recursive: true })
-  })
-
-  test('mcp add --agent claude-code writes ~/.claude.json by default', async () => {
-    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
-    process.chdir(cwd)
-    const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code'], { env: { HOME: home } })
-    expect(result.stdout.trim()).toBe(`wrote ${home}/.claude.json`)
-    const config = await Bun.file(`${home}/.claude.json`).json()
-    expect(config.mcpServers.app).toEqual({ args: ['--mcp'], command: 'app' })
-  })
-
-  test('mcp add --agent claude-code --no-global writes ./.mcp.json', async () => {
-    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
-    process.chdir(cwd)
-    const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--no-global'], { env: { HOME: home } })
-    expect(result.stdout.trim()).toBe(`wrote ${cwd}/.mcp.json`)
-    const config = await Bun.file(`${cwd}/.mcp.json`).json()
-    expect(config.mcpServers.app).toEqual({ args: ['--mcp'], command: 'app' })
-  })
-
-  test('mcp add --command override is used as the spawn command', async () => {
-    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
-    process.chdir(cwd)
-    await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '-c', 'bunx app-binary'], { env: { HOME: home } })
-    const config = await Bun.file(`${home}/.claude.json`).json()
-    expect(config.mcpServers.app).toEqual({ args: ['app-binary', '--mcp'], command: 'bunx' })
-  })
-
-  test('skills add --agent cursor writes under ~/.cursor/skills', async () => {
-    const cli = testCli('app', { builtins: { skills: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
-    process.chdir(cwd)
-    const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor'], { env: { HOME: home } })
-    expect(result.stdout.trim()).toBe(`wrote ${home}/.cursor/skills/app/SKILL.md`)
-    expect(await Bun.file(`${home}/.cursor/skills/app/SKILL.md`).text()).toContain('# app')
-  })
-
-  test('skills add --json emits an envelope instead of plain text', async () => {
-    const cli = testCli('app', { builtins: { skills: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
-    process.chdir(cwd)
-    const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor', '--json'], { env: { HOME: home } })
-    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.cursor/skills/app/SKILL.md` }, error: null })
-  })
-
-  test('mcp add --json emits an envelope instead of plain text', async () => {
-    const cli = testCli('app', { builtins: { mcp: true } }, [testCommand('run', { run: () => ({ ok: true }) })])
-    process.chdir(cwd)
-    const result = await runCli(cli, ['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: home } })
-    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { path: `${home}/.claude.json` }, error: null })
-  })
-})
-
 describe('parity: MCP tool naming uses underscores', () => {
   test('mcpToolName flattens whitespace', () => {
     expect(mcpToolName('pr list')).toBe('pr_list')
@@ -172,6 +106,28 @@ describe('parity: MCP tool naming uses underscores', () => {
       params: { name: 'pr_list', arguments: {} },
     })
     expect((call as any).result.isError).toBe(false)
+  })
+
+  test('tools/call cannot invoke commands hidden from agents', async () => {
+    const cli = testCli('app', [
+      testCommand('visible', { run: () => ({ ok: true }) }),
+      testCommand('hidden', { agent: false, run: () => ({ shouldNotRun: true }) }),
+    ])
+    const state = (cli as InternalCli)[stateSymbol]
+
+    const list = await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
+    expect((list as any).result.tools.map((tool: any) => tool.name)).toEqual(['visible'])
+
+    const call = await Mcp.mcpMessage('app', state, {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'hidden', arguments: {} },
+    })
+    expect((call as any).result).toEqual({
+      content: [{ text: '{"code":"COMMAND_NOT_FOUND","message":"No tool hidden"}', type: 'text' }],
+      isError: true,
+    })
   })
 })
 

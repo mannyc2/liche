@@ -6,7 +6,25 @@ export type Format = 'json' | 'yaml' | 'md' | 'jsonl'
 export type DisabledGlobal = 'format'
 export type OutputPolicy = 'all' | 'agent-only'
 export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
-export type GlobalOptions = {
+export type GlobalInputType = 'boolean' | 'string'
+export type GlobalInputDefinition = {
+  alias?: string | undefined
+  deprecated?: boolean | string | undefined
+  description?: string | undefined
+  expose?: 'context' | 'runtime' | undefined
+  flag?: string | undefined
+  hidden?: boolean | undefined
+  key: string
+  type: GlobalInputType
+  valueLabel?: string | undefined
+}
+export type NormalizedGlobalInputDefinition = Omit<GlobalInputDefinition, 'expose' | 'flag'> & {
+  disabled?: boolean | undefined
+  disabledBy?: DisabledGlobal | undefined
+  expose: 'context' | 'runtime'
+  flag: string
+}
+export type GlobalOptions = Record<string, boolean | string | undefined> & {
   nonInteractive?: boolean | undefined
   noSession?: boolean | undefined
   profile?: string | undefined
@@ -116,6 +134,7 @@ export type CommandContract = {
   description?: string | undefined
   effects?: CommandEffects | undefined
   examples?: readonly Example[] | undefined
+  format?: Format | undefined
   hint?: string | undefined
   name: string
   optionConfig?: Record<string, string> | undefined
@@ -185,6 +204,7 @@ export type RunContext<
   agent: boolean
   args: A
   config: Record<string, unknown>
+  configLoaded: boolean
   displayName: string
   env: E
   error(input: CommandError & {
@@ -308,13 +328,6 @@ export type UsageObject = {
 }
 export type Usage = string | UsageObject
 
-export type BuiltinsConfig = {
-  completions?: boolean | undefined
-  config?: boolean | undefined
-  mcp?: boolean | undefined
-  skills?: boolean | undefined
-}
-
 export type SkillDefinition = {
   index?: string | undefined
   markdown?: string | undefined
@@ -337,6 +350,7 @@ export type CommandDefinition<
   effects?: CommandEffects | undefined
   examples?: Example[] | undefined
   fetch?: FetchHandler | undefined
+  format?: Format | undefined
   hint?: string | undefined
   middleware?: MiddlewareHandler[] | undefined
   options?: O | undefined
@@ -402,8 +416,20 @@ export type DeclarativeCommand<
   summary?: string | undefined
 }
 
-export type DefineCliOptions = Omit<CreateOptions, 'name'> & {
+export type CliExtension = {
   commands?: readonly DeclarativeCommand[] | undefined
+  config?: ConfigDefinition | undefined
+  events?: readonly CliEventRegistration[] | undefined
+  globals?: readonly GlobalInputDefinition[] | undefined
+  hooks?: CliHookRegistration | undefined
+  id: string
+  middleware?: readonly MiddlewareHandler[] | undefined
+  skill?: SkillDefinition | undefined
+}
+
+export type DefineCliOptions = Omit<CreateOptions, 'config' | 'name'> & {
+  commands?: readonly DeclarativeCommand[] | undefined
+  extensions?: readonly CliExtension[] | undefined
   name: string
 }
 
@@ -413,7 +439,6 @@ export type CreateOptions<
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = CommandDefinition<A, E, O, Out> & {
-  builtins?: BuiltinsConfig | undefined
   config?: ConfigDefinition | undefined
   format?: Format | undefined
   generated?:
@@ -424,7 +449,7 @@ export type CreateOptions<
     | undefined
   events?: readonly CliEventRegistration[] | undefined
   hooks?: CliHookRegistration | undefined
-  mcp?: { agents?: string[] | undefined; command?: string | undefined } | undefined
+  globals?: readonly GlobalInputDefinition[] | undefined
   skill?: SkillDefinition | undefined
   name?: string | undefined
   sync?:
@@ -485,6 +510,7 @@ export type CliState = {
   commands: Map<string, Entry>
   def: CreateOptions
   events: CliEventSubscription[]
+  globals: readonly NormalizedGlobalInputDefinition[]
   hooks: CliHooks
   middlewares: MiddlewareHandler[]
   root?: RuntimeEntry | undefined

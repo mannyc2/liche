@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-import { createConfig, defineCli, defineCommand, z } from '@liche/core'
+import { defineCli, defineCommand, z } from '@liche/core'
+import { completions, config } from '@liche/extensions'
 import {
   PublisherCredentialEnvSchema,
   runPackageCommand,
@@ -11,7 +12,6 @@ import { ReleasesConfigSchema } from './release-config.js'
 const RELEASE_TOOL_VERSION = '0.2.0'
 
 export const cli = defineCli({
-  builtins: { completions: true },
   commands: [
     defineCommand({
       path: ['package'],
@@ -45,11 +45,14 @@ export const cli = defineCli({
       run: ({ ctx }) => runShipCommand(ctx),
     }),
   ],
-  config: createConfig({
-    files: ['liche.releases.json', 'liche.releases.jsonc'],
-    schema: ReleasesConfigSchema,
-    scopes: { project: { discoverUpwards: true }, user: false },
-  }),
+  extensions: [
+    completions(),
+    config({
+      files: ['liche.releases.json', 'liche.releases.jsonc'],
+      schema: ReleasesConfigSchema,
+      scopes: { project: { discoverUpwards: true }, user: false },
+    }),
+  ],
   name: 'liche-release',
   version: RELEASE_TOOL_VERSION,
 })

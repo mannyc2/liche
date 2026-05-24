@@ -3,7 +3,6 @@ import { isCommand } from '../command/guards.js'
 import { childCommands, commandScope } from '../command/registry.js'
 import { description, encodeDefault, isBooleanSchema, isDeprecated, isOptional, objectShape } from '../schema/zod.js'
 import { kebab } from '../internal.js'
-import { builtinHelpLines } from '../cli/builtin-metadata.js'
 
 export function renderHelp(name: string, state: CliState, selected?: SelectedCommand | undefined, rest: string[] = []): string {
   const scope = commandScope(state, selected?.path ?? rest)
@@ -26,25 +25,8 @@ export function renderHelp(name: string, state: CliState, selected?: SelectedCom
   if (contract?.examples?.length) lines.push('', 'Examples:', ...exampleLines(scopedName, contract.examples))
   if (contract?.hint) lines.push('', contract.hint)
 
-  const builtins = builtinHelpLines(state.def.builtins, !!state.def.config)
-  if (builtins.length) lines.push('', 'Built-in Commands:', ...builtins)
-
-  lines.push(
-    '',
-    'Global Options:',
-    '  --format <json|yaml|md|jsonl>',
-    '  --json',
-    '  --full-output',
-    '  --filter-output <paths>',
-    '  --llms',
-    '  --mcp',
-    '  --schema',
-    '  --token-count',
-    '  --token-limit <n>',
-    '  --token-offset <n>',
-    '  --help, -h',
-    '  --version',
-  )
+  const globals = globalLines(state)
+  if (globals.length) lines.push('', 'Global Options:', ...globals)
 
   return lines.join('\n')
 }
@@ -145,6 +127,23 @@ function defaultSuffix(schema: Schema): string {
 function flag(key: string, alias?: string | undefined): string {
   const long = key.length === 1 ? `-${key}` : `--${kebab(key)}`
   return `${alias ? `-${alias}, ` : ''}${long}`.padEnd(22)
+}
+
+function globalLines(state: CliState): string[] {
+  const globals = state.globals.filter((global) => !global.hidden && !global.disabled)
+  return globals.map((global) => {
+    const renderedFlag = globalFlag(global.flag, global.alias, global.valueLabel)
+    const deprecatedSuffix = global.deprecated
+      ? ` ${typeof global.deprecated === 'string' ? `[deprecated: ${global.deprecated}]` : '[deprecated]'}`
+      : ''
+    const descriptionText = `${global.description ?? ''}${deprecatedSuffix}`
+    return descriptionText ? `  ${renderedFlag.padEnd(32)}  ${descriptionText}` : `  ${renderedFlag}`
+  })
+}
+
+function globalFlag(flagName: string, alias?: string | undefined, valueLabel?: string | undefined): string {
+  const long = `--${flagName}${valueLabel ? ` <${valueLabel}>` : ''}`
+  return alias ? `${long}, -${alias}` : long
 }
 
 function commandRuntime(entry: Entry | undefined): CommandRuntime | undefined {

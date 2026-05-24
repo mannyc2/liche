@@ -1,11 +1,11 @@
 import { describe, test, expect } from 'bun:test'
 import { Glob } from 'bun'
 
-const FORBIDDEN = ['@liche/build', '@liche/product', '@liche/releases']
+const FORBIDDEN = ['@liche/build', '@liche/extensions', '@liche/product', '@liche/releases']
 const FORBIDDEN_RUNTIME_DEPS = ['@toon-format/toon']
 
 describe('package boundary: @liche/core', () => {
-  test('does not import @liche/build, @liche/product, or @liche/releases', async () => {
+  test('does not import @liche/extensions, @liche/build, @liche/product, or @liche/releases', async () => {
     const glob = new Glob('src/**/*.ts')
     const offenders: { file: string; match: string }[] = []
     for await (const file of glob.scan({ cwd: import.meta.dir.replace(/\/test$/, '') })) {

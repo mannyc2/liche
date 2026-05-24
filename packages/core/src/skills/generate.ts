@@ -18,7 +18,7 @@ export function skillMarkdown(name: string, state: CliState): string {
     '## Commands',
   ]
 
-  for (const command of collectCommandContracts(state.commands, state.root)) {
+  for (const command of skillCommandContracts(state)) {
     lines.push('', `### ${command.name}`, command.description ?? '', '', code(name, command.name))
     const schema = command.schema as any
     const optionsSchema = schema?.options
@@ -58,8 +58,12 @@ function kebab(input: string): string {
 export function skillIndex(name: string, state: CliState): string {
   if (state.def.skill?.index) return state.def.skill.index
 
-  const commands = collectCommandContracts(state.commands, state.root)
+  const commands = skillCommandContracts(state)
   return [`# ${name}`, state.def.description ?? '', '', ...commands.map((command) => `- ${command.name}: ${command.description ?? ''}`)].join('\n')
+}
+
+function skillCommandContracts(state: CliState): CommandContract[] {
+  return collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false)
 }
 
 function code(name: string, commandName: string): string {

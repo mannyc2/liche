@@ -11,6 +11,7 @@
   "dependencies": {
     "@liche/build": "0.2.0",
     "@liche/core": "0.2.0",
+    "@liche/extensions": "0.2.0",
     "@liche/releases": "0.2.0"
   },
   "devDependencies": {

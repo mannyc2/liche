@@ -14,7 +14,7 @@
       "default": "./src/index.ts"
     }
   },
-  "files": ["src", "README.md", "LICENSE"],
+  "files": ["src", "README.md", "SKILL.md", "LICENSE"],
   "publishConfig": {
     "access": "public"
   },

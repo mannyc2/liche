@@ -9,7 +9,9 @@
  * Do not edit by hand. Regenerate via `liche-product generate`.
  */
 
-import { callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z } from '@liche/core'
+import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'
+import { config as configExtension, configDoctor } from '@liche/extensions/config'
+import { createLocalTelemetrySink, runLocalDoctor } from '@liche/extensions/support'
 import { deploy, dev } from './impl/wrangler.js'
 
 const PRODUCT_ID = 'workers'
@@ -820,15 +822,11 @@ const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
   generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+  extensions: [configExtension({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], schema: z.strictObject({
+    'accountId': z.string().optional(),
+    'apiBaseUrl': z.string().default("https://api.cloudflare.test"),
+  }), scopes: { project: { discoverUpwards: true }, user: { xdg: true } } }), configDoctor()],
   events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],
-  config: createConfig({
-    files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
-    schema: z.strictObject({
-      'accountId': z.string().optional(),
-      'apiBaseUrl': z.string().default("https://api.cloudflare.test"),
-    }),
-    scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
-  }),
   commands: [
     defineCommand({
       path: ['script', 'list'],

@@ -1,5 +1,5 @@
 import { defineCli, defineCommand } from '../src/index.js'
-import type { CliInstance, DeclarativeCommand, ServeOptions } from '../src/index.js'
+import type { CliExtension, CliInstance, DeclarativeCommand, ServeOptions } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import type { CommandDefinition, CreateOptions } from '../src/types.js'
 
@@ -70,7 +70,17 @@ export function testCli(
   const commands = Array.isArray(definitionOrCommands) ? definitionOrCommands : maybeCommands
   const definition = Array.isArray(definitionOrCommands) ? {} : definitionOrCommands
   if (typeof nameOrDefinition === 'string') {
-    return defineCli({ ...definition, commands, name: nameOrDefinition })
+    return defineCli(normalizeTestDefinition({ ...definition, commands, name: nameOrDefinition }))
   }
-  return defineCli({ ...nameOrDefinition, commands })
+  return defineCli(normalizeTestDefinition({ ...nameOrDefinition, commands }))
+}
+
+function normalizeTestDefinition(definition: CreateOptions & { commands: readonly DeclarativeCommand[]; name: string }) {
+  const { config, ...rest } = definition
+  const extensions: CliExtension[] = [...((rest as any).extensions ?? [])]
+  if (config) extensions.push({ config, id: 'test.config' })
+  return {
+    ...rest,
+    ...(extensions.length ? { extensions } : undefined),
+  } as any
 }

@@ -8,9 +8,9 @@ import {
   createFileSessionStore,
   logoutAuthSession,
   oauthDeviceLogin,
-  secret,
-} from '../../src/index.js'
-import type { AuthProviderRuntime } from '../../src/index.js'
+} from '../../src/auth/index.js'
+import { secret } from '../../src/auth/secret.js'
+import type { AuthProviderRuntime } from '../../src/auth/types.js'
 
 const provider: AuthProviderRuntime = {
   id: 'acme',

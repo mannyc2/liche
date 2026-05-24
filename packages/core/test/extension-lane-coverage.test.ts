@@ -1,28 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  createConfig,
   defineCli,
   defineCommand,
   z,
 } from '@liche/core'
 import type {
-  BeforeExecuteHook,
   CliEvent,
-  CliEventRegistration,
+  CliExtension,
   CliInstance,
+  ConfigDefinition,
   DeclarativeCommand,
-  DefineCliOptions,
-  MiddlewareHandler,
   ServeOptions,
 } from '@liche/core'
 
 type CapturedRun = { exitCode: number; stderr: string; stdout: string }
-type ExtensionLane = {
-  commands?: readonly DeclarativeCommand[] | undefined
-  events?: readonly CliEventRegistration[] | undefined
-  hooks?: DefineCliOptions['hooks'] | undefined
-  middleware?: readonly MiddlewareHandler[] | undefined
-}
 
 describe('extension lane coverage', () => {
   test('fixture consumes only the public package root', async () => {
@@ -65,7 +56,11 @@ describe('extension lane coverage', () => {
   })
 
   test('hook extensions can enforce non-interactive policy without core widening', async () => {
-    const cli = appWithExtensions([nonInteractiveConfirmationExtension()], [deleteCommand()])
+    const middlewareRuns: string[] = []
+    const cli = appWithExtensions([
+      middlewareSpyExtension(middlewareRuns),
+      nonInteractiveConfirmationExtension(),
+    ], [deleteCommand()])
 
     const blocked = await runCli(cli, ['delete', '--non-interactive', '--json'])
     expect(blocked.exitCode).toBe(1)
@@ -81,12 +76,27 @@ describe('extension lane coverage', () => {
     const confirmed = await runCli(cli, ['delete', '--non-interactive', '--confirm', '--json'])
     expect(confirmed.exitCode).toBe(0)
     expect(JSON.parse(confirmed.stdout)).toEqual({ deleted: true })
+    expect(middlewareRuns).toEqual(['app'])
   })
 })
 
-function supportExtension(input: { enabled: boolean; events: CliEvent[] }): ExtensionLane {
-  if (!input.enabled) return {}
+function configExtension(): CliExtension {
   return {
+    id: 'test-config',
+    config: {
+      kind: 'liche.config.object',
+      schema: z.strictObject({
+        apiBaseUrl: z.string().url().default('https://default.example.test'),
+        defaultRegion: z.string().default('iad'),
+      }),
+    } as ConfigDefinition,
+  }
+}
+
+function supportExtension(input: { enabled: boolean; events: CliEvent[] }): CliExtension {
+  if (!input.enabled) return { id: 'support-disabled' }
+  return {
+    id: 'support',
     commands: [
       defineCommand({
         path: ['support', 'doctor'],
@@ -110,8 +120,29 @@ function supportExtension(input: { enabled: boolean; events: CliEvent[] }): Exte
   }
 }
 
-function nonInteractiveConfirmationExtension(): ExtensionLane {
+function middlewareSpyExtension(runs: string[]): CliExtension {
   return {
+    id: 'middleware-spy',
+    middleware: [
+      async (ctx, next) => {
+        runs.push(ctx.displayName)
+        await next()
+      },
+    ],
+  }
+}
+
+function nonInteractiveConfirmationExtension(): CliExtension {
+  return {
+    id: 'non-interactive-confirmation',
+    globals: [
+      {
+        description: 'Disable interactive prompts',
+        flag: 'non-interactive',
+        key: 'nonInteractive',
+        type: 'boolean',
+      },
+    ],
     hooks: {
       beforeExecute(ctx) {
         if (ctx.global.nonInteractive && ctx.options['confirm'] !== true) {
@@ -128,22 +159,15 @@ function nonInteractiveConfirmationExtension(): ExtensionLane {
 }
 
 function appWithExtensions(
-  extensions: readonly ExtensionLane[],
+  extensions: readonly CliExtension[],
   commands: readonly DeclarativeCommand[] = [deployCommand()],
 ): CliInstance {
+  const allExtensions = [configExtension(), ...extensions]
   return defineCli({
     name: 'app',
-    config: createConfig({
-      schema: z.strictObject({
-        apiBaseUrl: z.string().url().default('https://default.example.test'),
-        defaultRegion: z.string().default('iad'),
-      }),
-    }),
-    vars: z.object({ commandCount: z.number().default(commands.length + extensionCommands(extensions).length) }),
-    commands: [...commands, ...extensionCommands(extensions)],
-    events: extensions.flatMap((extension) => [...(extension.events ?? [])]),
-    hooks: mergeHooks(extensions),
-    middleware: extensions.flatMap((extension) => [...(extension.middleware ?? [])]),
+    vars: z.object({ commandCount: z.number().default(commands.length + extensionCommands(allExtensions).length) }),
+    commands,
+    extensions: allExtensions,
   })
 }
 
@@ -184,18 +208,8 @@ function deleteCommand(): DeclarativeCommand {
   })
 }
 
-function extensionCommands(extensions: readonly ExtensionLane[]): DeclarativeCommand[] {
+function extensionCommands(extensions: readonly CliExtension[]): DeclarativeCommand[] {
   return extensions.flatMap((extension) => [...(extension.commands ?? [])])
-}
-
-function mergeHooks(extensions: readonly ExtensionLane[]): DefineCliOptions['hooks'] | undefined {
-  const beforeExecute = extensions.flatMap((extension) => hookList(extension.hooks?.beforeExecute))
-  return beforeExecute.length > 0 ? { beforeExecute } : undefined
-}
-
-function hookList(hook: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined): BeforeExecuteHook[] {
-  if (hook === undefined) return []
-  return typeof hook === 'function' ? [hook] : [...hook]
 }
 
 async function runCli(

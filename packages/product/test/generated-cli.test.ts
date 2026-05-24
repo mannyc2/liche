@@ -84,7 +84,9 @@ describe('generated CLI — boundary discipline', () => {
     const coreImports = [...source.matchAll(/from '@liche\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, createConfig, createLocalTelemetrySink, defineCli, defineCommand, runLocalDoctor, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, z')
+    expect(source).toContain(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
+    expect(source).toContain(`import { createLocalTelemetrySink, runLocalDoctor } from '@liche/extensions/support'`)
   })
 
   test('generated source does not import from @liche/core subpaths or internals', () => {
@@ -303,7 +305,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(out.stderr).toContain('--format is disabled')
   })
 
-  test('agent helper builtins stay disabled on generated product CLIs', async () => {
+  test('agent helper commands stay disabled on generated product CLIs', async () => {
     const out = await runCli(workersGenerated, ['skills', 'list', '--json'])
     expect(out.stdout).toContain('Usage: workers <command>')
     expect(out.stdout).not.toContain('skills list')

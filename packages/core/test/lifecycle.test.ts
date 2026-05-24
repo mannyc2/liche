@@ -185,16 +185,18 @@ describe('lifecycle events and hooks', () => {
     expect(JSON.stringify(events)).not.toContain('Required')
   })
 
-  test('emits local-only lifecycle events for pre-execution surfaces', async () => {
+  test('emits local-only lifecycle events for pre-execution surfaces and command events for completions', async () => {
     const events: CliEvent[] = []
     const cli = testCli('app', {
-      builtins: { completions: true },
       events: [(event) => {
         events.push(event as CliEvent)
       }],
       version: '1.2.3',
     }, [testCommand('show', {
         run: () => ({ value: true }),
+      }),
+      testCommand('completions', {
+        run: () => 'complete script',
       })])
 
     await runCli(cli, ['show', '--help'])
@@ -211,13 +213,13 @@ describe('lifecycle events and hooks', () => {
       'command.not_found',
       'help.rendered',
       'completion.generated',
-      'completion.generated',
+      'command.selected',
+      'command.started',
+      'command.completed',
     ])
     expect(events.find((event) => event.type === 'schema.generated')?.command).toEqual({ id: 'show', path: ['show'] })
-    expect(events.filter((event) => event.type === 'completion.generated').map((event) => event.completion?.shell)).toEqual([
-      'bash',
-      'bash',
-    ])
+    expect(events.filter((event) => event.type === 'completion.generated').map((event) => event.completion?.shell)).toEqual(['bash'])
+    expect(events.find((event) => event.type === 'command.completed')?.command).toEqual({ id: 'completions', path: ['completions'] })
     expect(JSON.stringify(events)).not.toContain('secret-command-name')
   })
 

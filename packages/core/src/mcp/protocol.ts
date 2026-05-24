@@ -33,7 +33,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
   }
 
   if (message?.method === 'tools/list') {
-    const tools = collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false).map((command: any) => ({
+    const tools = mcpCommandContracts(state).map((command: any) => ({
       ...(command.auth ? { auth: command.auth } : undefined),
       description: command.description,
       inputSchema: {
@@ -74,7 +74,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       return jsonRpcError(id, -32600, 'Invalid Request')
     }
     const { name: toolName, arguments: input = {} } = message.params
-    const canonical = collectCommandContracts(state.commands, state.root).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
+    const canonical = mcpCommandContracts(state).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
     const path = !canonical || canonical === '(root)' ? [] : canonical.split(' ')
     const selected = canonical ? selectCommand(state, path) : undefined
     const selectedToolName = selected?.path.length ? mcpToolName(selected.path.join(' ')) : '(root)'
@@ -139,6 +139,10 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
   }
 
   return { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } }
+}
+
+function mcpCommandContracts(state: CliState) {
+  return collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false)
 }
 
 export function mcpParseError() {

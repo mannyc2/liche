@@ -3,11 +3,10 @@ import { execute } from './execute.js'
 import { ParseError } from '../errors/error.js'
 import { format, formatCta, pick, tokenCount, tokenSlice } from '../format/index.js'
 import { loadConfigResolution, parseGlobals } from '../parser/index.js'
-import { outputPolicy, selectCommand } from '../command/registry.js'
+import { commandFormat, outputPolicy, selectCommand } from '../command/registry.js'
 import { renderHelp } from '../help/render.js'
 import { commandContract } from '../command/contract.js'
 import { serveMcp } from '../mcp/stdio.js'
-import { runBuiltin } from './builtins.js'
 import { skillIndex, skillMarkdown } from '../skills/generate.js'
 import { manifestEnvelope } from '../command/registry.js'
 import { complete, shells } from '../completions/shells.js'
@@ -32,7 +31,7 @@ export async function serveCli(
 
   let flags
   try {
-    flags = parseGlobals(argv, state.def.config?.flag, state.def.generated?.disabledGlobals)
+    flags = parseGlobals(argv, state.def.config?.flag, state.def.generated?.disabledGlobals, state.globals)
   } catch (error) {
     if (error instanceof ParseError) {
       await emitServeLifecycle(name, state, state.events, {
@@ -52,7 +51,7 @@ export async function serveCli(
     }
     throw error
   }
-  const outputFormat = flags.json ? 'json' : flags.format ?? state.def.format ?? DEFAULT_FORMAT
+  const rootOutputFormat = flags.json ? 'json' : flags.format ?? state.def.format ?? DEFAULT_FORMAT
   const formatExplicit = !!(flags.formatExplicit || flags.json)
   const human = !flags.formatExplicit && !flags.json && isTty
 
@@ -61,7 +60,7 @@ export async function serveCli(
       await emitServeLifecycle(name, state, state.events, {
         agent: !isTty || formatExplicit,
         error: { code: 'PARSE_ERROR' },
-        format: outputFormat,
+        format: rootOutputFormat,
         formatExplicit,
         invocation,
         result: 'user_error',
@@ -75,7 +74,7 @@ export async function serveCli(
     await emitServeLifecycle(name, state, state.events, {
       agent: !isTty || formatExplicit,
       completion: { shell: env['COMPLETE'], suggestionCount: suggestions.length },
-      format: outputFormat,
+      format: rootOutputFormat,
       formatExplicit,
       invocation,
       surface: { kind: 'completion' },
@@ -87,7 +86,7 @@ export async function serveCli(
   if (flags.version) {
     await emitServeLifecycle(name, state, state.events, {
       agent: !isTty || formatExplicit,
-      format: outputFormat,
+      format: rootOutputFormat,
       formatExplicit,
       invocation,
       surface: { kind: 'version' },
@@ -96,26 +95,18 @@ export async function serveCli(
     return io.out(`${state.def.version ?? '0.0.0'}\n`)
   }
   if (flags.mcp) return await serveMcp(name, state, options)
-  if (await runBuiltin(name, state, flags, io, outputFormat, env as Record<string, string | undefined>, (event) =>
-    emitServeLifecycle(name, state, state.events, {
-      agent: !isTty || formatExplicit,
-      format: outputFormat,
-      formatExplicit,
-      invocation,
-      ...event,
-    }),
-  )) return
 
   if (flags.llms) {
-    const wantsStructured = flags.formatExplicit && outputFormat !== 'md'
+    const wantsStructured = flags.formatExplicit && rootOutputFormat !== 'md'
     if (wantsStructured) {
-      return io.out(`${format(manifestEnvelope(name, state), outputFormat)}\n`)
+      return io.out(`${format(manifestEnvelope(name, state), rootOutputFormat)}\n`)
     }
     const value = flags.fullOutput ? skillMarkdown(name, state) : skillIndex(name, state)
     return io.out(`${format(value, 'md')}\n`)
   }
 
   const selected = selectCommand(state, flags.rest)
+  const outputFormat = flags.json ? 'json' : flags.format ?? (selected ? commandFormat(selected) : undefined) ?? state.def.format ?? DEFAULT_FORMAT
   if (!selected && flags.rest.length > 0) {
     await emitServeLifecycle(name, state, state.events, {
       agent: !isTty || formatExplicit,
@@ -190,11 +181,7 @@ export async function serveCli(
     events: state.events.concat(selected.events),
     format: outputFormat,
     formatExplicit,
-    global: {
-      ...(flags.noSession ? { noSession: true } : undefined),
-      ...(flags.nonInteractive ? { nonInteractive: true } : undefined),
-      ...(flags.profile ? { profile: flags.profile } : undefined),
-    },
+    global: contextGlobals(flags, state),
     hooks: mergeHooks(state.hooks, selected.hooks),
     invocation,
     isTty,
@@ -234,6 +221,16 @@ export async function serveCli(
   }
 
   if (exitCode) (options.exit ?? process.exit)(exitCode)
+}
+
+function contextGlobals(flags: Record<string, unknown>, state: CliState): Record<string, boolean | string | undefined> {
+  const out: Record<string, boolean | string | undefined> = {}
+  for (const global of state.globals) {
+    if (global.expose !== 'context') continue
+    const value = flags[global.key]
+    if (typeof value === 'boolean' || typeof value === 'string') out[global.key] = value
+  }
+  return out
 }
 
 async function emitServeLifecycle(
