@@ -179,8 +179,8 @@ function exportedTargets(value: unknown): string[] {
 }
 
 function packedPath(target: string): string {
-  if (!target.startsWith('./')) throw new Error(`export target must be package-relative: ${target}`)
-  return `package/${target.slice(2)}`
+  const normalized = target.startsWith('./') ? target.slice(2) : target
+  return `package/${normalized}`
 }
 
 function expectPackedTargets(entries: string[], json: Record<string, any>) {
@@ -208,7 +208,7 @@ describe('public package readiness', () => {
       for (const [dependencyName, version] of Object.entries(json.dependencies ?? {})) {
         if (dependencyName.startsWith('@liche/')) expect(version).toBe(`^${PUBLIC_PACKAGE_VERSION}`)
       }
-      if (pkg.bin) expect(json.bin?.[pkg.bin]).toMatch(/^\.\/src\/.*\.ts$/)
+      if (pkg.bin) expect(json.bin?.[pkg.bin]).toMatch(/^src\/.*\.ts$/)
       expect(readFileSync(join(REPO_ROOT, pkg.dir, 'README.md'), 'utf8')).toContain(`# ${pkg.name}`)
     }
   })

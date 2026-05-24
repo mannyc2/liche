@@ -63,9 +63,13 @@
     }
   },
   "bin": {
-    "liche-release": "./src/cli.ts"
+    "liche-release": "src/cli.ts"
   },
-  "files": ["src", "README.md", "LICENSE"],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },

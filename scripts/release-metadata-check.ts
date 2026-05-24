@@ -70,6 +70,29 @@ function packageMetadataValue(json: Record<string, any>, key: string): string | 
   return null
 }
 
+function collectBinIssues(packageDir: string, bin: unknown): string[] {
+  if (bin === undefined) return []
+  if (!bin || typeof bin !== 'object' || Array.isArray(bin)) return ['bin must be an object when present']
+
+  const issues: string[] = []
+  for (const [name, target] of Object.entries(bin)) {
+    if (typeof target !== 'string') {
+      issues.push(`${name} target must be a string`)
+      continue
+    }
+    if (target.startsWith('./')) {
+      issues.push(`${name} target must omit leading ./ so npm publish does not normalize the package`)
+    }
+    if (!target.startsWith('src/') || !target.endsWith('.ts')) {
+      issues.push(`${name} target must point at src/*.ts`)
+    }
+    if (!existsSync(join(packageDir, target))) {
+      issues.push(`${name} target ${target} does not exist`)
+    }
+  }
+  return issues
+}
+
 export function collectReleaseMetadataCheck(): MetadataCheckReport {
   const checks: CheckResult[] = []
 
@@ -164,6 +187,13 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
       json.publishConfig?.access === 'public'
         ? pass(`package-access:${pkg.name}`, `${pkg.name} publishes publicly`)
         : fail(`package-access:${pkg.name}`, `${pkg.name} publishConfig.access must be public`),
+    )
+
+    const binIssues = collectBinIssues(packageDir, json.bin)
+    checks.push(
+      binIssues.length === 0
+        ? pass(`package-bin:${pkg.name}`, `${pkg.name} has npm-stable bin metadata`)
+        : fail(`package-bin:${pkg.name}`, binIssues.join('; ')),
     )
 
     const metadataText = JSON.stringify({
