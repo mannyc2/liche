@@ -1,14 +1,11 @@
-import type { CliEvent, CliEventSubscription, CliState, Dict, Format, ServeOptions } from '../types.js'
+import type { CliEvent, CliEventSubscription, CliState, Dict, Format, PrepareContextHook, RunContext, ServeOptions } from '../types.js'
 import { execute } from './execute.js'
-import { ParseError } from '../errors/error.js'
-import { format, formatCta, pick, tokenCount, tokenSlice } from '../format/index.js'
-import { loadConfigResolution, parseGlobals } from '../parser/index.js'
+import { isRuntimeResult, ParseError } from '../errors/error.js'
+import { formatCta, pick, renderOutput, tokenCount, tokenSlice } from '../format/index.js'
+import { parseGlobals } from '../parser/index.js'
 import { commandFormat, outputPolicy, selectCommand } from '../command/registry.js'
 import { renderHelp } from '../help/render.js'
 import { commandContract } from '../command/contract.js'
-import { serveMcp } from '../mcp/stdio.js'
-import { skillIndex, skillMarkdown } from '../skills/generate.js'
-import { manifestEnvelope } from '../command/registry.js'
 import { complete, shells } from '../completions/shells.js'
 import { formatHumanValidationError } from './human-validation-error.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
@@ -31,7 +28,7 @@ export async function serveCli(
 
   let flags
   try {
-    flags = parseGlobals(argv, state.def.config?.flag, state.def.generated?.disabledGlobals, state.globals)
+    flags = parseGlobals(argv, state.globals)
   } catch (error) {
     if (error instanceof ParseError) {
       await emitServeLifecycle(name, state, state.events, {
@@ -94,19 +91,29 @@ export async function serveCli(
     })
     return io.out(`${state.def.version ?? '0.0.0'}\n`)
   }
-  if (flags.mcp) return await serveMcp(name, state, options)
-
-  if (flags.llms) {
-    const wantsStructured = flags.formatExplicit && rootOutputFormat !== 'md'
-    if (wantsStructured) {
-      return io.out(`${format(manifestEnvelope(name, state), rootOutputFormat)}\n`)
-    }
-    const value = flags.fullOutput ? skillMarkdown(name, state) : skillIndex(name, state)
-    return io.out(`${format(value, 'md')}\n`)
+  for (const handler of state.serveHandlers) {
+    if (flags[handler.flagKey]) return await handler.handle({ binaryName: name, flags, options, state })
   }
 
   const selected = selectCommand(state, flags.rest)
   const outputFormat = flags.json ? 'json' : flags.format ?? (selected ? commandFormat(selected) : undefined) ?? state.def.format ?? DEFAULT_FORMAT
+  if (!selected && flags.rest.some(isFlagLikeToken)) {
+    await emitServeLifecycle(name, state, state.events, {
+      agent: !isTty || formatExplicit,
+      error: { code: 'PARSE_ERROR', exitCode: 1 },
+      exitCode: 1,
+      format: outputFormat,
+      formatExplicit,
+      invocation,
+      result: 'user_error',
+      surface: { kind: 'parse' },
+      type: 'parse.failed',
+    })
+    const token = flags.rest.find(isFlagLikeToken) ?? flags.rest[0] ?? ''
+    io.err(`Error (PARSE_ERROR): Unknown option: ${token}\n`)
+    ;(options.exit ?? process.exit)(1)
+    return
+  }
   if (!selected && flags.rest.length > 0) {
     await emitServeLifecycle(name, state, state.events, {
       agent: !isTty || formatExplicit,
@@ -140,12 +147,13 @@ export async function serveCli(
       surface: { kind: 'schema' },
       type: 'schema.generated',
     })
-    return io.out(`${format(commandContract(selected.path.join(' ') || '(root)', selected.entry)?.schema, outputFormat)}\n`)
+    return io.out(`${renderOutput(commandContract(selected.path.join(' ') || '(root)', selected.entry)?.schema, outputFormat, state.outputRenderers, { stage: 'schema' })}\n`)
   }
 
-  let configLoaded
+  const prepareHooks = [...state.hooks.prepareContext, ...selected.hooks.prepareContext]
+  let contextOverrides: Partial<RunContext>
   try {
-    configLoaded = await loadConfigResolution(name, state, flags, env)
+    contextOverrides = await runPrepareContext(prepareHooks, { name, env, flags })
   } catch (error) {
     if (error instanceof ParseError) {
       await emitServeLifecycle(name, state, state.events.concat(selected.events), {
@@ -175,14 +183,16 @@ export async function serveCli(
   const result = await execute(name, selected, {
     agent: !isTty || formatExplicit,
     argvOptions: selected.argv,
-    config: configLoaded,
+    contextOverrides,
     displayName: name,
     env,
     events: state.events.concat(selected.events),
+    flags,
     format: outputFormat,
     formatExplicit,
     global: contextGlobals(flags, state),
     hooks: mergeHooks(state.hooks, selected.hooks),
+    inputSources: state.inputSources,
     invocation,
     isTty,
     middlewares: state.middlewares.concat(selected.middlewares),
@@ -193,7 +203,7 @@ export async function serveCli(
       ? (chunk) => {
           streamed = true
           const value = outputFormat === 'jsonl' ? { type: 'chunk', data: chunk } : chunk
-          const text = format(value, chunkFormat)
+          const text = renderOutput(value, chunkFormat, state.outputRenderers, { stage: 'chunk' })
           io.out(text.endsWith('\n') ? text : `${text}\n`)
         }
       : undefined,
@@ -206,7 +216,8 @@ export async function serveCli(
   let data: unknown = flags.fullOutput || envelopeMode || machineErrorEnvelope ? result : result.ok ? result.data : result.error
   if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
 
-  let text = flags.tokenCount ? String(tokenCount(format(data, outputFormat))) : format(data, outputFormat)
+  const rendered = renderOutput(data, outputFormat, state.outputRenderers, { stage: 'result' })
+  let text = flags.tokenCount ? String(tokenCount(rendered)) : rendered
   if (flags.tokenLimit !== undefined || flags.tokenOffset) text = tokenSlice(text, flags.tokenOffset ?? 0, flags.tokenLimit ?? Infinity)
 
   const suppressStreamedRecap = streamed && result.ok
@@ -242,6 +253,23 @@ async function emitServeLifecycle(
   await emitLifecycleEvent(subscriptions, createLifecycleEvent(binaryName, state.def.version, event))
 }
 
+async function runPrepareContext(
+  hooks: readonly PrepareContextHook[],
+  input: { name: string; env: Dict<string | undefined>; flags: Dict },
+): Promise<Partial<RunContext>> {
+  const overrides: Partial<RunContext> = {}
+  for (const hook of hooks) {
+    const result = await hook(input)
+    if (!result) continue
+    if (isRuntimeResult(result)) {
+      if (!result.ok) throw new ParseError({ message: result.error.message ?? 'Prepare context failed' })
+      continue
+    }
+    if (result.patch) Object.assign(overrides, result.patch)
+  }
+  return overrides
+}
+
 function isCiEnv(env: Dict<string | undefined>): boolean {
   const value = env['CI']
   if (value !== undefined && value !== '' && value !== '0' && value.toLowerCase() !== 'false') {
@@ -251,4 +279,8 @@ function isCiEnv(env: Dict<string | undefined>): boolean {
     const v = env[key]
     return v !== undefined && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
   })
+}
+
+function isFlagLikeToken(token: string): boolean {
+  return token.startsWith('-') && token !== '-'
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { middleware, z } from '../src/index.js'
 import type { CliEvent } from '../src/index.js'
-import * as Mcp from '../src/mcp/index.js'
+import * as Mcp from '@liche/mcp-server'
 import { parseJsonOutput, runCli, stateOf, testCli, testCommand } from './helpers.js'
 
 describe('lifecycle events and hooks', () => {

@@ -2,13 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import {
   defineCli,
   defineCommand,
+  outputControls,
   z,
 } from '@liche/core'
 import type {
-  CliEvent,
   CliExtension,
   CliInstance,
-  ConfigDefinition,
   DeclarativeCommand,
   ServeOptions,
 } from '@liche/core'
@@ -23,41 +22,10 @@ describe('extension lane coverage', () => {
     expect(source).not.toMatch(/from ['"][^'"]*(stateSymbol|registry|parser|InternalCli)/)
   })
 
-  test('command and event extensions work without changing baseline command semantics', async () => {
-    const events: CliEvent[] = []
-    const baseline = appWithExtensions([])
-    const disabled = appWithExtensions([supportExtension({ enabled: false, events })])
-    const enabled = appWithExtensions([supportExtension({ enabled: true, events })])
-
-    const baselineRun = await runCli(baseline, ['deploy', '--json'])
-    const disabledRun = await runCli(disabled, ['deploy', '--json'])
-    const enabledRun = await runCli(enabled, ['deploy', '--json'])
-
-    expect(disabledRun).toEqual(baselineRun)
-    expect(enabledRun).toEqual(baselineRun)
-    expect(JSON.parse(enabledRun.stdout)).toEqual({
-      apiBaseUrlSource: 'default',
-      ok: true,
-      region: 'iad',
-      regionSource: 'default',
-    })
-    expect(events.map((event) => event.type)).toEqual([
-      'command.selected',
-      'command.started',
-      'command.completed',
-    ])
-
-    const doctor = await runCli(enabled, ['support', 'doctor', '--json'])
-    expect(JSON.parse(doctor.stdout)).toEqual({
-      apiBaseUrl: 'https://default.example.test',
-      apiBaseUrlSource: 'default',
-      commandCount: 2,
-    })
-  })
-
   test('hook extensions can enforce non-interactive policy without core widening', async () => {
     const middlewareRuns: string[] = []
     const cli = appWithExtensions([
+      outputControls({ json: true }),
       middlewareSpyExtension(middlewareRuns),
       nonInteractiveConfirmationExtension(),
     ], [deleteCommand()])
@@ -79,46 +47,6 @@ describe('extension lane coverage', () => {
     expect(middlewareRuns).toEqual(['app'])
   })
 })
-
-function configExtension(): CliExtension {
-  return {
-    id: 'test-config',
-    config: {
-      kind: 'liche.config.object',
-      schema: z.strictObject({
-        apiBaseUrl: z.string().url().default('https://default.example.test'),
-        defaultRegion: z.string().default('iad'),
-      }),
-    } as ConfigDefinition,
-  }
-}
-
-function supportExtension(input: { enabled: boolean; events: CliEvent[] }): CliExtension {
-  if (!input.enabled) return { id: 'support-disabled' }
-  return {
-    id: 'support',
-    commands: [
-      defineCommand({
-        path: ['support', 'doctor'],
-        output: z.object({
-          apiBaseUrl: z.string().url(),
-          apiBaseUrlSource: z.string(),
-          commandCount: z.number(),
-        }),
-        run({ ctx }) {
-          return {
-            apiBaseUrl: ctx.config['apiBaseUrl'],
-            apiBaseUrlSource: ctx.sources.config('apiBaseUrl').kind,
-            commandCount: ctx.var['commandCount'],
-          }
-        },
-      }),
-    ],
-    events: [(event) => {
-      input.events.push(event as CliEvent)
-    }],
-  }
-}
 
 function middlewareSpyExtension(runs: string[]): CliExtension {
   return {
@@ -160,38 +88,13 @@ function nonInteractiveConfirmationExtension(): CliExtension {
 
 function appWithExtensions(
   extensions: readonly CliExtension[],
-  commands: readonly DeclarativeCommand[] = [deployCommand()],
+  commands: readonly DeclarativeCommand[],
 ): CliInstance {
-  const allExtensions = [configExtension(), ...extensions]
   return defineCli({
     name: 'app',
-    vars: z.object({ commandCount: z.number().default(commands.length + extensionCommands(allExtensions).length) }),
+    vars: z.object({ commandCount: z.number().default(commands.length) }),
     commands,
-    extensions: allExtensions,
-  })
-}
-
-function deployCommand(): DeclarativeCommand {
-  return defineCommand({
-    path: ['deploy'],
-    input: {
-      options: z.object({ region: z.string().default('iad') }),
-      config: { region: 'defaultRegion' },
-    },
-    output: z.object({
-      apiBaseUrlSource: z.string(),
-      ok: z.boolean(),
-      region: z.string(),
-      regionSource: z.string(),
-    }),
-    run({ ctx, input }) {
-      return {
-        apiBaseUrlSource: ctx.sources.config('apiBaseUrl').kind,
-        ok: true,
-        region: input.options.region,
-        regionSource: ctx.sources.option('region'),
-      }
-    },
+    extensions,
   })
 }
 
@@ -206,10 +109,6 @@ function deleteCommand(): DeclarativeCommand {
       return { deleted: true }
     },
   })
-}
-
-function extensionCommands(extensions: readonly CliExtension[]): DeclarativeCommand[] {
-  return extensions.flatMap((extension) => [...(extension.commands ?? [])])
 }
 
 async function runCli(

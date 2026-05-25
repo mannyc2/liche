@@ -34,10 +34,12 @@
     "@liche/config": "workspace:*",
     "@liche/core": "workspace:*",
     "@liche/extensions": "workspace:*",
-    "@liche/mcp": "workspace:*",
+    "@liche/mcp-installer": "workspace:*",
+    "@liche/mcp-server": "workspace:*",
     "@liche/product": "workspace:*",
     "@liche/releases": "workspace:*",
-    "@liche/skills": "workspace:*",
+    "@liche/skills-installer": "workspace:*",
+    "@liche/skills-runtime": "workspace:*",
     "@liche/telemetry": "workspace:*"
   },
   "scripts": {

@@ -1,14 +1,15 @@
 import type { CliState, Dict } from '../types.js'
 import { execute } from './execute.js'
 import { selectCommand } from '../command/registry.js'
-import { handleMcpHttp } from '../mcp/http.js'
 import { isObject } from '../internal.js'
 import { createLifecycleEvent, emitLifecycleEvent, mergeHooks } from './lifecycle.js'
 
 export async function fetchCli(name: string, state: CliState, request: Request): Promise<Response> {
   const url = new URL(request.url)
 
-  if (url.pathname === '/mcp') return await handleMcpHttp(name, state, request)
+  for (const route of state.fetchRoutes) {
+    if (route.match(url)) return await route.handle({ binaryName: name, request, state, url })
+  }
 
   const path = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
   const selected = selectCommand(state, path)
@@ -42,10 +43,12 @@ export async function fetchCli(name: string, state: CliState, request: Request):
           displayName: name,
           events: state.events.concat(selected.events),
           env: Bun.env as Dict<string | undefined>,
+          flags: {},
           format: 'jsonl',
           formatExplicit: true,
           global: {},
           hooks: mergeHooks(state.hooks, selected.hooks),
+          inputSources: state.inputSources,
           invocation: 'agent',
           isTty: false,
           middlewares: state.middlewares.concat(selected.middlewares),
@@ -67,10 +70,12 @@ export async function fetchCli(name: string, state: CliState, request: Request):
     displayName: name,
     events: state.events.concat(selected.events),
     env: Bun.env as Dict<string | undefined>,
+    flags: {},
     format: 'json',
     formatExplicit: true,
     global: {},
     hooks: mergeHooks(state.hooks, selected.hooks),
+    inputSources: state.inputSources,
     invocation: 'agent',
     isTty: false,
     middlewares: state.middlewares.concat(selected.middlewares),

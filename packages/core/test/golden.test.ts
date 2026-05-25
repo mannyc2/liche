@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { z } from '../src/index.js'
+import { skillsRuntime } from '@liche/skills-runtime'
 import { runCli, testCli, testCommand } from './helpers.js'
 
 describe('golden behavior fixtures', () => {
@@ -23,18 +24,16 @@ Options:
   --dry-run               skip side effects (default: false)
 
 Global Options:
+  --help, -h
+  --version
   --format <json|yaml|md|jsonl>
   --json
   --full-output
   --filter-output <paths>
-  --llms
-  --mcp
-  --schema
   --token-count
   --token-limit <n>
   --token-offset <n>
-  --help, -h
-  --version
+  --schema
 `)
   })
 
@@ -61,18 +60,16 @@ Commands:
   admin  admin tools
 
 Global Options:
+  --help, -h
+  --version
   --format <json|yaml|md|jsonl>
   --json
   --full-output
   --filter-output <paths>
-  --llms
-  --mcp
-  --schema
   --token-count
   --token-limit <n>
   --token-offset <n>
-  --help, -h
-  --version
+  --schema
 `)
 
     const group = await runCli(cli, ['admin', '--help'])
@@ -85,23 +82,21 @@ Commands:
   ban    ban a user (block)
 
 Global Options:
+  --help, -h
+  --version
   --format <json|yaml|md|jsonl>
   --json
   --full-output
   --filter-output <paths>
-  --llms
-  --mcp
-  --schema
   --token-count
   --token-limit <n>
   --token-offset <n>
-  --help, -h
-  --version
+  --schema
 `)
   })
 
   test('--llms emits a markdown command index by default', async () => {
-    const cli = testCli('ship', { description: 'release helper' }, [testCommand('publish', {
+    const cli = testCli('ship', { description: 'release helper', extensions: [skillsRuntime()] }, [testCommand('publish', {
       description: 'publish a release',
       run: () => ({ ok: true }),
     })])

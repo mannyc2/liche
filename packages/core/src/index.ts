@@ -1,6 +1,16 @@
-export { defineCli, defineCommand, defineExtension, defineGlobal } from './cli/create.js'
+export { defineCli, defineCommand, defineExtension, defineGlobal, getCliState } from './cli/create.js'
+export { help, outputControls, reflectionControls, version } from './cli/controls.js'
+export type { HelpControlOptions, OutputControlsOptions, ReflectionControlsOptions } from './cli/controls.js'
 export { middleware } from './cli/context.js'
-export { z } from './schema/zod.js'
+export { defineOutputRenderer } from './format/index.js'
+export { defaultHelpRenderer } from './help/render.js'
+export { z, parseSchema } from './schema/zod.js'
+export { ParseError, ValidationError } from './errors/error.js'
+
+// Internals exposed for first-party extensions that contribute serve/fetch handlers.
+export { execute } from './cli/execute.js'
+export { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './cli/lifecycle.js'
+export { collectCommandContracts, manifest, manifestEnvelope, mcpToolName, selectCommand } from './command/registry.js'
 
 export * as Formatter from './format/index.js'
 
@@ -27,6 +37,7 @@ export type {
 export type {
   Awaitable,
   BeforeExecuteHook,
+  BuiltInFormat,
   CliEvent,
   CliEventCommand,
   CliEventCompletion,
@@ -34,10 +45,12 @@ export type {
   CliEventMcp,
   CliEventRegistration,
   CliEventSubscriber,
+  CliEventSubscription,
   CliEventSurface,
   CliEventTarget,
   CliEventType,
   CliExtension,
+  CliState,
   CliHookRegistration,
   CommandAuthMetadata,
   CommandContract,
@@ -48,36 +61,53 @@ export type {
   CommandPolicy,
   CommandSafety,
   CommandInput,
-  ConfigDefinition,
-  ConfigObjectDefinition,
-  ConfigScopeDeclaration,
-  ConfigScopesDeclaration,
-  ConfigValueSource,
   Cta,
   CtaBlock,
   DeclarativeCommand,
   DeclarativeCommandRunContext,
   DefineCliOptions,
-  DisabledGlobal,
+  Dict,
   Example,
   FetchHandler,
+  FetchRoute,
+  FetchRouteInput,
   FieldError,
   Format,
+  GlobalFlags,
   GlobalInputDefinition,
   GlobalInputType,
   GlobalOptions,
+  HelpCommand,
+  HelpField,
+  HelpGlobal,
+  HelpModel,
+  HelpRenderContext,
+  HelpRenderer,
   InferSchema,
+  InputSourceBinding,
+  InputSourceProvider,
+  InputSourceProvenance,
+  InputSourceResolveInput,
   MiddlewareContext,
   MiddlewareHandler,
   OptionValueSource,
   OutputPolicy,
+  OutputRenderContext,
+  OutputRenderer,
+  OutputRenderStage,
+  PrepareContextHook,
+  PrepareContextInput,
+  PrepareContextResult,
+  ResolvedInputSource,
   Result,
   ResultMeta,
   RunContext,
   Schema,
+  ServeHandler,
+  ServeHandlerInput,
   ServeOptions,
-  SkillDefinition,
   SourceInspector,
+  SkillDefinition,
   Usage,
   UsageObject,
 } from './types.js'

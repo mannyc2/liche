@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, z } from '@liche/core'
 import { config } from '../src/index.js'
 
 describe('@liche/config', () => {
@@ -7,6 +7,7 @@ describe('@liche/config', () => {
     const cli = defineCli({
       name: 'ship',
       extensions: [
+        outputControls({ json: true }),
         config({
           schema: z.strictObject({
             defaultRegion: z.string().default('iad'),
@@ -16,8 +17,8 @@ describe('@liche/config', () => {
       commands: [
         defineCommand({
           input: {
-            config: { region: 'defaultRegion' },
             options: z.object({ region: z.string().default('dfw') }),
+            sources: { options: { region: [{ provider: 'config', path: 'defaultRegion' }] } },
           },
           path: ['deploy'],
           run({ ctx, input }) {
@@ -44,7 +45,7 @@ describe('@liche/config', () => {
     expect(exitCode).toBe(0)
     expect(JSON.parse(stdout)).toEqual({
       region: 'iad',
-      source: 'default',
+      source: { kind: 'provider', provider: 'config', path: 'defaultRegion', source: { kind: 'default' } },
     })
   })
 })

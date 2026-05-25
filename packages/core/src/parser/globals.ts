@@ -1,41 +1,15 @@
-import type { DisabledGlobal, Format } from '../types.js'
+import type { Format, GlobalFlags } from '../types.js'
 import { ParseError } from '../errors/error.js'
 import { globalRegistryFor, type RuntimeGlobalInput } from '../globals/registry.js'
 
-export type GlobalFlags = {
-  [key: string]: unknown
-  configDisabled?: boolean | undefined
-  configPath?: string | undefined
-  filterOutput?: string | undefined
-  format?: Format | undefined
-  formatExplicit?: boolean | undefined
-  fullOutput?: boolean | undefined
-  help?: boolean | undefined
-  json?: boolean | undefined
-  llms?: boolean | undefined
-  mcp?: boolean | undefined
-  noSession?: boolean | undefined
-  nonInteractive?: boolean | undefined
-  profile?: string | undefined
-  rest: string[]
-  schema?: boolean | undefined
-  tokenCount?: boolean | undefined
-  tokenLimit?: number | undefined
-  tokenOffset?: number | undefined
-  version?: boolean | undefined
-}
+export type { GlobalFlags }
 
 export function parseGlobals(
   argv: string[],
-  configFlag?: string | undefined,
-  disabledGlobals?: readonly DisabledGlobal[] | undefined,
   globals?: readonly RuntimeGlobalInput[] | undefined,
 ): GlobalFlags {
   const flags: GlobalFlags = { rest: [] }
-  const registry = globals ?? globalRegistryFor({
-    ...(configFlag ? { config: { kind: 'liche.config.object', flag: configFlag } } : undefined),
-    ...(disabledGlobals ? { generated: { machineOutput: 'envelope', disabledGlobals } } : undefined),
-  })
+  const registry = globals ?? globalRegistryFor({})
   const byFlag = new Map(registry.map((global) => [global.flag, global]))
   const byAlias = new Map(registry.flatMap((global) => global.alias ? [[global.alias, global] as const] : []))
 
@@ -65,12 +39,6 @@ export function parseGlobals(
 
     if (needsValue && (value === undefined || value === '')) {
       throw new ParseError({ message: `Missing value for flag: --${global.flag}` })
-    }
-
-    if (global.disabled) {
-      throw new ParseError({
-        message: `--${global.flag} is disabled for this CLI; use --json for machine output`,
-      })
     }
 
     try {

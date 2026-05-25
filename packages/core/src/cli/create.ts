@@ -15,18 +15,22 @@ import type {
   RuntimeEntry,
   BeforeExecuteHook,
   CliHookRegistration,
-  ConfigDefinition,
-  SkillDefinition,
+  PrepareContextHook,
 } from '../types.js'
 import { commandContractFromDefinition, groupContract } from '../command/contract.js'
 import { isCommand, isFetch } from '../command/guards.js'
 import { globalRegistryFor } from '../globals/registry.js'
+import { createOutputRendererRegistry } from '../format/index.js'
 import { fetchCli } from './fetch.js'
 import { normalizeEvents, normalizeHooks } from './lifecycle.js'
 import { serveCli } from './serve.js'
 
 export const stateSymbol: unique symbol = Symbol('liche.cli.state')
 export type InternalCli = CliInstance & { [stateSymbol]: CliState }
+
+export function getCliState(cli: CliInstance): CliState {
+  return (cli as InternalCli)[stateSymbol]
+}
 
 function create(definition: CreateOptions & { name: string }): CliInstance {
   const name = definition.name
@@ -35,10 +39,15 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
     commands: new Map(),
     def: definition,
     events: normalizeEvents(definition.events),
+    fetchRoutes: definition.fetchRoutes ? [...definition.fetchRoutes] : [],
     globals: globalRegistryFor(definition),
+    helpRenderer: definition.helpRenderer,
     hooks: normalizeHooks(definition.hooks),
+    inputSources: definition.inputSources ? [...definition.inputSources] : [],
     middlewares: definition.middleware ? [...definition.middleware] : [],
+    outputRenderers: createOutputRendererRegistry(definition.outputRenderers),
     root,
+    serveHandlers: definition.serveHandlers ? [...definition.serveHandlers] : [],
   }
 
   const cli: InternalCli = {
@@ -104,19 +113,39 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...(definition.globals ?? []),
     ...extensions.flatMap((extension) => [...(extension.globals ?? [])]),
   ]
+  const inputSources = [
+    ...(definition.inputSources ?? []),
+    ...extensions.flatMap((extension) => [...(extension.inputSources ?? [])]),
+  ]
+  const outputRenderers = [
+    ...(definition.outputRenderers ?? []),
+    ...extensions.flatMap((extension) => [...(extension.outputRenderers ?? [])]),
+  ]
+  const serveHandlers = [
+    ...(definition.serveHandlers ?? []),
+    ...extensions.flatMap((extension) => [...(extension.serveHandlers ?? [])]),
+  ]
+  const fetchRoutes = [
+    ...(definition.fetchRoutes ?? []),
+    ...extensions.flatMap((extension) => [...(extension.fetchRoutes ?? [])]),
+  ]
   const hooks = mergeHookRegistrations(definition.hooks, ...extensions.map((extension) => extension.hooks))
-  const config = singleExtensionValue('config', undefined, extensions)
+  const helpRenderer = singleExtensionValue('helpRenderer', definition.helpRenderer, extensions)
   const skill = singleExtensionValue('skill', definition.skill, extensions)
   const { extensions: _extensions, ...rest } = definition
 
   return {
     ...rest,
     ...(commands.length ? { commands } : undefined),
-    ...(config !== undefined ? { config } : undefined),
     ...(events.length ? { events } : undefined),
+    ...(fetchRoutes.length ? { fetchRoutes } : undefined),
     ...(globals.length ? { globals } : undefined),
+    ...(helpRenderer !== undefined ? { helpRenderer } : undefined),
     ...(hooks !== undefined ? { hooks } : undefined),
+    ...(inputSources.length ? { inputSources } : undefined),
     ...(middleware.length ? { middleware } : undefined),
+    ...(outputRenderers.length ? { outputRenderers } : undefined),
+    ...(serveHandlers.length ? { serveHandlers } : undefined),
     ...(skill !== undefined ? { skill } : undefined),
   }
 }
@@ -128,35 +157,42 @@ function assertRemovedRootFields(definition: DefineCliOptions): void {
   if (input['builtins'] !== undefined) {
     throw new Error('defineCli({ builtins }) was removed; install helper commands through extensions')
   }
-  if (input['config'] !== undefined) {
-    throw new Error('defineCli({ config }) was removed; install config through extensions')
-  }
 }
 
-function singleExtensionValue<K extends 'config' | 'skill'>(
-  key: K,
-  rootValue: K extends 'config' ? ConfigDefinition | undefined : DefineCliOptions['skill'],
+function singleExtensionValue(
+  key: 'helpRenderer' | 'skill',
+  rootValue: unknown,
   extensions: readonly CliExtension[],
-): K extends 'config' ? ConfigDefinition | undefined : SkillDefinition | undefined {
-  const providers = extensions.filter((extension) => extension[key] !== undefined)
-  if (providers.length === 0) return rootValue as any
+): any {
+  const providers = extensions.filter((extension) => (extension as Record<string, unknown>)[key] !== undefined)
+  if (providers.length === 0) return rootValue
   if (rootValue !== undefined) {
     throw new Error(`Cannot declare ${key} on defineCli() and an extension`)
   }
   if (providers.length > 1) {
     throw new Error(`Multiple extensions declare ${key}: ${providers.map((extension) => extension.id).join(', ')}`)
   }
-  return providers[0]![key] as any
+  return (providers[0] as Record<string, unknown>)[key]
 }
 
 function mergeHookRegistrations(
   ...registrations: Array<CliHookRegistration | undefined>
 ): CliHookRegistration | undefined {
   const beforeExecute = registrations.flatMap((registration) => hookList(registration?.beforeExecute))
-  return beforeExecute.length ? { beforeExecute } : undefined
+  const prepareContext = registrations.flatMap((registration) => prepareList(registration?.prepareContext))
+  if (!beforeExecute.length && !prepareContext.length) return undefined
+  return {
+    ...(beforeExecute.length ? { beforeExecute } : undefined),
+    ...(prepareContext.length ? { prepareContext } : undefined),
+  }
 }
 
 function hookList(hook: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined): BeforeExecuteHook[] {
+  if (hook === undefined) return []
+  return typeof hook === 'function' ? [hook] : [...hook]
+}
+
+function prepareList(hook: PrepareContextHook | readonly PrepareContextHook[] | undefined): PrepareContextHook[] {
   if (hook === undefined) return []
   return typeof hook === 'function' ? [hook] : [...hook]
 }
@@ -203,9 +239,9 @@ function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefini
     ...(input?.aliases ? { alias: input.aliases } : undefined),
     ...(definition.description ?? summary ? { description: definition.description ?? summary } : undefined),
     ...(input?.args ? { args: input.args } : undefined),
-    ...(input?.config ? { optionConfig: input.config } : undefined),
     ...(input?.env ? { env: input.env } : undefined),
     ...(input?.options ? { options: input.options } : undefined),
+    ...(input?.sources ? { sources: input.sources } : undefined),
     ...(definition.effects ? undefined : command.safety ? { effects: effectsFromSafety(command.safety) } : undefined),
     ...(definition.policy ? undefined : command.safety ? { policy: policyFromSafety(command.safety) } : undefined),
     ...(summary ? { summary } : undefined),
@@ -216,7 +252,6 @@ function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefini
               ctx,
               input: {
                 args: ctx.args,
-                config: ctx.config,
                 env: ctx.env,
                 options: ctx.options,
               },
@@ -246,7 +281,7 @@ function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<st
       commands: new Map(),
       contract: groupContract(segment, {}),
       events: [],
-      hooks: { beforeExecute: [] },
+      hooks: { beforeExecute: [], prepareContext: [] },
       middlewares: [],
       name: segment,
     }
@@ -270,7 +305,7 @@ function groupFromExisting(segment: string, existing: any): GroupEntry {
     }),
     description: existing.contract.description,
     events: [],
-    hooks: { beforeExecute: [] },
+    hooks: { beforeExecute: [], prepareContext: [] },
     middlewares: [],
     name: segment,
     outputPolicy: existing.contract.outputPolicy,
@@ -328,10 +363,9 @@ function commandRuntime(definition: CommandDefinition): CommandRuntime {
     ...(definition.args ? { args: definition.args } : undefined),
     ...(definition.env ? { env: definition.env } : undefined),
     ...(definition.middleware ? { middleware: definition.middleware } : undefined),
-    ...(definition.optionConfig ? { optionConfig: definition.optionConfig } : undefined),
-    ...(definition.optionEnv ? { optionEnv: definition.optionEnv } : undefined),
     ...(definition.options ? { options: definition.options } : undefined),
     ...(definition.output ? { output: definition.output } : undefined),
     ...(definition.run ? { run: definition.run } : undefined),
+    ...(definition.sources ? { sources: definition.sources } : undefined),
   }
 }

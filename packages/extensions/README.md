@@ -5,12 +5,14 @@ Official optional extensions for `@liche/core` CLIs.
 Use this package when a CLI wants first-party optional surface without making those helpers part of core:
 
 ```ts
-import { defineCli, defineCommand, z } from "@liche/core";
+import { defineCli, defineCommand, help, outputControls, z } from "@liche/core";
 import { agents, completions, config, configDoctor } from "@liche/extensions";
 
 export default defineCli({
   name: "ship",
   extensions: [
+    help(),
+    outputControls({ json: true }),
     completions(),
     config({
       schema: z.strictObject({
@@ -24,8 +26,12 @@ export default defineCli({
     defineCommand({
       path: ["deploy"],
       input: {
-        config: { region: "defaultRegion" },
         options: z.object({ region: z.string().default("dfw") }),
+        sources: {
+          options: {
+            region: [{ provider: "config", path: "defaultRegion" }],
+          },
+        },
       },
       run({ input }) {
         return { region: input.options.region };
@@ -37,19 +43,21 @@ export default defineCli({
 
 Landed lanes:
 
-- `@liche/extensions/config`: `config(...)` and `configDoctor()`.
-- `@liche/extensions/auth`: `auth()`, auth globals, `resolveAuth`, `resolveContext`, file sessions, OAuth device login, and generated auth command helpers.
-- `@liche/extensions/completions`: `completions()` and shell script helpers.
-- `@liche/extensions/agents`: `agents()` bundle for MCP and skill installers.
-- `@liche/extensions/mcp`: `mcpInstaller()` and MCP config writing helpers.
-- `@liche/extensions/skills`: `skillsInstaller()` and skill writing helpers.
-- `@liche/extensions/telemetry`: `createLocalTelemetrySink()`.
+- `@liche/config`: `config(...)` and `configDoctor()`.
+- `@liche/auth`: `auth()`, auth globals, `resolveAuth`, `resolveContext`, file sessions, OAuth device login, and generated auth command helpers.
+- `@liche/completions`: `completions()` and shell script helpers.
+- `@liche/agents`: `agents()` bundle for MCP, skills, and `--llms`; `llms()` is available separately.
+- `@liche/mcp-installer`: `mcpInstaller()` and MCP config writing helpers.
+- `@liche/mcp-server`: `mcpServer()` and MCP runtime handlers.
+- `@liche/skills-installer`: `skillsInstaller()` and skill writing helpers.
+- `@liche/skills-runtime`: `skillsRuntime()` / `llms()` and live skill manifest rendering.
+- `@liche/telemetry`: `createLocalTelemetrySink()`.
 
 Auth-enabled CLIs install the auth lane to declare the standard profile/session globals:
 
 ```ts
 import { defineCli } from "@liche/core";
-import { auth } from "@liche/extensions/auth";
+import { auth } from "@liche/auth";
 
 export default defineCli({
   name: "ship",

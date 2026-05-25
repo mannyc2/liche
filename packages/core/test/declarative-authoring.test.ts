@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, z } from '../src/index.js'
-import * as Mcp from '../src/mcp/index.js'
+import { defineCli, defineCommand, help as helpControl, outputControls, reflectionControls, z } from '../src/index.js'
+import * as Mcp from '@liche/mcp-server'
 import { manifestEnvelope } from '../src/command/registry.js'
 import { renderHelp } from '../src/help/render.js'
 import { parseJsonOutput, runCli, stateOf } from './helpers.js'
@@ -9,6 +9,7 @@ describe('declarative authoring API', () => {
   test('defineCli executes a command from a data-first command graph', async () => {
     const cli = defineCli({
       name: 'app',
+      extensions: [outputControls({ json: true })],
       commands: [
         defineCommand({
           path: ['deploy'],
@@ -38,6 +39,7 @@ describe('declarative authoring API', () => {
   test('nested paths and same-parent aliases are declared as data', async () => {
     const cli = defineCli({
       name: 'app',
+      extensions: [outputControls({ json: true })],
       commands: [
         defineCommand({
           aliases: [['a']],
@@ -57,6 +59,7 @@ describe('declarative authoring API', () => {
   test('option aliases and group descriptions are declared as command data', async () => {
     const cli = defineCli({
       name: 'app',
+      extensions: [helpControl(), outputControls({ json: true })],
       commands: [
         defineCommand({
           path: ['jobs'],
@@ -127,6 +130,7 @@ describe('declarative authoring API', () => {
     const cli = defineCli({
       name: 'app',
       version: '1.0.0',
+      extensions: [outputControls({ json: true }), reflectionControls({ schema: true })],
       commands: [
         defineCommand({
           examples: [{ command: 'status --verbose', description: 'Show more detail' }],

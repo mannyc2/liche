@@ -54,6 +54,11 @@ export function isBooleanSchema(schema: Schema | undefined): boolean {
   return kind(unwrap(schema)) === 'boolean'
 }
 
+export function primitiveKind(schema: Schema | undefined): string | undefined {
+  const value = kind(unwrap(schema))
+  return value === 'boolean' || value === 'number' || value === 'string' ? value : undefined
+}
+
 export function description(schema: Schema | undefined): string | undefined {
   return (schema as any)?.description
 }

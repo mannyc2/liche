@@ -17,7 +17,7 @@ export function selectCommand(state: CliState, tokens: string[]): SelectedComman
   let commands = state.commands
   let root = state.root
   let events = [] as SelectedCommand['events']
-  let hooks = { beforeExecute: [] } as SelectedCommand['hooks']
+  let hooks = { beforeExecute: [], prepareContext: [] } as SelectedCommand['hooks']
   let middlewares = [] as SelectedCommand['middlewares']
   const path: string[] = []
 
@@ -32,7 +32,10 @@ export function selectCommand(state: CliState, tokens: string[]): SelectedComman
       path.push(canonicalToken)
       commands = entry.commands
       events = events.concat(entry.events)
-      hooks = { beforeExecute: hooks.beforeExecute.concat(entry.hooks.beforeExecute) }
+      hooks = {
+        beforeExecute: hooks.beforeExecute.concat(entry.hooks.beforeExecute),
+        prepareContext: hooks.prepareContext.concat(entry.hooks.prepareContext),
+      }
       root = entry.root
       middlewares = middlewares.concat(entry.middlewares)
       continue

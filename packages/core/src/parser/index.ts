@@ -1,5 +1,3 @@
 export { parseGlobals } from './globals.js'
 export type { GlobalFlags } from './globals.js'
 export { parseArgs, parseObject, parseCommandOptions } from './argv.js'
-export { loadConfig, loadConfigResolution } from './config.js'
-export type { LoadedConfig } from './config.js'

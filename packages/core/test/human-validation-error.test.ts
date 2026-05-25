@@ -13,7 +13,7 @@ function build(commandName: string, def: any) {
     argv: { args: [], options: {} },
     entry,
     events: [],
-    hooks: { beforeExecute: [] },
+    hooks: { beforeExecute: [], prepareContext: [] },
     middlewares: [],
     path: [commandName],
   }

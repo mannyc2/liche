@@ -30,20 +30,4 @@ describe('property tests', () => {
     )
   })
 
-  test('config/env/CLI precedence invariant keeps CLI options above explicit config bindings', () => {
-    fc.assert(
-      fc.property(fc.boolean(), fc.boolean(), (configCache, cliCache) => {
-        const definition = {
-          options: z.object({ cache: z.boolean() }),
-        }
-        const argv = parseCommandOptions(definition, [cliCache ? '--cache' : '--no-cache'])
-        const merged = {
-          cache: configCache,
-          ...argv.options,
-        }
-
-        expect(parseObject(definition.options, merged)).toEqual({ cache: cliCache })
-      }),
-    )
-  })
 })

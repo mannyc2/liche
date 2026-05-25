@@ -35,7 +35,9 @@
   },
   "devDependencies": {
     "@hughescr/stryker-bun-runner": "^1.2.2",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@liche/config": "workspace:*",
+    "@liche/mcp-server": "workspace:*",
+    "@liche/skills-runtime": "workspace:*",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "latest",

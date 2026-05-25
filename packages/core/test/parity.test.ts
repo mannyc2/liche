@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { middleware, z } from '../src/index.js'
-import { createConfig, parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
+import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
-import * as Mcp from '../src/mcp/index.js'
+import * as Mcp from '@liche/mcp-server'
+import { skillsRuntime } from '@liche/skills-runtime'
 
 // Sources: https://github.com/wevm/incur (README.md, SKILL.md)
 // All expected behaviors below are quoted in the plan and derived from upstream incur.
@@ -150,7 +151,7 @@ describe('parity: --json flips agent on a TTY', () => {
 
 describe('parity: --llms shape', () => {
   test('--llms with --format json returns the liche.v1 envelope', async () => {
-    const cli = testCli('app', { description: 'app cli', version: '1.0.0' }, [testCommand('publish', {
+    const cli = testCli('app', { description: 'app cli', extensions: [skillsRuntime()], version: '1.0.0' }, [testCommand('publish', {
         description: 'ship a release',
         examples: ['app publish v1'],
         hint: 'idempotent with respect to the release tag',
@@ -278,28 +279,5 @@ describe('parity: vars defaults layering', () => {
       })])
     const result = await runCli(cli, ['whoami', '--json'])
     expect(parseJsonOutput(result.stdout)).toEqual({ tier: 'pro' })
-  })
-})
-
-describe('parity: config object defaults', () => {
-  test('--config without a configured schema raises ParseError', async () => {
-    const cli = testCli('app', [testCommand('run', { run: () => ({ ok: true }) })])
-    const result = await runCli(cli, ['run', '--config', './nope.json', '--json'])
-    expect(result.exitCode).toBe(1)
-    expect(result.stderr).toContain('--config has no effect')
-  })
-
-  test('--no-config disables config loading even when files exist', async () => {
-    const cli = testCli('app', {
-      config: createConfig({
-        schema: z.object({ modeDefault: z.string().default('from-config') }),
-      }),
-    }, [testCommand('run', {
-      options: z.object({ mode: z.string().default('default') }),
-      optionConfig: { mode: 'modeDefault' },
-      run: ({ options }) => options,
-    })])
-    const result = await runCli(cli, ['run', '--no-config', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ mode: 'default' })
   })
 })

@@ -2,8 +2,8 @@ import type { z } from 'zod'
 
 export type Dict<T = unknown> = Record<string, T>
 export type Awaitable<T> = T | Promise<T>
-export type Format = 'json' | 'yaml' | 'md' | 'jsonl'
-export type DisabledGlobal = 'format'
+export type BuiltInFormat = 'json' | 'yaml' | 'md' | 'jsonl'
+export type Format = BuiltInFormat | (string & {})
 export type OutputPolicy = 'all' | 'agent-only'
 export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
 export type GlobalInputType = 'boolean' | 'string'
@@ -15,12 +15,11 @@ export type GlobalInputDefinition = {
   flag?: string | undefined
   hidden?: boolean | undefined
   key: string
+  parse?: ((value: string, flag: string) => boolean | number | string) | undefined
   type: GlobalInputType
   valueLabel?: string | undefined
 }
 export type NormalizedGlobalInputDefinition = Omit<GlobalInputDefinition, 'expose' | 'flag'> & {
-  disabled?: boolean | undefined
-  disabledBy?: DisabledGlobal | undefined
   expose: 'context' | 'runtime'
   flag: string
 }
@@ -32,45 +31,45 @@ export type GlobalOptions = Record<string, boolean | string | undefined> & {
 export type Schema<T = unknown> = z.ZodType<T>
 export type InferSchema<T> = T extends z.ZodType<infer O> ? O : unknown
 
-export type ConfigScopeDeclaration =
-  | boolean
-  | {
-      discoverUpwards?: boolean | undefined
-      xdg?: boolean | undefined
-    }
-
-export type ConfigScopesDeclaration = {
-  project?: ConfigScopeDeclaration | undefined
-  user?: ConfigScopeDeclaration | undefined
+export type InputSourceBinding = {
+  path: string
+  provider: string
 }
 
-export type ConfigObjectDefinition<T = Record<string, unknown>> = {
-  kind: 'liche.config.object'
-  files?: readonly string[] | undefined
-  flag?: string | undefined
-  schema?: Schema<T> | undefined
-  scopes?: ConfigScopesDeclaration | undefined
+export type InputSourceProvenance = Record<string, unknown> & {
+  kind: string
 }
-
-export type ConfigDefinition<T = Record<string, unknown>> = ConfigObjectDefinition<T>
-
-export type ConfigValueSource =
-  | { kind: 'default' }
-  | { kind: 'explicit-file'; path: string }
-  | { kind: 'project-file'; path: string }
-  | { kind: 'user-file'; path: string }
 
 export type OptionValueSource =
-  | 'argv'
-  | 'env'
-  | 'explicit-config'
-  | 'project-config'
-  | 'user-config'
-  | 'default'
+  | { kind: 'argv' }
+  | {
+      kind: 'provider'
+      path: string
+      provider: string
+      source: InputSourceProvenance
+    }
+  | { kind: 'default' }
+
+export type ResolvedInputSource = {
+  get(path: string): unknown
+  source(path: string): InputSourceProvenance
+}
+
+export type InputSourceResolveInput = {
+  commandPath: readonly string[]
+  env: Dict<string | undefined>
+  flags: Dict
+}
+
+export type InputSourceProvider = {
+  id: string
+  resolve(input: InputSourceResolveInput): Awaitable<ResolvedInputSource>
+}
 
 export type SourceInspector = {
-  config(path: string): ConfigValueSource
   option(name: string): OptionValueSource
+  source(provider: string, path: string): InputSourceProvenance
+  value(provider: string, path: string): unknown
 }
 
 export type Cta =
@@ -137,7 +136,6 @@ export type CommandContract = {
   format?: Format | undefined
   hint?: string | undefined
   name: string
-  optionConfig?: Record<string, string> | undefined
   outputPolicy?: OutputPolicy | undefined
   path?: readonly string[] | undefined
   policy?: CommandPolicy | undefined
@@ -203,8 +201,6 @@ export type RunContext<
 > = {
   agent: boolean
   args: A
-  config: Record<string, unknown>
-  configLoaded: boolean
   displayName: string
   env: E
   error(input: CommandError & {
@@ -304,11 +300,22 @@ export type CliEventSubscription = {
 }
 
 export type BeforeExecuteHook = (context: MiddlewareContext) => Awaitable<void | Result>
+
+export type PrepareContextInput = {
+  name: string
+  env: Dict<string | undefined>
+  flags: Dict
+}
+export type PrepareContextResult = void | Result | { patch: Partial<RunContext> }
+export type PrepareContextHook = (input: PrepareContextInput) => Awaitable<PrepareContextResult>
+
 export type CliHookRegistration = {
   beforeExecute?: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined
+  prepareContext?: PrepareContextHook | readonly PrepareContextHook[] | undefined
 }
 export type CliHooks = {
   beforeExecute: BeforeExecuteHook[]
+  prepareContext: PrepareContextHook[]
 }
 
 export type FetchHandler = (request: Request) => Awaitable<Response>
@@ -327,6 +334,66 @@ export type UsageObject = {
   suffix?: string | undefined
 }
 export type Usage = string | UsageObject
+
+export type HelpField = {
+  defaultValue?: string | undefined
+  deprecated?: boolean | string | undefined
+  description?: string | undefined
+  env?: string | undefined
+  label: string
+  name: string
+  required: boolean
+  usage: string
+}
+
+export type HelpCommand = {
+  aliases: readonly string[]
+  description?: string | undefined
+  name: string
+}
+
+export type HelpGlobal = {
+  alias?: string | undefined
+  deprecated?: boolean | string | undefined
+  description?: string | undefined
+  flag: string
+  key: string
+  label: string
+}
+
+export type HelpModel = {
+  aliases: readonly string[]
+  args: readonly HelpField[]
+  commands: readonly HelpCommand[]
+  description?: string | undefined
+  examples: readonly Example[]
+  globals: readonly HelpGlobal[]
+  hint?: string | undefined
+  name: string
+  options: readonly HelpField[]
+  path: readonly string[]
+  usage: readonly string[]
+}
+
+export type HelpRenderContext = {
+  binaryName: string
+  path: readonly string[]
+}
+
+export type HelpRenderer = (model: HelpModel, context: HelpRenderContext) => string
+
+export type OutputRenderStage = 'schema' | 'chunk' | 'result'
+
+export type OutputRenderContext = {
+  format: Format
+  stage: OutputRenderStage
+}
+
+export type OutputRenderer = {
+  mediaType?: string | undefined
+  name: Format
+  render(value: unknown, context: OutputRenderContext): string
+}
 
 export type SkillDefinition = {
   index?: string | undefined
@@ -354,12 +421,15 @@ export type CommandDefinition<
   hint?: string | undefined
   middleware?: MiddlewareHandler[] | undefined
   options?: O | undefined
-  optionEnv?: Record<string, string> | undefined
-  optionConfig?: Record<string, string> | undefined
   output?: Out | undefined
   outputPolicy?: OutputPolicy | undefined
   policy?: CommandPolicy | undefined
   safety?: CommandSafety | undefined
+  sources?:
+    | {
+        options?: Record<string, readonly InputSourceBinding[]> | undefined
+      }
+    | undefined
   run?:
     | ((context: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Record<string, unknown>>) =>
         | unknown
@@ -378,9 +448,13 @@ export type CommandInput<
 > = {
   aliases?: Record<string, string> | undefined
   args?: A | undefined
-  config?: Record<string, string> | undefined
   env?: E | undefined
   options?: O | undefined
+  sources?:
+    | {
+        options?: Record<string, readonly InputSourceBinding[]> | undefined
+      }
+    | undefined
 }
 
 export type DeclarativeCommandRunContext<
@@ -391,7 +465,6 @@ export type DeclarativeCommandRunContext<
   ctx: RunContext<InferSchema<A>, InferSchema<O>, InferSchema<E>, Record<string, unknown>>
   input: {
     args: InferSchema<A>
-    config: Record<string, unknown>
     env: InferSchema<E>
     options: InferSchema<O>
   }
@@ -402,7 +475,7 @@ export type DeclarativeCommand<
   E extends Schema<any> | undefined = Schema<any> | undefined,
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
-> = Omit<CommandDefinition<A, E, O, Out>, 'alias' | 'aliases' | 'args' | 'env' | 'optionConfig' | 'options' | 'run'> & {
+> = Omit<CommandDefinition<A, E, O, Out>, 'alias' | 'aliases' | 'args' | 'env' | 'options' | 'run'> & {
   aliases?: readonly (readonly string[])[] | undefined
   input?: CommandInput<A, E, O> | undefined
   path: readonly [string, ...string[]]
@@ -418,16 +491,64 @@ export type DeclarativeCommand<
 
 export type CliExtension = {
   commands?: readonly DeclarativeCommand[] | undefined
-  config?: ConfigDefinition | undefined
   events?: readonly CliEventRegistration[] | undefined
+  fetchRoutes?: readonly FetchRoute[] | undefined
   globals?: readonly GlobalInputDefinition[] | undefined
+  helpRenderer?: HelpRenderer | undefined
   hooks?: CliHookRegistration | undefined
   id: string
+  inputSources?: readonly InputSourceProvider[] | undefined
   middleware?: readonly MiddlewareHandler[] | undefined
+  outputRenderers?: readonly OutputRenderer[] | undefined
+  serveHandlers?: readonly ServeHandler[] | undefined
   skill?: SkillDefinition | undefined
 }
 
-export type DefineCliOptions = Omit<CreateOptions, 'config' | 'name'> & {
+export type ServeHandlerInput = {
+  binaryName: string
+  flags: GlobalFlags
+  options: ServeOptions
+  state: CliState
+}
+
+export type ServeHandler = {
+  flagKey: string
+  handle: (input: ServeHandlerInput) => Promise<void> | void
+}
+
+export type FetchRouteInput = {
+  binaryName: string
+  request: Request
+  state: CliState
+  url: URL
+}
+
+export type FetchRoute = {
+  match: (url: URL) => boolean
+  handle: (input: FetchRouteInput) => Promise<Response>
+}
+
+export type GlobalFlags = {
+  [key: string]: unknown
+  filterOutput?: string | undefined
+  format?: Format | undefined
+  formatExplicit?: boolean | undefined
+  fullOutput?: boolean | undefined
+  help?: boolean | undefined
+  json?: boolean | undefined
+  llms?: boolean | undefined
+  noSession?: boolean | undefined
+  nonInteractive?: boolean | undefined
+  profile?: string | undefined
+  rest: string[]
+  schema?: boolean | undefined
+  tokenCount?: boolean | undefined
+  tokenLimit?: number | undefined
+  tokenOffset?: number | undefined
+  version?: boolean | undefined
+}
+
+export type DefineCliOptions = Omit<CreateOptions, 'name'> & {
   commands?: readonly DeclarativeCommand[] | undefined
   extensions?: readonly CliExtension[] | undefined
   name: string
@@ -439,17 +560,20 @@ export type CreateOptions<
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = CommandDefinition<A, E, O, Out> & {
-  config?: ConfigDefinition | undefined
   format?: Format | undefined
   generated?:
     | {
         machineOutput: 'envelope'
-        disabledGlobals?: readonly DisabledGlobal[] | undefined
       }
     | undefined
   events?: readonly CliEventRegistration[] | undefined
+  fetchRoutes?: readonly FetchRoute[] | undefined
+  helpRenderer?: HelpRenderer | undefined
   hooks?: CliHookRegistration | undefined
   globals?: readonly GlobalInputDefinition[] | undefined
+  inputSources?: readonly InputSourceProvider[] | undefined
+  outputRenderers?: readonly OutputRenderer[] | undefined
+  serveHandlers?: readonly ServeHandler[] | undefined
   skill?: SkillDefinition | undefined
   name?: string | undefined
   sync?:
@@ -482,11 +606,14 @@ export type CommandRuntime = {
   args?: Schema<any> | undefined
   env?: Schema<any> | undefined
   middleware?: MiddlewareHandler[] | undefined
-  optionConfig?: Record<string, string> | undefined
-  optionEnv?: Record<string, string> | undefined
   options?: Schema<any> | undefined
   output?: Schema<any> | undefined
   run?: CommandDefinition['run'] | undefined
+  sources?:
+    | {
+        options?: Record<string, readonly InputSourceBinding[]> | undefined
+      }
+    | undefined
 }
 
 export type CommandEntry = {
@@ -510,10 +637,15 @@ export type CliState = {
   commands: Map<string, Entry>
   def: CreateOptions
   events: CliEventSubscription[]
+  fetchRoutes: readonly FetchRoute[]
   globals: readonly NormalizedGlobalInputDefinition[]
+  helpRenderer?: HelpRenderer | undefined
   hooks: CliHooks
+  inputSources: readonly InputSourceProvider[]
   middlewares: MiddlewareHandler[]
+  outputRenderers: readonly OutputRenderer[]
   root?: RuntimeEntry | undefined
+  serveHandlers: readonly ServeHandler[]
 }
 
 export type ServeOptions = {

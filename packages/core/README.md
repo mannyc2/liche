@@ -4,7 +4,7 @@ Bun-native CLI runtime for handwritten and generated Liche CLIs.
 
 This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; the current package format does not ship `dist` or declaration artifacts.
 
-Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, JSON/JSONL/YAML/Markdown output envelopes, direct MCP tools, serializable command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skill installers, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
+Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, JSON/JSONL/YAML/Markdown output envelopes, serializable command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skill installers, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
 
 ```ts
 import { defineCli, defineCommand, z } from "@liche/core";
@@ -41,12 +41,14 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 
 - `defineCli()` and `defineCommand()` define serializable command graphs for CLI, JSON, MCP, and command-contract surfaces.
 - `defineGlobal()` and `defineCli({ globals })` declare CLI-wide flags that feed parsing, help, and `ctx.global`.
-- `defineCli({ extensions })` composes extension-provided commands, globals, config declarations, events, hooks, middleware, and packaged skill content.
+- `defineCli({ extensions })` composes extension-provided commands, globals, input sources, output renderers, events, hooks, middleware, and packaged skill content.
+- `help()`, `version()`, `outputControls()`, and `reflectionControls()` install the standard Core-owned globals explicitly. `help({ renderer })` can replace or wrap `defaultHelpRenderer()`.
+- `defineOutputRenderer()` declares a named final-value renderer. `--json` selects the built-in `json` renderer through the same renderer registry that powers `--format`.
 - `ctx.ok()`, `ctx.error()`, `ok()`, `fail()`, and `commandError()` produce the standard machine result/error objects without public error classes.
 - `callHttpOperation()` is the shared outbound HTTP transport for remote commands.
 - `secret()` and `applyAuth()` are low-level redaction and already-resolved auth/header primitives.
 
-Core formats are `json`, `jsonl`, `yaml`, and `md`. Additional renderers belong in optional packages that consume `CommandContract` or generated Product artifacts.
+Core output renderers are `json`, `jsonl`, `yaml`, and `md`. Additional renderers register through `CliExtension.outputRenderers`; expose them deliberately with `outputControls({ format: true, formats: ["json", "custom"] })`.
 
 ## Command Handlers
 
@@ -63,31 +65,35 @@ The executor treats plain returned values as success data and validates them aga
 
 Do not hand-write result-shaped objects such as `{ ok: true, data }`; only `ctx.ok()`, `ctx.error()`, `ok()`, and `fail()` create runtime result envelopes.
 
-Commands can set `format` to choose their default output format. Explicit global flags still win, so `--json` always returns JSON even when a command defaults to Markdown.
+Commands can set `format` to choose their default output format. Explicit output-control globals still win when installed, so `--json` returns JSON even when a command defaults to Markdown.
 
 ## Extensions
 
-Core has no default helper commands. A plain `defineCli({ name, commands })` exposes authored commands plus core-owned help/version/global behavior only.
+Core has no default helper commands or implicit global flags. A plain `defineCli({ name, commands })` exposes authored commands; install controls explicitly for user-visible flags such as `--help`, `--version`, `--json`, `--format`, and `--schema`.
 
 Official optional helpers are installed through `@liche/extensions`:
 
 ```ts
-import { defineCli } from "@liche/core";
-import { agents, completions, config, configDoctor } from "@liche/extensions";
+import { defineCli, help, outputControls, reflectionControls, version } from "@liche/core";
+import { agents, completions, config, configDoctor, files } from "@liche/extensions";
 
 defineCli({
   name: "shipyard",
   extensions: [
+    help(),
+    version(),
+    outputControls({ json: true, fullOutput: true }),
+    reflectionControls({ schema: true }),
     completions(),
     configDoctor(),
-    config({ files: ["shipyard.jsonc"] }),
+    config({ sources: [files({ files: ["shipyard.jsonc"] })] }),
     agents(),
   ],
   commands: [],
 });
 ```
 
-These helpers register as normal commands, so they use the same option parser, help rendering, completions, lifecycle events, output formatting, and MCP visibility rules as authored commands. `completions()` adds shell integration source generation. `config()` declares the core config contract, while `configDoctor()` adds `config doctor`. `agents()` bundles MCP and skill installers; the leaf `mcpInstaller()` and `skillsInstaller()` helpers are also available.
+These helpers register as normal commands, so they use the same option parser, help rendering, completions, lifecycle events, output formatting, and MCP visibility rules as authored commands. `completions()` adds shell integration source generation. `config()` registers the config input-source provider, while `configDoctor()` adds `config doctor`. `agents()` bundles MCP and skill installers; the leaf `mcpInstaller()` and `skillsInstaller()` helpers are also available.
 
 ```text
 shipyard completions zsh

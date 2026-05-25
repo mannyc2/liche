@@ -12,10 +12,12 @@
         "@liche/config": "workspace:*",
         "@liche/core": "workspace:*",
         "@liche/extensions": "workspace:*",
-        "@liche/mcp": "workspace:*",
+        "@liche/mcp-installer": "workspace:*",
+        "@liche/mcp-server": "workspace:*",
         "@liche/product": "workspace:*",
         "@liche/releases": "workspace:*",
-        "@liche/skills": "workspace:*",
+        "@liche/skills-installer": "workspace:*",
+        "@liche/skills-runtime": "workspace:*",
         "@liche/telemetry": "workspace:*",
       },
     },
@@ -48,7 +50,9 @@
       },
       "devDependencies": {
         "@hughescr/stryker-bun-runner": "^1.2.2",
-        "@modelcontextprotocol/sdk": "1.29.0",
+        "@liche/config": "workspace:*",
+        "@liche/mcp-server": "workspace:*",
+        "@liche/skills-runtime": "workspace:*",
         "@stryker-mutator/core": "^9.6.1",
         "@stryker-mutator/typescript-checker": "^9.6.1",
         "@types/bun": "latest",
@@ -65,8 +69,10 @@
         "@liche/completions": "^0.4.0",
         "@liche/config": "^0.4.0",
         "@liche/core": "^0.4.0",
-        "@liche/mcp": "^0.4.0",
-        "@liche/skills": "^0.4.0",
+        "@liche/mcp-installer": "^0.4.0",
+        "@liche/mcp-server": "^0.4.0",
+        "@liche/skills-installer": "^0.4.0",
+        "@liche/skills-runtime": "^0.4.0",
         "@liche/telemetry": "^0.4.0",
       },
       "devDependencies": {
@@ -79,8 +85,10 @@
       "version": "0.4.0",
       "dependencies": {
         "@liche/core": "^0.4.0",
-        "@liche/mcp": "^0.4.0",
-        "@liche/skills": "^0.4.0",
+        "@liche/mcp-installer": "^0.4.0",
+        "@liche/mcp-server": "^0.4.0",
+        "@liche/skills-installer": "^0.4.0",
+        "@liche/skills-runtime": "^0.4.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -120,8 +128,8 @@
         "typescript": "latest",
       },
     },
-    "packages/extensions/mcp": {
-      "name": "@liche/mcp",
+    "packages/extensions/mcp-installer": {
+      "name": "@liche/mcp-installer",
       "version": "0.4.0",
       "dependencies": {
         "@liche/core": "^0.4.0",
@@ -131,8 +139,31 @@
         "typescript": "latest",
       },
     },
-    "packages/extensions/skills": {
-      "name": "@liche/skills",
+    "packages/extensions/mcp-server": {
+      "name": "@liche/mcp-server",
+      "version": "0.4.0",
+      "dependencies": {
+        "@liche/core": "^0.4.0",
+      },
+      "devDependencies": {
+        "@modelcontextprotocol/sdk": "1.29.0",
+        "@types/bun": "latest",
+        "typescript": "latest",
+      },
+    },
+    "packages/extensions/skills-installer": {
+      "name": "@liche/skills-installer",
+      "version": "0.4.0",
+      "dependencies": {
+        "@liche/core": "^0.4.0",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "latest",
+      },
+    },
+    "packages/extensions/skills-runtime": {
+      "name": "@liche/skills-runtime",
       "version": "0.4.0",
       "dependencies": {
         "@liche/core": "^0.4.0",
@@ -167,8 +198,10 @@
         "@liche/config": "^0.4.0",
         "@liche/core": "^0.4.0",
         "@liche/extensions": "^0.4.0",
-        "@liche/mcp": "^0.4.0",
-        "@liche/skills": "^0.4.0",
+        "@liche/mcp-installer": "^0.4.0",
+        "@liche/mcp-server": "^0.4.0",
+        "@liche/skills-installer": "^0.4.0",
+        "@liche/skills-runtime": "^0.4.0",
         "@liche/telemetry": "^0.4.0",
         "zod": "^4.4.3",
       },
@@ -339,13 +372,17 @@
 
     "@liche/extensions": ["@liche/extensions@workspace:packages/extensions"],
 
-    "@liche/mcp": ["@liche/mcp@workspace:packages/extensions/mcp"],
+    "@liche/mcp-installer": ["@liche/mcp-installer@workspace:packages/extensions/mcp-installer"],
+
+    "@liche/mcp-server": ["@liche/mcp-server@workspace:packages/extensions/mcp-server"],
 
     "@liche/product": ["@liche/product@workspace:packages/product"],
 
     "@liche/releases": ["@liche/releases@workspace:packages/releases"],
 
-    "@liche/skills": ["@liche/skills@workspace:packages/extensions/skills"],
+    "@liche/skills-installer": ["@liche/skills-installer@workspace:packages/extensions/skills-installer"],
+
+    "@liche/skills-runtime": ["@liche/skills-runtime@workspace:packages/extensions/skills-runtime"],
 
     "@liche/telemetry": ["@liche/telemetry@workspace:packages/extensions/telemetry"],
 

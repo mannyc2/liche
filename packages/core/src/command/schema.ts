@@ -7,7 +7,7 @@ export function commandSchema(definition: CommandDefinition | CommandRuntime) {
     args: toJsonSchema(definition.args),
     env: toJsonSchema(definition.env),
     options: toJsonSchema(definition.options),
-    optionEnv: definition.optionEnv,
+    sources: definition.sources,
     output: toJsonSchema(definition.output),
     ...(deprecated.length ? { deprecated } : undefined),
   }

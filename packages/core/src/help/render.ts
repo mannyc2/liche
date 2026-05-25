@@ -1,32 +1,73 @@
-import type { CliState, CommandContract, CommandRuntime, Dict, Entry, Schema, SelectedCommand, Usage } from '../types.js'
+import type {
+  CliState,
+  CommandRuntime,
+  Dict,
+  Entry,
+  HelpCommand,
+  HelpField,
+  HelpGlobal,
+  HelpModel,
+  HelpRenderContext,
+  InputSourceBinding,
+  Schema,
+  SelectedCommand,
+  Usage,
+} from '../types.js'
 import { isCommand } from '../command/guards.js'
 import { childCommands, commandScope } from '../command/registry.js'
 import { description, encodeDefault, isBooleanSchema, isDeprecated, isOptional, objectShape } from '../schema/zod.js'
 import { kebab } from '../internal.js'
 
 export function renderHelp(name: string, state: CliState, selected?: SelectedCommand | undefined, rest: string[] = []): string {
+  const model = buildHelpModel(name, state, selected, rest)
+  const context: HelpRenderContext = { binaryName: name, path: model.path }
+  return (state.helpRenderer ?? defaultHelpRenderer)(model, context)
+}
+
+export function buildHelpModel(name: string, state: CliState, selected?: SelectedCommand | undefined, rest: string[] = []): HelpModel {
   const scope = commandScope(state, selected?.path ?? rest)
   const commands = childCommands(scope)
   const contract = scope.entry && 'contract' in scope.entry ? scope.entry.contract : undefined
   const runtime = commandRuntime(scope.entry) ?? commandRuntime(scope.root)
   const scopedName = `${name}${scope.path.length ? ` ${scope.path.join(' ')}` : ''}`
+  return {
+    aliases: scope.aliases,
+    args: runtime?.args ? argFields(runtime.args) : [],
+    commands: commands.map((command) => ({
+      aliases: command.aliases ?? [],
+      description: command.description,
+      name: command.name,
+    })),
+    description: scope.description,
+    examples: contract?.examples ?? [],
+    globals: globalFields(state),
+    hint: contract?.hint,
+    name: scopedName,
+    options: runtime?.options ? optionFields(runtime.options, runtime.alias, runtime.sources?.options) : [],
+    path: scope.path,
+    usage: contract?.usage?.length
+      ? usageLines(scopedName, contract.usage as Usage[], runtime?.args, runtime?.options, runtime?.alias)
+      : [],
+  }
+}
+
+export function defaultHelpRenderer(model: HelpModel, _context: HelpRenderContext): string {
+  const commands = model.commands
   const hasCommands = commands.length > 0
   const lines = [
-    title(scopedName, scope.description),
+    title(model.name, model.description),
     '',
-    `Usage: ${scopedName}${hasCommands ? ' <command>' : ''}${runtime?.args ? ` ${argUsage(runtime.args)}` : ''}`,
+    `Usage: ${model.name}${hasCommands ? ' <command>' : ''}${model.args.length ? ` ${model.args.map((arg) => arg.usage).join(' ')}` : ''}`,
   ]
 
   if (commands.length) lines.push('', 'Commands:', ...commandLines(commands))
-  if (scope.aliases.length) lines.push('', `Aliases: ${scope.aliases.join(', ')}`)
-  if (runtime?.args) lines.push('', 'Arguments:', ...argLines(runtime.args))
-  if (runtime?.options) lines.push('', 'Options:', ...schemaLines(runtime.options, runtime.alias, runtime.optionEnv))
-  if (contract?.usage?.length) lines.push('', 'Usage:', ...usageLines(scopedName, contract.usage as Usage[], runtime?.args, runtime?.options, runtime?.alias))
-  if (contract?.examples?.length) lines.push('', 'Examples:', ...exampleLines(scopedName, contract.examples))
-  if (contract?.hint) lines.push('', contract.hint)
-
-  const globals = globalLines(state)
-  if (globals.length) lines.push('', 'Global Options:', ...globals)
+  if (model.aliases.length) lines.push('', `Aliases: ${model.aliases.join(', ')}`)
+  if (model.args.length) lines.push('', 'Arguments:', ...argLines(model.args))
+  if (model.options.length) lines.push('', 'Options:', ...optionLines(model.options))
+  if (model.usage.length) lines.push('', 'Usage:', ...model.usage.map((usage) => `  ${usage}`))
+  if (model.examples.length) lines.push('', 'Examples:', ...exampleLines(model.name, model.examples))
+  if (model.hint) lines.push('', model.hint)
+  if (model.globals.length) lines.push('', 'Global Options:', ...globalLines(model.globals))
 
   return lines.join('\n')
 }
@@ -35,7 +76,7 @@ function title(name: string, descriptionText?: string | undefined): string {
   return descriptionText ? `${name} - ${descriptionText}` : name
 }
 
-function commandLines(commands: CommandContract[]): string[] {
+function commandLines(commands: readonly HelpCommand[]): string[] {
   const width = Math.max(1, ...commands.map((command) => command.name.length))
   return commands.map((command) => {
     const aliases = command.aliases?.length ? ` (${command.aliases.join(', ')})` : ''
@@ -43,19 +84,31 @@ function commandLines(commands: CommandContract[]): string[] {
   })
 }
 
-function argUsage(schema: Schema): string {
-  return Object.entries(objectShape(schema))
-    .map(([key, item]) => (isOptional(item) ? `[${key}]` : `<${key}>`))
-    .join(' ')
+function argFields(schema: Schema): HelpField[] {
+  return Object.entries(objectShape(schema)).map(([key, item]) => ({
+    defaultValue: encodeDefault(item),
+    description: description(item),
+    label: key,
+    name: key,
+    required: !isOptional(item),
+    usage: isOptional(item) ? `[${key}]` : `<${key}>`,
+  }))
 }
 
-function schemaLines(schema: Schema, aliases: Dict<string> = {}, optionEnv: Dict<string> = {}): string[] {
+function optionFields(schema: Schema, aliases: Dict<string> = {}, optionSources: Record<string, readonly InputSourceBinding[]> = {}): HelpField[] {
   return Object.entries(objectShape(schema)).map(([key, item]) => {
     const renderedFlag = flag(key, aliases[key])
-    const envName = optionEnv[key]
-    const envSuffix = envName ? ` (env: ${envName})` : ''
-    const deprecatedSuffix = isDeprecated(item) ? ' [deprecated]' : ''
-    return `  ${renderedFlag}  ${description(item) ?? ''}${defaultSuffix(item)}${envSuffix}${deprecatedSuffix}`
+    const envName = optionSources[key]?.find((source) => source.provider === 'env')?.path
+    return {
+      defaultValue: encodeDefault(item),
+      deprecated: isDeprecated(item),
+      description: description(item),
+      ...(envName ? { env: envName } : undefined),
+      label: renderedFlag.trim(),
+      name: key,
+      required: !isOptional(item),
+      usage: optionUsageToken(key, item, aliases),
+    }
   })
 }
 
@@ -67,11 +120,11 @@ function usageLines(
   aliases: Dict<string> = {},
 ): string[] {
   return usages.map((usage) => {
-    if (typeof usage === 'string') return `  ${usage}`
+    if (typeof usage === 'string') return usage
     const argTokens = usageArgTokens(usage.args, argsSchema)
     const optionTokens = usageOptionTokens(usage.options, optionsSchema, aliases)
     const middle = [scopedName, ...argTokens, ...optionTokens].filter(Boolean).join(' ')
-    return `  ${usage.prefix ?? ''}${middle}${usage.suffix ?? ''}`
+    return `${usage.prefix ?? ''}${middle}${usage.suffix ?? ''}`
   })
 }
 
@@ -94,11 +147,8 @@ function usageOptionTokens(
   const keys = Array.isArray(options) ? options : Object.keys(options).filter((key) => options[key])
   const shape = objectShape(schema)
   return keys.flatMap((key) => {
-    const long = key.length === 1 ? `-${key}` : `--${kebab(key)}`
-    const alias = aliases[key] ? `-${aliases[key]}|` : ''
     const item = shape[key]
-    const valueToken = isBooleanSchema(item) ? '' : ` <${key}>`
-    return [`${alias}${long}${valueToken}`]
+    return [optionUsageToken(key, item, aliases)]
   })
 }
 
@@ -115,13 +165,16 @@ function exampleLines(scopedName: string, examples: readonly any[]): string[] {
   })
 }
 
-function argLines(schema: Schema): string[] {
-  return Object.entries(objectShape(schema)).map(([key, item]) => `  ${key.padEnd(22)}  ${description(item) ?? ''}${defaultSuffix(item)}`)
+function argLines(args: readonly HelpField[]): string[] {
+  return args.map((arg) => `  ${arg.name.padEnd(22)}  ${arg.description ?? ''}${arg.defaultValue === undefined ? '' : ` (default: ${arg.defaultValue})`}`)
 }
 
-function defaultSuffix(schema: Schema): string {
-  const encoded = encodeDefault(schema)
-  return encoded === undefined ? '' : ` (default: ${encoded})`
+function optionLines(options: readonly HelpField[]): string[] {
+  return options.map((option) => {
+    const envSuffix = option.env ? ` (env: ${option.env})` : ''
+    const deprecatedSuffix = option.deprecated ? ' [deprecated]' : ''
+    return `  ${option.label.padEnd(22)}  ${option.description ?? ''}${option.defaultValue === undefined ? '' : ` (default: ${option.defaultValue})`}${envSuffix}${deprecatedSuffix}`
+  })
 }
 
 function flag(key: string, alias?: string | undefined): string {
@@ -129,15 +182,32 @@ function flag(key: string, alias?: string | undefined): string {
   return `${alias ? `-${alias}, ` : ''}${long}`.padEnd(22)
 }
 
-function globalLines(state: CliState): string[] {
-  const globals = state.globals.filter((global) => !global.hidden && !global.disabled)
+function optionUsageToken(key: string, schema: Schema | undefined, aliases: Dict<string> = {}): string {
+  const long = key.length === 1 ? `-${key}` : `--${kebab(key)}`
+  const alias = aliases[key] ? `-${aliases[key]}|` : ''
+  const valueToken = isBooleanSchema(schema) ? '' : ` <${key}>`
+  return `${alias}${long}${valueToken}`
+}
+
+function globalFields(state: CliState): HelpGlobal[] {
+  const globals = state.globals.filter((global) => !global.hidden)
+  return globals.map((global) => ({
+    ...(global.alias ? { alias: global.alias } : undefined),
+    deprecated: global.deprecated,
+    description: global.description,
+    flag: global.flag,
+    key: global.key,
+    label: globalFlag(global.flag, global.alias, global.valueLabel),
+  }))
+}
+
+function globalLines(globals: readonly HelpGlobal[]): string[] {
   return globals.map((global) => {
-    const renderedFlag = globalFlag(global.flag, global.alias, global.valueLabel)
     const deprecatedSuffix = global.deprecated
       ? ` ${typeof global.deprecated === 'string' ? `[deprecated: ${global.deprecated}]` : '[deprecated]'}`
       : ''
     const descriptionText = `${global.description ?? ''}${deprecatedSuffix}`
-    return descriptionText ? `  ${renderedFlag.padEnd(32)}  ${descriptionText}` : `  ${renderedFlag}`
+    return descriptionText ? `  ${global.label.padEnd(32)}  ${descriptionText}` : `  ${global.label}`
   })
 }
 

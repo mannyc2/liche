@@ -9,7 +9,7 @@ Use this skill when building a handwritten CLI with `@liche/core`, changing the 
 
 ## Core Model
 
-`@liche/core` is the runtime for declarative command graphs. It owns command registration, typed args/options/env parsing, core global flags, config loading once an extension declares a config contract, standard output formats, lifecycle events, direct MCP projection, packaged skill content, auth request application, and outbound HTTP operation transport.
+`@liche/core` is the runtime for declarative command graphs. It owns command registration, typed args/options/env parsing, opt-in standard controls, standard output formats, lifecycle events, command contracts, packaged skill metadata, auth request application, and outbound HTTP operation transport.
 
 Prefer core when the CLI implementation is handwritten and the command graph is already clear. Prefer `@liche/product` when one product catalog must generate multiple surfaces such as CLI, OpenAPI, MCP, docs, conformance, diagnostics, and discovery artifacts.
 
@@ -19,7 +19,7 @@ Use `defineCli()` plus `defineCommand()` data objects. Do not use fluent registr
 
 ```ts
 import { completions, config, configDoctor } from '@liche/extensions'
-import { defineCli, defineCommand, defineGlobal, z } from '@liche/core'
+import { defineCli, defineCommand, defineGlobal, help, outputControls, reflectionControls, version, z } from '@liche/core'
 
 const profile = defineGlobal({
   description: 'Profile to use',
@@ -33,6 +33,10 @@ export const cli = defineCli({
   version: '0.1.0',
   globals: [profile],
   extensions: [
+    help(),
+    version(),
+    outputControls({ json: true, fullOutput: true }),
+    reflectionControls({ schema: true }),
     completions(),
     config({
       schema: z.object({
@@ -46,11 +50,15 @@ export const cli = defineCli({
       path: ['deploy'],
       description: 'Deploy a service',
       input: {
-        config: { org: 'defaultOrg' },
         options: z.object({
           org: z.string().optional(),
           entrypoint: z.string(),
         }),
+        sources: {
+          options: {
+            org: [{ provider: 'config', path: 'defaultOrg' }],
+          },
+        },
       },
       output: z.object({ deploymentId: z.string() }),
       safety: {
@@ -86,11 +94,13 @@ Valid handler returns:
 
 Do not hand-write result-shaped objects such as `{ ok: true, data }`; they are domain data unless created by the result factories.
 
-Commands can set `format` to choose their default output format. Explicit global flags still win, so `--json` always returns JSON even when a command defaults to Markdown.
+Commands can set `format` to choose their default output format. Explicit output-control globals still win when installed, so `--json` returns JSON even when a command defaults to Markdown.
 
 ## Globals and Extensions
 
 Use `defineGlobal()` or `defineCli({ globals })` for CLI-wide flags that belong to the command runtime. Globals feed parsing, help, and `ctx.global`; they do not run side effects, load config, or resolve auth.
+
+Core's standard user-visible flags are opt-in controls: `help()`, `version()`, `outputControls()`, and `reflectionControls()`. `help({ renderer })` customizes explicit help, fallback help, and validation help; wrap `defaultHelpRenderer()` to preserve the standard layout with additions. Output renderers use `defineOutputRenderer()` and `CliExtension.outputRenderers`; expose custom format names with `outputControls({ format: true, formats: [...] })`. Do not assume a minimal `defineCli()` reserves `--help`, `--version`, `--json`, `--format`, `--schema`, or `--llms`.
 
 Optional first-party helper commands live in `@liche/extensions`, not core:
 

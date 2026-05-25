@@ -1,5 +1,6 @@
 import type { CommandRuntime, Dict, Schema } from '../types.js'
 import { camel, kebab } from '../internal.js'
+import { ParseError } from '../errors/error.js'
 import { isBooleanSchema, isDeprecated, isObjectSchema, objectShape, parseSchema } from '../schema/zod.js'
 
 export type DeprecationWarning = { flag: string; option: string }
@@ -24,10 +25,11 @@ export function parseCommandOptions(
   definition: CommandRuntime,
   argv: string[],
   seed: Dict = {},
-): { args: string[]; options: Dict; deprecations: DeprecationWarning[] } {
+): { args: string[]; options: Dict; explicitOptions: Set<string>; deprecations: DeprecationWarning[] } {
   const shape = objectShape(definition.options)
   const aliases = invert(definition.alias ?? {})
   const options: Dict = { ...seed }
+  const explicitOptions = new Set(Object.keys(seed))
   const args: string[] = []
   const deprecations: DeprecationWarning[] = []
   const noteDeprecated = (key: string, flag: string) => {
@@ -44,7 +46,9 @@ export function parseCommandOptions(
 
     if (token.startsWith('--no-')) {
       const key = matchKey(shape, camel(token.slice(5)))
+      assertKnownOption(shape, key, token)
       options[key] = false
+      explicitOptions.add(key)
       noteDeprecated(key, token)
       continue
     }
@@ -52,16 +56,20 @@ export function parseCommandOptions(
     if (token.startsWith('--')) {
       const [rawKey, equalsValue] = token.slice(2).split(/=(.*)/s)
       const key = matchKey(shape, camel(rawKey!))
+      assertKnownOption(shape, key, `--${rawKey}`)
       const isBoolean = isBooleanSchema(shape[key])
       options[key] = valueForOption(isBoolean, equalsValue, () => argv[++index]!)
+      explicitOptions.add(key)
       noteDeprecated(key, `--${rawKey}`)
       continue
     }
 
     if (/^-[A-Za-z]$/.test(token)) {
       const key = aliases[token.slice(1)] ?? token.slice(1)
+      assertKnownOption(shape, key, token)
       const isBoolean = isBooleanSchema(shape[key])
       options[key] = isBoolean ? true : argv[++index]
+      explicitOptions.add(key)
       noteDeprecated(key, token)
       continue
     }
@@ -69,7 +77,7 @@ export function parseCommandOptions(
     args.push(token)
   }
 
-  return { args, options, deprecations }
+  return { args, options, explicitOptions, deprecations }
 }
 
 function valueForOption(isBoolean: boolean, equalsValue: string | undefined, next: () => string): unknown {
@@ -84,6 +92,10 @@ function valueForOption(isBoolean: boolean, equalsValue: string | undefined, nex
 
 function matchKey(shape: Dict<Schema>, key: string): string {
   return shape[key] ? key : Object.keys(shape).find((candidate) => camel(candidate) === key || kebab(candidate) === key) ?? key
+}
+
+function assertKnownOption(shape: Dict<Schema>, key: string, flag: string): void {
+  if (!shape[key]) throw new ParseError({ message: `Unknown option: ${flag}` })
 }
 
 function invert(input: Dict<string>): Dict<string> {

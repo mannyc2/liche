@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { z } from '../src/index.js'
+import { defaultHelpRenderer, defineCli, defineCommand, help as helpControl, z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { renderHelp } from '../src/help/render.js'
-import { testCli, testCommand } from './helpers.js'
+import { runCli, testCli, testCommand } from './helpers.js'
 
 const stateOf = (cli: any) => (cli as InternalCli)[stateSymbol]
 const cliWith = (name: string, definition: any = {}, root: any = {}) => testCli('app', root, [testCommand(name, definition)])
@@ -119,10 +119,10 @@ describe('renderHelp — options', () => {
     expect(help).not.toContain('(default:')
   })
 
-  test('optionEnv mapping renders "(env: NAME)" suffix', () => {
+  test('env input source mapping renders "(env: NAME)" suffix', () => {
     const cli = cliWith('run', {
       options: z.object({ token: z.string() }),
-      optionEnv: { token: 'APP_TOKEN' },
+      sources: { options: { token: [{ provider: 'env', path: 'APP_TOKEN' }] } },
       run: () => ({}),
     })
     const help = renderHelp('app', stateOf(cli), undefined, ['run'])
@@ -297,5 +297,78 @@ describe('renderHelp — global sections always present', () => {
     expect(help).toContain('--format <json|yaml|md|jsonl>')
     expect(help).toContain('--help, -h')
     expect(help).toContain('--version')
+  })
+})
+
+describe('help({ renderer })', () => {
+  test('custom renderer handles explicit root help, command help, and fallback help', async () => {
+    const renderer = (model: any, context: any) => [
+      `CUSTOM ${model.name}`,
+      `binary=${context.binaryName}`,
+      `path=${model.path.join('/')}`,
+      `commands=${model.commands.map((command: any) => command.name).join(',')}`,
+      `globals=${model.globals.map((global: any) => global.label).join(',')}`,
+    ].join('\n')
+    const cli = defineCli({
+      name: 'app',
+      extensions: [helpControl({ renderer })],
+      commands: [
+        defineCommand({
+          path: ['run'],
+          description: 'run it',
+          run: () => ({ ok: true }),
+        }),
+      ],
+    })
+
+    const root = await runCli(cli, ['--help'])
+    expect(root.stdout).toBe('CUSTOM app\nbinary=app\npath=\ncommands=run\nglobals=--help, -h\n')
+
+    const command = await runCli(cli, ['run', '--help'])
+    expect(command.stdout).toBe('CUSTOM app run\nbinary=app\npath=run\ncommands=\nglobals=--help, -h\n')
+
+    const fallback = await runCli(cli, [])
+    expect(fallback.stdout).toBe(root.stdout)
+  })
+
+  test('custom renderer can wrap the public defaultHelpRenderer', async () => {
+    const cli = defineCli({
+      name: 'app',
+      extensions: [
+        helpControl({
+          renderer: (model, context) => `${defaultHelpRenderer(model, context)}\nWrapped help.`,
+        }),
+      ],
+      commands: [
+        defineCommand({
+          path: ['run'],
+          description: 'run it',
+          run: () => ({ ok: true }),
+        }),
+      ],
+    })
+
+    const result = await runCli(cli, ['--help'])
+    expect(result.stdout).toContain('Usage: app <command>')
+    expect(result.stdout).toContain('Wrapped help.')
+  })
+
+  test('human validation diagnostics use the configured renderer', async () => {
+    const cli = defineCli({
+      name: 'app',
+      extensions: [helpControl({ renderer: (model) => `CUSTOM HELP ${model.name}` })],
+      commands: [
+        defineCommand({
+          path: ['deploy'],
+          input: { options: z.object({ name: z.string() }) },
+          run: () => ({ ok: true }),
+        }),
+      ],
+    })
+
+    const result = await runCli(cli, ['deploy'], { isTty: true })
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('See below for usage.')
+    expect(result.stderr).toContain('CUSTOM HELP app deploy')
   })
 })

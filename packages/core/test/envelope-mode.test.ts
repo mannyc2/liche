@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { z } from '../src/index.js'
+import { outputControls, z } from '../src/index.js'
 import { testCli, testCommand } from './helpers.js'
 
 function captureRun(argv: string[], options: any, command: { name: string; def: any }) {
@@ -19,7 +19,7 @@ function captureRun(argv: string[], options: any, command: { name: string; def: 
 describe('envelope mode — generated.machineOutput: "envelope"', () => {
   test('emits full {ok, data, error, meta} envelope under --json', async () => {
     const capture = captureRun(['ping', '--json'], {
-      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+      generated: { machineOutput: 'envelope' },
     }, {
       name: 'ping',
       def: {
@@ -39,7 +39,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
 
   test('emits full error envelope under --json', async () => {
     const capture = captureRun(['fail', '--json'], {
-      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+      generated: { machineOutput: 'envelope' },
     }, {
       name: 'fail',
       def: {
@@ -66,7 +66,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
 
   test('ctx.ok and ctx.error return control results instead of throwing', async () => {
     const success = captureRun(['inspect-ok', '--json'], {
-      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+      generated: { machineOutput: 'envelope' },
     }, {
       name: 'inspect-ok',
       def: {
@@ -81,7 +81,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     expect(JSON.parse(success.out)).toMatchObject({ ok: true, data: { message: 'pong' }, error: null })
 
     const failure = captureRun(['inspect-error', '--json'], {
-      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+      generated: { machineOutput: 'envelope' },
     }, {
       name: 'inspect-error',
       def: {
@@ -140,10 +140,12 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
   })
 })
 
-describe('disabledGlobals — reject --format on generated CLIs', () => {
-  test('--format json is rejected before command run', async () => {
+describe('generated CLIs install selected output controls explicitly', () => {
+  test('--format json is rejected when generated output controls omit format', async () => {
     const capture = captureRun(['ping', '--format', 'json'], {
-      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+      generated: { machineOutput: 'envelope' },
+      testControls: false,
+      extensions: [outputControls({ json: true })],
     }, {
       name: 'ping',
       def: {
@@ -153,7 +155,7 @@ describe('disabledGlobals — reject --format on generated CLIs', () => {
     })
     await capture.promise
     expect(capture.exitCode).toBe(1)
-    expect(capture.err).toContain('--format is disabled')
+    expect(JSON.parse(capture.out).error.message).toBe('Unknown option: --format')
   })
 
   test('handwritten CLI still accepts --format json', async () => {

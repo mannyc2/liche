@@ -6,6 +6,7 @@ import type {
   CliEventSubscription,
   CliHooks,
   CliHookRegistration,
+  PrepareContextHook,
   SelectedCommand,
 } from '../types.js'
 
@@ -16,12 +17,14 @@ export function normalizeEvents(events: readonly CliEventRegistration[] | undefi
 export function normalizeHooks(hooks: CliHookRegistration | undefined): CliHooks {
   return {
     beforeExecute: normalizeHookList(hooks?.beforeExecute),
+    prepareContext: normalizePrepareList(hooks?.prepareContext),
   }
 }
 
 export function mergeHooks(...hooks: readonly CliHooks[]): CliHooks {
   return {
     beforeExecute: hooks.flatMap((entry) => entry.beforeExecute),
+    prepareContext: hooks.flatMap((entry) => entry.prepareContext),
   }
 }
 
@@ -56,6 +59,11 @@ export function eventCommand(selected: SelectedCommand): CliEventCommand {
 }
 
 function normalizeHookList(hook: BeforeExecuteHook | readonly BeforeExecuteHook[] | undefined): BeforeExecuteHook[] {
+  if (hook === undefined) return []
+  return typeof hook === 'function' ? [hook] : [...hook]
+}
+
+function normalizePrepareList(hook: PrepareContextHook | readonly PrepareContextHook[] | undefined): PrepareContextHook[] {
   if (hook === undefined) return []
   return typeof hook === 'function' ? [hook] : [...hook]
 }

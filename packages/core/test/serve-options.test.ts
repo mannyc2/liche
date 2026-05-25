@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { mcpServer } from '@liche/mcp-server'
 import { testCli, testCommand } from './helpers.js'
 import { z } from '../src/index.js'
 
@@ -98,7 +99,7 @@ describe('ServeOptions injection boundary', () => {
     let observed: string | undefined
     const cli = testCli('app', [testCommand('show', {
       options: z.object({ token: z.string().default('fallback') }),
-      optionEnv: { token: 'INJECTED_TOKEN' },
+      sources: { options: { token: [{ provider: 'env', path: 'INJECTED_TOKEN' }] } },
       run: ({ options }) => {
         observed = options.token
         return { ok: true }
@@ -118,7 +119,7 @@ describe('ServeOptions injection boundary', () => {
     const stdout: string[] = []
     const initialize = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })
 
-    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
 
     await cli.serve(['--mcp'], {
       isTty: false,
@@ -136,7 +137,7 @@ describe('ServeOptions injection boundary', () => {
 
   test('stdin accepts an AsyncIterable<string>', async () => {
     const stdout: string[] = []
-    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
 
     async function* stringChunks() {
       yield `${JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'initialize' })}\n`
@@ -154,7 +155,7 @@ describe('ServeOptions injection boundary', () => {
 
   test('stdin accepts a ReadableStream<Uint8Array>', async () => {
     const stdout: string[] = []
-    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -175,7 +176,7 @@ describe('ServeOptions injection boundary', () => {
 
   test('stdin splits across chunk boundaries', async () => {
     const stdout: string[] = []
-    const cli = testCli('app', [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
 
     const msg1 = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })
     const msg2 = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' })

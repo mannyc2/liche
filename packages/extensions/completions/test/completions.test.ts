@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, z } from '@liche/core'
 import type { CliInstance, ServeOptions } from '@liche/core'
 import { completionScript, completions } from '../src/index.js'
 
@@ -7,7 +7,7 @@ describe('@liche/completions', () => {
   test('registers a completions command that emits shell-specific scripts', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [completions()],
+      extensions: [outputControls({ json: true }), completions()],
       commands: [
         defineCommand({
           output: z.object({ command: z.string() }),

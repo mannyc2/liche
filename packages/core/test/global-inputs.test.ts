@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, defineGlobal, z } from '../src/index.js'
+import { defineCli, defineCommand, defineGlobal, outputControls, z } from '../src/index.js'
 import { renderHelp } from '../src/help/render.js'
 import { stateOf, runCli, parseJsonOutput } from './helpers.js'
 import type { CliExtension } from '../src/index.js'
@@ -15,6 +15,7 @@ describe('global input definitions', () => {
     })
     const cli = defineCli({
       name: 'app',
+      extensions: [outputControls({ json: true })],
       globals: [
         profile,
         {
@@ -48,7 +49,7 @@ describe('global input definitions', () => {
   test('extension globals use the same parser, help, and context registry', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [tenantExtension()],
+      extensions: [outputControls({ json: true }), tenantExtension()],
       commands: [
         defineCommand({
           path: ['show'],
@@ -87,16 +88,22 @@ describe('global input definitions', () => {
     ).toThrow(/Global alias -p is declared more than once/)
   })
 
-  test('generated disabled globals are parsed but omitted from help', async () => {
+  test('core globals are absent unless a control installs them', async () => {
     const cli = defineCli({
       name: 'app',
-      generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
-      commands: [defineCommand({ path: ['show'], run: () => ({ ok: true }) })],
+      generated: { machineOutput: 'envelope' },
+      commands: [
+        defineCommand({
+          path: ['show'],
+          input: { options: z.object({ format: z.string() }) },
+          run: ({ input }) => input.options,
+        }),
+      ],
     })
 
-    expect(renderHelp('app', stateOf(cli), undefined, ['show'])).not.toContain('--format')
+    expect(renderHelp('app', stateOf(cli), undefined, ['show'])).not.toContain('Global Options:')
     const result = await runCli(cli, ['show', '--format', 'yaml'])
-    expect(result.stderr).toContain('--format is disabled')
+    expect(parseJsonOutput(result.stdout)).toEqual({ format: 'yaml' })
   })
 })
 

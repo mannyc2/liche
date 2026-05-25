@@ -7,33 +7,34 @@ import type {
   Dict,
   Format,
   GlobalOptions,
+  InputSourceProvider,
   InvocationKind,
   MiddlewareContext,
   MiddlewareHandler,
   Result,
+  RunContext,
   SelectedCommand,
-  ConfigValueSource,
-  OptionValueSource,
 } from '../types.js'
 import { fail, isRuntimeResult, LicheError, ok, toCommandError } from '../errors/error.js'
 import { callFetch } from '../fetch/curl.js'
-import type { LoadedConfig } from '../parser/config.js'
-import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
 import { isCommand, isFetch } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
 import { parseSchema } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
+import { resolveCommandInput } from './input-sources.js'
 
 export type ExecuteInput = {
   agent: boolean
   argvOptions: { args: string[]; argsObject?: Dict | undefined; options?: Dict | undefined }
-  config?: LoadedConfig | undefined
+  contextOverrides?: Partial<RunContext> | undefined
   displayName: string
   env: Dict
   format: Format
   formatExplicit: boolean
+  flags?: Dict | undefined
   global?: GlobalOptions | undefined
   hooks: CliHooks
+  inputSources?: readonly InputSourceProvider[] | undefined
   invocation: InvocationKind
   isTty?: boolean | undefined
   middlewares: MiddlewareHandler[]
@@ -60,28 +61,24 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
     }
     const runtime = selected.entry.runtime
 
-    const argv = parseCommandOptions(runtime, input.argvOptions.args, input.argvOptions.options)
-    if (input.onDeprecation) for (const { flag, option } of argv.deprecations) input.onDeprecation(flag, option)
-    const configOptions = optionsFromConfigBindings(runtime.optionConfig, input.config)
-    const fromEnv: Dict = {}
-    for (const [optKey, envName] of Object.entries(runtime.optionEnv ?? {}) as [string, string][]) {
-      const value = input.env[envName]
-      if (value !== undefined) fromEnv[optKey] = value
-    }
-    const options = parseObject(runtime.options, { ...configOptions.values, ...fromEnv, ...argv.options })
-    const args = input.argvOptions.argsObject !== undefined
-      ? parseObject(runtime.args, input.argvOptions.argsObject)
-      : parseArgs(runtime.args, argv.args)
-    const env = parseObject(runtime.env, input.env)
-    const vars = parseObject((selected.rootDef as any)?.vars, {})
+    const overrides = input.contextOverrides ?? {}
 
-    const context = {
+    const resolved = await resolveCommandInput({
+      argvOptions: input.argvOptions,
+      commandPath: selected.path,
+      env: input.env as Dict<string | undefined>,
+      flags: input.flags ?? {},
+      inputSources: input.inputSources ?? [],
+      onDeprecation: input.onDeprecation,
+      rootVarsSchema: (selected.rootDef as any)?.vars,
+      runtime,
+    })
+
+    const baseContext: MiddlewareContext = {
       agent: input.agent,
-      args: args as Dict,
-      config: (input.config?.values ?? {}) as Dict,
-      configLoaded: !!input.config,
+      args: resolved.args as Dict,
       displayName: input.displayName,
-      env: env as Dict,
+      env: resolved.env as Dict,
       error(error) {
         return fail(error)
       },
@@ -94,20 +91,15 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       ok(data, meta) {
         return ok(data, meta)
       },
-      options: options as Dict,
+      options: resolved.options as Dict,
       set(key, value) {
         ;(this.var as Dict)[key] = value
       },
-      sources: {
-        config(path) {
-          return sourceForConfigPath(input.config, path)
-        },
-        option(name) {
-          return sourceForOption(name, argv.options, fromEnv, configOptions.sources)
-        },
-      },
-      var: vars as Dict,
-    } as MiddlewareContext
+      sources: resolved.sources,
+      var: resolved.vars as Dict,
+    }
+
+    const context: MiddlewareContext = { ...baseContext, ...overrides }
 
     for (const hook of input.hooks.beforeExecute) {
       try {
@@ -232,53 +224,4 @@ function eventError(error: CommandError): CliEventError {
     ...(error.retryable !== undefined ? { retryable: error.retryable } : undefined),
     ...(error.status !== undefined ? { status: error.status } : undefined),
   }
-}
-
-function optionsFromConfigBindings(
-  bindings: Record<string, string> | undefined,
-  config: LoadedConfig | undefined,
-): { values: Dict; sources: Map<string, ConfigValueSource> } {
-  const values: Dict = {}
-  const sources = new Map<string, ConfigValueSource>()
-  if (!bindings || !config) return { values, sources }
-  for (const [optionName, configPath] of Object.entries(bindings)) {
-    const value = getPath(config.values, configPath)
-    if (value === undefined) continue
-    values[optionName] = value
-    sources.set(optionName, sourceForConfigPath(config, configPath))
-  }
-  return { values, sources }
-}
-
-function getPath(value: unknown, path: string): unknown {
-  let cursor = value as any
-  for (const part of path.split('.')) {
-    if (!part) continue
-    cursor = cursor?.[part]
-  }
-  return cursor
-}
-
-function sourceForConfigPath(config: LoadedConfig | undefined, path: string): ConfigValueSource {
-  return config?.sources.get(path) ?? { kind: 'default' }
-}
-
-function sourceForOption(
-  name: string,
-  argvOptions: Dict,
-  fromEnv: Dict,
-  configSources: Map<string, ConfigValueSource>,
-): OptionValueSource {
-  if (Object.prototype.hasOwnProperty.call(argvOptions, name)) return 'argv'
-  if (Object.prototype.hasOwnProperty.call(fromEnv, name)) return 'env'
-  const source = configSources.get(name)
-  if (source) return optionSourceFromConfigSource(source)
-  return 'default'
-}
-
-function optionSourceFromConfigSource(source: ConfigValueSource): OptionValueSource {
-  if (source.kind === 'explicit-file') return 'explicit-config'
-  if (source.kind === 'project-file') return 'project-config'
-  if (source.kind === 'user-file') return 'user-config'
-  return 'default'
 }

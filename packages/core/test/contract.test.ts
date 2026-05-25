@@ -1,11 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { Formatter, middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
-import * as Mcp from '../src/mcp/index.js'
-import { createConfig, parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
+import * as Mcp from '@liche/mcp-server'
+import { mcpServer } from '@liche/mcp-server'
+import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 
 describe('contract: command resolution and execution', () => {
@@ -83,7 +81,7 @@ describe('contract: command resolution and execution', () => {
   })
 })
 
-describe('contract: args, flags, config, env, middleware', () => {
+describe('contract: args, flags, env, middleware', () => {
   test('parses positionals, aliases, booleans, --no flags, and -- literal boundary', async () => {
     const cli = testCli('app', [testCommand('build', {
       alias: { count: 'c' },
@@ -117,16 +115,11 @@ describe('contract: args, flags, config, env, middleware', () => {
     expect(parseJsonOutput(result.stdout)).toEqual({ count: 0, enabled: false })
   })
 
-  test('optionEnv populates option defaults from env (argv > env > config > default)', async () => {
+  test('env input source populates option defaults from env (argv > env > default)', async () => {
     const make = () =>
-      testCli('app', {
-        config: createConfig({
-          schema: z.object({ tokenDefault: z.string().default('fromconfig') }),
-        }),
-      }, [testCommand('run', {
+      testCli('app', [testCommand('run', {
         options: z.object({ token: z.string().default('default') }),
-        optionEnv: { token: 'MYAPP_TOKEN' },
-        optionConfig: { token: 'tokenDefault' },
+        sources: { options: { token: [{ provider: 'env', path: 'MYAPP_TOKEN' }] } },
         run: ({ options }) => options,
       })])
 
@@ -136,64 +129,23 @@ describe('contract: args, flags, config, env, middleware', () => {
     const argvWins = await runCli(make(), ['run', '--token', 'fromargv', '--json'], { env: { MYAPP_TOKEN: 'fromenv' } })
     expect(parseJsonOutput(argvWins.stdout)).toEqual({ token: 'fromargv' })
 
-    const configFallback = await runCli(make(), ['run', '--json'], { env: {} })
-    expect(parseJsonOutput(configFallback.stdout)).toEqual({ token: 'fromconfig' })
+    const schemaDefault = await runCli(make(), ['run', '--json'], { env: {} })
+    expect(parseJsonOutput(schemaDefault.stdout)).toEqual({ token: 'default' })
   })
 
-  test('first-class config exposes ctx.config, explicit option bindings, and source provenance', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'liche-config-contract-'))
-    try {
-      const path = join(dir, 'app.jsonc')
-      writeFileSync(path, `{
-        // JSONC comments are allowed.
-        "baseUrl": "https://api.example.test",
-        "defaultOrg": "org_config",
-        "timeoutMs": 2500
-      }`)
-      const cli = testCli('app', {
-        config: createConfig({
-          files: [path],
-          schema: z.strictObject({
-            baseUrl: z.string().url().default('https://default.example.test'),
-            defaultOrg: z.string(),
-            timeoutMs: z.coerce.number().default(1000),
-          }),
-        }),
-      }, [testCommand('deploy', {
-        options: z.object({
-          org: z.string(),
-          timeoutMs: z.coerce.number(),
-          loose: z.string().default('schema'),
-        }),
-        optionConfig: {
-          org: 'defaultOrg',
-          timeoutMs: 'timeoutMs',
-        },
-        run: (ctx) => ({
-          baseUrl: ctx.config['baseUrl'],
-          baseUrlSource: ctx.sources.config('baseUrl').kind,
-          looseSource: ctx.sources.option('loose'),
-          org: ctx.options.org,
-          orgSource: ctx.sources.option('org'),
-          timeoutMs: ctx.options.timeoutMs,
-        }),
-      })])
+  test('option source provenance distinguishes argv, provider, and schema default', async () => {
+    const cli = testCli('app', [testCommand('run', {
+      options: z.object({ region: z.string().default('iad') }),
+      sources: { options: { region: [{ provider: 'env', path: 'APP_REGION' }] } },
+      run: (ctx) => ({ region: ctx.options.region, source: ctx.sources.option('region') }),
+    })])
 
-      const configFallback = await runCli(cli, ['deploy', '--json'])
-      expect(parseJsonOutput(configFallback.stdout)).toEqual({
-        baseUrl: 'https://api.example.test',
-        baseUrlSource: 'project-file',
-        looseSource: 'default',
-        org: 'org_config',
-        orgSource: 'project-config',
-        timeoutMs: 2500,
-      })
-
-      const argv = await runCli(cli, ['deploy', '--org', 'org_argv', '--json'])
-      expect(parseJsonOutput(argv.stdout).orgSource).toBe('argv')
-    } finally {
-      rmSync(dir, { force: true, recursive: true })
-    }
+    expect(parseJsonOutput((await runCli(cli, ['run', '--region', 'sfo', '--json'], { env: { APP_REGION: 'dfw' } })).stdout))
+      .toEqual({ region: 'sfo', source: { kind: 'argv' } })
+    expect(parseJsonOutput((await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'dfw' } })).stdout))
+      .toEqual({ region: 'dfw', source: { kind: 'provider', provider: 'env', path: 'APP_REGION', source: { kind: 'env', name: 'APP_REGION' } } })
+    expect(parseJsonOutput((await runCli(cli, ['run', '--json'], { env: {} })).stdout))
+      .toEqual({ region: 'iad', source: { kind: 'default' } })
   })
 
   test('validates command env from the supplied serve env', async () => {
@@ -284,7 +236,7 @@ describe('contract: fetch and schema', () => {
   })
 
   test('fetch exposes MCP endpoint, HEAD behavior, and invalid JSON fallback', async () => {
-    const cli = testCli('api', { version: '3.0.0' }, [testCommand('echo', {
+    const cli = testCli('api', { version: '3.0.0', extensions: [mcpServer()] }, [testCommand('echo', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ options }) => ({ message: options.message }),
     })])
@@ -418,17 +370,9 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(skills.stdout).not.toContain('skills list')
   })
 
-  test('config loading does not register support commands in core', async () => {
-    const configured = testCli('app', { config: createConfig({}) }, [testCommand('list', { run: () => ({ command: 'list' }) })])
-
-    const help = await runCli(configured, ['--help'])
-    expect(help.stdout).not.toContain('config doctor')
-    expect(help.stdout).not.toContain('mcp add')
-    expect(help.stdout).not.toContain('skills add')
-
+  test('core registers no helper commands by default', async () => {
     const minimal = testCli('minimal', [testCommand('list', { run: () => ({ command: 'list' }) })])
     const minimalHelp = await runCli(minimal, ['--help'])
-    expect(minimalHelp.stdout).not.toContain('config doctor')
     expect(minimalHelp.stdout).not.toContain('mcp add')
     expect(minimalHelp.stdout).not.toContain('skills add')
   })

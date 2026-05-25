@@ -24,7 +24,6 @@ export function commandContractFromDefinition(
     ...(definition.format ? { format: definition.format } : undefined),
     ...(definition.hint ? { hint: definition.hint } : undefined),
     name,
-    ...(definition.optionConfig ? { optionConfig: definition.optionConfig } : undefined),
     ...(definition.outputPolicy ? { outputPolicy: definition.outputPolicy } : undefined),
     path: contractPath(name),
     ...(definition.policy ? { policy: definition.policy } : undefined),

@@ -1,17 +1,14 @@
 import { describe, expect, test } from 'bun:test'
-import { createConfig, testCli, testCommand } from './helpers.js'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { testCli, testCommand } from './helpers.js'
 import { Formatter, z } from '../src/index.js'
 import * as Fetch from '../src/fetch/curl.js'
-import * as Mcp from '../src/mcp/index.js'
+import * as Mcp from '@liche/mcp-server'
 import * as Parser from '../src/parser/index.js'
 import * as Schema from '../src/schema/zod.js'
-import * as Skill from '../src/skills/index.js'
+import * as Skill from '@liche/skills-runtime'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { camel, collectAsync, isAsyncIterable, isObject, kebab } from '../src/internal.js'
-import { handleMcpHttp } from '../src/mcp/http.js'
+import { handleMcpHttp } from '@liche/mcp-server'
 import { childCommands, collectCommandContracts, commandScope, completionCommands, outputPolicy, selectCommand } from '../src/command/registry.js'
 import { isAlias, isFetch, isGroup, isResult } from '../src/command/guards.js'
 
@@ -198,33 +195,7 @@ describe('format, filter, CTA, and schema behavior', () => {
   })
 })
 
-describe('runtime and config behavior', () => {
-  test('loadConfig reads JSON, YAML, explicit paths, and disabled config', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'liche-config-'))
-    const jsonPath = join(root, 'app.json')
-    const yamlPath = join(root, 'app.yaml')
-    await Bun.write(jsonPath, JSON.stringify({ mode: 'json' }))
-    await Bun.write(yamlPath, 'mode: yaml\n')
-
-    try {
-      const jsonCli = testCli('app', { config: createConfig({ files: [jsonPath] }) })
-      const yamlCli = testCli('app', { config: createConfig({ files: [yamlPath] }) })
-
-      expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({
-        mode: 'json',
-      })
-      expect(await Parser.loadConfig('app', (yamlCli as InternalCli)[stateSymbol], { rest: [] })).toEqual({
-        mode: 'yaml',
-      })
-      expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { configDisabled: true, rest: [] })).toBeUndefined()
-      expect(await Parser.loadConfig('app', (jsonCli as InternalCli)[stateSymbol], { configPath: jsonPath, rest: [] })).toEqual({
-        mode: 'json',
-      })
-    } finally {
-      await rm(root, { force: true, recursive: true })
-    }
-  })
-})
+// Config loading behavior is now owned by @liche/config; see packages/extensions/config/test/loader.test.ts.
 
 describe('command registry and guards behavior', () => {
   test('guards distinguish aliases, groups, fetch entries, and result envelopes', () => {
@@ -303,42 +274,31 @@ describe('skill rendering behavior', () => {
 })
 
 describe('parser globals and internal helpers', () => {
-  test('parseGlobals recognizes value flags, booleans, config flags, and rest args', () => {
+  test('parseGlobals recognizes value flags, booleans, and rest args', () => {
+    const registry = (testCli('app') as InternalCli)[stateSymbol].globals
     expect(
-      Parser.parseGlobals(
-        [
-          '--json',
-          '--format=yaml',
-          '--full-output',
-          '--filter-output',
-          'data.id',
-          '--llms',
-          '--mcp',
-          '--schema',
-          '--token-count',
-          '--token-limit=10',
-          '--token-offset',
-          '2',
-          '--config',
-          'app.yaml',
-          '--no-config',
-          '--version',
-          '-h',
-          'run',
-        ],
-        'config',
-      ),
+      Parser.parseGlobals([
+        '--json',
+        '--format=yaml',
+        '--full-output',
+        '--filter-output',
+        'data.id',
+        '--schema',
+        '--token-count',
+        '--token-limit=10',
+        '--token-offset',
+        '2',
+        '--version',
+        '-h',
+        'run',
+      ], registry),
     ).toEqual({
-      configDisabled: true,
-      configPath: 'app.yaml',
       filterOutput: 'data.id',
       format: 'yaml',
       formatExplicit: true,
       fullOutput: true,
       help: true,
       json: true,
-      llms: true,
-      mcp: true,
       rest: ['run'],
       schema: true,
       tokenCount: true,
@@ -349,20 +309,24 @@ describe('parser globals and internal helpers', () => {
   })
 
   test('parseGlobals throws ParseError on invalid format value', () => {
-    expect(() => Parser.parseGlobals(['--format', 'bogus'])).toThrow(/Invalid format/)
-    expect(() => Parser.parseGlobals(['--format', 'toon'])).toThrow(/Invalid format/)
+    const registry = (testCli('app') as InternalCli)[stateSymbol].globals
+    expect(() => Parser.parseGlobals(['--format', 'bogus'], registry)).toThrow(/Invalid format/)
+    expect(() => Parser.parseGlobals(['--format', 'toon'], registry)).toThrow(/Invalid format/)
   })
 
   test('parseGlobals throws ParseError on non-numeric --token-limit', () => {
-    expect(() => Parser.parseGlobals(['--token-limit', 'abc'])).toThrow(/Invalid value for --token-limit/)
+    const registry = (testCli('app') as InternalCli)[stateSymbol].globals
+    expect(() => Parser.parseGlobals(['--token-limit', 'abc'], registry)).toThrow(/Invalid value for --token-limit/)
   })
 
   test('parseGlobals throws ParseError when value flag is missing its value', () => {
-    expect(() => Parser.parseGlobals(['--format'])).toThrow(/Missing value for flag: --format/)
+    const registry = (testCli('app') as InternalCli)[stateSymbol].globals
+    expect(() => Parser.parseGlobals(['--format'], registry)).toThrow(/Missing value for flag: --format/)
   })
 
   test('parseGlobals throws ParseError on --format= with empty value', () => {
-    expect(() => Parser.parseGlobals(['--format='])).toThrow(/Missing value for flag: --format/)
+    const registry = (testCli('app') as InternalCli)[stateSymbol].globals
+    expect(() => Parser.parseGlobals(['--format='], registry)).toThrow(/Missing value for flag: --format/)
   })
 
   test('internal string, object, and async iterable helpers preserve their contracts', async () => {
