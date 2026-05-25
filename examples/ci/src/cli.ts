@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, z } from '@liche/core'
-import { completions, config, configDoctor } from '@liche/extensions'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { completions, config, configDoctor, env, files, llms } from '@liche/extensions'
 
 const DeploymentSchema = z.object({
   id: z.string(),
@@ -17,8 +17,8 @@ const CliConfigSchema = z.object({
 
 type CliConfig = z.infer<typeof CliConfigSchema>
 
-function cliConfig(ctx: { config: Record<string, unknown> }): CliConfig {
-  return ctx.config as CliConfig
+function cliConfig(ctx: { sources: { value(provider: string, path: string): unknown } }): CliConfig {
+  return ctx.sources.value('config', '') as CliConfig
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -27,7 +27,7 @@ async function readJson(response: Response): Promise<unknown> {
   return JSON.parse(text)
 }
 
-async function apiFetch(ctx: { config: Record<string, unknown> }, path: string, init?: RequestInit): Promise<unknown> {
+async function apiFetch(ctx: { sources: { value(provider: string, path: string): unknown } }, path: string, init?: RequestInit): Promise<unknown> {
   const baseUrl = cliConfig(ctx).apiBaseUrl.replace(/\/$/, '')
   const response = await fetch(`${baseUrl}${path}`, init)
   if (!response.ok) {
@@ -46,10 +46,10 @@ export const cli = defineCli({
       path: ['deployments', 'list'],
       description: 'List deployments',
       input: {
-        config: { project: 'defaultProject' },
         options: z.object({
           project: z.string().optional(),
         }),
+        sources: { options: { project: [{ provider: 'config', path: 'defaultProject' }] } },
       },
       output: z.array(DeploymentSchema),
       async run({ ctx, input }) {
@@ -87,11 +87,18 @@ export const cli = defineCli({
   ],
   description: 'Inspect and promote application deployments.',
   extensions: [
+    help(),
+    version(),
+    outputControls(),
+    reflectionControls(),
+    llms(),
     completions(),
     config({
-      files: ['shipyard.jsonc'],
       schema: CliConfigSchema,
-      scopes: { project: { discoverUpwards: true }, user: false },
+      sources: [
+        files({ files: ['shipyard.jsonc'], scopes: { project: { discoverUpwards: true }, user: false } }),
+        env({ prefix: 'SHIPYARD_' }),
+      ],
     }),
     configDoctor(),
   ],

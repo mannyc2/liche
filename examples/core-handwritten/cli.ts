@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, defineGlobal, middleware, z } from '@liche/core'
+import { defineCli, defineCommand, defineGlobal, help, middleware, outputControls, reflectionControls, version, z } from '@liche/core'
 import type { CliEvent } from '@liche/core'
 import { completions } from '@liche/extensions'
 
@@ -20,7 +20,7 @@ export const cli = defineCli({
       type: event.type,
     })
   }],
-  extensions: [completions()],
+  extensions: [help(), version(), outputControls(), reflectionControls(), completions()],
   globals: [profile],
   middleware: [middleware(async (ctx, next) => {
     ctx.set('requestId', 'example-request')

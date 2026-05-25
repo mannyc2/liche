@@ -2,8 +2,8 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import { defineCli, defineCommand, z } from '@liche/core'
-import { completions, config } from '@liche/extensions'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { completions, config, files } from '@liche/extensions'
 import { buildBinaries } from './build.js'
 import { compileEntrypoint } from './compile.js'
 import type { CompileTarget } from './compile.js'
@@ -41,10 +41,6 @@ export const cli = defineCli({
       input: {
         aliases: { out: 'o' },
         args: z.object({ entrypoint: z.string() }),
-        config: {
-          out: 'compileEntry.out',
-          target: 'compileEntry.target',
-        },
         options: z.object({
           commit: z.string(),
           contractDigest: z.string(),
@@ -52,6 +48,12 @@ export const cli = defineCli({
           releaseVersion: z.string(),
           target: z.string(),
         }),
+        sources: {
+          options: {
+            out: [{ provider: 'config', path: 'compileEntry.out' }],
+            target: [{ provider: 'config', path: 'compileEntry.target' }],
+          },
+        },
       },
       async run({ ctx, input }) {
         const result = await compileEntrypoint({
@@ -89,12 +91,6 @@ export const cli = defineCli({
       input: {
         aliases: { out: 'o' },
         args: z.object({ entrypoint: z.string() }),
-        config: {
-          out: 'build.out',
-          parallel: 'build.parallel',
-          record: 'build.record',
-          targets: 'build.targets',
-        },
         options: z.object({
           targets: z.string(),
           releaseVersion: z.string(),
@@ -104,6 +100,14 @@ export const cli = defineCli({
           record: z.string().optional(),
           parallel: z.boolean().default(true),
         }),
+        sources: {
+          options: {
+            out: [{ provider: 'config', path: 'build.out' }],
+            parallel: [{ provider: 'config', path: 'build.parallel' }],
+            record: [{ provider: 'config', path: 'build.record' }],
+            targets: [{ provider: 'config', path: 'build.targets' }],
+          },
+        },
       },
       async run({ ctx, input }) {
         const result = await buildBinaries({
@@ -149,14 +153,19 @@ export const cli = defineCli({
     }),
   ],
   extensions: [
+    help(),
+    version(),
+    outputControls(),
+    reflectionControls(),
     completions(),
     config({
-      files: ['liche-build.json', 'liche-build.jsonc', 'liche-build.yaml', 'liche-build.yml', 'liche-build.toml'],
       schema: BuildCliConfigSchema,
-      scopes: {
-        project: { discoverUpwards: true },
-        user: { xdg: true },
-      },
+      sources: [
+        files({
+          files: ['liche-build.json', 'liche-build.jsonc', 'liche-build.yaml', 'liche-build.yml', 'liche-build.toml'],
+          scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
+        }),
+      ],
     }),
   ],
   name: 'liche-build',
