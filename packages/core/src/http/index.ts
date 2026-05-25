@@ -1,4 +1,5 @@
-export { callHttpOperation, serializeHttpOperationRequest } from './operation.js'
+export { callHttpOperation } from './operation.js'
+export { serializeHttpOperationRequest } from './binding.js'
 export type {
   HttpAuth,
   HttpFetch,
@@ -9,4 +10,4 @@ export type {
   RemoteErrorDetails,
   RuntimeValue,
   SerializedHttpRequest,
-} from './operation.js'
+} from './types.js'
