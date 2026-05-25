@@ -2,6 +2,8 @@ import type { CliEvent, CliEventError, CliEventSubscription, CliState, CommandEr
 import { collectCommandContracts, mcpToolName, selectCommand } from '../command/registry.js'
 import { execute } from '../cli/execute.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from '../cli/lifecycle.js'
+import { jsonSchema, mcpAnnotations, objectSchema } from './annotations.js'
+import { isRecord, jsonRpcError, validateJsonRpc } from './json-rpc.js'
 
 export const MCP_PROTOCOL_VERSION = '2025-11-25'
 
@@ -145,37 +147,6 @@ function mcpCommandContracts(state: CliState) {
   return collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false)
 }
 
-export function mcpParseError() {
-  return jsonRpcError(undefined, -32700, 'Parse error')
-}
-
-function validateJsonRpc(message: any):
-  | { ok: true; id: string | number; notification: false }
-  | { ok: true; notification: true }
-  | { ok: false; response: ReturnType<typeof jsonRpcError> } {
-  if (!isRecord(message)) return { ok: false, response: jsonRpcError(undefined, -32600, 'Invalid Request') }
-  const id = validRequestId(message['id']) ? message['id'] : undefined
-
-  if (message['jsonrpc'] !== '2.0') return { ok: false, response: jsonRpcError(id, -32600, 'Invalid Request') }
-  if (typeof message['method'] !== 'string') return { ok: false, response: jsonRpcError(id, -32600, 'Invalid Request') }
-
-  if (!Object.prototype.hasOwnProperty.call(message, 'id')) return { ok: true, notification: true }
-  if (!validRequestId(message['id'])) return { ok: false, response: jsonRpcError(undefined, -32600, 'Invalid Request') }
-  return { ok: true, id: message['id'], notification: false }
-}
-
-function validRequestId(value: unknown): value is string | number {
-  return typeof value === 'string' || (typeof value === 'number' && Number.isInteger(value))
-}
-
-function jsonRpcError(id: string | number | undefined, code: number, message: string) {
-  return {
-    jsonrpc: '2.0',
-    ...(id === undefined ? undefined : { id }),
-    error: { code, message },
-  }
-}
-
 async function emitMcpLifecycle(
   binaryName: string,
   state: CliState,
@@ -193,36 +164,4 @@ function mcpEventError(error: CommandError): CliEventError {
     ...(error.retryable !== undefined ? { retryable: error.retryable } : undefined),
     ...(error.status !== undefined ? { status: error.status } : undefined),
   }
-}
-
-function objectSchema(value: unknown) {
-  if (isRecord(value) && value['type'] === 'object') return value
-  return { type: 'object', properties: {} }
-}
-
-function jsonSchema(value: unknown) {
-  return isRecord(value) ? value : undefined
-}
-
-function mcpAnnotations(command: { effects?: any; examples?: unknown; name: string; policy?: any; safety?: any }): Record<string, unknown> {
-  const destructive = command.safety?.destructive ?? (command.policy?.dangerous === true || command.effects?.kind === 'delete')
-  const idempotent = command.safety?.idempotent ?? command.effects?.idempotent === true
-  const openWorld = command.safety?.openWorld ?? true
-  const readOnly = command.safety?.readOnly ?? command.effects?.kind === 'read'
-
-  return {
-    command: command.name,
-    ...(command.effects ? { effects: command.effects } : undefined),
-    ...(command.policy ? { policy: command.policy } : undefined),
-    ...(command.safety ? { safety: command.safety } : undefined),
-    ...(command.examples ? { examples: command.examples } : undefined),
-    destructiveHint: destructive,
-    idempotentHint: idempotent,
-    openWorldHint: openWorld,
-    readOnlyHint: readOnly,
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, any> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
 }

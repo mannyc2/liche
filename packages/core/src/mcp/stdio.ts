@@ -1,5 +1,6 @@
 import type { CliState, ServeOptions } from '../types.js'
-import { mcpMessage, mcpParseError } from './protocol.js'
+import { mcpParseError } from './json-rpc.js'
+import { mcpMessage } from './protocol.js'
 
 export async function serveMcp(binaryName: string, state: CliState, options: ServeOptions = {}): Promise<void> {
   const out = options.stdout ?? ((s: string) => void Bun.stdout.write(s))

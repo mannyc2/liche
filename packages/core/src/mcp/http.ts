@@ -1,5 +1,6 @@
 import type { CliState } from '../types.js'
-import { mcpMessage, mcpParseError } from './protocol.js'
+import { mcpParseError } from './json-rpc.js'
+import { mcpMessage } from './protocol.js'
 
 export async function handleMcpHttp(binaryName: string, state: CliState, request: Request): Promise<Response> {
   try {
