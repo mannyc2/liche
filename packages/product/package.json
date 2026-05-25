@@ -31,9 +31,16 @@
     "mutate": "stryker run"
   },
   "dependencies": {
+    "@liche/agents": "^0.4.0",
+    "@liche/auth": "^0.4.0",
     "@liche/build": "^0.4.0",
+    "@liche/completions": "^0.4.0",
+    "@liche/config": "^0.4.0",
     "@liche/core": "^0.4.0",
     "@liche/extensions": "^0.4.0",
+    "@liche/mcp": "^0.4.0",
+    "@liche/skills": "^0.4.0",
+    "@liche/telemetry": "^0.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

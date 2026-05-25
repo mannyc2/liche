@@ -1,5 +1,5 @@
 import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'
-import { config as configExtension, configDoctor } from '@liche/extensions/config'
+import { config as configExtension, configDoctor } from '@liche/config'
 import { deploy, dev } from './impl/wrangler.js'
 
 const cli = defineCli({

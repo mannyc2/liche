@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { defineCli, defineCommand, z } from '@liche/core'
-import { config } from '../src/config.js'
+import { config } from '../src/index.js'
 
-describe('@liche/extensions/config', () => {
+describe('@liche/config', () => {
   test('declares core config through the extension lane', async () => {
     const cli = defineCli({
       name: 'ship',

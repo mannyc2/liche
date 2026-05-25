@@ -38,12 +38,11 @@ describe('package boundary: @liche/extensions', () => {
     }
   })
 
-  test('imports only the public core package path', () => {
+  test('umbrella source does not reach into internal core paths or forbidden packages', () => {
     const source = sourceFiles(join(import.meta.dir, '..', 'src'))
       .map((path) => readFileSync(path, 'utf8'))
       .join('\n')
 
-    expect(source).toContain('@liche/core')
     expect(source).not.toMatch(/packages\/core\/src/)
     expect(source).not.toMatch(/@liche\/core\/src/)
     for (const dependency of FORBIDDEN_RUNTIME_DEPS) {
@@ -51,29 +50,27 @@ describe('package boundary: @liche/extensions', () => {
     }
   })
 
-  test('exports lanes as package subpaths', async () => {
+  test('umbrella re-exports each leaf package without exposing subpaths', async () => {
     const exports = packageJson().exports ?? {}
     const root = await import('../src/index.js')
-    const auth = await import('../src/auth.js')
-    const config = await import('../src/config.js')
-    const helpers = await import('../src/helpers.js')
-    const telemetry = await import('../src/telemetry.js')
+    const auth = await import('@liche/auth')
+    const config = await import('@liche/config')
+    const agents = await import('@liche/agents')
+    const completions = await import('@liche/completions')
+    const mcp = await import('@liche/mcp')
+    const skills = await import('@liche/skills')
+    const telemetry = await import('@liche/telemetry')
 
     expect(exports['.']).toBeDefined()
-    expect(exports['./auth']).toBeDefined()
-    expect(exports['./config']).toBeDefined()
-    expect(exports['./agents']).toBeDefined()
-    expect(exports['./completions']).toBeDefined()
-    expect(exports['./mcp']).toBeDefined()
-    expect(exports['./skills']).toBeDefined()
-    expect(exports['./telemetry']).toBeDefined()
-    expect(exports['./support']).toBeUndefined()
+    for (const subpath of ['./auth', './config', './agents', './completions', './mcp', './skills', './telemetry', './support']) {
+      expect(exports[subpath]).toBeUndefined()
+    }
     expect(root.auth).toBe(auth.auth)
     expect(root.config).toBe(config.config)
-    expect(root.agents).toBe(helpers.agents)
-    expect(root.completions).toBe(helpers.completions)
-    expect(root.mcpInstaller).toBe(helpers.mcpInstaller)
-    expect(root.skillsInstaller).toBe(helpers.skillsInstaller)
+    expect(root.agents).toBe(agents.agents)
+    expect(root.completions).toBe(completions.completions)
+    expect(root.mcpInstaller).toBe(mcp.mcpInstaller)
+    expect(root.skillsInstaller).toBe(skills.skillsInstaller)
     expect(root.createLocalTelemetrySink).toBe(telemetry.createLocalTelemetrySink)
     expect('runLocalDoctor' in root).toBe(false)
   })

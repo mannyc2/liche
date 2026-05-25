@@ -168,6 +168,7 @@ const FROZEN_PUBLIC_VALUES = [
   'callHttpOperation',
   'defineCli',
   'defineCommand',
+  'defineExtension',
   'defineGlobal',
   'fail',
   'middleware',

@@ -11,6 +11,13 @@ const BUN_ENGINE = '>=1.3.0'
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core', bin: undefined },
   { name: '@liche/extensions', dir: 'packages/extensions', bin: undefined },
+  { name: '@liche/agents', dir: 'packages/extensions/agents', bin: undefined },
+  { name: '@liche/auth', dir: 'packages/extensions/auth', bin: undefined },
+  { name: '@liche/completions', dir: 'packages/extensions/completions', bin: undefined },
+  { name: '@liche/config', dir: 'packages/extensions/config', bin: undefined },
+  { name: '@liche/mcp', dir: 'packages/extensions/mcp', bin: undefined },
+  { name: '@liche/skills', dir: 'packages/extensions/skills', bin: undefined },
+  { name: '@liche/telemetry', dir: 'packages/extensions/telemetry', bin: undefined },
   { name: '@liche/build', dir: 'packages/build', bin: 'liche-build' },
   { name: '@liche/product', dir: 'packages/product', bin: 'liche-product' },
   { name: '@liche/releases', dir: 'packages/releases', bin: 'liche-release' },
@@ -30,6 +37,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'commandError',
     'defineCli',
     'defineCommand',
+    'defineExtension',
     'defineGlobal',
     'fail',
     'middleware',
@@ -56,8 +64,8 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'resolveContext',
     'skillsInstaller',
   ],
-  '@liche/extensions/agents': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
-  '@liche/extensions/auth': [
+  '@liche/agents': ['agents'],
+  '@liche/auth': [
     'auth',
     'authGlobals',
     'authSwitch',
@@ -68,11 +76,11 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'resolveAuth',
     'resolveContext',
   ],
-  '@liche/extensions/config': ['config', 'configDoctor'],
-  '@liche/extensions/completions': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
-  '@liche/extensions/mcp': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
-  '@liche/extensions/skills': ['agents', 'completionScript', 'completions', 'mcpInstaller', 'skillsInstaller', 'writeMcp', 'writeSkill'],
-  '@liche/extensions/telemetry': ['createLocalTelemetrySink'],
+  '@liche/completions': ['completionScript', 'completions'],
+  '@liche/config': ['config', 'configDoctor'],
+  '@liche/mcp': ['mcpInstaller', 'writeMcp'],
+  '@liche/skills': ['skillsInstaller', 'writeSkill'],
+  '@liche/telemetry': ['createLocalTelemetrySink'],
   '@liche/build': [
     'BuildRecordSchema',
     'TARGETS',
@@ -290,13 +298,13 @@ describe('public package readiness', () => {
       writeFileSync(join(consumerDir, 'smoke.ts'), `
 import * as Core from '@liche/core'
 import * as Extensions from '@liche/extensions'
-import * as ExtensionsAgents from '@liche/extensions/agents'
-import * as ExtensionsAuth from '@liche/extensions/auth'
-import * as ExtensionsConfig from '@liche/extensions/config'
-import * as ExtensionsCompletions from '@liche/extensions/completions'
-import * as ExtensionsMcp from '@liche/extensions/mcp'
-import * as ExtensionsSkills from '@liche/extensions/skills'
-import * as ExtensionsTelemetry from '@liche/extensions/telemetry'
+import * as Agents from '@liche/agents'
+import * as Auth from '@liche/auth'
+import * as Completions from '@liche/completions'
+import * as Config from '@liche/config'
+import * as Mcp from '@liche/mcp'
+import * as Skills from '@liche/skills'
+import * as Telemetry from '@liche/telemetry'
 import * as Build from '@liche/build'
 import * as Product from '@liche/product'
 import * as Releases from '@liche/releases'
@@ -319,13 +327,13 @@ const expectedPublicValues = ${JSON.stringify(EXPECTED_PUBLIC_VALUES, null, 2)}
 const modules = {
   '@liche/core': Core,
   '@liche/extensions': Extensions,
-  '@liche/extensions/agents': ExtensionsAgents,
-  '@liche/extensions/auth': ExtensionsAuth,
-  '@liche/extensions/config': ExtensionsConfig,
-  '@liche/extensions/completions': ExtensionsCompletions,
-  '@liche/extensions/mcp': ExtensionsMcp,
-  '@liche/extensions/skills': ExtensionsSkills,
-  '@liche/extensions/telemetry': ExtensionsTelemetry,
+  '@liche/agents': Agents,
+  '@liche/auth': Auth,
+  '@liche/completions': Completions,
+  '@liche/config': Config,
+  '@liche/mcp': Mcp,
+  '@liche/skills': Skills,
+  '@liche/telemetry': Telemetry,
   '@liche/build': Build,
   '@liche/product': Product,
   '@liche/releases': Releases,

@@ -12,34 +12,6 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
-    },
-    "./auth": {
-      "types": "./src/auth.ts",
-      "default": "./src/auth.ts"
-    },
-    "./config": {
-      "types": "./src/config.ts",
-      "default": "./src/config.ts"
-    },
-    "./agents": {
-      "types": "./src/helpers.ts",
-      "default": "./src/helpers.ts"
-    },
-    "./completions": {
-      "types": "./src/helpers.ts",
-      "default": "./src/helpers.ts"
-    },
-    "./mcp": {
-      "types": "./src/helpers.ts",
-      "default": "./src/helpers.ts"
-    },
-    "./skills": {
-      "types": "./src/helpers.ts",
-      "default": "./src/helpers.ts"
-    },
-    "./telemetry": {
-      "types": "./src/telemetry.ts",
-      "default": "./src/telemetry.ts"
     }
   },
   "files": [
@@ -55,7 +27,14 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.4.0"
+    "@liche/agents": "^0.4.0",
+    "@liche/auth": "^0.4.0",
+    "@liche/completions": "^0.4.0",
+    "@liche/config": "^0.4.0",
+    "@liche/core": "^0.4.0",
+    "@liche/mcp": "^0.4.0",
+    "@liche/skills": "^0.4.0",
+    "@liche/telemetry": "^0.4.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { defineCli, defineCommand, z } from '@liche/core'
-import { auth } from '../src/auth.js'
+import { auth } from '../src/index.js'
 
-describe('@liche/extensions/auth', () => {
+describe('@liche/auth', () => {
   test('declares auth globals through the extension lane', async () => {
     const cli = defineCli({
       name: 'ship',

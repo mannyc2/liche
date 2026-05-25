@@ -1,4 +1,4 @@
-export { defineCli, defineCommand, defineGlobal } from './cli/create.js'
+export { defineCli, defineCommand, defineExtension, defineGlobal } from './cli/create.js'
 export { middleware } from './cli/context.js'
 export { z } from './schema/zod.js'
 

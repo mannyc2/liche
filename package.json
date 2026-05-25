@@ -8,7 +8,7 @@
     "bun": ">=1.3.0"
   },
   "workspaces": {
-    "packages": ["packages/*"],
+    "packages": ["packages/*", "packages/extensions/*"],
     "catalog": {
       "typescript": "latest",
       "zod": "^4.4.3",
@@ -27,11 +27,18 @@
     }
   },
   "dependencies": {
+    "@liche/agents": "workspace:*",
+    "@liche/auth": "workspace:*",
     "@liche/build": "workspace:*",
+    "@liche/completions": "workspace:*",
+    "@liche/config": "workspace:*",
     "@liche/core": "workspace:*",
     "@liche/extensions": "workspace:*",
+    "@liche/mcp": "workspace:*",
     "@liche/product": "workspace:*",
-    "@liche/releases": "workspace:*"
+    "@liche/releases": "workspace:*",
+    "@liche/skills": "workspace:*",
+    "@liche/telemetry": "workspace:*"
   },
   "scripts": {
     "check": "bun run --filter '*' check",

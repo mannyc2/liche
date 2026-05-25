@@ -517,13 +517,13 @@ function renderImports(catalog: Catalog): string[] {
       ...(authRuntimeUsed(catalog) ? ['createFileSessionStore', 'resolveAuth'] : []),
       ...(contextRuntimeUsed(catalog) ? ['resolveContext'] : []),
     ].sort()
-    out.push(`import { ${authNames.join(', ')} } from '@liche/extensions/auth'`)
+    out.push(`import { ${authNames.join(', ')} } from '@liche/auth'`)
   }
   if (catalog.config) {
-    out.push(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
+    out.push(`import { config as configExtension, configDoctor } from '@liche/config'`)
   }
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
-    out.push(`import { createLocalTelemetrySink } from '@liche/extensions/telemetry'`)
+    out.push(`import { createLocalTelemetrySink } from '@liche/telemetry'`)
   }
   const byModule = new Map<string, Set<string>>()
   for (const h of collectLocalHandlers(catalog)) {

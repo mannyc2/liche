@@ -1,4 +1,4 @@
-import { defineCommand } from '@liche/core'
+import { defineCommand, defineExtension } from '@liche/core'
 import type {
   CliExtension,
   ConfigDefinition,
@@ -16,7 +16,8 @@ export type ConfigExtensionOptions<T = Record<string, unknown>> = {
 export function config<T extends Record<string, unknown> = Record<string, unknown>>(
   options: ConfigExtensionOptions<T>,
 ): CliExtension {
-  return {
+  return defineExtension({
+    id: 'liche.config',
     config: {
       kind: 'liche.config.object',
       ...(options.files ? { files: options.files } : undefined),
@@ -24,12 +25,12 @@ export function config<T extends Record<string, unknown> = Record<string, unknow
       ...(options.schema ? { schema: options.schema } : undefined),
       ...(options.scopes ? { scopes: options.scopes } : undefined),
     } as ConfigDefinition,
-    id: 'liche.config',
-  }
+  })
 }
 
 export function configDoctor(): CliExtension {
-  return {
+  return defineExtension({
+    id: 'liche.config-doctor',
     commands: [
       defineCommand({
         agent: false,
@@ -45,6 +46,5 @@ export function configDoctor(): CliExtension {
         safety: { readOnly: true },
       }),
     ],
-    id: 'liche.config-doctor',
-  }
+  })
 }

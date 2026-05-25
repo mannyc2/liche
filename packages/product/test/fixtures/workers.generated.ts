@@ -10,8 +10,8 @@
  */
 
 import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'
-import { config as configExtension, configDoctor } from '@liche/extensions/config'
-import { createLocalTelemetrySink } from '@liche/extensions/telemetry'
+import { config as configExtension, configDoctor } from '@liche/config'
+import { createLocalTelemetrySink } from '@liche/telemetry'
 import { deploy, dev } from './impl/wrangler.js'
 
 const PRODUCT_ID = 'workers'

@@ -237,7 +237,7 @@ describe('generateCli — run bodies by execution mode', () => {
     const source = generate(cat)
     expect(source.match(/from '@liche\/core'/)?.[0]).toBe("from '@liche/core'")
     expect(source).toContain(`import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'`)
-    expect(source).toContain(`import { config as configExtension, configDoctor } from '@liche/extensions/config'`)
+    expect(source).toContain(`import { config as configExtension, configDoctor } from '@liche/config'`)
     expect(source).toContain(`extensions: [configExtension({`)
     expect(source).toContain(`files: ['p.jsonc'],`)
     expect(source).toContain(`config: { 'zone': 'defaultZone' },`)

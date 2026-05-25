@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { createLocalTelemetrySink } from '../src/telemetry.js'
+import { createLocalTelemetrySink } from '../src/index.js'
 
-describe('@liche/extensions/telemetry local sink', () => {
+describe('@liche/telemetry local sink', () => {
   test('writes JSONL only when opted in and redacts secret-shaped fields', async () => {
     const writes: string[] = []
     const sink = createLocalTelemetrySink({

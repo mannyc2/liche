@@ -8,7 +8,7 @@ export {
   oauthDeviceLogin,
   resolveAuth,
   resolveContext,
-} from './auth.js'
+} from '@liche/auth'
 export type {
   AuthRuntimeInput,
   FileSessionStoreOptions,
@@ -16,17 +16,16 @@ export type {
   ResolveContextInput,
   SessionStore,
   StoredProfile,
-} from './auth.js'
-export { config, configDoctor } from './config.js'
-export { agents, completions, mcpInstaller, skillsInstaller } from './helpers.js'
-export { createLocalTelemetrySink } from './telemetry.js'
-export type { ConfigExtensionOptions } from './config.js'
-export type {
-  CompletionsOptions,
-  AgentsOptions,
-  McpInstallerOptions,
-  SkillsInstallerOptions,
-  WriteMcpOptions,
-  WriteSkillOptions,
-} from './helpers.js'
-export type { LocalTelemetrySinkOptions } from './telemetry.js'
+} from '@liche/auth'
+export { config, configDoctor } from '@liche/config'
+export { agents } from '@liche/agents'
+export { completions } from '@liche/completions'
+export { mcpInstaller } from '@liche/mcp'
+export { skillsInstaller } from '@liche/skills'
+export { createLocalTelemetrySink } from '@liche/telemetry'
+export type { ConfigExtensionOptions } from '@liche/config'
+export type { AgentsOptions } from '@liche/agents'
+export type { CompletionsOptions } from '@liche/completions'
+export type { McpInstallerOptions, WriteMcpOptions } from '@liche/mcp'
+export type { SkillsInstallerOptions, WriteSkillOptions } from '@liche/skills'
+export type { LocalTelemetrySinkOptions } from '@liche/telemetry'

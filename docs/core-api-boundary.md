@@ -186,6 +186,7 @@ Public means importable from `@liche/core`. Tests may keep importing subpaths fo
 
 - `defineCli` — canonical handwritten CLI authoring helper for data-first command graphs.
 - `defineCommand` — canonical command declaration helper for analyzable command metadata plus a handler.
+- `defineExtension` — canonical extension declaration helper; validates the extension id and freezes the result.
 - `defineGlobal` — canonical global flag declaration helper for reusable parser/help/context metadata.
 - `middleware` (`packages/core/src/cli/context.ts:3`) — imported by `contract.test.ts` and `parity.test.ts`; docs name middleware as core behavior.
 - `z` (`packages/core/src/schema/zod.ts:5`) — imported by many core tests and used in docs examples; public schema authoring convenience.
@@ -275,7 +276,7 @@ Re-promoting any private helper now requires a package-root consumer fixture or 
 These imports are not promotion candidates:
 
 - `stateSymbol` and `InternalCli` from `packages/core/src/cli/create.ts`
-- `formatHumanValidationError` from `packages/core/src/cli/format-error.ts`
+- `formatHumanValidationError` from `packages/core/src/cli/human-validation-error.ts`
 - `SelectedCommand`, `CliState`, `Entry`, `FetchEntry`, `GroupEntry`, and `AliasEntry` from `packages/core/src/types.ts`
 - `renderHelp` from `packages/core/src/help/render.ts`
 - `manifestEnvelope`, `mcpToolName`, `selectCommand`, `commandScope`, `childCommands`, `completionCommands`, `outputPolicy`, and `collectCommandContracts` from `packages/core/src/command/registry.ts`

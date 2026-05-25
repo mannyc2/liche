@@ -73,6 +73,15 @@ export function defineCommand<
   })
 }
 
+const EXTENSION_ID_RE = /^[a-z][a-z0-9.-]*$/
+
+export function defineExtension(extension: CliExtension): CliExtension {
+  if (typeof extension.id !== 'string' || !EXTENSION_ID_RE.test(extension.id)) {
+    throw new Error(`defineExtension({ id }) must match ${EXTENSION_ID_RE} (got ${JSON.stringify(extension.id)})`)
+  }
+  return Object.freeze({ ...extension })
+}
+
 export function defineCli(definition: DefineCliOptions): CliInstance {
   const expanded = applyExtensions(definition)
   const { commands = [], ...rootDefinition } = expanded
