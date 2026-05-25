@@ -1,19 +1,29 @@
-import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'
-import { config as configExtension, configDoctor } from '@liche/config'
+import { callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { llms } from '@liche/agents'
+import { config as configExtension, configDoctor, files } from '@liche/config'
 import { deploy, dev } from './impl/wrangler.js'
 
 const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
-  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
+  generated: { machineOutput: 'envelope' },
   extensions: [
+    help(),
+    version(),
+    outputControls({ json: true, fullOutput: true, filterOutput: true, tokenCount: true, tokenLimit: true, tokenOffset: true }),
+    reflectionControls({ schema: true }),
+    llms(),
     configExtension({
-      files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
       schema: z.strictObject({
         accountId: z.string().optional(),
         apiBaseUrl: z.string().default('https://api.cloudflare.test'),
       }),
-      scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
+      sources: [
+        files({
+          files: ['workers.jsonc', 'workers.yaml', 'workers.toml'],
+          scopes: { project: { discoverUpwards: true }, user: { xdg: true } },
+        }),
+      ],
     }),
     configDoctor(),
   ],
@@ -29,7 +39,7 @@ const cli = defineCli({
         name: z.string(),
       })),
       async run({ ctx }) {
-        const remoteBaseUrl = ctx.config['apiBaseUrl']
+        const remoteBaseUrl = ctx.sources.value('config', 'apiBaseUrl')
         if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {
           return ctx.error({
             code: 'REMOTE_CONFIG_MISSING_BASE_URL',
@@ -55,7 +65,7 @@ const cli = defineCli({
           env: ctx.env as Record<string, string | undefined>,
           requiredPermissions: ['workers:read'],
         })
-        const source = ctx.sources.config('apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'
+        const source = ctx.sources.source('config', 'apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'
         return ctx.ok(data, { execution: { mode: 'remote-http', source } })
       },
     }),

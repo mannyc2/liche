@@ -8,8 +8,8 @@ import type {
   CompilePlan,
   CompileTarget,
 } from '@liche/build'
-import { generateToDir, type GenerateResult, type GenerateToDirOptions } from './generate.js'
-import type { RuntimeProduct } from './product.js'
+import { generateToDir, type GenerateResult, type GenerateToDirOptions } from './generate/index.js'
+import type { RuntimeProduct } from './product/types.js'
 
 export type { BunBuildFn, CompilePlan, CompileTarget } from '@liche/build'
 

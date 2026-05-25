@@ -1,0 +1,22 @@
+export { Auth } from './auth.js'
+export type {
+  AuthApiKeySpec,
+  AuthBearerSpec,
+  AuthCommandSpec,
+  AuthIdentitySpec,
+  AuthNoneSpec,
+  AuthOAuthDeviceSpec,
+  AuthSpec,
+  ContextEnvSpec,
+  ContextRemoteSpec,
+  ContextSelectSpec,
+  ContextSpec,
+  EnvTokenSource,
+  PermissionScopeSpec,
+  PermissionSpec,
+  ProductContextEntry,
+  RequiresSpec,
+  SessionTokenSource,
+  TokenSource,
+  TokenSourceMode,
+} from './types.js'

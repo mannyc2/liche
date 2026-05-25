@@ -2,22 +2,42 @@ import { describe, expect, test } from 'bun:test'
 import * as Core from '@liche/core'
 
 // Frozen public surface of @liche/core, mirrored from packages/core/test/api-snapshot.test.ts
-// and docs/core-api-boundary.md. Asserts package-level resolution (not just source-relative
+// and docs/api-boundary.md. Asserts package-level resolution (not just source-relative
 // imports) so generated code in @liche/product can only depend on the approved API.
 const FROZEN_PUBLIC_VALUES = [
+  'collectCommandContracts',
   'commandError',
+  'createLifecycleEvent',
+  'emitLifecycleEvent',
+  'eventCommand',
+  'execute',
   'Formatter',
   'applyAuth',
   'callHttpOperation',
+  'defaultHelpRenderer',
   'defineCli',
   'defineCommand',
   'defineExtension',
   'defineGlobal',
+  'defineOutputRenderer',
   'fail',
+  'getCliState',
+  'help',
+  'manifest',
+  'manifestEnvelope',
+  'mcpToolName',
+  'mergeHooks',
   'middleware',
   'ok',
+  'outputControls',
+  'parseSchema',
+  'ParseError',
+  'reflectionControls',
+  'selectCommand',
   'serializeHttpOperationRequest',
   'secret',
+  'ValidationError',
+  'version',
   'z',
 ].sort()
 

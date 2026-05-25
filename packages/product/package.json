@@ -38,8 +38,10 @@
     "@liche/config": "^0.4.0",
     "@liche/core": "^0.4.0",
     "@liche/extensions": "^0.4.0",
-    "@liche/mcp": "^0.4.0",
-    "@liche/skills": "^0.4.0",
+    "@liche/mcp-installer": "^0.4.0",
+    "@liche/mcp-server": "^0.4.0",
+    "@liche/skills-installer": "^0.4.0",
+    "@liche/skills-runtime": "^0.4.0",
     "@liche/telemetry": "^0.4.0",
     "zod": "^4.4.3"
   },

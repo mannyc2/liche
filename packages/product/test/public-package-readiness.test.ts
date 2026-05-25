@@ -15,8 +15,10 @@ const PUBLIC_PACKAGES = [
   { name: '@liche/auth', dir: 'packages/extensions/auth', bin: undefined },
   { name: '@liche/completions', dir: 'packages/extensions/completions', bin: undefined },
   { name: '@liche/config', dir: 'packages/extensions/config', bin: undefined },
-  { name: '@liche/mcp', dir: 'packages/extensions/mcp', bin: undefined },
-  { name: '@liche/skills', dir: 'packages/extensions/skills', bin: undefined },
+  { name: '@liche/mcp-installer', dir: 'packages/extensions/mcp-installer', bin: undefined },
+  { name: '@liche/mcp-server', dir: 'packages/extensions/mcp-server', bin: undefined },
+  { name: '@liche/skills-installer', dir: 'packages/extensions/skills-installer', bin: undefined },
+  { name: '@liche/skills-runtime', dir: 'packages/extensions/skills-runtime', bin: undefined },
   { name: '@liche/telemetry', dir: 'packages/extensions/telemetry', bin: undefined },
   { name: '@liche/build', dir: 'packages/build', bin: 'liche-build' },
   { name: '@liche/product', dir: 'packages/product', bin: 'liche-product' },
@@ -32,18 +34,38 @@ function expectedPackageFiles(packageName: string): string[] {
 const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
   '@liche/core': [
     'Formatter',
+    'ParseError',
+    'ValidationError',
     'applyAuth',
     'callHttpOperation',
+    'collectCommandContracts',
     'commandError',
+    'createLifecycleEvent',
+    'defaultHelpRenderer',
     'defineCli',
     'defineCommand',
     'defineExtension',
     'defineGlobal',
+    'defineOutputRenderer',
+    'emitLifecycleEvent',
+    'eventCommand',
+    'execute',
     'fail',
+    'getCliState',
+    'help',
+    'manifest',
+    'manifestEnvelope',
+    'mcpToolName',
+    'mergeHooks',
     'middleware',
     'ok',
+    'outputControls',
+    'parseSchema',
+    'reflectionControls',
     'secret',
+    'selectCommand',
     'serializeHttpOperationRequest',
+    'version',
     'z',
   ],
   '@liche/extensions': [
@@ -57,14 +79,19 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'configDoctor',
     'createFileSessionStore',
     'createLocalTelemetrySink',
+    'env',
+    'files',
+    'llms',
     'logoutAuthSession',
     'mcpInstaller',
+    'mcpServer',
     'oauthDeviceLogin',
     'resolveAuth',
     'resolveContext',
     'skillsInstaller',
+    'skillsRuntime',
   ],
-  '@liche/agents': ['agents'],
+  '@liche/agents': ['agents', 'llms'],
   '@liche/auth': [
     'auth',
     'authGlobals',
@@ -77,9 +104,11 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'resolveContext',
   ],
   '@liche/completions': ['completionScript', 'completions'],
-  '@liche/config': ['config', 'configDoctor'],
-  '@liche/mcp': ['mcpInstaller', 'writeMcp'],
-  '@liche/skills': ['skillsInstaller', 'writeSkill'],
+  '@liche/config': ['config', 'configDoctor', 'env', 'files'],
+  '@liche/mcp-installer': ['mcpInstaller', 'writeMcp'],
+  '@liche/mcp-server': ['MCP_PROTOCOL_VERSION', 'handleMcpHttp', 'mcpMessage', 'mcpServer', 'serveMcp'],
+  '@liche/skills-installer': ['skillsInstaller', 'writeSkill'],
+  '@liche/skills-runtime': ['skillIndex', 'skillMarkdown', 'skillsRuntime'],
   '@liche/telemetry': ['createLocalTelemetrySink'],
   '@liche/build': [
     'BuildRecordSchema',
@@ -302,8 +331,10 @@ import * as Agents from '@liche/agents'
 import * as Auth from '@liche/auth'
 import * as Completions from '@liche/completions'
 import * as Config from '@liche/config'
-import * as Mcp from '@liche/mcp'
-import * as Skills from '@liche/skills'
+import * as McpInstaller from '@liche/mcp-installer'
+import * as McpServer from '@liche/mcp-server'
+import * as SkillsInstaller from '@liche/skills-installer'
+import * as SkillsRuntime from '@liche/skills-runtime'
 import * as Telemetry from '@liche/telemetry'
 import * as Build from '@liche/build'
 import * as Product from '@liche/product'
@@ -331,8 +362,10 @@ const modules = {
   '@liche/auth': Auth,
   '@liche/completions': Completions,
   '@liche/config': Config,
-  '@liche/mcp': Mcp,
-  '@liche/skills': Skills,
+  '@liche/mcp-installer': McpInstaller,
+  '@liche/mcp-server': McpServer,
+  '@liche/skills-installer': SkillsInstaller,
+  '@liche/skills-runtime': SkillsRuntime,
   '@liche/telemetry': Telemetry,
   '@liche/build': Build,
   '@liche/product': Product,

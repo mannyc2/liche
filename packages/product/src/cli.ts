@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 import { dirname, isAbsolute, resolve } from 'node:path'
-import { defineCli, defineCommand, z } from '@liche/core'
-import { completions, mcpInstaller, skillsInstaller } from '@liche/extensions'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { completions, llms, mcpInstaller, skillsInstaller } from '@liche/extensions'
 import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
-import { conformProduct, type ConformanceCase } from './conformance.js'
-import { checkAgainstDir, generateToDir } from './generate.js'
-import type { RuntimeProduct } from './product.js'
+import { conformProduct, type ConformanceCase } from './conformance/index.js'
+import { checkAgainstDir, generateToDir } from './generate/index.js'
+import type { RuntimeProduct } from './product/types.js'
 import { LI_PRODUCT_SKILL_INDEX, LI_PRODUCT_SKILL_MARKDOWN } from './skill.js'
 
 const GENERATOR_VERSION = '0.4.0'
@@ -177,6 +177,11 @@ export const cli = defineCli({
     }),
   ],
   extensions: [
+    help(),
+    version(),
+    outputControls(),
+    reflectionControls(),
+    llms(),
     completions(),
     mcpInstaller(),
     skillsInstaller({

@@ -4,46 +4,43 @@ export type { JsonSchemaNode } from './types.js'
 
 export { canonicalDigest, canonicalize } from '@liche/build'
 
-export { lintCatalog } from './lints.js'
-export type { LintIssue } from './lints.js'
+export { lintCatalog } from './lints/index.js'
+export type { LintIssue } from './lints/index.js'
 
-export { generateCli } from './generate-cli.js'
-export type { GenerateOptions } from './generate-cli.js'
-
-export { generateOpenapi } from './generate-openapi.js'
-export type { GenerateOpenapiOptions } from './generate-openapi.js'
-
-export { generateCommandManifest } from './generate-command-manifest.js'
-export type { GenerateCommandManifestOptions } from './generate-command-manifest.js'
-
-export { generateMcpTools } from './generate-mcp-tools.js'
-export type { GenerateMcpToolsOptions } from './generate-mcp-tools.js'
-
-export { generateAgentReference } from './generate-agent-reference.js'
-export type { GenerateAgentReferenceOptions } from './generate-agent-reference.js'
-
-export { generateDocsReference } from './generate-docs-reference.js'
-export type { GenerateDocsReferenceOptions } from './generate-docs-reference.js'
-
-export { generateConfigSchema, shouldGenerateConfigSchema } from './generate-config-schema.js'
-export type { GenerateConfigSchemaOptions } from './generate-config-schema.js'
-
-export { generateToDir, checkAgainstDir } from './generate.js'
+export {
+  checkAgainstDir,
+  generateAgentReference,
+  generateCli,
+  generateCommandManifest,
+  generateConfigSchema,
+  generateDocsReference,
+  generateMcpTools,
+  generateOpenapi,
+  generateToDir,
+  shouldGenerateConfigSchema,
+} from './generate/index.js'
 export type {
   CheckResult,
+  GenerateAgentReferenceOptions,
   GenerateArtifact,
+  GenerateCommandManifestOptions,
+  GenerateConfigSchemaOptions,
+  GenerateDocsReferenceOptions,
+  GenerateMcpToolsOptions,
+  GenerateOpenapiOptions,
+  GenerateOptions,
   GenerateResult,
   GenerateToDirOptions,
-} from './generate.js'
+} from './generate/index.js'
 
-export { conformProduct } from './conformance.js'
+export { conformProduct } from './conformance/index.js'
 export type {
   ConformanceCase,
   ConformanceReport,
   ConformanceReportCase,
   ConformanceStatus,
   ConformProductOptions,
-} from './conformance.js'
+} from './conformance/index.js'
 
 export { compileProduct } from './compile.js'
 export type {
@@ -53,19 +50,22 @@ export type {
   CompileProductSuccess,
 } from './compile.js'
 
-export { hashString, buildAuthManifest } from './manifest.js'
-export type { AuthManifestEntry, GeneratedSurfaceManifest, ManifestAuth } from './manifest.js'
+export { buildAuthManifest, hashString } from './manifest/index.js'
+export type { AuthManifestEntry, GeneratedSurfaceManifest, ManifestAuth } from './manifest/index.js'
 
-export { Field, FieldBuilder } from './field.js'
-export type { FieldMutability, FieldType, NormalizedField } from './field.js'
-
-export { Shape } from './shape.js'
-export type { ListShape, ObjectShape } from './shape.js'
-
-export { Command } from './command.js'
+export { Field, FieldBuilder, Shape } from './schema/index.js'
 export type {
-  CommandFamily,
+  FieldMutability,
+  FieldType,
+  ListShape,
+  NormalizedField,
+  ObjectShape,
+} from './schema/index.js'
+
+export { Command } from './command/index.js'
+export type {
   CapabilityExample,
+  CommandFamily,
   CommandSpec,
   EffectKind,
   EffectsSpec,
@@ -74,41 +74,41 @@ export type {
   HttpMethod,
   HttpSpec,
   HybridWorkflowExecution,
-  LocalExecution,
   LocalCommandDefinition,
+  LocalExecution,
   LocalNeed,
   PolicySpec,
-  RemoteHttpExecution,
   RemoteHttpCommandDefinition,
+  RemoteHttpExecution,
   SurfaceHints,
   WorkflowCommandDefinition,
   WorkflowStep,
-} from './command.js'
+} from './command/index.js'
 
-export { createConfig } from './config.js'
+export { createConfig } from './config/index.js'
 export type {
   ConfigScopeSpec,
   ConfigScopesSpec,
   ProductConfigDefinition,
   ProductConfigSpec,
-} from './config.js'
+} from './config/index.js'
 
-export { Runtime } from './runtime.js'
-export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime.js'
+export { Runtime } from './runtime/index.js'
+export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime/index.js'
 
 export type {
   ProductNotice,
   ProductOpsSpec,
   ProductPackageManager,
   ProductReleaseSpec,
-} from './ops.js'
+} from './ops/index.js'
 
-export { defineProduct } from './product.js'
+export { defineProduct } from './product/index.js'
 export type {
   BindingSpec,
   DefinedProduct,
-  ProductDefinition,
   ProductCommandEntry,
+  ProductDefinition,
   ProductMetadata,
   ProductResource,
   ProductResourceDefinition,
@@ -118,9 +118,9 @@ export type {
   ResourceOperationEntry,
   ResourceOperationSpec,
   RuntimeProduct,
-} from './product.js'
+} from './product/index.js'
 
-export { Auth } from './auth.js'
+export { Auth } from './auth/index.js'
 export type {
   AuthApiKeySpec,
   AuthBearerSpec,
@@ -141,12 +141,12 @@ export type {
   SessionTokenSource,
   TokenSource,
   TokenSourceMode,
-} from './auth.js'
+} from './auth/index.js'
 
-export { DEFAULT_GENERATED_VOCABULARY, vocabulary } from './vocabulary.js'
-export type { Vocabulary, VocabularyOverrides } from './vocabulary.js'
+export { DEFAULT_GENERATED_VOCABULARY, vocabulary } from './schema/index.js'
+export type { Vocabulary, VocabularyOverrides } from './schema/index.js'
 
-export { fieldToJsonSchema, normalizeProduct, resolveListShape } from './catalog.js'
+export { fieldToJsonSchema, normalizeProduct, resolveListShape } from './catalog/index.js'
 export type {
   Capability,
   Catalog,
@@ -156,27 +156,20 @@ export type {
   NormalizedConfig,
   NormalizedConfigScopes,
   NormalizedContext,
-  NormalizedContextSelect,
   NormalizedExecution,
-  NormalizedCapabilityExample,
-  NormalizedEffects,
   NormalizedHttpBind,
   NormalizedHttpSpec,
   NormalizedListShape,
   NormalizedObjectShape,
   NormalizedOps,
   NormalizedPermission,
-  NormalizedPolicy,
-  NormalizedProductScope,
+  NormalizedRemote,
   NormalizedRequires,
   NormalizedResource,
-  NormalizedRemote,
   NormalizedRuntimeValue,
   NormalizedShape,
   NormalizedSurfaces,
   NormalizedTokenSource,
-  NormalizedVocabulary,
-  NormalizedWorkflowStep,
   ResolvedListShape,
   ResourceOperationCapability,
-} from './catalog.js'
+} from './catalog/index.js'

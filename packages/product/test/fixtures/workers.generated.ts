@@ -9,8 +9,9 @@
  * Do not edit by hand. Regenerate via `liche-product generate`.
  */
 
-import { callHttpOperation, defineCli, defineCommand, z } from '@liche/core'
-import { config as configExtension, configDoctor } from '@liche/config'
+import { callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { llms } from '@liche/agents'
+import { config as configExtension, configDoctor, files } from '@liche/config'
 import { createLocalTelemetrySink } from '@liche/telemetry'
 import { deploy, dev } from './impl/wrangler.js'
 
@@ -628,9 +629,11 @@ type GeneratedLocalDoctorInput = {
 }
 
 type GeneratedDoctorContext = {
-  config: Record<string, unknown>
   env: Record<string, string | undefined>
-  sources: { config(path: string): { kind: string } }
+  sources: {
+    source(provider: string, path: string): { kind: string }
+    value(provider: string, path: string): unknown
+  }
 }
 
 async function runGeneratedLocalDoctor(input: GeneratedLocalDoctorInput): Promise<{ cli: { name: string; version?: string | undefined }; checks: GeneratedDoctorCheck[]; summary: { pass: number; warn: number; fail: number } }> {
@@ -744,13 +747,13 @@ function generatedRemoteBaseUrlCheck(ctx: GeneratedDoctorContext, source: any): 
     }
   }
   if (source.kind === 'config') {
-    const value = ctx.config[source.path]
+    const value = ctx.sources.value('config', source.path)
     const ok = typeof value === 'string' && value.length > 0
     return {
       id: 'remote.base-url',
       status: ok ? 'pass' : 'fail',
       message: ok ? 'Remote base URL config value is resolved.' : 'Remote base URL config value is missing.',
-      details: { configPath: source.path, source: ok ? generatedConfigSourceKind(ctx.sources.config(source.path).kind) : 'missing' },
+      details: { configPath: source.path, source: ok ? generatedConfigSourceKind(ctx.sources.source('config', source.path).kind) : 'missing' },
     }
   }
   return { id: 'remote.base-url', status: 'fail', message: 'Remote base URL declaration is not recognized.' }
@@ -887,14 +890,15 @@ function countGeneratedDoctorChecks(checks: readonly GeneratedDoctorCheck[]): { 
   }
 }
 
+
 const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
-  generated: { machineOutput: 'envelope', disabledGlobals: ['format'] },
-  extensions: [configExtension({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], schema: z.strictObject({
+  generated: { machineOutput: 'envelope' },
+  extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true, tokenCount: true, tokenLimit: true, tokenOffset: true }), reflectionControls({ schema: true }), llms(), configExtension({ schema: z.strictObject({
     'accountId': z.string().optional(),
     'apiBaseUrl': z.string().default("https://api.cloudflare.test"),
-  }), scopes: { project: { discoverUpwards: true }, user: { xdg: true } } }), configDoctor()],
+  }), sources: [files({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], scopes: { project: { discoverUpwards: true }, user: { xdg: true } } })] }), configDoctor()],
   events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],
   commands: [
     defineCommand({
@@ -915,7 +919,7 @@ const cli = defineCli({
       })),
       safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: true, readOnly: true },
       async run({ ctx }) {
-        const remoteBaseUrl = ctx.config['apiBaseUrl']
+        const remoteBaseUrl = ctx.sources.value('config', 'apiBaseUrl')
         if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {
           return ctx.error({
             code: 'REMOTE_CONFIG_MISSING_BASE_URL',
@@ -924,7 +928,7 @@ const cli = defineCli({
             suggested_fix: 'Set apiBaseUrl in config before retrying.',
           })
         }
-        const remoteBaseUrlSource = ctx.sources.config('apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'
+        const remoteBaseUrlSource = ctx.sources.source('config', 'apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'
         const data = await callHttpOperation({
           id: 'script.list',
           baseUrl: remoteBaseUrl,
