@@ -1,8 +1,8 @@
-# Product schema requirements
+# Product schema
 
 `@liche/product` is a product-schema compiler, not a wrapper around `@liche/core`.
 
-The public authoring model is a catalog of product capabilities plus product config declarations. Some capabilities are resources, some are workflow commands, and some declarations are product bindings. Generated CLIs are one projection of that catalog. OpenAPI, command manifests, docs, Agent Skills, dashboard metadata, and config surfaces are other projections.
+The authoring model is a catalog of product capabilities plus product config declarations. Some capabilities are resources, some are workflow commands, and some declarations are product bindings. Generated CLIs are one projection of that catalog. OpenAPI, command manifests, docs, Agent Skills, dashboard metadata, and config surfaces are other projections.
 
 ## Thesis
 
@@ -15,11 +15,11 @@ Agent Skill = explicit safe automation projection
 Config surfaces = general config plus binding projection
 ```
 
-Do not force every meaningful product action into a CRUD resource operation. `deploy`, `migrate`, `login`, `init`, `doctor`, and `dev` are commands. A command may call HTTP APIs internally, but the user-facing capability is still the workflow.
+Not every meaningful product action is a CRUD resource operation. `deploy`, `migrate`, `login`, `init`, `doctor`, and `dev` are commands. A command may call HTTP APIs internally, but the user-facing capability is still the workflow.
 
 ## Public API
 
-The public API should keep the same namespace-style ergonomics as the rest of the package set:
+The public API keeps the same namespace-style ergonomics as the rest of the suite:
 
 ```ts
 import { Auth, Command, createConfig, Field, Runtime, Shape, defineProduct } from "@liche/product";
@@ -126,13 +126,13 @@ export default defineProduct({
 
 The authoring API is data-first. `@liche/product` normalizes `defineProduct(...)` into a deterministic plain-data catalog before linting, digesting, or generating artifacts.
 
-General config and bindings are separate authoring concepts. Config fields such as `apiBaseUrl`, `accountId`, output preferences, telemetry posture, update channel, or release defaults are durable non-secret product preferences that lower into the core config primitive. Bindings such as `kv_namespaces` are product-specific structured declarations that may project to deployment config, docs, command manifests, and later platform adapters. Both can appear in the generated config JSON Schema, but they are not the same catalog node.
+General config and bindings are separate authoring concepts. Config fields such as `apiBaseUrl`, `accountId`, output preferences, telemetry posture, update channel, or release defaults are durable non-secret product preferences that lower into the config extension on Core's input-source primitive. Bindings such as `kv_namespaces` are product-specific structured declarations that may project to deployment config, docs, command manifests, and later platform adapters. Both can appear in the generated config JSON Schema, but they are not the same catalog node.
 
-Detailed config primitive requirements live in `docs/config-primitive.md`.
+See [config-primitive.md](./config-primitive.md) for the config primitive.
 
 ## Catalog model
 
-Use product-facing names in public docs and APIs:
+Public docs and APIs use product-facing names:
 
 ```ts
 type ProductSchema = {
@@ -155,13 +155,13 @@ type Capability =
   | CommandCapability;
 ```
 
-`Capability` is the flat unit consumed by generators. A resource operation and a command are both capabilities, but they retain their kind. Generators filter capabilities by predicate instead of assuming every capability belongs on every surface.
+`Capability` is the flat unit consumed by generators. A resource operation and a command are both capabilities, but they retain their kind. Generators filter capabilities by predicate; not every capability belongs on every surface.
 
-Internal implementation may use names such as `Catalog` or `CanonicalCatalog`, but avoid exposing `ProductIR` or `OperationIR` as the user-facing model.
+Internal implementation may use names such as `Catalog` or `CanonicalCatalog`. `ProductIR` and `OperationIR` are not user-facing.
 
-Auth providers, permissions, and contexts are catalog nodes, not runtime session state. They describe what capabilities require and how generated runtime code should resolve credentials/context. Stored sessions, selected profiles, selected org/project values, token material, and account identities are runtime state and must not affect the catalog digest. Detailed requirements live in `docs/auth-session.md`.
+Auth providers, permissions, and contexts are catalog nodes, not runtime session state. They describe what capabilities require and how generated runtime code resolves credentials/context. Stored sessions, selected profiles, selected org/project values, token material, and account identities are runtime state and do not affect the catalog digest. See [auth-session.md](./auth-session.md).
 
-Product config declarations are catalog nodes because they change generated runtime behavior and generated schema/docs surfaces. Runtime config values, discovered local file paths, value provenance, selected profiles, selected contexts, and session state must not affect the catalog digest.
+Product config declarations are catalog nodes because they change generated runtime behavior and generated schema/docs surfaces. Runtime config values, discovered local file paths, value provenance, selected profiles, selected contexts, and session state do not affect the catalog digest.
 
 ## Resources
 
@@ -178,7 +178,7 @@ type Resource = {
 };
 ```
 
-CRUD is a convenience layer, not the full model. MVP resource actions may start with `list`, `get`, `create`, `update`, and `delete`, but the schema must leave room for resource-scoped actions such as `purge`, `rotate`, `rollback`, `enable`, `disable`, or `tail` without forcing them into fake resources.
+CRUD is a convenience layer, not the full model. Resource actions can include `list`, `get`, `create`, `update`, `delete`, plus resource-scoped actions such as `purge`, `rotate`, `rollback`, `enable`, `disable`, or `tail`. None of these are forced into fake resources.
 
 ## Commands
 
@@ -204,7 +204,7 @@ type Execution =
   | { mode: "hybrid-workflow"; handler: string; http?: HttpSpec; steps?: WorkflowStep[] };
 ```
 
-`steps` are documentation and progress metadata only. Execution orchestration lives in the handler. Do not add a declarative step runner until a real runtime consumes it.
+`steps` are documentation and progress metadata only. Execution orchestration lives in the handler. There is no declarative step runner.
 
 Commands use their own `Shape.object(...)` input/output. They do not pick fields from a resource unless a helper explicitly expands that into an owned command shape.
 
@@ -247,9 +247,9 @@ type CapabilityRequirements = {
 };
 ```
 
-Capability requirements replace loose `permission?: string` before the product-schema API becomes public. Generated surfaces use requirements to explain missing auth/context, agent visibility, OpenAPI security, and release manifest runtime expectations. Server-side permission checks remain authoritative; local scope checks are best-effort only when a credential exposes scopes.
+Generated surfaces use requirements to explain missing auth/context, agent visibility, OpenAPI security, and release manifest runtime expectations. Server-side permission checks are authoritative; local scope checks are best-effort, only when a credential exposes scopes.
 
-Generated auth commands such as `login`, `logout`, `whoami`, and `switch` are normal generated capabilities with `family: "auth"`. They are emitted only when the auth provider opts into the needed features. `whoami` may be agent-visible when it is local, read-only, and redacted; `login`, `logout`, and `switch` are not agent-visible by default.
+Generated auth commands (`login`, `logout`, `whoami`, `switch`) are normal generated capabilities with `family: "auth"`. They are emitted only when the auth provider opts into the relevant features. `whoami` is agent-visible because it is local, read-only, and redacted; `login`, `logout`, and `switch` are not agent-visible.
 
 ## Fields and shapes
 
@@ -268,7 +268,7 @@ type Field = {
 };
 ```
 
-This metadata must flow into the normalized catalog and generated surfaces:
+This metadata flows into the normalized catalog and generated surfaces:
 
 - CLI help, redaction, and examples
 - OpenAPI descriptions and extensions such as `x-liche-secret`, `x-liche-identifier`, and `x-liche-mutability`
@@ -290,11 +290,11 @@ Defaults:
 | `dashboard` | excluded unless configured |
 | `agent` | excluded unless `true` |
 | `openapi` for resource operation with HTTP | included unless `false` |
-| `openapi` for `remote-http` command | normalized but not emitted in Phase 3C |
+| `openapi` for `remote-http` command | normalized but not emitted |
 | `openapi` for `local` command | excluded |
-| `openapi` for `hybrid-workflow` command | normalized but not emitted in Phase 3C |
+| `openapi` for `hybrid-workflow` command | normalized but not emitted |
 
-Agent exposure remains explicit and conservative. A capability is agent-visible only when `surfaces.agent === true`, it has stable typed input/output, and any required permission or safety policy is declared.
+Agent exposure is explicit and conservative. A capability is agent-visible only when `surfaces.agent === true`, it has stable typed input/output, and any required permission or safety policy is declared.
 
 ## Projection predicates
 
@@ -327,9 +327,9 @@ OpenAPI is a projection of HTTP-backed capabilities. CLI is a projection of user
 
 ## Server boundary
 
-The product schema must be enforceable against real implementation code, but server runtime belongs behind an adapter boundary.
+The product schema is enforceable against real implementation code, but server runtime is behind an adapter boundary.
 
-MVP `@liche/product` owns:
+`@liche/product` owns:
 
 - product schema authoring API
 - normalization into canonical catalog
@@ -338,30 +338,10 @@ MVP `@liche/product` owns:
 - drift checks
 - server conformance against owned HTTP deployments
 
-MVP `@liche/product` does not own:
+`@liche/product` does not own:
 
 - generated server routes
 - a generic product API runtime
 - workflow step execution
 
-A future server adapter may consume the same catalog and provide `implement(...)`, `boot()`, `request(...)`, or framework-specific route mounting. Until that adapter exists, apps implement handlers manually and `liche-product conform` proves the implementation matches the schema.
-
-## Refactor path
-
-1. Add `Product`, `Resource`, `Command`, `Shape`, and `Field` class APIs.
-2. Normalize product schemas into a plain deterministic `Catalog`.
-3. Flatten resource operations and commands into `Capability[]`.
-4. Add general config as a sibling of bindings and lower it into the core config primitive.
-5. Move CLI generation from operation-specific input to capability input.
-6. Generalize generation from one hardcoded CLI output to a surface emitter registry.
-7. Add OpenAPI as the next surface emitter.
-8. Keep resource helpers thin. They must lower into the same catalog as explicit resources and commands.
-
-Verification:
-
-- A workers fixture with one resource, `deploy`, `dev`, and one binding normalizes to a stable catalog.
-- A workers fixture with general config and one binding emits a config JSON Schema that includes both top-level config fields and binding collections.
-- CLI generation includes both resource operations and top-level commands.
-- OpenAPI generation includes HTTP resource operations, excludes command capabilities, and respects explicit `openapi: false` on resource operations.
-- Field metadata appears in CLI help/command manifest and OpenAPI schema extensions.
-- Surface manifest records separate `cli` and `openapi` surface entries with independent output digests.
+Apps implement handlers manually and `liche-product conform` proves the implementation matches the schema. A server adapter that consumes the same catalog and provides framework-specific route mounting is adapter-level work, not part of the core product schema.

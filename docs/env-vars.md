@@ -4,7 +4,7 @@
 
 ## Two channels
 
-### 1. `optionEnv` — env-backed option defaults
+### 1. `input.sources` — env-backed option values
 
 Use when an env var should act as the **default value for a CLI option**, overridable on the command line.
 
@@ -18,11 +18,16 @@ export const cli = defineCli({
       path: ["serve"],
       input: {
         options: z.object({
-          port: z.coerce.number().default(3000),
+          port: z.number().default(3000),
           token: z.string(),
         }),
+        sources: {
+          options: {
+            port: [{ provider: "env", path: "MYAPP_PORT" }],
+            token: [{ provider: "env", path: "MYAPP_TOKEN" }],
+          },
+        },
       },
-      optionEnv: { port: "MYAPP_PORT", token: "MYAPP_TOKEN" },
       run: ({ input }) => { /* input.options.port, input.options.token */ },
     }),
   ],
@@ -58,24 +63,16 @@ Missing required keys produce a structured validation error.
 For options, the resolution order is:
 
 ```
-argv flag > optionEnv > config file > schema default
+argv flag > declared sources in order > schema default
 ```
 
-Env values arrive as strings. Coerce in the options schema with `z.coerce.number()`, `z.stringbool()`, etc. — the same shape you already need for argv-supplied values.
-
-The first-class config primitive target expands the middle of this chain without changing the env boundary:
-
-```txt
-argv flag > optionEnv > project config > user config > schema default
-```
-
-Env-backed option defaults remain `optionEnv`; durable non-secret preferences move through `ctx.config`; auth/session state remains on the auth/session path. See `docs/config-primitive.md` for the target config contract.
+Env values arrive as strings from the built-in `env` provider. Core applies narrow schema-directed primitive coercion for provider values before validating final options, so `"3001"` can satisfy `z.number()` and `"true"` / `"false"` can satisfy `z.boolean()`. Auth/session state remains on the auth/session path. See `docs/config-primitive.md` for the config provider contract.
 
 ## Reading env vars
 
 Inside `src/`, the only sanctioned reader is `bunEnv()` from `src/runtime/bun.ts`. Do not call `process.env`, `Bun.env`, or `import.meta.env` directly. A `test/env-conventions.test.ts` guard enforces this.
 
-Handlers never call `bunEnv()` — they receive env through `context.env` (validated) or through `options` (via `optionEnv`).
+Handlers never call `bunEnv()` — they receive env through `context.env` (validated) or through `options` (via declared input sources).
 
 ## `.env` files
 
@@ -91,7 +88,7 @@ Standalone executables produced by `bun build --compile` behave differently from
 - `BUN_OPTIONS` is honored at runtime (e.g. `BUN_OPTIONS="--cpu-prof" ./acme ...`). This is a profiling/debug escape hatch, not a configuration channel.
 - `BUN_BE_BUN=1` makes the binary impersonate the `bun` CLI itself. This is an upstream Bun feature; document it as a known runtime behavior. Schema-driven code does not execute in this mode.
 
-Schema-declared env vars (via `optionEnv` or `env`) are read directly from the process environment and are unaffected by autoload toggles.
+Schema-declared env vars (via input sources or `env`) are read directly from the process environment and are unaffected by autoload toggles.
 
 ## Auth/session env vars
 

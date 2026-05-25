@@ -1,6 +1,6 @@
-# Rewrite invariant
+# Invariants and package layout
 
-This document is the anchor for the liche rewrite. It describes the product boundaries before implementation details are allowed to drift.
+This document is the anchor for the liche product boundaries. It describes the product invariants, the workspace shape, and what each package owns before implementation details are allowed to drift.
 
 ## Product invariant
 
@@ -11,20 +11,20 @@ the binary is the product
 the manifest is the distribution contract
 ```
 
-Only four opt-in features are being added:
+Only four opt-in features sit above the runtime:
 
-1. Product system: a runtime product schema that normalizes into a canonical capability catalog and generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema/config surfaces, drift checks, and server conformance.
-2. Config primitive: a first-class, opt-in core config contract for durable non-secret CLI preferences, with generated Product config lowering into the same primitive.
-3. Build system: reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance. This is useful for Product-generated CLIs and handwritten CLIs.
-4. Distribution: one release manifest, pure package-manager renderers, and final-artifact guard rails.
+1. **Product system** — a runtime product schema that normalizes into a canonical capability catalog and generates the CLI command tree plus OpenAPI, MCP, docs, Agent Skill/LLM surfaces, JSON Schema/config surfaces, drift checks, and server conformance.
+2. **Input-source primitive plus config extension** — a Core command-input assembly contract for durable external option values, with generated Product config lowering into the same config provider path.
+3. **Build system** — reusable Bun build/compile primitives for standalone executables, including compile flag profiles and path-independent compile provenance. Useful for Product-generated CLIs and handwritten CLIs.
+4. **Distribution** — one release manifest, pure package-manager renderers, and final-artifact guard rails.
 
-Everything else remains current core runtime behavior unless a requirement document says otherwise.
+Everything else is current core runtime behavior unless a requirement document says otherwise.
 
-The canonical catalog is a product capability contract. It models resources, commands, general config declarations, bindings, auth providers, permissions, contexts, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is still not a database model or a license to generate every possible product surface in MVP; product-specific surfaces remain adapter-gated.
+The canonical catalog is a product capability contract. It models resources, commands, general config declarations, bindings, auth providers, permissions, contexts, field metadata, surface membership, inputs, outputs, effects, examples, and execution wiring. It is not a database model or a license to generate every possible product surface; product-specific surfaces are adapter-gated.
 
-Generated surfaces must be treated as a graph, not as unrelated emitters. Each generated surface declares its source (`catalog` or `openapi`), generator version, generation options, input digest, output digest, drift check, and owner package. A surface that cannot name those facts is not accepted as part of the build system.
+Generated surfaces are a graph, not unrelated emitters. Each generated surface declares its source (`catalog` or `openapi`), generator version, generation options, input digest, output digest, drift check, and owner package. A surface that cannot name those facts is not accepted as part of the build system.
 
-The MVP source graph is:
+The source graph is:
 
 ```txt
 canonical catalog
@@ -41,23 +41,178 @@ generated OpenAPI
 
 Product-specific surfaces such as Workers Binding RPC metadata, `wrangler.jsonc` fragments, dashboard metadata, product docs, SDKs, Terraform providers, or Code Mode MCP servers are later surface adapters. They must consume either the canonical catalog or generated OpenAPI through the same surface graph; they must not read schema source, generated CLI source, or package internals directly.
 
+## Workspace layout
+
+```txt
+liche/
+  package.json
+  bun.lock
+  tsconfig.base.json
+  README.md
+  AGENTS.md
+  CHANGELOG.md
+  ROADMAP.md
+
+  docs/
+    AGENTS.md
+    invariant.md            (this file)
+    api-boundary.md
+    application-integration.md
+    auth-session.md
+    build-system.md
+    config-primitive.md
+    coverage.md
+    distribution.md
+    env-vars.md
+    error-handling.md
+    http-operation-transport.md
+    npm-binary-packaging.md
+    product-schema.md
+    release-and-distribution.md
+    schema-ir-openapi.md
+    server-conformance.md
+
+  packages/
+    core/
+    extensions/
+    build/
+    product/
+    releases/
+
+  examples/
+    handwritten-cli/
+    generated-cli/
+    fetch-backed-cli/
+    remote-backed-cli/
+    vite-tanstack-app/
+```
+
+### Workspace policy
+
+Use Bun workspaces for package development. Use Bun catalogs for shared dependency versions. Shared versions belong at the root; package-local `package.json` files reference them with `catalog:` or a named catalog when that keeps dependency policy clear.
+
+Target root shape:
+
+```json
+{
+  "private": true,
+  "workspaces": {
+    "packages": ["packages/*"],
+    "catalog": {
+      "typescript": "^5.9.0",
+      "zod": "^4.4.0",
+      "tokenx": "^1.3.0",
+      "yaml": "^2.9.0"
+    },
+    "catalogs": {
+      "test": {
+        "fast-check": "^4.8.0",
+        "@stryker-mutator/core": "^9.6.0",
+        "@stryker-mutator/typescript-checker": "^9.6.0"
+      }
+    }
+  }
+}
+```
+
 ## Package boundary invariant
 
 Package boundaries must have an opt-in sentence. If a user cannot explain what they give up by not installing a package, that package should be a folder, not a package.
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser/config engine, standard formatter, extension protocol, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | They give up the liche runtime itself, including handwritten CLIs, direct MCP execution, and the shared remote HTTP transport. |
-| `@liche/extensions` | no | Official optional extensions over public core lanes: config authoring, completions, agent setup helpers, auth/session workflows, and telemetry adapters. | They give up first-party optional factories and helper workflows. Handwritten core CLIs still run, and Product can still generate catalog-owned surfaces. |
-| `@liche/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | They give up Product-driven generation and conformance. Handwritten CLIs still work. |
-| `@liche/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | They give up liche's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
-| `@liche/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | They give up manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
+| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser/config engine, standard formatter, extension protocol, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | The liche runtime itself, including handwritten CLIs, direct MCP execution, and the shared remote HTTP transport. |
+| `@liche/extensions` | no | Official optional extensions over public core lanes: config authoring, completions, agent setup helpers, auth/session workflows, and telemetry adapters. | First-party optional factories and helper workflows. Handwritten core CLIs still run, and Product can still generate catalog-owned surfaces. |
+| `@liche/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | Product-driven generation and conformance. Handwritten CLIs still work. |
+| `@liche/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | liche's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
+| `@liche/releases` | yes | Release manifest schema, binary provenance, artifact verification, renderer interface, selectable package-manager renderers, and yank/rollback planning. | Manifest-based distribution, package-manager wrapper generation, and final-artifact guard rails. They can still build binaries manually. |
 
-Do not create MVP packages beyond `@liche/extensions` for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice belongs inside `@liche/releases` configuration, not in separate first-party packages.
+No packages beyond `@liche/extensions` exist for Vite, docs, testkit, Bun-native lint rules, adapters, or package-manager renderers. Renderer choice lives inside `@liche/releases` configuration, not in separate first-party packages.
+
+### `packages/core` responsibilities
+
+Owns:
+
+- `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`
+- middleware
+- observe-only lifecycle events and typed mutation hooks
+- parser/config/env validation
+- config resolution, file parsing, precedence, and provenance semantics
+- formatter/output envelope behavior
+- extension protocol and extension merge rules
+- MCP basics (`--mcp` runtime support and direct command-contract execution)
+- skills/docs basics (packaged skill content and runtime reflection for handwritten CLIs; installers live in extensions)
+- outbound HTTP operation transport
+- auth redaction and transport-safety primitives (`SecretString`, non-secret auth metadata, and resolved auth/header application contracts)
+
+Must not depend on `@liche/extensions`, `@liche/build`, `@liche/product`, or `@liche/releases`.
+
+### `packages/extensions` responsibilities
+
+Owns official optional extension factories over public `@liche/core` lanes:
+
+- config authoring factory
+- completions command
+- coordinated agent helper bundle
+- MCP and skill installer commands
+- auth/session workflow extension
+- telemetry sink adapters
+
+May depend on `@liche/core` through package-root imports only. Must not import `packages/core/src/*`, mutate `CliState`, or depend on `@liche/build`, `@liche/product`, or `@liche/releases`.
+
+### `packages/build` responsibilities
+
+Intentionally narrow. Useful only while generic Bun compile/provenance behavior is shared by Product-generated CLIs and handwritten CLIs; should not grow into a second Product builder.
+
+Owns:
+
+- reusable `Bun.build()` orchestration
+- standalone executable compile flag profiles
+- build-time constants for release version, contract digest, source commit, and build-tool version
+- path-independent `compileFlagsDigest`
+- internal compile entrypoint rendering for CLIs
+- build metadata useful to release manifests
+
+May depend on `@liche/core` for its developer CLI. Does not own product schemas, generated surfaces, server conformance, release manifests, or package-manager renderers.
+
+### `packages/product` responsibilities
+
+Owns:
+
+- runtime product schema authoring API
+- general product config declarations that lower into `@liche/core` config
+- auth provider, permission, context, and capability requirement declarations
+- canonical catalog normalization
+- schema lints
+- generated CLI source
+- generated auth capabilities when opted in
+- generated OpenAPI/MCP/docs/Agent Skill/JSON Schema surfaces
+- generated surface manifest and surface drift checks
+- generated provenance headers
+- drift checks
+- product-to-compile wrapper that delegates to `@liche/build`
+- server conformance against owned HTTP deployments
+
+May depend on `@liche/core` and `@liche/build`. Does not own outbound HTTP operation transport.
+
+Product-specific surface adapters (e.g., `wrangler.jsonc` fragments, Workers Binding RPC metadata, dashboard metadata, downstream SDK generation, Terraform providers, Code Mode MCP servers) remain inside the build surface system unless a later requirement proves a real package boundary. Do not create a first-party package just to hide a generator.
+
+### `packages/releases` responsibilities
+
+Owns:
+
+- release manifest schema
+- non-secret auth/session release metadata
+- artifact provenance
+- binary verification
+- renderer interface, registry, and selection
+- npm, PyPI, Homebrew, and Scoop renderers
+- final package artifact verification
+- yank/rollback planning
+
+May consume build output and manifests. Must not reach around the manifest from renderers. Users select zero to all renderers at release time. Do not create a `release-extra` package; renderer choice is configuration, not a package boundary.
 
 ## Core, Product, and extension standard
-
-Use this standard when deciding whether a capability belongs in `@liche/core`, `@liche/product`, or an optional extension/adapter package.
 
 ### Belongs in `@liche/core`
 
@@ -111,13 +266,13 @@ Extensions must not import package internals, inspect raw schema source, read ge
 
 Extensions also need a disabled-state test: turning the extension off must leave command execution, JSON/JSONL output, config provenance, structured errors, auth/session resolution, and outbound HTTP transport semantics unchanged.
 
-The core extension-lane property test makes this standard executable for core-level proposals. If the test can express the candidate as a package-root extension, the candidate stays outside core. If it cannot, the public API widening must be framed as a reusable lane rather than a one-off helper.
+The core extension-lane property test (`packages/core/test/extension-lane-coverage.test.ts`) makes this standard executable for core-level proposals. If the test can express the candidate as a package-root extension, the candidate stays outside core. If it cannot, the public API widening must be framed as a reusable lane rather than a one-off helper.
 
 Do not create a catch-all package unless its opt-in sentence is concrete. "Official optional adapters over stable liche contracts" is a valid package thesis; "miscellaneous things not in core" is not.
 
 ## Execution direction invariant
 
-The current core has multiple execution directions. The rewrite must name them separately.
+The runtime has multiple execution directions. They must be named separately.
 
 | Direction | Owner | Meaning |
 |---|---|---|
@@ -141,8 +296,6 @@ OpenAPI-derived downstream surfaces have a different source of truth from catalo
 
 ## Non-goals
 
-These are explicit non-goals for the MVP:
-
 ```txt
 no Vite package
 no Vite plugin
@@ -161,9 +314,9 @@ no generated server/API implementation unless an explicit adapter requirement ex
 no assumption that every command is CRUD, HTTP-backed, table-shaped, or resource-derived
 ```
 
-OpenAPI is output, not input. Importing arbitrary OpenAPI specifications into an liche schema is a later adapter track.
+OpenAPI is output, not input. Importing arbitrary OpenAPI specifications into a liche schema is a later adapter track.
 
-The primary MVP targets owned product capability catalogs:
+The primary target is owned product capability catalogs:
 
 ```txt
 schema = source of truth for resources, commands, bindings, and HTTP-backed capabilities the user owns
@@ -210,8 +363,20 @@ publish
 
 Never hash unsigned bytes for a signed release. Signing mutates the binary.
 
+## Examples policy
+
+Examples must prove the package boundaries:
+
+| Example | Purpose |
+|---|---|
+| `examples/handwritten-cli` | Uses only `@liche/core`. |
+| `examples/generated-cli` | Uses `@liche/product` to generate a CLI from schema. |
+| `examples/fetch-backed-cli` | Demonstrates existing inbound/in-process fetch behavior without outbound remote transport confusion. |
+| `examples/remote-backed-cli` | Demonstrates core-owned outbound HTTP operation transport, with and without generated wiring. |
+| `examples/vite-tanstack-app` | Demonstrates capability-first integration for a web app: product schema, API routes, local handlers, generated CLI, conformance against dev server. |
+
 ## Documentation rule
 
-See `docs/AGENTS.md` for the reading order and update workflow.
+See [AGENTS.md](./AGENTS.md) for the docs contribution guide.
 
 Tests must be derived from requirements, decision records, external docs, independent oracles, or explicit user instructions. Do not derive new tests from current implementation behavior unless the requirement says the current behavior is the requirement.

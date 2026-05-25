@@ -1,26 +1,17 @@
-# Build system requirements
+# Build system
 
-## Type generation placement
+`@liche/build` and `@liche/product` are opt-in packages that turn a runtime product schema into a generated CLI plus byproduct surfaces, and then compile that CLI into a standalone binary.
 
-Core no longer ships a `gen` runtime helper. The old `li gen` path only emitted TypeScript module augmentation from command metadata, was not committed as source, and had no runtime or agent-facing consumer outside tests and the handwritten example. If this capability returns, it belongs in a build-time package or extension with an explicit consumer, not in `@liche/core`.
+- `@liche/build` owns reusable Bun build/compile behavior: the programmatic `Bun.build()` wrapper, compile flag profile, build-time constants, compile-entrypoint rendering, and path-independent `compileFlagsDigest`. It is intentionally narrow — its only value is shared compile/provenance behavior for generated and handwritten CLI entrypoints.
+- `@liche/product` consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, runs server conformance, and delegates standalone executable compilation to `@liche/build`.
 
-`@liche/build` is an opt-in package for reusable Bun build/compile behavior. It owns the programmatic `Bun.build()` wrapper, compile flag profile, build-time constants, compile entrypoint rendering, and path-independent `compileFlagsDigest`.
+Neither package replaces `@liche/core`. Generated code plugs into core through public runtime APIs.
 
-This is a deliberately narrow boundary, not a major product abstraction. Its value is only shared compile/provenance behavior for generated and handwritten CLI entrypoints. If that shared use case disappears, the code can be folded into `@liche/product` or `@liche/releases` without changing the release manifest contract.
+Related docs: [http-operation-transport.md](./http-operation-transport.md), [schema-ir-openapi.md](./schema-ir-openapi.md), [server-conformance.md](./server-conformance.md), [product-schema.md](./product-schema.md), [config-primitive.md](./config-primitive.md), [auth-session.md](./auth-session.md).
 
-`@liche/product` is the opt-in package for Product schema generation. It consumes a runtime product schema module, normalizes it into a canonical capability catalog, generates artifacts, checks drift, runs server conformance, and delegates standalone executable compilation to `@liche/build`.
+## What you get
 
-Neither package replaces `@liche/core`. Generated code must plug into core through public runtime APIs.
-
-Detailed requirements live in:
-
-- `docs/http-operation-transport.md`
-- `docs/schema-ir-openapi.md`
-- `docs/server-conformance.md`
-
-## Purpose
-
-The Product system exists so a user can define an owned product capability catalog once and get:
+The Product system turns an owned product capability catalog into:
 
 - generated CLI command tree
 - generated dispatcher
@@ -34,26 +25,24 @@ The Product system exists so a user can define an owned product capability catal
 - deterministic drift checks
 - server conformance checks against owned HTTP deployments
 
-The build system exists so a user with any CLI entrypoint can get:
+The build system turns any CLI entrypoint into:
 
-- Bun standalone binary compilation
-- deterministic compile flag profiles
+- a Bun standalone binary
+- a deterministic compile flag profile
 - build-time constants for release version, contract digest, source commit, and build-tool version
 - path-independent compile provenance for release manifests
 
-Handwritten CLIs remain valid without installing `@liche/build`.
+Handwritten CLIs work without `@liche/build`. Handwritten CLIs that only want a standalone binary can use `@liche/build` without `@liche/product`.
 
-Handwritten CLIs that only want a standalone binary can use `@liche/build` without installing `@liche/product`.
+The product schema is authoritative for owned product capabilities. `@liche/product` does not generate server routes; it generates the catalog and conformance checks that a hand-written server must satisfy.
 
-The product schema is authoritative for owned product capabilities. `@liche/product` does not generate server routes in MVP, but it does generate the catalog and conformance checks that a hand-written server must satisfy.
-
-The `liche-build` developer CLI is intentionally small: it exposes compile-entry behavior over the generic compile spine. The `liche-product` developer CLI opts into `@liche/extensions` helper commands for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through the skills extension. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces must come from the canonical catalog when the product schema opts into those generated surfaces.
+The `liche-build` developer CLI is small: it exposes compile-entry behavior over the generic compile spine. The `liche-product` developer CLI uses `@liche/extensions` for completions, skills, and MCP. Its `skills add` command installs authored product-package guidance through the skills extension. Generated product CLIs do not automatically enable `skills` or `mcp`; their agent skill and MCP surfaces come from the canonical catalog when the product schema opts into those generated surfaces.
 
 ## Generated surface graph
 
-The build system must model generated outputs as synchronized surfaces over one source graph.
+Generated outputs are synchronized surfaces over one source graph.
 
-Required surface record:
+Surface record:
 
 ```ts
 type GeneratedSurfaceRecord = {
@@ -68,54 +57,52 @@ type GeneratedSurfaceRecord = {
 };
 ```
 
-`artifacts` are relative artifact paths. Absolute local paths are internal build-record data and must not affect canonical schema digests.
+`artifacts` are relative artifact paths. Absolute local paths are internal build-record data and do not affect canonical schema digests.
 
-Initial catalog-derived surfaces:
+Catalog-derived surfaces:
 
-| Surface | Source | MVP status |
+| Surface | Source | When emitted |
 |---|---|---|
-| CLI command tree | catalog | required |
-| dispatcher and local/remote/hybrid wiring | catalog | required |
-| command manifest / `schema --json` | catalog | required |
-| OpenAPI projection | catalog | required for HTTP resource operations in Phase 3C |
-| MCP command tools | catalog | required |
-| Agent Skill/LLM surfaces | catalog | required |
-| docs/reference markdown | catalog | required |
-| JSON Schema for config and bindings | catalog | required when general config or bindings are declared |
+| CLI command tree | catalog | always |
+| dispatcher and local/remote/hybrid wiring | catalog | always |
+| command manifest / `schema --json` | catalog | always |
+| OpenAPI projection | catalog | when the catalog has HTTP resource operations |
+| MCP command tools | catalog | always |
+| Agent Skill/LLM surfaces | catalog | always |
+| docs/reference markdown | catalog | always |
+| JSON Schema for config and bindings | catalog | when general config or bindings are declared |
 
-OpenAPI-derived downstream surfaces are not the first implementation slice, but the graph must leave a clean path for them:
+OpenAPI-derived downstream surfaces are adapter-level work:
 
-| Surface | Source | Status |
-|---|---|---|
-| TypeScript SDK | OpenAPI | later adapter |
-| Go SDK | OpenAPI | later adapter |
-| Python SDK | OpenAPI | later adapter |
-| Terraform provider | OpenAPI plus provider-specific metadata | later adapter |
-| Code Mode MCP server | OpenAPI | later adapter |
+| Surface | Source |
+|---|---|
+| TypeScript SDK | OpenAPI |
+| Go SDK | OpenAPI |
+| Python SDK | OpenAPI |
+| Terraform provider | OpenAPI plus provider-specific metadata |
+| Code Mode MCP server | OpenAPI |
 
-Product-specific surfaces are also later adapters:
+Product-specific surfaces are also adapter-level:
 
 | Surface | Source | Requirement before implementation |
 |---|---|---|
 | Workers Binding RPC metadata | catalog plus platform adapter requirement | Binding semantics, auth, deployment, and runtime compatibility must be documented. |
-| `wrangler.jsonc` fragments or schema | catalog plus config metadata | Config keys, defaults, env precedence, and ownership must be documented in `docs/config-primitive.md` plus an adapter requirement. |
+| `wrangler.jsonc` fragments or schema | catalog plus config metadata | Config keys, defaults, env precedence, and ownership must be documented in [config-primitive.md](./config-primitive.md) plus an adapter requirement. |
 | Dashboard metadata | catalog plus product metadata | UI labels, lifecycle, permissions, safety, and audit behavior must be documented. |
 | Developer docs beyond reference markdown | catalog plus docs metadata | Narrative ownership, examples, and publication target must be documented. |
-| Product API implementation/stubs | catalog plus server adapter requirement | Generated server code is not MVP; conformance remains the first proof that an owned API implements the schema. |
+| Product API implementation/stubs | catalog plus server adapter requirement | Generated server code is not in scope; conformance is the proof that an owned API implements the schema. |
 
-Each generated surface must have a drift check. A stale generated CLI, stale OpenAPI document, stale Agent Skill, or stale config schema is the same class of failure: the generated surface no longer matches the canonical source graph.
-
-Do not infer a broad generator framework from this requirement. The first vertical slice still proves one generated command through core APIs before adding broad surface coverage.
+Every generated surface has a drift check. A stale generated CLI, stale OpenAPI document, stale Agent Skill, or stale config schema is the same class of failure: the generated surface no longer matches the canonical source graph.
 
 ## Public product schema API
 
 The Product API is runtime-value first. TypeScript inference is derived from runtime schema values and field helpers; erased TypeScript types are not generator input.
 
-The public authoring model is product-shaped, not CLI-program-shaped. `defineProduct({ resources, commands, bindings })` is the source API. Generated CLIs lower into `@liche/core` through declarative `defineCli()` / `defineCommand()` command graphs.
+The authoring model is product-shaped, not CLI-program-shaped. `defineProduct({ resources, commands, bindings })` is the source API. Generated CLIs lower into `@liche/core` through declarative `defineCli()` / `defineCommand()` command graphs.
 
-The concrete product schema API, naming, defaults, and refactor path live in `docs/product-schema.md`.
+Detailed product schema API, naming, and defaults live in [product-schema.md](./product-schema.md).
 
-Required public classes:
+Public classes:
 
 ```txt
 Product
@@ -129,7 +116,7 @@ The class API is authoring sugar only. `liche-product` loads a product schema mo
 
 ## Canonical catalog
 
-The normalized catalog must include at least:
+The normalized catalog includes at least:
 
 ```ts
 type ProductSchema = {
@@ -191,9 +178,9 @@ type ShapeProjection = {
 };
 ```
 
-Auth provider, permission, context, and capability requirement shapes are defined in `docs/auth-session.md` and `docs/schema-ir-openapi.md`. They are part of the catalog digest, but runtime session state and selected context values are not.
+Auth provider, permission, context, and capability requirement shapes are defined in [auth-session.md](./auth-session.md) and [schema-ir-openapi.md](./schema-ir-openapi.md). They are part of the catalog digest; runtime session state and selected context values are not.
 
-The non-negotiables are:
+The non-negotiables:
 
 ```txt
 closed vocabulary
@@ -204,7 +191,7 @@ field metadata as a first-class field
 surface membership as normalized data
 ```
 
-`effects.kind` is the user-facing safety and lint axis. It must be one of:
+`effects.kind` is the user-facing safety and lint axis:
 
 ```txt
 read
@@ -217,20 +204,18 @@ auth-session-delete
 auth-context-write
 ```
 
-Effects do not imply a resource model. `project delete` and `db migrate` can both be dangerous capabilities, but only one is naturally CRUD-shaped. Auth/session effects are local credential or context effects, not product data writes. The linter should reason over the capability contract, not force commands through resource inheritance.
+Effects do not imply a resource model. `project delete` and `db migrate` can both be dangerous capabilities, but only one is naturally CRUD-shaped. Auth/session effects are local credential or context effects, not product data writes. The linter reasons over the capability contract; it does not force commands through resource inheritance.
 
 ## Agent consistency guardrails
 
-The current core is intentionally permissive for handwritten CLIs. That is not sufficient for schema-driven CLIs aimed at agents.
+Schema-driven CLIs aimed at agents enforce stricter contracts than handwritten CLIs:
 
-The rewrite must close these audit gaps:
-
-- resource actions and generated CLI control flags must be checked against the product vocabulary
+- resource actions and generated CLI control flags are checked against the product vocabulary
 - command input fields are data shape fields, not vocabulary entries
-- `--format` is currently a global runtime option; generated product CLIs must make `--json` the canonical machine-output switch and must not advertise `--format` as the agent contract
-- built-in and generated helper commands must honor `--json` consistently; text such as `wrote ./liche.generated.ts` is not acceptable when JSON was explicitly requested
-- generated JSON output for local, remote HTTP, or hybrid workflow capabilities must identify the execution mode that was applied
-- generated OpenAPI must come from HTTP-capable catalog entries and field metadata, not from the current runtime reflection shortcut that emits every command as a `POST`
+- `--json` is the canonical machine-output switch; generated product CLIs do not advertise `--format` as the agent contract
+- built-in and generated helper commands honor `--json` consistently; text such as `wrote ./liche.generated.ts` is not acceptable when JSON was explicitly requested
+- generated JSON output for local, remote HTTP, or hybrid workflow capabilities identifies the execution mode that was applied
+- generated OpenAPI comes from HTTP-capable catalog entries and field metadata, not from runtime reflection
 
 Default generated vocabulary:
 
@@ -250,21 +235,21 @@ allowed flags:
   --force
 ```
 
-`vocabulary({...})` is a convenience for extending the default vocabulary. A product schema that wants to replace the defaults can pass an explicit `Vocabulary` object instead. The linter treats vocabulary as an allowlist only: if a resource action or generated control flag is present in the active vocabulary, it is allowed; if it is absent, it fails. There is no separate forbidden-word list.
+`vocabulary({...})` extends the default vocabulary. A product schema that wants to replace the defaults passes an explicit `Vocabulary` object instead. The linter treats vocabulary as an allowlist only: if a resource action or generated control flag is present in the active vocabulary, it is allowed; if it is absent, it fails. There is no separate forbidden-word list.
 
-`vocabulary.aliases` is command-surface metadata, not an extra allowlist. Alias targets must still resolve to names present in the active vocabulary when they are used by a generated surface.
+`vocabulary.aliases` is command-surface metadata, not an extra allowlist. Alias targets resolve to names present in the active vocabulary when they are used by a generated surface.
 
-`--force` is the standard destructive-action bypass flag in the default vocabulary. A product can choose a different control-flag vocabulary by not using the defaults, but generated surfaces must still use only flags present in the active vocabulary.
+`--force` is the destructive-action bypass flag in the default vocabulary. A product can choose a different control-flag vocabulary by not using the defaults, but generated surfaces use only flags present in the active vocabulary.
 
-For current core compatibility, handwritten CLIs may continue to use richer formatting and arbitrary command names. That compatibility layer must not be treated as proof that product-schema generated surfaces satisfy the closed-vocabulary requirement.
+Handwritten CLIs may continue to use richer formatting and arbitrary command names. That handwritten-CLI flexibility does not satisfy the closed-vocabulary requirement for product-schema generated surfaces.
 
 ## Remote transport ownership
 
 Outbound HTTP operation transport is core runtime behavior.
 
-`@liche/core` exports documented `serializeHttpOperationRequest` and `callHttpOperation` primitives that can be used by handwritten CLIs and generated CLIs. `@liche/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. That contract is the first-class config primitive in `docs/config-primitive.md`; HTTP-backed capabilities without a product remote base URL fail linting and generation.
+`@liche/core` exports `serializeHttpOperationRequest` and `callHttpOperation` primitives that handwritten and generated CLIs both call. `@liche/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. Config-backed values use the config extension on Core's input-source primitive; HTTP-backed capabilities without a product remote base URL fail linting and generation.
 
-The primitive must own:
+The transport primitive owns:
 
 - resolving contract-level runtime config such as base URL, while keeping auth/session resolution on the auth/session path
 - serializing input into path, query, and body according to the HTTP binding
@@ -273,11 +258,11 @@ The primitive must own:
 - validating successful response data through the capability output schema
 - mapping network failures, timeouts, non-2xx responses, malformed bodies, and output validation failures into the standard core error envelope
 
-The primitive must not throw raw transport errors through generated command handlers.
+The primitive does not throw raw transport errors through generated command handlers.
 
-Required error classes or codes:
+Error classes/codes:
 
-| Case | Required behavior |
+| Case | Behavior |
 |---|---|
 | missing base URL config | structured configuration error before request |
 | missing auth config | structured configuration error before request |
@@ -289,7 +274,7 @@ Required error classes or codes:
 
 ## Execution semantics
 
-Execution mode is a runtime behavior, not only docs metadata.
+Execution mode is runtime behavior, not just docs metadata.
 
 ```txt
 remote-http:
@@ -302,9 +287,9 @@ hybrid-workflow:
   generated run() calls the configured handler; the handler may perform local work and make API calls
 ```
 
-The product schema declares a capability's execution mode. Generated CLI flags may select explicit local or remote behavior only for capabilities that actually support both forms. A `local` command such as `dev` must not be made OpenAPI-visible by accident. A `hybrid-workflow` command such as `deploy` must not be flattened into a fake resource mutation.
+The product schema declares a capability's execution mode. Generated CLI flags may select explicit local or remote behavior only for capabilities that actually support both forms. A `local` command such as `dev` is not OpenAPI-visible by accident. A `hybrid-workflow` command such as `deploy` is not flattened into a fake resource mutation.
 
-Machine-readable output must identify what happened. For `--json`, generated capabilities must use the standard envelope and include at least:
+Machine-readable output identifies what happened. For `--json`, generated capabilities use the standard envelope with at least:
 
 ```json
 {
@@ -319,7 +304,7 @@ Machine-readable output must identify what happened. For `--json`, generated cap
 }
 ```
 
-`source` is one of `flag`, `config`, or `schema-default`. Human output should also include a concise execution signal for capabilities where confusion is possible, especially hybrid workflows.
+`source` is one of `flag`, `config`, or `schema-default`. Human output also includes a concise execution signal for capabilities where confusion is possible, especially hybrid workflows.
 
 `capability/execution-shape` is a correctness gate:
 
@@ -327,9 +312,7 @@ Machine-readable output must identify what happened. For `--json`, generated cap
 - alternate execution paths for one capability share that same input/output contract
 - downstream surfaces assume those contracts are identical
 
-A capability with both local and remote behavior must have a runtime conformance test against a fixture backend that proves both implementations produce identical parsed output for the same valid input.
-
-This guarantee has two layers:
+A capability with both local and remote behavior has a runtime conformance test against a fixture backend that proves both implementations produce identical parsed output for the same valid input.
 
 ```txt
 local conformance:
@@ -339,13 +322,11 @@ remote conformance:
   a server outside the CLI process is checked against the catalog, HTTP binding, and output schema
 ```
 
-The linter can prove schema shape. Only server conformance can prove that a hand-written remote server actually implements the contract.
+The linter proves schema shape. Only server conformance proves that a hand-written remote server actually implements the contract.
 
 ## Generated-code seam
 
-Generated command code must be plain TypeScript that imports `@liche/core` and declares commands through the public `defineCli()` / `defineCommand()` API.
-
-Representative generated file:
+Generated command code is plain TypeScript that imports `@liche/core` and declares commands through the public `defineCli()` / `defineCommand()` API.
 
 ```ts
 // generated by @liche/product
@@ -409,15 +390,13 @@ The exact generated body may include product-specific constants and auth/context
 
 ## Local implementation imports
 
-The schema module must be safe to import for linting, docs generation, and code generation.
-
-Rules:
+The schema module is safe to import for linting, docs generation, and code generation.
 
 - command and capability handlers are string references such as `wrangler.deploy` or module/export references relative to the schema file
-- the schema module must not eagerly import local implementation modules
+- the schema module does not eagerly import local implementation modules
 - implementation modules are imported only by generated runtime code when local or hybrid execution is selected
-- the build system must lint that the target module exists and the export exists when a module/export handler is declared
-- generated code must fail with a structured error when a local implementation cannot be loaded
+- the build system lints that the target module exists and the export exists when a module/export handler is declared
+- generated code fails with a structured error when a local implementation cannot be loaded
 
 Required lint:
 
@@ -428,9 +407,9 @@ schema/no-eager-local-import
 
 ## HTTP binding
 
-`http.method` and `http.path` are not sufficient alone. The build system must know where input fields go.
+`http.method` and `http.path` are not sufficient alone. The build system knows where input fields go.
 
-MVP mapping:
+Mapping:
 
 ```txt
 bind.path:
@@ -447,9 +426,9 @@ bind.body:
   string[] means selected fields become JSON body
 ```
 
-Unmapped input fields must fail lint unless an explicit default mapping is documented for the method.
+Unmapped input fields fail lint unless an explicit default mapping is documented for the method.
 
-Recommended default:
+Defaults:
 
 - `GET` and `DELETE`: unmapped fields are not allowed
 - `POST`, `PUT`, `PATCH`: unmapped fields default to body only if `body: true` is set
@@ -463,17 +442,15 @@ remote/bind-coverage
   Fails when one input field is bound to conflicting locations unless explicitly allowed.
 ```
 
-OpenAPI generation must consume `bind`. Path, query, and header fields become parameters; body fields become request body schema. Field metadata becomes descriptions and `x-liche-*` extensions.
+OpenAPI generation consumes `bind`. Path, query, and header fields become parameters; body fields become request body schema. Field metadata becomes descriptions and `x-liche-*` extensions.
 
-Conformance must also consume `bind`. A bind bug is not visible in local mode because local mode does not serialize HTTP requests.
+Conformance also consumes `bind`. A bind bug is not visible in local mode because local mode does not serialize HTTP requests.
 
 ## Server conformance
 
-Server conformance is a named MVP capability owned by `@liche/product`.
+Server conformance is owned by `@liche/product`. It verifies that an owned external HTTP deployment implements the HTTP-backed schema capabilities. It is separate from generated-file drift checks.
 
-It verifies that an owned external HTTP deployment implements the HTTP-backed schema capabilities. It is separate from generated-file drift checks.
-
-The detailed command contract, fixture shape, report schema, and safety rules live in `docs/server-conformance.md`.
+Detailed command contract, fixture shape, report schema, and safety rules live in [server-conformance.md](./server-conformance.md).
 
 ```txt
 generate --check:
@@ -486,7 +463,7 @@ conform:
   validates responses against output schemas
 ```
 
-Proposed CLI:
+CLI:
 
 ```sh
 liche-product conform ./liche.schema.ts --base-url http://localhost:5173
@@ -494,7 +471,7 @@ liche-product conform ./liche.schema.ts --env staging
 liche-product conform ./liche.schema.ts --report .liche/conformance.json
 ```
 
-Conformance must assert:
+Conformance asserts:
 
 - capability examples parse from `argv` to declared input
 - input serializes into HTTP request according to HTTP binding metadata
@@ -504,7 +481,7 @@ Conformance must assert:
 - successful response data validates against the capability output schema
 - non-2xx, malformed, and schema-invalid responses are reported as structured conformance failures
 
-Conformance should use declared examples or explicit conformance fixtures. It must not invent unsafe mutating requests against production.
+Conformance uses declared examples or explicit conformance fixtures. It does not invent unsafe mutating requests against production.
 
 Policy:
 
@@ -513,7 +490,7 @@ Policy:
 | idempotent/read-only | May run against configured target when examples exist. |
 | destructive | Requires explicit conformance fixture and opt-in target. |
 | requires confirmation | Requires explicit conformance fixture and opt-in target. |
-| no examples or fixture | Report skipped with reason; do not silently pass. |
+| no examples or fixture | Reports skipped with reason; does not silently pass. |
 
 `@liche/releases` may require or attach a conformance report before publishing, but `@liche/product` owns the conformance logic because it is schema-contract verification.
 
@@ -533,17 +510,17 @@ generated JSON Schema for config and bindings, when configured
 generated surface manifest
 ```
 
-OpenAPI is an output, not an input. In Phase 3C it is emitted only for `resource-operation` capabilities with HTTP bindings and normalized `surfaces.openapi === true`.
+OpenAPI is output, not input. It is emitted only for `resource-operation` capabilities with HTTP bindings and normalized `surfaces.openapi === true`.
 
-Local-only, interactive, `remote-http`, and hybrid workflow commands remain valid catalog capabilities even when no OpenAPI route is emitted.
+Local-only, interactive, `remote-http`, and hybrid workflow commands are valid catalog capabilities even when no OpenAPI route is emitted.
 
 The generated surface manifest records every emitted surface record from the generated surface graph. It is a build artifact for drift checks and release provenance; it is not the release manifest owned by `@liche/releases`.
 
 ## Command manifest
 
-Schema-driven product CLIs must expose a compact command manifest surface for agents and automation. It is separate from OpenAPI because it includes command-local concepts such as argv shape, local-only commands, hybrid workflows, effects, execution mode, examples, and output envelopes.
+Schema-driven product CLIs expose a compact command manifest surface for agents and automation. It is separate from OpenAPI because it includes command-local concepts such as argv shape, local-only commands, hybrid workflows, effects, execution mode, examples, and output envelopes.
 
-Required minimum fields per command:
+Minimum fields per command:
 
 ```ts
 type GeneratedCommandManifestEntry = {
@@ -565,63 +542,26 @@ type GeneratedCommandManifestEntry = {
 };
 ```
 
-The build package may expose this as generated JSON, a built-in generated command such as `schema --json`, or both. In all cases, the manifest is catalog-derived and must be covered by generated-surface drift checks.
+The build package exposes this as generated JSON, a built-in generated command such as `schema --json`, or both. In all cases, the manifest is catalog-derived and covered by generated-surface drift checks.
 
-## Mutation testing
+## Framework neutrality
 
-`@liche/product` must have package-local mutation testing wired the same way as `@liche/core`: a `mutate` script that runs Stryker through the Bun runner, a package-local `stryker.conf.mjs`, TypeScript checking enabled, and the root workspace catalog dependencies reused instead of adding one-off versions. `@liche/build` keeps its own focused mutation scope for generic compile primitives.
+The framework does not know Vite (or any specific frontend framework) exists.
 
-The initial mutation scope should target implementation modules where surviving mutants expose real generator or catalog risk:
+A developer who already has backend capabilities exposes them through the generic core runtime and gets a generated CLI with good execution-mode ergonomics. The same generated command wiring and core HTTP operation transport work for a Vite app, a Bun server, a serverless function, or a handwritten HTTP backend.
 
-```txt
-packages/product/src/catalog.ts
-packages/product/src/command.ts
-packages/product/src/digest.ts
-packages/product/src/field.ts
-packages/product/src/generate.ts
-packages/product/src/generate-cli.ts
-packages/product/src/generate-openapi.ts
-packages/product/src/lints.ts
-packages/product/src/manifest.ts
-packages/product/src/product.ts
-packages/product/src/shape.ts
-packages/product/src/vocabulary.ts
-```
-
-Exclude public barrels, the `liche-product` CLI wrapper, packaged skill text, generated fixtures, and tests from mutation input. The first threshold should match core (`high: 90`, `low: 85`, `break: 80`) unless a measured baseline proves that too strict for the first landed config.
-
-The goal is not to chase 100% mutation score in the first slice. The goal is to make build-package regressions visible in the same local workflow as core and to turn meaningful surviving mutants into focused tests.
-
-## Vite sanity check only
-
-The framework must not know Vite exists.
-
-A developer who already has backend capabilities should be able to expose those capabilities through the existing generic core runtime and get a generated CLI with good execution-mode ergonomics.
-
-If the design requires any of the following, the design failed:
-
-- Vite package
-- Vite plugin
-- Vite adapter
-- virtual browser module
-- browser client generator
-- contract/server file split
-- Vite-specific lint rule
-
-If the same generated command wiring and core HTTP operation transport work for a Vite app, a Bun server, a serverless function, or a handwritten HTTP backend, the design passed.
+There is no Vite package, Vite plugin, Vite adapter, virtual browser module, browser client generator, contract/server file split, or Vite-specific lint rule.
 
 ## Core reflection overlap
 
-Core already has runtime reflection surfaces for handwritten CLIs:
+Core has runtime reflection surfaces for handwritten CLIs:
 
 - command schema
 - runtime manifest-style command listing
 - MCP tools
 - skill markdown/index
 
-Schema-generated artifacts are canonical for product-schema generated CLIs. The generated CLI may still register enough metadata for core reflection to work, but weaker runtime reflection must not override or silently conflict with catalog-generated OpenAPI, MCP, docs, or Agent Skill output.
-
-Required decision:
+For schema-driven CLIs, catalog-generated artifacts are canonical. The generated CLI registers enough metadata for core reflection to work, but core reflection does not override or silently conflict with catalog-generated OpenAPI, MCP, docs, or Agent Skill output.
 
 ```txt
 handwritten CLI:
@@ -670,7 +610,7 @@ Drift check compares generated outputs to checked-in files:
 liche-product generate ./liche.schema.ts --check
 ```
 
-It must fail when:
+It fails when:
 
 - generated output differs from current schema output
 - a generated file is hand-edited
@@ -681,7 +621,7 @@ Drift check does not verify a deployed server. Server conformance is a separate 
 
 ## Build CLI
 
-`@liche/product` exposes Product authoring and generation commands only for users who install it:
+`@liche/product` exposes Product authoring and generation commands:
 
 ```sh
 liche-product lint ./liche.schema.ts
@@ -706,15 +646,15 @@ Pipeline:
 
 ## Compile determinism
 
-The compile command must choose deterministic settings deliberately. Bun's `compile` option exposes settings that change runtime behavior of the resulting binary; the build pipeline must pin them explicitly rather than inherit defaults.
+The compile command chooses deterministic settings deliberately. Bun's `compile` option exposes settings that change runtime behavior of the resulting binary; the build pipeline pins them explicitly rather than inheriting defaults.
 
-`@liche/build` owns all `Bun.build()` calls. `@liche/releases` must not call `Bun.build()`, rebuild binaries, read generated source, or infer compile settings from a workspace. Releases receive final binary paths, final binary hashes/sizes, and the build record produced here.
+`@liche/build` owns all `Bun.build()` calls. `@liche/releases` does not call `Bun.build()`, rebuild binaries, read generated source, or infer compile settings from a workspace. Releases receive final binary paths, final binary hashes/sizes, and the build record produced here.
 
 Generated CLI files remain importable test fixtures. The compile path writes a small internal entrypoint next to the generated CLI that imports the generated default export and calls `cli.serve(process.argv.slice(2))`. That compile entrypoint is internal build-record data, not a generated surface artifact and not release-manifest data.
 
 ### Required compile flags
 
-For release builds, `@liche/build compile-entry` must invoke `Bun.build()` with a profile equivalent to:
+For release builds, `@liche/build compile-entry` invokes `Bun.build()` with a profile equivalent to:
 
 ```sh
 bun build --compile \
@@ -731,7 +671,7 @@ bun build --compile \
   --outfile <out>
 ```
 
-The implementation should construct one plain `CompileFlagProfile` and derive both the `Bun.build()` options and `compileFlagsDigest` from it. Local paths such as generated entrypoint path, output path, temp directories, metafile paths, and local logs belong in the internal build record and must not affect `compileFlagsDigest`.
+The implementation constructs one plain `CompileFlagProfile` and derives both the `Bun.build()` options and `compileFlagsDigest` from it. Local paths such as generated entrypoint path, output path, temp directories, metafile paths, and local logs belong in the internal build record and do not affect `compileFlagsDigest`.
 
 Rationale:
 
@@ -739,45 +679,45 @@ Rationale:
 |---|---|
 | `--target` | Cross-compile matrix is fixed by the release manifest, not the host. Defaults to host triple if omitted, which silently produces wrong artifacts in CI. |
 | `--minify` | Reduces binary size; required for reproducible bytes alongside `--bytecode`. |
-| `--sourcemap` | Preserves useful source locations for structured errors and crash reports. The exact sourcemap storage behavior is a Bun build detail; the chosen setting must still be recorded in the compile flag profile. |
+| `--sourcemap` | Preserves useful source locations for structured errors and crash reports. The exact sourcemap storage behavior is a Bun build detail; the chosen setting is recorded in the compile flag profile. |
 | `--bytecode` | Moves JS parse cost from runtime to build time. Required because CLI startup is the dominant user-visible latency for short-lived invocations. |
-| `--no-compile-autoload-bunfig` | A compiled CLI must not pick up the invoking user's `bunfig.toml`. Deterministic execution requires the binary behave the same regardless of working directory. |
-| `--no-compile-autoload-dotenv` | Env vars are a documented input channel (`docs/env-vars.md`), not an ambient one. `.env` loading at runtime would let an unrelated project's `.env` mutate CLI behavior. Schema-declared env vars are read from the process environment directly. |
-| `--compile-autoload-tsconfig`, `--compile-autoload-package-json` | Must remain off (the Bun default). The bundler already consumed these at build time. |
+| `--no-compile-autoload-bunfig` | A compiled CLI does not pick up the invoking user's `bunfig.toml`. Deterministic execution requires the binary behave the same regardless of working directory. |
+| `--no-compile-autoload-dotenv` | Env vars are a documented input channel ([env-vars.md](./env-vars.md)), not an ambient one. `.env` loading at runtime would let an unrelated project's `.env` mutate CLI behavior. Schema-declared env vars are read from the process environment directly. |
+| `--compile-autoload-tsconfig`, `--compile-autoload-package-json` | Remain off (the Bun default). The bundler already consumed these at build time. |
 | `--define` | Build-time constants for version, schema digest, schema commit, and generator version. Embedded into the binary so `--version` and crash reports can identify the build without filesystem lookups. |
-| `metafile` | Should be available in the internal build record for dependency/size analysis. It is audit data, not a release-manifest field. |
+| `metafile` | Available in the internal build record for dependency/size analysis. It is audit data, not a release-manifest field. |
 
 ### Forbidden flags
 
 | Flag | Why forbidden |
 |---|---|
 | `--compile-exec-argv` | Runtime args belong to the user's invocation, not to a baked-in default. `BUN_OPTIONS` remains available as an escape hatch for profiling. |
-| host-default `--target` | The release pipeline must specify the target explicitly for every artifact in the matrix. |
+| host-default `--target` | The release pipeline specifies the target explicitly for every artifact in the matrix. |
 
 ### Baseline vs modern x64 targets
 
-Bun ships `-baseline` and `-modern` variants of every x64 target. The release matrix must choose one per platform and document the floor:
+Bun ships `-baseline` and `-modern` variants of every x64 target. The release matrix chooses one per platform:
 
-- `bun-darwin-x64`: ship the default (modern). Pre-2013 Mac hardware is out of support.
-- `bun-linux-x64`: ship `bun-linux-x64-baseline`. Linux x64 hosts include containers, CI runners, and edge VMs with unknown CPU features; an `Illegal instruction` crash from AVX2 on a baseline-only host is unrecoverable.
-- `bun-windows-x64`: ship `bun-windows-x64-baseline` for the same reason.
+- `bun-darwin-x64`: ships the default (modern). Pre-2013 Mac hardware is out of support.
+- `bun-linux-x64`: ships `bun-linux-x64-baseline`. Linux x64 hosts include containers, CI runners, and edge VMs with unknown CPU features; an `Illegal instruction` crash from AVX2 on a baseline-only host is unrecoverable.
+- `bun-windows-x64`: ships `bun-windows-x64-baseline` for the same reason.
 
 ARM64 targets have no baseline/modern split.
 
 ### musl targets
 
-`bun-linux-x64-musl` and `bun-linux-arm64-musl` must be produced as separate artifacts. Alpine, distroless, and similar images cannot run glibc binaries. The release manifest already encodes `libc` per binary entry; npm `libc` filters and PyPI `musllinux` tags consume it.
+`bun-linux-x64-musl` and `bun-linux-arm64-musl` are produced as separate artifacts. Alpine, distroless, and similar images cannot run glibc binaries. The release manifest encodes `libc` per binary entry; npm `libc` filters and PyPI `musllinux` tags consume it.
 
 ### Runtime escape hatches
 
-The compiled binary inherits two Bun behaviors that the docs must surface:
+The compiled binary inherits two Bun behaviors:
 
-- `BUN_OPTIONS` env var injects runtime flags (e.g. `BUN_OPTIONS="--cpu-prof" ./acme ...`). Useful for profiling production binaries without rebuild. Must not be relied on for normal operation.
-- `BUN_BE_BUN=1` makes the binary act as the `bun` CLI itself. This is a Bun feature, not an liche feature. Users invoking the CLI with this env var are not running schema-driven code at all; document it as a known behavior and do not attempt to detect or block it.
+- `BUN_OPTIONS` env var injects runtime flags (e.g. `BUN_OPTIONS="--cpu-prof" ./acme ...`). Useful for profiling production binaries without rebuild. Not for normal operation.
+- `BUN_BE_BUN=1` makes the binary act as the `bun` CLI itself. This is a Bun feature, not a liche feature. Users invoking the CLI with this env var are not running schema-driven code at all.
 
 ### Release record
 
-For releases, the build pipeline must record:
+For releases, the build pipeline records:
 
 - release subject id/name when available from the caller
 - release subject version
@@ -790,24 +730,3 @@ For releases, the build pipeline must record:
 - runtime config expectations, including declared config schema artifacts and env vars required for remote base URL and auth/session
 
 The recorded flag set is what `release/binary-hash` reproducibility checks compare against. A flag drift between two builds of the same catalog digest is a release failure.
-
-## Acceptance criteria
-
-Build system MVP is accepted only when:
-
-- handwritten `@liche/core` CLI still works without `@liche/product` or `@liche/build`
-- core exposes outbound HTTP operation transport for handwritten and generated CLIs
-- runtime product schema defines resources, commands, bindings, auth providers, permissions, contexts, field metadata, closed vocabulary, execution mode, effects, input schema, output schema, HTTP binding, and surface membership
-- schema linter rejects vocabulary drift, missing output contracts, missing execution modes, missing or inconsistent effects, incomplete HTTP bindings, invalid auth/context/permission requirements, unsupported portable schema shapes, and eager local imports
-- generated command tree registers commands through public `@liche/core` APIs
-- generated remote-http capability calls the core HTTP operation transport
-- generated local command imports implementation lazily at runtime
-- generated and equivalent handwritten command behavior converge for the same inputs and expected outputs
-- server conformance verifies an owned external HTTP deployment against schema examples, HTTP bindings, and output schemas
-- `generate --check` remains a hermetic artifact freshness check and is separate from server conformance
-- OpenAPI/MCP/docs and command manifest are generated as schema byproducts
-- generated surface manifest records every emitted surface with source digest, generator version, generation options digest, output digest, and artifact list
-- generated fixtures include both CRUD-like resource operations and workflow commands so no generator or lint assumes every command is a resource or HTTP endpoint
-- core runtime reflection overlap is explicitly scoped
-- drift check fails on hand-edited generated output
-- compile command produces Bun standalone binaries for configured targets

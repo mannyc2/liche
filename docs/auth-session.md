@@ -1,8 +1,6 @@
-# Auth and session requirements
+# Auth and sessions
 
 Auth is part of the product catalog, not a parallel CLI feature.
-
-Hard rule:
 
 ```txt
 capabilities declare what they require
@@ -10,30 +8,28 @@ auth providers declare how credentials and context are resolved
 normal operations never start login implicitly
 ```
 
-This document defines the public API direction and the runtime contract. The workflow implementation now lives in the optional first-party `@liche/extensions/auth` lane rather than a standalone `@liche/auth` package.
+This document defines the public API and the runtime contract. Auth workflows live in `@liche/auth`; core keeps the redaction and transport-safety primitives.
 
 ## Package ownership
 
 | Responsibility | Owner |
 |---|---|
-| Auth provider declarations | `@liche/product` product schema API; normalized into catalog |
-| Permission declarations | `@liche/product`; product permissions/scopes are catalog metadata |
-| Context declarations | `@liche/product`; resolved by generated code through `@liche/extensions/auth` |
-| Generated `login`, `logout`, `whoami`, `switch` | `@liche/product` emits catalog capabilities; generated code implements them through `@liche/extensions/auth` |
-| Token resolution | `@liche/extensions/auth` |
-| Session/profile storage | `@liche/extensions/auth` file store plus public `SessionStore` interface |
-| Refresh token handling | `@liche/extensions/auth` later; deferred from MVP |
+| Auth provider declarations | `@liche/product` schema API; normalized into catalog |
+| Permission declarations | `@liche/product`; permissions/scopes are catalog metadata |
+| Context declarations | `@liche/product`; resolved by generated code through `@liche/auth` |
+| Generated `login`, `logout`, `whoami`, `switch` | `@liche/product` emits catalog capabilities; generated code implements them through `@liche/auth` |
+| Token resolution | `@liche/auth` |
+| Session/profile storage | `@liche/auth` file store plus public `SessionStore` interface |
 | Applying auth headers | `@liche/core` HTTP operation transport |
 | Structured auth errors | `@liche/core` |
 | Agent/MCP auth metadata | Catalog metadata from `@liche/product`; runtime status from generated code and extensions |
 | Release manifest auth metadata | `@liche/releases`; non-secret expectations only |
-| Hosted policy/session sync | Future hosted platform only |
 
-Do not add a separate `@liche/auth` package for MVP. Auth workflows belong in the official optional `@liche/extensions` package so Product can import them only when a catalog declares auth, while auth-free CLIs stay free of the workflow code path.
+Auth-free CLIs do not import the auth extension. `@liche/product` only pulls in `@liche/auth` when the normalized catalog declares an auth provider, so products with `Auth.none()` and no contexts produce auth-free generated code.
 
 ## Product schema API
 
-Auth is opt-in. Omitting `auth` means no auth; `auth: Auth.none()` remains available when explicitness helps examples or tests:
+Auth is opt-in. Omitting `auth` means no auth; `auth: Auth.none()` is available when explicitness helps examples or tests:
 
 ```ts
 import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@liche/product";
@@ -183,11 +179,11 @@ export default defineProduct({
 });
 ```
 
-MVP supports one auth provider per product and product-level auth only. Per-capability provider selection, multi-provider auth, hosted policy, OAuth consent optimization, and agent-triggered login are deferred.
+One auth provider per product. Auth is declared at the product level, not per capability.
 
 ## Core runtime API
 
-Core exposes small public primitives usable by handwritten and generated CLIs. Generated code may wrap them in product-specific helpers, but must not import private core subpaths.
+Core exposes small public primitives usable by handwritten and generated CLIs. Generated code may wrap them in product-specific helpers, but it does not import private core subpaths.
 
 ```ts
 export type SecretString = {
@@ -262,9 +258,9 @@ export function createFileSessionStore(options?: { root?: string }): SessionStor
 export function applyAuth(headers: Headers, credential: AuthCredential): void;
 ```
 
-`SecretString` is a redaction boundary. It must not serialize, stringify, or inspect as the raw secret by accident. Only transport/session code may call `reveal()`.
+`SecretString` is a redaction boundary. It does not serialize, stringify, or inspect as the raw secret by accident. Only transport/session code calls `reveal()`.
 
-`resolveAuth`, `resolveContext`, `SessionStore`, and `createFileSessionStore` are exported from `@liche/extensions/auth`. `secret` and `applyAuth` remain public top-level `@liche/core` APIs.
+`resolveAuth`, `resolveContext`, `SessionStore`, and `createFileSessionStore` are exported from `@liche/auth`. `secret` and `applyAuth` are public top-level `@liche/core` APIs.
 
 Structured auth errors:
 
@@ -283,7 +279,7 @@ AUTH_SESSION_LOCKED
 AUTH_REFRESH_FAILED
 ```
 
-No raw token, API key, refresh token, auth header, device user code, session file content, or full local session path may appear in error details, logs, conformance reports, release manifests, MCP metadata, or generated docs.
+No raw token, API key, refresh token, auth header, device user code, session file content, or full local session path appears in error details, logs, conformance reports, release manifests, MCP metadata, or generated docs.
 
 ## Global generated flags and invocation
 
@@ -295,16 +291,16 @@ Generated CLIs that opt into auth/session add these global flags:
 | `--non-interactive` | Disable prompts, browser opens, and device-flow login. |
 | `--no-session` | Ignore stored sessions for this invocation. |
 
-Context declarations add named flags such as `--org` or `--project`; do not add a generic `--context key=value` flag in MVP.
+Context declarations add named flags such as `--org` or `--project`. There is no generic `--context key=value` flag.
 
 Invocation kind is passed explicitly by generated entrypoints:
 
 - normal CLI entrypoint: `"cli"`
-- CI mode: `"ci"` when `--non-interactive` is set with CI env or generated CI wrapper chooses it
+- CI mode: `"ci"` when `--non-interactive` is set with CI env or the generated CI wrapper chooses it
 - generated MCP server/tool call: `"mcp"`
 - generated agent surface invocation: `"agent"`
 
-Plain CLI may infer CI from common env vars as a fallback, but generated MCP/agent wrappers must pass the invocation kind explicitly.
+Plain CLI may infer CI from common env vars as a fallback. Generated MCP and agent wrappers pass the invocation kind explicitly.
 
 ## Session storage
 
@@ -323,13 +319,12 @@ File:
 <root>/sessions/<productId>.json
 ```
 
-Requirements:
+Behavior:
 
-- directory mode `0700` and file mode `0600` on Unix
-- best-effort restricted permissions on Windows
+- directory mode `0700` and file mode `0600` on Unix; best-effort restricted permissions on Windows
 - profile names match `/^[A-Za-z0-9._-]{1,64}$/`
 - default profile is `default`
-- writes use lock file plus temp-write/rename
+- writes use a lock file plus temp-write/rename
 - lock timeout throws `AUTH_SESSION_LOCKED`
 - corrupted JSON is renamed to `<file>.corrupt.<timestamp>` and throws `AUTH_SESSION_CORRUPT`
 - `logout` deletes stored credential/session data for the selected profile and never touches env vars
@@ -365,7 +360,7 @@ type StoredProfile = {
 };
 ```
 
-MVP may store access tokens in the file store with restricted permissions. MVP must not store refresh tokens. OS keychain integration is future work.
+Access tokens are stored in the file store with restricted permissions. Refresh tokens are not stored, and there is no OS keychain integration.
 
 ## Resolution order
 
@@ -380,14 +375,14 @@ Credential resolution:
 
 1. `Auth.none()` returns no credential.
 2. Env token source, when its env var is present.
-3. Stored session for selected profile, only when allowed for invocation.
+3. Stored session for the selected profile, only when allowed for the invocation.
 4. Fail. Normal commands never start login implicitly.
 
 Context resolution:
 
 1. Explicit command flags/input such as `--org` or `--project`.
 2. Context env vars such as `ACME_ORG_ID`.
-3. Stored selected context from profile only when using a session credential or when `--profile` was explicit.
+3. Stored selected context from the profile, only when using a session credential or when `--profile` was explicit.
 4. Fail with `AUTH_CONTEXT_REQUIRED`.
 
 Invocation rules:
@@ -400,7 +395,7 @@ Invocation rules:
 | Agent/MCP | Env only unless launch config explicitly pins `profile` or `allowStoredSession`. |
 | Explicit profile | Selects stored profile/context; env credential still beats stored credential. |
 
-When env credentials and stored context are combined through explicit `--profile`, `whoami --json` and result metadata must show different credential and context sources.
+When env credentials and stored context are combined through explicit `--profile`, `whoami --json` and result metadata show different credential and context sources.
 
 ## Generated auth capabilities
 
@@ -478,22 +473,21 @@ Auth errors use the standard generated failure envelope under `--json`:
 }
 ```
 
-Required mappings:
+Mappings:
 
 | Case | Code | Notes |
 |---|---|---|
 | Missing human auth | `AUTH_MISSING` | Include login command only if generated. |
 | Missing CI token | `AUTH_CI_TOKEN_MISSING` | Include env var names only. |
 | Expired token, no refresh | `AUTH_EXPIRED` | Include login command if generated. |
-| Expired token, future refresh enabled and refresh fails | `AUTH_REFRESH_FAILED` | Deferred from MVP. |
 | Missing org/project | `AUTH_CONTEXT_REQUIRED` | Include required contexts, env names, and switch example. |
 | Known missing local scope | `AUTH_SCOPE_MISSING` | Only when credential scopes are known. |
-| Server 401 with auth present | `AUTH_INVALID` or `AUTH_EXPIRED` | Do not assume every 401 is expiry. |
+| Server 401 with auth present | `AUTH_INVALID` or `AUTH_EXPIRED` | Not every 401 is expiry. |
 | Server 403 | `AUTH_PERMISSION_DENIED` | Include product permission names, not secrets. |
 | Device flow from noninteractive terminal | `AUTH_INTERACTIVE_REQUIRED` | `login` only. |
 | Agent calls auth-required command | same envelope | No browser/device flow. |
 
-Server-side permission checks remain authoritative. Local scope checks are best-effort only when scopes are known.
+Server-side permission checks are authoritative. Local scope checks are best-effort, only when scopes are known.
 
 ## Device flow UX
 
@@ -507,9 +501,9 @@ OAuth device flow is explicit-login only. Normal auth-required operations never 
 - polling interval
 - cancellation instructions
 
-Normal operations never start device flow. `--non-interactive`, CI, agent, and MCP invocations fail with `AUTH_INTERACTIVE_REQUIRED` instead of printing user codes or opening browsers.
+`--non-interactive`, CI, agent, and MCP invocations fail with `AUTH_INTERACTIVE_REQUIRED` instead of printing user codes or opening browsers.
 
-MVP device flow stores access tokens only. Refresh tokens, refresh rotation, and automatic retry after 401 are deferred. Future refresh may refresh before request when the stored token is expired or near expiry; do not retry mutating operations after a 401 unless a later idempotency-aware requirement explicitly allows it.
+Device flow stores access tokens only. There is no automatic retry after a 401.
 
 ## HTTP transport integration
 
@@ -549,11 +543,11 @@ return await callHttpOperation({
 });
 ```
 
-`callHttpOperation` accepts resolved credentials after the auth slice lands. It applies headers through `applyAuth`. It must not accept raw token strings directly in generated code.
+`callHttpOperation` accepts resolved credentials and applies headers through `applyAuth`. Generated code does not pass raw token strings directly.
 
 ## Agent and MCP metadata
 
-Agents may see non-secret auth state:
+Agents see non-secret auth state:
 
 ```ts
 {
@@ -574,9 +568,9 @@ Agents may see non-secret auth state:
 }
 ```
 
-Expose only values that are useful for safe planning and recovery. Never expose token values, refresh tokens, API keys, authorization headers, env var values, device user codes, session file contents, keychain references, raw HTTP auth failures with secrets, or full local filesystem paths.
+Only values useful for safe planning and recovery are exposed. Token values, refresh tokens, API keys, authorization headers, env var values, device user codes, session file contents, keychain references, raw HTTP auth failures with secrets, and full local filesystem paths are never exposed.
 
-`login`, `logout`, and `switch` are not agent-visible by default. `whoami` may be agent-visible because it is local, read-only, and redacted.
+`login`, `logout`, and `switch` are not agent-visible. `whoami` is agent-visible because it is local, read-only, and redacted.
 
 ## Release manifest fields
 
@@ -612,49 +606,13 @@ auth: {
 }
 ```
 
-No selected profile, selected org/project value, token, refresh token, account email, or session path belongs in the release manifest.
+Selected profiles, selected org/project values, tokens, refresh tokens, account emails, and session paths are never in the release manifest.
 
-## MVP staging
+## Current limitations
 
-### Slice A: env auth and requirements
-
-- one provider per product
-- `Auth.none`, `Auth.apiKey`, and `Auth.bearer`
-- env token resolution only
-- `requires.auth`, `requires.contexts`, and `requires.permissions`
-- context via explicit flags and env vars
-- structured auth errors
-- `SecretString` and `applyAuth`
-- release manifest auth metadata
-
-### Slice B: file sessions and context
-
-- `SessionStore` and `createFileSessionStore`
-- profiles and active profile
-- access-token file storage with restricted permissions
-- stored selected context
-- generated `whoami` and `switch`
-- `--profile`, `--non-interactive`, `--no-session`
-
-### Slice C: OAuth device login
-
-- generated `login` and `logout`
-- OAuth device code polling
-- access-token storage only
-- no refresh tokens
-- no keychain dependency
-- no implicit login from normal operations
-
-Deferred: multi-provider auth, per-capability provider selection, refresh-token rotation, OS keychain integration, hosted policy/session sync, OAuth consent optimization, remote context pickers, and agent-triggered login.
-
-## Implementation status
-
-Slice A landed in Phase 3D-A (next-plan.md). The behavior in this doc is authoritative; the notes below trace the implementation:
-
-- `@liche/core`: `SecretString` + `secret()`, `applyAuth`, non-secret auth metadata, invocation posture, and structured command errors. `RunContext.invocation` carries `cli` / `ci` / `agent` / `mcp` into generated code so CI-mode token sources are reachable without process-global env mutation.
-- `@liche/extensions/auth`: `resolveAuth`, `resolveContext`, file session storage, profile/session helpers, identity probing, OAuth device login helpers, and the `auth()` global-input extension.
-- `@liche/product`: `Auth.none|bearer|apiKey`, `Auth.token.env`, `Auth.permission.scope`, `Auth.context.env|remote` (`packages/product/src/auth.ts`); `defineProduct({ auth, permissions, contexts })` (`packages/product/src/product.ts`); structured `requires: { auth, contexts, permissions }` slot replaces the old `permission?: string` field on capabilities; `normalizeProduct` validates capability `requires` against declared contexts, declared product permissions, and auth posture (`packages/product/src/catalog.ts`); `buildAuthManifest` emits the per-provider auth block on the generated surface manifest (`packages/product/src/manifest.ts`).
-- Generated CLI (`packages/product/src/generate-cli.ts`): when a capability declares `requires.auth` or `requires.contexts`, the generator imports `auth()`, `resolveAuth`, and `resolveContext` from `@liche/extensions/auth`, emits top-level `PRODUCT_ID` / `PROFILE_ENV_VAR` / `AUTH_PROVIDER` / `CONTEXTS` constants, injects each declared context flag as an optional `z.string()` option so `resolveContext` can apply flag > env > stored profile fallback, parses only the env vars needed by that capability through the command env schema, passes `ctx.invocation` / `ctx.global` / `ctx.env` / required permissions / mapped scopes into `resolveAuth`, and resolves auth/context before remote dispatch. Generated command manifests and MCP `tools/list` include non-secret auth requirement metadata (`required`, `status`, provider id, env var names, contexts, permissions, scopes). Products with `Auth.none()` and no auth/context requirements avoid auth-extension imports.
-- Slice B/C now landed: `@liche/extensions/auth` exposes `SessionStore`, `createFileSessionStore`, profile/session helpers, identity probing, and OAuth device login helpers. The file store writes restricted JSON under `LICHE_HOME` or the platform config root, supports active profiles and selected contexts, quarantines corrupt files, and throws `AUTH_SESSION_CORRUPT` / `AUTH_SESSION_LOCKED` where appropriate. Generated auth CLIs install `auth()` so the core global registry parses `--profile`, `--non-interactive`, and `--no-session`; they emit generated `whoami` / `switch` / `login` / `logout` commands when the auth provider opts in, and hide interactive `login` / `logout` / `switch` from MCP tools. Normal auth-required commands still call `resolveAuth` only; CLI/CI/agent/MCP paths never start OAuth device login implicitly.
-
-Still deferred: refresh tokens, refresh rotation, OS keychain integration, remote context picker/list runtime calls, hosted policy/session sync, and agent-triggered login.
+- One auth provider per product. Multi-provider auth and per-capability provider selection are not supported.
+- Refresh tokens are not stored and refresh rotation is not supported. Stored access tokens are used until they expire; users re-run `login` after that.
+- OS keychain integration is not supported. Sessions live in plaintext JSON with restricted file permissions.
+- Remote context pickers (interactive `switch` against a `list` endpoint) are not yet runtime-resolved. Contexts come from flags, env vars, or stored profile values.
+- Hosted policy and session sync are out of scope for the local toolchain.
+- Agents cannot trigger `login` — interactive auth remains explicit.

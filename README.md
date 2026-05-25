@@ -60,13 +60,13 @@ Official extensions mount optional helper commands without making them part of t
 
 ```ts
 import { defineCli } from "@liche/core";
-import { agents, completions, config, configDoctor } from "@liche/extensions";
+import { agents, completions, config, configDoctor, files } from "@liche/extensions";
 
 defineCli({
   name: "shipyard",
   extensions: [
     completions(),
-    config({ files: ["shipyard.jsonc"] }),
+    config({ sources: [files({ files: ["shipyard.jsonc"] })] }),
     configDoctor(),
     agents(),
   ],
@@ -74,7 +74,7 @@ defineCli({
 });
 ```
 
-Commands can set `format` to choose their default output format while still letting explicit globals win. `completions()` uses that path: it adds shell integration source generation and returns raw shell source by default because the command defaults to Markdown. `config()` declares the core config contract, `configDoctor()` adds `config doctor`, and `agents()` bundles MCP and skill installers. All extension helpers register as normal commands.
+Commands can set `format` to choose their default output format while still letting explicit globals win. `completions()` uses that path: it adds shell integration source generation and returns raw shell source by default because the command defaults to Markdown. `config()` registers the config input-source provider, `configDoctor()` adds `config doctor`, and `agents()` bundles MCP and skill installers. All extension helpers register as normal commands.
 
 ## Product Schema
 

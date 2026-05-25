@@ -1,6 +1,6 @@
-# Application integration requirements
+# Application integration
 
-This document describes how an application developer uses the planned packages to expose an app to agents through a CLI and generated machine-readable surfaces.
+This document describes how an application developer uses the packages to expose an app to agents through a CLI and generated machine-readable surfaces.
 
 The target example is a web app built with Vite and TanStack Router, but the rules are framework-agnostic.
 
@@ -14,11 +14,11 @@ the generated CLI invokes resource operations and commands
 OpenAPI/MCP/docs describe filtered projections of the same catalog
 ```
 
-Do not generate a CLI directly from frontend routes. A TanStack route tree describes navigation and rendering. It is not the same as a product capability catalog.
+CLIs are not generated from frontend routes. A TanStack route tree describes navigation and rendering; it is not the same as a product capability catalog.
 
 ## Primary workflow
 
-A developer with a Vite/TanStack app should:
+For a Vite/TanStack app:
 
 1. Identify product capabilities and durable preferences: resources, commands, general config, and bindings.
 2. Define those capabilities in `liche.schema.ts`.
@@ -61,11 +61,11 @@ http = server implementation of an HTTP-backed capability
 handler = local or hybrid implementation of a command
 ```
 
-The MVP supports an external server in the sense that the server is outside the CLI process. It does not default to third-party API transcription.
+The server is outside the CLI process, but the schema describes the application's own API, not arbitrary third-party APIs.
 
 ## Product-schema systems
 
-A Cloudflare-style product-schema system maps cleanly to the liche plan when the source-of-truth boundary stays explicit:
+A Cloudflare-style product-schema system maps cleanly when the source-of-truth boundary stays explicit:
 
 ```txt
 owned product schema
@@ -76,7 +76,7 @@ owned product schema
 
 For this class of system, the schema may eventually feed product-specific surfaces such as Workers Binding RPC metadata, `wrangler.jsonc` fragments, dashboard metadata, product docs, SDK generators, Terraform providers, or a Code Mode MCP server.
 
-Do not treat those surfaces as generic MVP behavior. Each product-specific surface needs a requirement that states:
+Those surfaces are adapter-level work. Each product-specific surface needs a requirement that states:
 
 - whether it consumes the canonical catalog or generated OpenAPI
 - which metadata it requires beyond capability input/output schemas
@@ -84,13 +84,13 @@ Do not treat those surfaces as generic MVP behavior. Each product-specific surfa
 - how conformance is proven against the owned API or platform runtime
 - who owns publication and rollback
 
-Generating the product API itself is a separate server-adapter track. Until that adapter exists, the app implements API routes manually and `liche-product conform` proves the implementation matches the schema.
+Generating the product API itself is a separate server-adapter track. The app implements API routes manually and `liche-product conform` proves the implementation matches the schema.
 
 ## Resources and commands
 
 Resources and workflow commands are sibling concepts. CRUD-style helpers are convenience syntax for resources, not the core model.
 
-Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`, `generate`, `sync`, `open`, and `watch` must stay first-class. A generator, lint, or docs surface that assumes every capability is a resource action is wrong.
+Workflow commands such as `deploy`, `login`, `init`, `doctor`, `dev`, `migrate`, `generate`, `sync`, `open`, and `watch` are first-class. A generator, lint, or docs surface that assumes every capability is a resource action is wrong.
 
 ## Example schema
 
@@ -130,15 +130,15 @@ export default defineProduct({
       },
       operations: {
         list: {
-        summary: "List projects",
-        http: { method: "GET", path: "" },
-        output: Shape.list("project"),
-        requires: { auth: true, permissions: ["projects:read"] },
-        surfaces: {
-          cli: { command: "projects list" },
-          docs: true,
-          openapi: true,
-        },
+          summary: "List projects",
+          http: { method: "GET", path: "" },
+          output: Shape.list("project"),
+          requires: { auth: true, permissions: ["projects:read"] },
+          surfaces: {
+            cli: { command: "projects list" },
+            docs: true,
+            openapi: true,
+          },
         },
       },
     },
@@ -166,15 +166,13 @@ export default defineProduct({
 });
 ```
 
-The app implements `GET /api/projects` and the `myapp.deploy` handler manually in MVP. The implementation must conform to the schema.
+The app implements `GET /api/projects` and the `myapp.deploy` handler manually. The implementation conforms to the schema.
 
 ## Package usage
 
 ### `@liche/core`
 
-Use directly for handwritten CLIs or shared runtime behavior.
-
-In an app integration, core owns:
+Used directly for handwritten CLIs or shared runtime behavior. In an app integration, core owns:
 
 - command execution
 - standard output/error envelopes
@@ -183,9 +181,7 @@ In an app integration, core owns:
 
 ### `@liche/product`
 
-Use to generate CLI and machine-readable surfaces from `liche.schema.ts`.
-
-It generates:
+Used to generate CLI and machine-readable surfaces from `liche.schema.ts`. It generates:
 
 - CLI command tree
 - remote command wiring into core HTTP operation transport
@@ -199,9 +195,7 @@ It generates:
 
 ### `@liche/build`
 
-Use to compile a generated or handwritten CLI entrypoint into standalone Bun executables.
-
-It owns:
+Used to compile a generated or handwritten CLI entrypoint into standalone Bun executables. It owns:
 
 - `Bun.build()` compile orchestration
 - target-specific compile options
@@ -211,9 +205,7 @@ It owns:
 
 ### `@liche/releases`
 
-Use when shipping the CLI.
-
-It packages final binaries and records runtime expectations such as:
+Used when shipping the CLI. It packages final binaries and records runtime expectations such as:
 
 ```txt
 MYAPP_API_URL
@@ -224,11 +216,9 @@ It can require or attach a conformance report for release provenance, but it doe
 
 ## Framework boundary
 
-No framework-specific package is required for Vite or TanStack Router.
+No framework-specific package is required for Vite or TanStack Router. The app only needs to expose HTTP routes and handlers that implement the product schema capabilities.
 
-The app only needs to expose HTTP routes and handlers that implement the product schema capabilities.
-
-If the same `liche.schema.ts` can target:
+The same `liche.schema.ts` can target:
 
 - a Vite dev server
 - a TanStack Start server
@@ -236,18 +226,14 @@ If the same `liche.schema.ts` can target:
 - a serverless function
 - a deployed production API
 
-then the integration boundary is correct.
-
-If the design requires a Vite plugin, TanStack plugin, browser client generator, or route-tree adapter in MVP, the design has drifted.
+There are no Vite plugins, TanStack plugins, browser client generators, or route-tree adapters.
 
 ## Third-party APIs
 
-Generating a CLI for an API the user does not own is a non-goal for MVP.
-
-That use case needs different semantics:
+Generating a CLI for an API you do not own is out of scope. That use case needs different semantics:
 
 - the schema is not authoritative over the upstream API
 - generated OpenAPI would describe the adapter expectation, not the upstream truth
 - conformance must compare against an external contract or observed behavior the user does not control
 
-Keep that as a later adapter track.
+This is adapter-level work, not part of the core integration story.

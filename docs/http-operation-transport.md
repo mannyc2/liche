@@ -1,14 +1,10 @@
-# HTTP operation transport requirements
+# HTTP operation transport
 
-`@liche/core` owns outbound HTTP operation transport. Both handwritten CLIs and generated CLIs use the same primitives.
+`@liche/core` owns outbound HTTP operation transport. Handwritten CLIs and generated CLIs use the same primitives. Generated Product command wiring and server conformance build on top of it.
 
 ## NDJSON streaming for async generators
 
 When a command's `run()` is an async generator and the client requests `Accept: application/x-ndjson`, the response is `Content-Type: application/x-ndjson`. Each yield becomes a JSON line of the form `{"type":"chunk","data":<value>}`. After the iterator completes, a final compact-JSON line containing the result envelope (`{ok, data, error, meta}`) is appended. CLI mode emits one stdout line per yield, formatted in the chosen output format (jsonl wraps each chunk in the same `{type,data}` envelope).
-
-Behavior IDs: `STREAM-001`.
-
-The first landed slice is the core serializer plus network transport. Generated Product command wiring and server conformance still build on top of it.
 
 ## Public primitives
 
@@ -26,7 +22,7 @@ export async function callHttpOperation<TInput, TOutput>(
 
 `callHttpOperation` returns parsed output on success.
 
-Failures must throw structured core errors that the existing command execution path can map into the standard result/error envelope. Do not make the transport sometimes return `TOutput` and sometimes return `{ ok: false }`.
+Failures throw structured core errors that the command execution path maps into the standard result/error envelope. The transport never returns `TOutput` for success and `{ ok: false }` for failure.
 
 ## Types
 
@@ -81,13 +77,13 @@ export type HttpOperationCall<TInput, TOutput> =
   };
 ```
 
-`inputFields` is optional because handwritten callers can rely on their own schema discipline. Generated callers should pass it so dead or typoed bind entries fail before network work with `REMOTE_BIND_UNKNOWN_FIELD`.
+`inputFields` is optional because handwritten callers can rely on their own schema discipline. Generated callers pass it so dead or typoed bind entries fail before network work with `REMOTE_BIND_UNKNOWN_FIELD`.
 
-Generated Product callers now support literal, env-backed, and config-backed remote base URL sources. Config-backed values use the first-class config primitive from `docs/config-primitive.md`, not an ad hoc loader lookup, and are resolved before transport through `ctx.config` plus `ctx.sources.config(...)`.
+Generated Product callers support literal, env-backed, and config-backed remote base URL sources. Config-backed values use the config provider from [config-primitive.md](./config-primitive.md) and are resolved before transport through `ctx.sources.value("config", ...)` plus `ctx.sources.source("config", ...)`.
 
-Env-backed `bearer` and `apiKey` auth remain supported for handwritten CLIs and the first generated auth slice. Auth/session-aware generated CLIs should resolve credentials before transport and pass `{ kind: "resolved", credential }` so `callHttpOperation` only applies headers and reports HTTP failures. See `docs/auth-session.md`.
+Env-backed `bearer` and `apiKey` auth are supported for handwritten CLIs. Auth/session-aware generated CLIs resolve credentials before transport and pass `{ kind: "resolved", credential }` so `callHttpOperation` only applies headers and reports HTTP failures. See [auth-session.md](./auth-session.md).
 
-Retry policy is also not part of the first transport slice. The default is no retry. The API should not preclude retries later, but initial behavior should prove serialization, fetch, timeout, parsing, validation, and structured errors first.
+There is no retry. The default is no retry; the API does not preclude adding it later.
 
 ## Request serialization
 
@@ -139,15 +135,15 @@ Required failures:
 | base URL invalid | `REMOTE_CONFIG_INVALID_BASE_URL` |
 | auth env missing | `REMOTE_CONFIG_MISSING_AUTH` |
 
-For env-backed transport auth, missing env remains a remote config error. For auth/session-aware generated CLIs, `resolveAuth` should fail before transport with an `AUTH_*` structured error such as `AUTH_MISSING` or `AUTH_CI_TOKEN_MISSING`.
+For env-backed transport auth, missing env is a remote config error. For auth/session-aware generated CLIs, `resolveAuth` fails before transport with an `AUTH_*` structured error such as `AUTH_MISSING` or `AUTH_CI_TOKEN_MISSING`.
 
-Auth is product-level for MVP. Per-capability provider selection remains a non-goal until a concrete use case requires it.
+Auth is product-level. Per-capability provider selection is not supported.
 
-Do not pass secret values through CLI flags such as `--auth-env NAME=VALUE`. Conformance and runtime should read inherited environment or explicit env files/target config with clear handling.
+Secret values do not flow through CLI flags such as `--auth-env NAME=VALUE`. Conformance and runtime read inherited environment or explicit env files/target config.
 
-When a resolved credential is present, `applyAuth` mutates headers. Generated code must not pass raw token strings to transport.
+When a resolved credential is present, `applyAuth` mutates headers. Generated code does not pass raw token strings to transport.
 
-Generated Product commands call this transport only when the catalog declares a product-level remote base URL source. Without that declaration, Product linting reports `catalog/remote-required` and CLI generation fails rather than emitting a placeholder transport path or inventing an implicit base URL rule. When a remote base URL is declared, generated callers pass a resolved base URL sourced from a literal, env var, or declared config field while keeping auth/session resolution separate.
+Generated Product commands call this transport only when the catalog declares a product-level remote base URL source. Without that declaration, Product linting reports `catalog/remote-required` and CLI generation fails. Generated callers pass a resolved base URL sourced from a literal, env var, or declared config field while keeping auth/session resolution separate.
 
 ## Timeout
 
@@ -163,7 +159,7 @@ Timeout failure code:
 REMOTE_TIMEOUT
 ```
 
-Timeouts should be marked retryable in error metadata, but no retry should occur unless a future retry policy explicitly opts in.
+Timeouts are marked retryable in error metadata. No automatic retry happens.
 
 ## Response parsing
 
@@ -179,18 +175,18 @@ JSON:
 
 Unsupported success body:
 
-- non-JSON success body fails with `REMOTE_RESPONSE_UNSUPPORTED_CONTENT_TYPE` unless the operation explicitly allows text in a later extension
+- non-JSON success body fails with `REMOTE_RESPONSE_UNSUPPORTED_CONTENT_TYPE`
 
 Validation:
 
-- validate parsed data with `output.parse(data)`
-- Zod errors must be normalized into structured core errors
+- parsed data is validated with `output.parse(data)`
+- Zod errors are normalized into structured core errors
 
-No raw `fetch`, `AbortError`, `JSON.parse`, or Zod errors may leak through command output.
+Raw `fetch`, `AbortError`, `JSON.parse`, and Zod errors never leak through command output.
 
 ## Error codes
 
-Required codes:
+Codes:
 
 ```txt
 REMOTE_CONFIG_MISSING_BASE_URL
@@ -212,15 +208,9 @@ HTTP status handling with auth:
 
 | Status | Mapping |
 |---|---|
-| 401 with auth present | `AUTH_INVALID` or `AUTH_EXPIRED` when expiry is known; do not assume all 401s are expiry. |
+| 401 with auth present | `AUTH_INVALID` or `AUTH_EXPIRED` when expiry is known. Not every 401 is expiry. |
 | 403 with auth present | `AUTH_PERMISSION_DENIED` when the capability declared permissions; otherwise `REMOTE_HTTP_STATUS`. |
 | 401/403 without auth requirement | `REMOTE_HTTP_STATUS`. |
-
-Future retry support may add:
-
-```txt
-REMOTE_RETRY_EXHAUSTED
-```
 
 ## Error details
 
@@ -239,9 +229,9 @@ type RemoteErrorDetails = {
 };
 ```
 
-`bodyPreview` must be capped and sanitized. Default cap: 4096 bytes.
+`bodyPreview` is capped and sanitized. Default cap: 4096 bytes.
 
-Do not include auth header values or secret env values in error details or conformance reports.
+Auth header values and secret env values do not appear in error details or conformance reports.
 
 ## Handwritten CLI example
 
@@ -303,14 +293,14 @@ defineCommand({
   input: { options: usersList.input },
   output: usersList.output,
   async run({ ctx }) {
-    const remoteBaseUrl = ctx.config["apiBaseUrl"];
+    const remoteBaseUrl = ctx.sources.value("config", "apiBaseUrl");
     if (typeof remoteBaseUrl !== "string" || remoteBaseUrl.length === 0) {
       return ctx.error({
         code: "REMOTE_CONFIG_MISSING_BASE_URL",
         message: "Remote base URL is required.",
       });
     }
-    const remoteBaseUrlSource = ctx.sources.config("apiBaseUrl").kind === "default" ? "schema-default" : "config";
+    const remoteBaseUrlSource = ctx.sources.source("config", "apiBaseUrl").kind === "default" ? "schema-default" : "config";
     const data = await callHttpOperation({
       id: "users.list",
       baseUrl: remoteBaseUrl,
@@ -327,22 +317,4 @@ defineCommand({
 });
 ```
 
-Auth/session-aware generated CLIs resolve credentials before this call, as shown in `docs/auth-session.md`. The example above is the config-backed transport path.
-
-## Tests
-
-Required tests:
-
-- serialize path/query/header/body correctly
-- preserve `false`, `0`, and empty strings
-- arrays repeat query params
-- missing base URL becomes `REMOTE_CONFIG_MISSING_BASE_URL`
-- invalid base URL becomes `REMOTE_CONFIG_INVALID_BASE_URL`
-- missing env-backed transport auth becomes `REMOTE_CONFIG_MISSING_AUTH`; auth/session-aware generated CLIs fail earlier with `AUTH_*`
-- missing/unknown/conflicting bind fields fail before network
-- network failure becomes `REMOTE_NETWORK`
-- timeout becomes `REMOTE_TIMEOUT`
-- non-2xx becomes `REMOTE_HTTP_STATUS` with safe body preview
-- bad JSON becomes `REMOTE_RESPONSE_MALFORMED`
-- output mismatch becomes `REMOTE_RESPONSE_SCHEMA`
-- raw platform/library errors never appear in result text
+Auth/session-aware generated CLIs resolve credentials before this call (see [auth-session.md](./auth-session.md)). The example above is the config-backed transport path.

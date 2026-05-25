@@ -25,7 +25,7 @@ Renderers and publishers are separate concerns:
 
 Renderer preflight checks manifest metadata and selected-renderer configuration only. Publisher preflight checks credentials, repository bindings, registry state, and mutation ordering.
 
-Renderer selection and non-npm renderer requirements live in `docs/releases.md`.
+Renderer selection and non-npm renderer requirements live in [release-and-distribution.md](./release-and-distribution.md).
 
 Detailed npm packaging requirements live in `docs/npm-binary-packaging.md`.
 
@@ -514,7 +514,7 @@ Modern registry provenance should be integrated when the selected publisher supp
 - npm publishing should delegate to `npm publish` by default, prefer Trusted Publishing/OIDC, and preserve generated provenance attestations when available.
 - PyPI publishing should delegate to ecosystem-maintained upload tooling. The local token executor uses `python -m twine upload`; Trusted Publisher/OIDC publishing should run through the official PyPI trusted-publisher workflow path and preserve supported digital attestations when available.
 - GitHub Release uploads should support artifact attestation generation and verification when the release runs in GitHub Actions.
-- SBOM generation is not required for the first release slice, but the manifest and artifact record model must leave room for SBOM artifact IDs and hashes.
+- SBOM generation is not required, but the manifest and artifact record model leave room for SBOM artifact IDs and hashes.
 
 These mechanisms raise the audit bar but do not replace binary hashing, package verification, signing/notarization, or publisher trust.
 
@@ -529,23 +529,20 @@ Upstream reference points for these requirements:
 - Homebrew formula shape: `https://docs.brew.sh/Formula-Cookbook`
 - Scoop manifest shape: `https://github.com/ScoopInstaller/Scoop/wiki/App-Manifests`
 
-## Acceptance criteria
+## Contract summary
 
-Distribution MVP is accepted only when:
-
-- manifest includes release version, subject/contract provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/cpuVariant/url/sha256/size
-- manifest includes renderer metadata needed by pure package renderers
-- manifest includes non-secret auth/session expectations when auth providers are configured
-- manifest can record conformance report version, hash, target, summary, contract digest, and destructive-case status when publishing policy requires conformance
-- manifest can record executable metadata needed for Windows resource fields without embedding local icon paths
-- manifest includes stable package identity records and can be joined to verified artifact records by package ID
-- renderers are pure manifest-to-staged-package functions
-- renderer selection supports zero, one, many, or all implemented renderers
-- renderer preflight and publisher credential preflight are separate
-- npm renderer uses umbrella plus platform optional dependencies with exact version pins when selected
-- npm renderer writes unpacked package directories and verifies derived `.tgz` artifacts when pack output is selected
-- no selected renderer emits install-time script execution unless explicitly approved
-- PyPI/Homebrew/Scoop renderers use the same manifest contract when selected
-- no `release-extra` package exists
-- yank command is planned from one manifest reference
-- trust-root limitations are documented
+- The manifest includes release version, subject/contract provenance, runtime env/config expectations, and per-binary target/platform/arch/libc/cpuVariant/url/sha256/size.
+- The manifest includes renderer metadata needed by pure package renderers.
+- The manifest includes non-secret auth/session expectations when auth providers are configured.
+- The manifest can record conformance report version, hash, target, summary, contract digest, and destructive-case status when publishing policy requires conformance.
+- The manifest can record executable metadata for Windows resource fields without embedding local icon paths.
+- The manifest includes stable package identity records and can be joined to verified artifact records by package ID.
+- Renderers are pure manifest-to-staged-package functions.
+- Renderer selection supports zero, one, many, or all implemented renderers.
+- Renderer preflight and publisher credential preflight are separate.
+- The npm renderer uses umbrella plus platform optional dependencies with exact version pins when selected.
+- The npm renderer writes unpacked package directories and verifies derived `.tgz` artifacts when pack output is selected.
+- No selected renderer emits install-time script execution.
+- PyPI/Homebrew/Scoop renderers use the same manifest contract when selected.
+- Yank is planned from one manifest reference.
+- Trust-root limitations are documented.
