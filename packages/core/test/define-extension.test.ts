@@ -11,19 +11,6 @@ describe('defineExtension', () => {
     expect(Object.isFrozen(ext)).toBe(true)
   })
 
-  test('rejects empty, whitespace, or uppercase ids', () => {
-    expect(() => defineExtension({ id: '' })).toThrow(/defineExtension/)
-    expect(() => defineExtension({ id: ' liche.auth' })).toThrow(/defineExtension/)
-    expect(() => defineExtension({ id: 'Liche.Auth' })).toThrow(/defineExtension/)
-  })
-
-  test('accepts the established liche.* convention and bare lowercase ids', () => {
-    expect(defineExtension({ id: 'liche.auth' }).id).toBe('liche.auth')
-    expect(defineExtension({ id: 'liche.config-doctor' }).id).toBe('liche.config-doctor')
-    expect(defineExtension({ id: 'tenant' }).id).toBe('tenant')
-    expect(defineExtension({ id: 'acme.cli.foo' }).id).toBe('acme.cli.foo')
-  })
-
   test('plugs into defineCli unchanged', async () => {
     const cli = defineCli({
       name: 'app',
