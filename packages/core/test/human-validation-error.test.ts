@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
-import { formatHumanValidationError } from '../src/cli/format-error.js'
+import { formatHumanValidationError } from '../src/cli/human-validation-error.js'
 import type { SelectedCommand } from '../src/types.js'
 import { testCli, testCommand } from './helpers.js'
 

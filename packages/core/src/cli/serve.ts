@@ -10,7 +10,7 @@ import { serveMcp } from '../mcp/stdio.js'
 import { skillIndex, skillMarkdown } from '../skills/generate.js'
 import { manifestEnvelope } from '../command/registry.js'
 import { complete, shells } from '../completions/shells.js'
-import { formatHumanValidationError } from './format-error.js'
+import { formatHumanValidationError } from './human-validation-error.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 
 const DEFAULT_FORMAT: Format = 'json'
