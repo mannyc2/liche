@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import type { CliReleaseManifest } from './manifest.js'
+import type { CliReleaseManifest } from '../manifest/index.js'
 import type {
   HomebrewStepExecutor,
   NpmCredentials,
@@ -9,12 +9,12 @@ import type {
   PypiStepExecutor,
   ScoopStepExecutor,
   StepExecutorResult,
-} from './publishers/index.js'
+} from './index.js'
 import {
   audienceForNpmRegistry,
   npmOidcExchangeUrl,
-} from './publishers/index.js'
-import type { ResolvedGitRepoTarget } from './publishers/plan.js'
+} from './index.js'
+import type { ResolvedGitRepoTarget } from './plan.js'
 
 type CommandStatus = {
   code: number

@@ -1,4 +1,4 @@
-import type { PackageEcosystem } from '../manifest.js'
+import type { PackageEcosystem } from '../manifest/index.js'
 import type { PublisherCredentials } from './preflight.js'
 
 export const PUBLISHER_ENV_NAMES = {

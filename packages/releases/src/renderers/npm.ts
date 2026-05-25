@@ -13,7 +13,7 @@ import {
   verifiedPath,
   writeArtifact,
 } from './common.js'
-import type { BinaryTarget, CliReleaseManifest, PackageRecord } from '../manifest.js'
+import type { BinaryTarget, CliReleaseManifest, PackageRecord } from '../manifest/index.js'
 import type { ReleaseRenderer, ReleaseRendererInput, RenderPackageResult } from './index.js'
 
 export type NpmRendererConfig = {

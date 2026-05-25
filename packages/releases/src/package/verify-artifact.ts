@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
 import { basename } from 'node:path'
-import type { PackageRecord } from './manifest.js'
-import type { RenderPackageArtifact } from './renderers/index.js'
+import { verifyBytesAt } from '../internal/verify.js'
+import type { PackageRecord } from '../manifest/index.js'
+import type { RenderPackageArtifact } from '../renderers/index.js'
 
 export type VerifiedPackageArtifact = {
   packageId: string
@@ -43,21 +43,6 @@ export type VerifyPackageArtifactsResult =
   | { ok: true; verified: VerifiedPackageArtifact[] }
   | { ok: false; failures: PackageArtifactVerificationFailure[] }
 
-async function readBytes(path: string): Promise<Uint8Array | null> {
-  try {
-    const file = Bun.file(path)
-    if (!(await file.exists())) return null
-    const buffer = await file.arrayBuffer()
-    return new Uint8Array(buffer)
-  } catch {
-    return null
-  }
-}
-
-function sha256Hex(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex')
-}
-
 function indexPackageRecords(
   packages: readonly PackageRecord[],
   failures: PackageArtifactVerificationFailure[],
@@ -92,7 +77,6 @@ function indexArtifacts(
       })
       continue
     }
-
     const record = records.get(artifact.packageId)
     if (!record) {
       failures.push({
@@ -110,7 +94,6 @@ function indexArtifacts(
       })
       continue
     }
-
     byPackageId.set(artifact.packageId, artifact)
   }
   return byPackageId
@@ -159,36 +142,30 @@ export async function verifyPackageArtifacts(
       continue
     }
 
-    const bytes = await readBytes(rendered.path)
-    if (!bytes) {
-      failures.push({
-        packageId,
-        code: 'PACKAGE_ARTIFACT_READ_FAILED',
-        message: `could not read package artifact '${packageId}' from '${rendered.path}'`,
-        details: { path: rendered.path },
-      })
-      continue
-    }
-
-    const size = bytes.byteLength
-    if (size !== expected.size) {
-      failures.push({
-        packageId,
-        code: 'PACKAGE_ARTIFACT_SIZE_MISMATCH',
-        message: `package artifact '${packageId}' size ${size} does not match manifest size ${expected.size}`,
-        details: { manifestSize: expected.size, actualSize: size },
-      })
-      continue
-    }
-
-    const sha256 = sha256Hex(bytes)
-    if (sha256 !== expected.sha256) {
-      failures.push({
-        packageId,
-        code: 'PACKAGE_ARTIFACT_HASH_MISMATCH',
-        message: `package artifact '${packageId}' sha256 mismatch`,
-        details: { manifestSha256: expected.sha256, actualSha256: sha256 },
-      })
+    const result = await verifyBytesAt(rendered.path, { sha256: expected.sha256, size: expected.size })
+    if (!result.ok) {
+      if (result.kind === 'read') {
+        failures.push({
+          packageId,
+          code: 'PACKAGE_ARTIFACT_READ_FAILED',
+          message: `could not read package artifact '${packageId}' from '${rendered.path}'`,
+          details: { path: rendered.path },
+        })
+      } else if (result.kind === 'size') {
+        failures.push({
+          packageId,
+          code: 'PACKAGE_ARTIFACT_SIZE_MISMATCH',
+          message: `package artifact '${packageId}' size ${result.size} does not match manifest size ${expected.size}`,
+          details: { manifestSize: expected.size, actualSize: result.size },
+        })
+      } else {
+        failures.push({
+          packageId,
+          code: 'PACKAGE_ARTIFACT_HASH_MISMATCH',
+          message: `package artifact '${packageId}' sha256 mismatch`,
+          details: { manifestSha256: expected.sha256, actualSha256: result.sha256 },
+        })
+      }
       continue
     }
 
@@ -196,8 +173,8 @@ export async function verifyPackageArtifacts(
       packageId,
       path: rendered.path,
       fileName: expected.fileName,
-      sha256,
-      size,
+      sha256: result.sha256,
+      size: result.size,
       renderer: record.renderer,
       ecosystem: record.ecosystem,
       kind: record.kind,

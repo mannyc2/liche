@@ -1,5 +1,5 @@
 import type { BuildRecord, RecordedBinary } from './build-record.js'
-import type { CliReleaseManifestInput } from './manifest.js'
+import type { CliReleaseManifestInput } from './schema.js'
 
 export type ReleaseHost =
   | { kind: 'github-assets'; repository: string; tag?: string }

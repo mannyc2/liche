@@ -1,5 +1,6 @@
-import { createHash } from 'node:crypto'
-import type { PackageEcosystem } from '../manifest.js'
+import { sha256Hex } from '../internal/crypto.js'
+import { readBytes } from '../internal/fs-bytes.js'
+import type { PackageEcosystem } from '../manifest/index.js'
 import type {
   HomebrewPublishStep,
   NpmPublishStep,
@@ -107,21 +108,6 @@ export type ExecuteReleasePublishInput = {
 export type ExecuteReleasePublishResult =
   | { ok: true; completed: ExecutorReceipt[] }
   | { ok: false; completed: ExecutorReceipt[]; failure: ExecuteFailure }
-
-async function readBytes(path: string): Promise<Uint8Array | null> {
-  try {
-    const file = Bun.file(path)
-    if (!(await file.exists())) return null
-    const buffer = await file.arrayBuffer()
-    return new Uint8Array(buffer)
-  } catch {
-    return null
-  }
-}
-
-function sha256Hex(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex')
-}
 
 function failure(
   stepIndex: number,

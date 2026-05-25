@@ -4,7 +4,7 @@ import {
   safeLowerSegment,
   writeArtifact,
 } from './common.js'
-import type { BinaryTarget } from '../manifest.js'
+import type { BinaryTarget } from '../manifest/index.js'
 import type { ReleaseRenderer, ReleaseRendererInput, RenderPackageResult } from './index.js'
 
 export type ScoopRendererConfig = {

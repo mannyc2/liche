@@ -17,7 +17,7 @@ const REQUIRED_SUPPORT_FILES = [
   'SECURITY.md',
   'SUPPORT.md',
   'CHANGELOG.md',
-  'docs/public-release.md',
+  'docs/release-and-distribution.md',
   '.github/workflows/publish.yml',
 ] as const
 
@@ -228,7 +228,7 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
     }
   })
 
-  for (const file of ['SECURITY.md', 'SUPPORT.md', 'CHANGELOG.md', 'docs/public-release.md']) {
+  for (const file of ['SECURITY.md', 'SUPPORT.md', 'CHANGELOG.md', 'docs/release-and-distribution.md']) {
     const path = join(REPO_ROOT, file)
     if (existsSync(path)) {
       checks.push(

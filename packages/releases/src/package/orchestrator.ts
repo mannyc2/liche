@@ -1,14 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import type { BinaryVerificationFailure, VerifiedBinary } from './binary.js'
-import { verifyReleaseBinaries } from './binary.js'
-import type {
-  PackageArtifactVerificationFailure,
-  VerifiedPackageArtifact,
-} from './artifacts.js'
-import { verifyPackageArtifacts } from './artifacts.js'
-import type { CliReleaseManifest, PackageRecord } from './manifest.js'
-import { parseCliReleaseManifest } from './manifest.js'
+import type { CliReleaseManifest, PackageRecord } from '../manifest/index.js'
+import { parseCliReleaseManifest } from '../manifest/index.js'
 import type {
   ReleaseRenderer,
   ReleaseRendererInput,
@@ -16,8 +9,15 @@ import type {
   RendererRegistry,
   RendererSelection,
   RendererSelectionFailure,
-} from './renderers/index.js'
-import { resolveReleaseRenderers } from './renderers/index.js'
+} from '../renderers/index.js'
+import { resolveReleaseRenderers } from '../renderers/index.js'
+import type { BinaryVerificationFailure, VerifiedBinary } from './verify-binary.js'
+import { verifyReleaseBinaries } from './verify-binary.js'
+import type {
+  PackageArtifactVerificationFailure,
+  VerifiedPackageArtifact,
+} from './verify-artifact.js'
+import { verifyPackageArtifacts } from './verify-artifact.js'
 
 export type PackageReleaseInput = {
   manifest: unknown
@@ -54,21 +54,8 @@ export type PackageReleaseResult =
   | PackageReleaseSuccess
   | { ok: false; failures: PackageReleaseFailure[] }
 
-function manifestFailure(message: string, details: Record<string, unknown>): PackageReleaseFailure {
-  return {
-    stage: 'manifest',
-    code: 'MANIFEST_INVALID',
-    message,
-    details,
-  }
-}
-
 function binaryFailure(failure: BinaryVerificationFailure): PackageReleaseFailure {
-  const packaged: PackageReleaseFailure = {
-    stage: 'binary',
-    code: failure.code,
-    message: failure.message,
-  }
+  const packaged: PackageReleaseFailure = { stage: 'binary', code: failure.code, message: failure.message }
   if (failure.details) packaged.details = failure.details
   return packaged
 }
@@ -82,9 +69,7 @@ function selectionFailure(failure: RendererSelectionFailure): PackageReleaseFail
   }
 }
 
-function packageArtifactFailure(
-  failure: PackageArtifactVerificationFailure,
-): PackageReleaseFailure {
+function packageArtifactFailure(failure: PackageArtifactVerificationFailure): PackageReleaseFailure {
   return {
     stage: 'package-artifact',
     code: failure.code,
@@ -158,14 +143,17 @@ export async function packageRelease(input: PackageReleaseInput): Promise<Packag
   if (!parsed.ok) {
     return {
       ok: false,
-      failures: [
-        manifestFailure('release manifest is invalid', {
+      failures: [{
+        stage: 'manifest',
+        code: 'MANIFEST_INVALID',
+        message: 'release manifest is invalid',
+        details: {
           issues: parsed.error.issues.map((issue) => ({
             path: issue.path.join('.'),
             message: issue.message,
           })),
-        }),
-      ],
+        },
+      }],
     }
   }
 
@@ -173,9 +161,7 @@ export async function packageRelease(input: PackageReleaseInput): Promise<Packag
     manifest: parsed.manifest,
     binaryPaths: input.binaryPaths,
   })
-  if (!binaryResult.ok) {
-    return { ok: false, failures: binaryResult.failures.map(binaryFailure) }
-  }
+  if (!binaryResult.ok) return { ok: false, failures: binaryResult.failures.map(binaryFailure) }
 
   const rendererResult = resolveReleaseRenderers({
     manifest: parsed.manifest,
@@ -183,9 +169,7 @@ export async function packageRelease(input: PackageReleaseInput): Promise<Packag
     selection: input.renderers,
     ...(input.rendererConfig ? { config: input.rendererConfig } : {}),
   })
-  if (!rendererResult.ok) {
-    return { ok: false, failures: rendererResult.failures.map(selectionFailure) }
-  }
+  if (!rendererResult.ok) return { ok: false, failures: rendererResult.failures.map(selectionFailure) }
 
   if (rendererResult.renderers.length === 0) {
     return {
@@ -197,12 +181,7 @@ export async function packageRelease(input: PackageReleaseInput): Promise<Packag
     }
   }
 
-  const rendered = await renderPackages(
-    parsed.manifest,
-    binaryResult.verified,
-    input,
-    rendererResult.renderers,
-  )
+  const rendered = await renderPackages(parsed.manifest, binaryResult.verified, input, rendererResult.renderers)
   if (!rendered.ok) return { ok: false, failures: [rendered.failure] }
 
   const packageArtifactResult = await verifyPackageArtifacts({

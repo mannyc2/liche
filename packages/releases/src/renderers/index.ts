@@ -2,8 +2,8 @@ import type {
   CliReleaseManifest,
   PackageEcosystem,
   PackageRecord,
-} from '../manifest.js'
-import type { VerifiedBinary } from '../binary.js'
+} from '../manifest/index.js'
+import type { VerifiedBinary } from '../package/index.js'
 
 export const PACKAGE_ECOSYSTEMS = ['npm', 'pypi', 'homebrew', 'scoop'] as const
 

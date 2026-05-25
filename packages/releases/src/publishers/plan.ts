@@ -1,9 +1,9 @@
-import type { VerifiedPackageArtifact } from '../artifacts.js'
+import type { VerifiedPackageArtifact } from '../package/index.js'
 import type {
   CliReleaseManifest,
   PackageEcosystem,
   PackageRecord,
-} from '../manifest.js'
+} from '../manifest/index.js'
 import { PACKAGE_ECOSYSTEMS, isPackageEcosystem } from '../renderers/index.js'
 import type { PublishSelection } from './index.js'
 
@@ -127,6 +127,10 @@ const DEFAULT_NPM_TAG = 'latest'
 const DEFAULT_PYPI_REPOSITORY = 'https://upload.pypi.org/legacy/'
 const DEFAULT_BRANCH = 'main'
 
+function resolveGitTarget(target: GitRepoTarget): ResolvedGitRepoTarget {
+  return { owner: target.owner, repo: target.repo, branch: target.branch ?? DEFAULT_BRANCH }
+}
+
 function groupPackages(packages: readonly PackageRecord[]): Map<PackageEcosystem, PackageRecord[]> {
   const map = new Map<PackageEcosystem, PackageRecord[]>()
   for (const ecosystem of PACKAGE_ECOSYSTEMS) map.set(ecosystem, [])
@@ -134,9 +138,7 @@ function groupPackages(packages: readonly PackageRecord[]): Map<PackageEcosystem
   return map
 }
 
-function indexArtifacts(
-  artifacts: readonly VerifiedPackageArtifact[],
-): Map<string, VerifiedPackageArtifact> {
+function indexArtifacts(artifacts: readonly VerifiedPackageArtifact[]): Map<string, VerifiedPackageArtifact> {
   const map = new Map<string, VerifiedPackageArtifact>()
   for (const artifact of artifacts) map.set(artifact.packageId, artifact)
   return map
@@ -154,20 +156,12 @@ function resolveSelection(
   const resolved = new Set<PackageEcosystem>()
   for (const raw of selection) {
     if (seen.has(raw)) {
-      failures.push({
-        publisher: raw,
-        code: 'PUBLISHER_DUPLICATE',
-        message: `publisher '${raw}' was selected more than once`,
-      })
+      failures.push({ publisher: raw, code: 'PUBLISHER_DUPLICATE', message: `publisher '${raw}' was selected more than once` })
       continue
     }
     seen.add(raw)
     if (!isPackageEcosystem(raw)) {
-      failures.push({
-        publisher: raw,
-        code: 'PUBLISHER_UNKNOWN',
-        message: `publisher '${raw}' is not a supported package ecosystem`,
-      })
+      failures.push({ publisher: raw, code: 'PUBLISHER_UNKNOWN', message: `publisher '${raw}' is not a supported package ecosystem` })
       continue
     }
     resolved.add(raw)
@@ -188,16 +182,22 @@ function stepBase(record: PackageRecord, artifact: VerifiedPackageArtifact): Pub
   }
 }
 
-function missingArtifactFailure(
-  publisher: PackageEcosystem,
-  record: PackageRecord,
-): PublishPlanFailure {
-  return {
-    publisher,
-    code: 'PUBLISHER_ARTIFACT_MISSING',
-    message: `publisher '${publisher}' has no verified artifact for package '${record.id}'`,
-    details: { packageId: record.id },
-  }
+type BuildArgs<C> = {
+  record: PackageRecord
+  artifact: VerifiedPackageArtifact
+  base: PublishStepBase
+  config: C | undefined
+}
+
+// Per-ecosystem spec. `precheck` validates the publisher config and may emit
+// failures; returning false aborts the ecosystem with no steps. `build` returns
+// the step for one record (or null to skip with a recorded failure).
+// `finalize` orders or rearranges the produced steps before merging.
+type EcosystemSpec<Step extends PublishStep, Config> = {
+  configFor: (config: PublisherConfigMap | undefined) => Config | undefined
+  precheck?: (records: readonly PackageRecord[], config: Config | undefined, failures: PublishPlanFailure[]) => boolean
+  build: (args: BuildArgs<Config>, failures: PublishPlanFailure[]) => Step | null
+  finalize?: (steps: Step[]) => Step[]
 }
 
 function npmRole(record: PackageRecord): 'platform' | 'umbrella' | null {
@@ -206,25 +206,9 @@ function npmRole(record: PackageRecord): 'platform' | 'umbrella' | null {
   return null
 }
 
-function npmSteps(
-  records: readonly PackageRecord[],
-  artifacts: Map<string, VerifiedPackageArtifact>,
-  config: NpmPublisherConfig | undefined,
-  failures: PublishPlanFailure[],
-): NpmPublishStep[] {
-  const registry = config?.registry ?? DEFAULT_NPM_REGISTRY
-  const tag = config?.tag ?? DEFAULT_NPM_TAG
-  const access = config?.access ?? 'public'
-
-  const platform: NpmPublishStep[] = []
-  let umbrella: NpmPublishStep | undefined
-
-  for (const record of records) {
-    const artifact = artifacts.get(record.id)
-    if (!artifact) {
-      failures.push(missingArtifactFailure('npm', record))
-      continue
-    }
+const NPM_SPEC: EcosystemSpec<NpmPublishStep, NpmPublisherConfig> = {
+  configFor: (config) => config?.npm,
+  build: ({ record, base, config }, failures) => {
     const role = npmRole(record)
     if (!role) {
       failures.push({
@@ -233,139 +217,116 @@ function npmSteps(
         message: `npm package '${record.id}' has unknown kind '${record.kind}'`,
         details: { packageId: record.id, kind: record.kind },
       })
-      continue
+      return null
     }
-    const step: NpmPublishStep = {
-      ...stepBase(record, artifact),
+    return {
+      ...base,
       kind: 'npm-publish',
       role,
-      registry,
-      tag,
-      access,
+      registry: config?.registry ?? DEFAULT_NPM_REGISTRY,
+      tag: config?.tag ?? DEFAULT_NPM_TAG,
+      access: config?.access ?? 'public',
     }
-    if (role === 'umbrella') umbrella = step
-    else platform.push(step)
-  }
-
-  platform.sort((a, b) => a.name.localeCompare(b.name))
-  return umbrella ? [...platform, umbrella] : platform
+  },
+  // Platform packages publish before the umbrella so installers resolve
+  // optionalDependencies on the umbrella's publish.
+  finalize: (steps) => {
+    const platform = steps.filter((s) => s.role === 'platform').sort((a, b) => a.name.localeCompare(b.name))
+    const umbrella = steps.find((s) => s.role === 'umbrella')
+    return umbrella ? [...platform, umbrella] : platform
+  },
 }
 
-function pypiSteps(
+const PYPI_SPEC: EcosystemSpec<PypiPublishStep, PypiPublisherConfig> = {
+  configFor: (config) => config?.pypi,
+  build: ({ base, config }) => ({
+    ...base,
+    kind: 'pypi-upload',
+    repositoryUrl: config?.repositoryUrl ?? DEFAULT_PYPI_REPOSITORY,
+  }),
+  finalize: (steps) => steps.sort((a, b) => a.artifactFileName.localeCompare(b.artifactFileName)),
+}
+
+const HOMEBREW_SPEC: EcosystemSpec<HomebrewPublishStep, HomebrewPublisherConfig> = {
+  configFor: (config) => config?.homebrew,
+  precheck: (records, config, failures) => {
+    if (records.length === 0) return false
+    if (!config?.tap) {
+      failures.push({
+        publisher: 'homebrew',
+        code: 'PUBLISHER_CONFIG_MISSING',
+        message: `publisher 'homebrew' requires a tap config (owner/repo)`,
+      })
+      return false
+    }
+    return true
+  },
+  build: ({ record, base, config }) => ({
+    ...base,
+    kind: 'homebrew-write-formula',
+    tap: resolveGitTarget(config!.tap),
+    targetPath: config!.formulaPath ?? `Formula/${record.name}.rb`,
+  }),
+  finalize: (steps) => steps.sort((a, b) => a.targetPath.localeCompare(b.targetPath)),
+}
+
+const SCOOP_SPEC: EcosystemSpec<ScoopPublishStep, ScoopPublisherConfig> = {
+  configFor: (config) => config?.scoop,
+  precheck: (records, config, failures) => {
+    if (records.length === 0) return false
+    if (!config?.bucket) {
+      failures.push({
+        publisher: 'scoop',
+        code: 'PUBLISHER_CONFIG_MISSING',
+        message: `publisher 'scoop' requires a bucket config (owner/repo)`,
+      })
+      return false
+    }
+    return true
+  },
+  build: ({ record, base, config }) => ({
+    ...base,
+    kind: 'scoop-write-manifest',
+    bucket: resolveGitTarget(config!.bucket),
+    targetPath: config!.manifestPath ?? `bucket/${record.name}.json`,
+  }),
+  finalize: (steps) => steps.sort((a, b) => a.targetPath.localeCompare(b.targetPath)),
+}
+
+const SPECS: { [E in PackageEcosystem]: EcosystemSpec<PublishStep, unknown> } = {
+  npm: NPM_SPEC as EcosystemSpec<PublishStep, unknown>,
+  pypi: PYPI_SPEC as EcosystemSpec<PublishStep, unknown>,
+  homebrew: HOMEBREW_SPEC as EcosystemSpec<PublishStep, unknown>,
+  scoop: SCOOP_SPEC as EcosystemSpec<PublishStep, unknown>,
+}
+
+function buildEcosystemSteps(
+  ecosystem: PackageEcosystem,
   records: readonly PackageRecord[],
   artifacts: Map<string, VerifiedPackageArtifact>,
-  config: PypiPublisherConfig | undefined,
+  config: PublisherConfigMap | undefined,
   failures: PublishPlanFailure[],
-): PypiPublishStep[] {
-  const repositoryUrl = config?.repositoryUrl ?? DEFAULT_PYPI_REPOSITORY
-  const steps: PypiPublishStep[] = []
+): PublishStep[] {
+  const spec = SPECS[ecosystem]
+  const ecoConfig = spec.configFor(config)
+  if (spec.precheck && !spec.precheck(records, ecoConfig, failures)) return []
+
+  const steps: PublishStep[] = []
   for (const record of records) {
     const artifact = artifacts.get(record.id)
     if (!artifact) {
-      failures.push(missingArtifactFailure('pypi', record))
+      failures.push({
+        publisher: ecosystem,
+        code: 'PUBLISHER_ARTIFACT_MISSING',
+        message: `publisher '${ecosystem}' has no verified artifact for package '${record.id}'`,
+        details: { packageId: record.id },
+      })
       continue
     }
-    steps.push({ ...stepBase(record, artifact), kind: 'pypi-upload', repositoryUrl })
+    const built = spec.build({ record, artifact, base: stepBase(record, artifact), config: ecoConfig }, failures)
+    if (built) steps.push(built)
   }
-  steps.sort((a, b) => a.artifactFileName.localeCompare(b.artifactFileName))
-  return steps
-}
-
-function homebrewSteps(
-  records: readonly PackageRecord[],
-  artifacts: Map<string, VerifiedPackageArtifact>,
-  config: HomebrewPublisherConfig | undefined,
-  failures: PublishPlanFailure[],
-): HomebrewPublishStep[] {
-  if (records.length === 0) return []
-  if (!config?.tap) {
-    failures.push({
-      publisher: 'homebrew',
-      code: 'PUBLISHER_CONFIG_MISSING',
-      message: `publisher 'homebrew' requires a tap config (owner/repo)`,
-    })
-    return []
-  }
-  const tap: ResolvedGitRepoTarget = {
-    owner: config.tap.owner,
-    repo: config.tap.repo,
-    branch: config.tap.branch ?? DEFAULT_BRANCH,
-  }
-  const steps: HomebrewPublishStep[] = []
-  for (const record of records) {
-    const artifact = artifacts.get(record.id)
-    if (!artifact) {
-      failures.push(missingArtifactFailure('homebrew', record))
-      continue
-    }
-    const targetPath = config.formulaPath ?? `Formula/${record.name}.rb`
-    steps.push({
-      ...stepBase(record, artifact),
-      kind: 'homebrew-write-formula',
-      tap,
-      targetPath,
-    })
-  }
-  steps.sort((a, b) => a.targetPath.localeCompare(b.targetPath))
-  return steps
-}
-
-function scoopSteps(
-  records: readonly PackageRecord[],
-  artifacts: Map<string, VerifiedPackageArtifact>,
-  config: ScoopPublisherConfig | undefined,
-  failures: PublishPlanFailure[],
-): ScoopPublishStep[] {
-  if (records.length === 0) return []
-  if (!config?.bucket) {
-    failures.push({
-      publisher: 'scoop',
-      code: 'PUBLISHER_CONFIG_MISSING',
-      message: `publisher 'scoop' requires a bucket config (owner/repo)`,
-    })
-    return []
-  }
-  const bucket: ResolvedGitRepoTarget = {
-    owner: config.bucket.owner,
-    repo: config.bucket.repo,
-    branch: config.bucket.branch ?? DEFAULT_BRANCH,
-  }
-  const steps: ScoopPublishStep[] = []
-  for (const record of records) {
-    const artifact = artifacts.get(record.id)
-    if (!artifact) {
-      failures.push(missingArtifactFailure('scoop', record))
-      continue
-    }
-    const targetPath = config.manifestPath ?? `bucket/${record.name}.json`
-    steps.push({
-      ...stepBase(record, artifact),
-      kind: 'scoop-write-manifest',
-      bucket,
-      targetPath,
-    })
-  }
-  steps.sort((a, b) => a.targetPath.localeCompare(b.targetPath))
-  return steps
-}
-
-const ECOSYSTEM_BUILDERS: Record<
-  PackageEcosystem,
-  (
-    records: readonly PackageRecord[],
-    artifacts: Map<string, VerifiedPackageArtifact>,
-    config: PublisherConfigMap | undefined,
-    failures: PublishPlanFailure[],
-  ) => PublishStep[]
-> = {
-  npm: (records, artifacts, config, failures) =>
-    npmSteps(records, artifacts, config?.npm, failures),
-  pypi: (records, artifacts, config, failures) =>
-    pypiSteps(records, artifacts, config?.pypi, failures),
-  homebrew: (records, artifacts, config, failures) =>
-    homebrewSteps(records, artifacts, config?.homebrew, failures),
-  scoop: (records, artifacts, config, failures) =>
-    scoopSteps(records, artifacts, config?.scoop, failures),
+  return spec.finalize ? spec.finalize(steps) : steps
 }
 
 export function planReleasePublish(input: PlanReleasePublishInput): PlanReleasePublishResult {
@@ -379,7 +340,7 @@ export function planReleasePublish(input: PlanReleasePublishInput): PlanReleaseP
   for (const ecosystem of PACKAGE_ECOSYSTEMS) {
     if (!selection.has(ecosystem)) continue
     const records = grouped.get(ecosystem) ?? []
-    steps.push(...ECOSYSTEM_BUILDERS[ecosystem](records, artifacts, input.config, failures))
+    steps.push(...buildEcosystemSteps(ecosystem, records, artifacts, input.config, failures))
   }
   if (failures.length > 0) return { ok: false, failures }
 

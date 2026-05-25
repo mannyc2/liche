@@ -1,6 +1,6 @@
 import { join } from 'node:path'
-import type { VerifiedPackageArtifact } from './artifacts.js'
-import type { PackageRecord } from './manifest.js'
+import type { VerifiedPackageArtifact } from './package/index.js'
+import type { PackageRecord } from './manifest/index.js'
 
 export type OfficialFlowNpmPackageDir = {
   packageId: string

@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto'
-import type { BinaryTarget, CliReleaseManifest, PackageRecord } from '../manifest.js'
+import { sha256Hex } from '../internal/crypto.js'
+import type { BinaryTarget, CliReleaseManifest, PackageRecord } from '../manifest/index.js'
 import type { ReleaseRendererInput } from './index.js'
 
 export type ArtifactBytes = {
@@ -9,17 +9,8 @@ export type ArtifactBytes = {
   size: number
 }
 
-export function sha256Hex(data: Uint8Array): string {
-  return createHash('sha256').update(data).digest('hex')
-}
-
-export function sha256Base64Url(data: Uint8Array): string {
-  return createHash('sha256').update(data).digest('base64url')
-}
-
-export async function readBinary(path: string): Promise<Uint8Array> {
-  return new Uint8Array(await Bun.file(path).arrayBuffer())
-}
+export { sha256Hex, sha256Base64Url } from '../internal/crypto.js'
+export { readBinary } from '../internal/fs-bytes.js'
 
 export async function writeArtifact(path: string, bytes: Uint8Array): Promise<ArtifactBytes> {
   await Bun.write(path, bytes)

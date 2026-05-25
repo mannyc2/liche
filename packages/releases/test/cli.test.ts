@@ -5,12 +5,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import type { ServeOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
-import { shipRelease } from '../src/cli-commands.js'
+import { shipRelease } from '../src/cli/ship-command.js'
 import type {
   CliReleaseManifestInput,
   PackageRecord,
 } from '../src/index.js'
-import type { ReleasesConfig } from '../src/release-config.js'
+import type { ReleasesConfig } from '../src/config.js'
 
 async function runCli(
   argv: string[],

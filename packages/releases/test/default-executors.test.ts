@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createCliPublisherExecutors } from '../src/default-executors.js'
-import type { ReleaseCommandRunner } from '../src/default-executors.js'
+import { createCliPublisherExecutors } from '../src/publishers/default-executors.js'
+import type { ReleaseCommandRunner } from '../src/publishers/default-executors.js'
 import type { NpmPublishStep, PypiPublishStep } from '../src/index.js'
 
 type CommandCall = {

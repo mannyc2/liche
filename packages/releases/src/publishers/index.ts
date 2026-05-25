@@ -1,5 +1,5 @@
-import type { VerifiedPackageArtifact } from '../artifacts.js'
-import type { CliReleaseManifest, PackageEcosystem, PackageRecord } from '../manifest.js'
+import type { VerifiedPackageArtifact } from '../package/index.js'
+import type { CliReleaseManifest, PackageEcosystem, PackageRecord } from '../manifest/index.js'
 
 export type PublishSelection = 'all' | readonly string[]
 

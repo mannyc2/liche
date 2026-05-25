@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto'
-import type { BinaryTarget, CliReleaseManifest } from './manifest.js'
+import { verifyBytesAt } from '../internal/verify.js'
+import type { BinaryTarget, CliReleaseManifest } from '../manifest/index.js'
 
 export type VerifyBinaryInput = {
   manifest: CliReleaseManifest
@@ -40,9 +40,6 @@ type ParsedTarget = {
   cpuVariant?: 'baseline' | 'modern'
 }
 
-type TargetField = 'platform' | 'arch' | 'libc' | 'cpuVariant'
-type TargetMismatches = Partial<Record<TargetField, { manifest: unknown; target: unknown }>>
-
 // Closed set of Bun --target values supported by the release verifier.
 // Each row is the canonical platform/arch/libc/cpuVariant the manifest
 // must agree with. Add a row when Bun ships a new target variant.
@@ -61,14 +58,10 @@ const BUN_TARGETS: Record<string, ParsedTarget> = {
   'bun-windows-x64-baseline': { platform: 'windows', arch: 'x64', cpuVariant: 'baseline' },
 }
 
-function parseBunTarget(target: string): ParsedTarget | null {
-  return BUN_TARGETS[target] ?? null
-}
-
 const TARGET_FIELDS = ['platform', 'arch', 'libc', 'cpuVariant'] as const
 
-function targetMismatches(binary: BinaryTarget, parsed: ParsedTarget): TargetMismatches {
-  const mismatches: TargetMismatches = {}
+function targetMismatches(binary: BinaryTarget, parsed: ParsedTarget): Partial<Record<typeof TARGET_FIELDS[number], { manifest: unknown; target: unknown }>> {
+  const mismatches: Partial<Record<typeof TARGET_FIELDS[number], { manifest: unknown; target: unknown }>> = {}
   for (const field of TARGET_FIELDS) {
     if (binary[field] !== parsed[field]) {
       mismatches[field] = { manifest: binary[field], target: parsed[field] }
@@ -78,7 +71,7 @@ function targetMismatches(binary: BinaryTarget, parsed: ParsedTarget): TargetMis
 }
 
 function checkTargetNormalization(binary: BinaryTarget): BinaryVerificationFailure | null {
-  const parsed = parseBunTarget(binary.target)
+  const parsed = BUN_TARGETS[binary.target]
   if (!parsed) {
     return {
       binaryId: binary.id,
@@ -108,35 +101,41 @@ function unknownBinaryPathFailures(input: VerifyBinaryInput): BinaryVerification
     }))
 }
 
-function targetNormalizationFailures(manifest: CliReleaseManifest): BinaryVerificationFailure[] {
-  return manifest.binaries
-    .map(checkTargetNormalization)
-    .filter((failure): failure is BinaryVerificationFailure => failure !== null)
+function preflightFailures(input: VerifyBinaryInput): BinaryVerificationFailure[] {
+  return [
+    ...unknownBinaryPathFailures(input),
+    ...input.manifest.binaries.map(checkTargetNormalization).filter((f): f is BinaryVerificationFailure => f !== null),
+  ]
 }
 
-async function readBytes(path: string): Promise<Uint8Array | null> {
-  try {
-    const file = Bun.file(path)
-    if (!(await file.exists())) return null
-    const buffer = await file.arrayBuffer()
-    return new Uint8Array(buffer)
-  } catch {
-    return null
+function bytesFailure(binary: BinaryTarget, path: string, kind: 'read' | 'size' | 'sha256', actual?: { size?: number; sha256?: string }): BinaryVerificationFailure {
+  if (kind === 'read') {
+    return {
+      binaryId: binary.id,
+      code: 'BINARY_READ_FAILED',
+      message: `could not read binary '${binary.id}' from '${path}'`,
+      details: { path },
+    }
+  }
+  if (kind === 'size') {
+    return {
+      binaryId: binary.id,
+      code: 'BINARY_SIZE_MISMATCH',
+      message: `binary '${binary.id}' size ${actual!.size} does not match manifest size ${binary.size}`,
+      details: { manifestSize: binary.size, actualSize: actual!.size },
+    }
+  }
+  return {
+    binaryId: binary.id,
+    code: 'BINARY_HASH_MISMATCH',
+    message: `binary '${binary.id}' sha256 mismatch`,
+    details: { manifestSha256: binary.sha256, actualSha256: actual!.sha256 },
   }
 }
 
-function sha256Hex(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex')
-}
-
-export async function verifyReleaseBinaries(
-  input: VerifyBinaryInput,
-): Promise<VerifyBinaryResult> {
-  const preflightFailures = [
-    ...unknownBinaryPathFailures(input),
-    ...targetNormalizationFailures(input.manifest),
-  ]
-  if (preflightFailures.length > 0) return { ok: false, failures: preflightFailures }
+export async function verifyReleaseBinaries(input: VerifyBinaryInput): Promise<VerifyBinaryResult> {
+  const pre = preflightFailures(input)
+  if (pre.length > 0) return { ok: false, failures: pre }
 
   const failures: BinaryVerificationFailure[] = []
   const verified: VerifiedBinary[] = []
@@ -150,37 +149,12 @@ export async function verifyReleaseBinaries(
       })
       continue
     }
-    const bytes = await readBytes(path)
-    if (!bytes) {
-      failures.push({
-        binaryId: binary.id,
-        code: 'BINARY_READ_FAILED',
-        message: `could not read binary '${binary.id}' from '${path}'`,
-        details: { path },
-      })
+    const result = await verifyBytesAt(path, { sha256: binary.sha256, size: binary.size })
+    if (!result.ok) {
+      failures.push(bytesFailure(binary, path, result.kind, result.kind === 'size' ? { size: result.size } : result.kind === 'sha256' ? { sha256: result.sha256 } : undefined))
       continue
     }
-    const size = bytes.byteLength
-    if (size !== binary.size) {
-      failures.push({
-        binaryId: binary.id,
-        code: 'BINARY_SIZE_MISMATCH',
-        message: `binary '${binary.id}' size ${size} does not match manifest size ${binary.size}`,
-        details: { manifestSize: binary.size, actualSize: size },
-      })
-      continue
-    }
-    const sha256 = sha256Hex(bytes)
-    if (sha256 !== binary.sha256) {
-      failures.push({
-        binaryId: binary.id,
-        code: 'BINARY_HASH_MISMATCH',
-        message: `binary '${binary.id}' sha256 mismatch`,
-        details: { manifestSha256: binary.sha256, actualSha256: sha256 },
-      })
-      continue
-    }
-    verified.push({ binaryId: binary.id, path, sha256, size })
+    verified.push({ binaryId: binary.id, path, sha256: result.sha256, size: result.size })
   }
 
   if (failures.length > 0) return { ok: false, failures }

@@ -14,20 +14,20 @@
       "default": "./src/index.ts"
     },
     "./manifest": {
-      "types": "./src/manifest.ts",
-      "default": "./src/manifest.ts"
+      "types": "./src/manifest/schema.ts",
+      "default": "./src/manifest/schema.ts"
     },
     "./binary": {
-      "types": "./src/binary.ts",
-      "default": "./src/binary.ts"
+      "types": "./src/package/verify-binary.ts",
+      "default": "./src/package/verify-binary.ts"
     },
     "./artifacts": {
-      "types": "./src/artifacts.ts",
-      "default": "./src/artifacts.ts"
+      "types": "./src/package/verify-artifact.ts",
+      "default": "./src/package/verify-artifact.ts"
     },
     "./package": {
-      "types": "./src/package.ts",
-      "default": "./src/package.ts"
+      "types": "./src/package/index.ts",
+      "default": "./src/package/index.ts"
     },
     "./yank": {
       "types": "./src/yank.ts",

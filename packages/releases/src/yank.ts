@@ -1,4 +1,4 @@
-import type { CliReleaseManifest, PackageArtifact, PackageRecord } from './manifest.js'
+import type { CliReleaseManifest, PackageArtifact, PackageRecord } from './manifest/index.js'
 
 export type YankPackagePlan = {
   packageId: string

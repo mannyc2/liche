@@ -1,45 +1,59 @@
 // Core API: build records, release manifests, config, packaging, and verification.
-export { BuildRecordSchema, parseBuildRecord } from './build-record.js'
-export type { BuildRecord, ParseBuildRecordResult, RecordedBinary } from './build-record.js'
-
-export { manifestFromBuildRecord } from './manifest-from-build-record.js'
-export type { ReleaseDistConfig, ReleaseHost } from './manifest-from-build-record.js'
-
-export { CliReleaseManifestSchema, parseCliReleaseManifest } from './manifest.js'
+export {
+  BuildRecordSchema,
+  CliReleaseManifestSchema,
+  manifestFromBuildRecord,
+  parseBuildRecord,
+  parseCliReleaseManifest,
+} from './manifest/index.js'
 export type {
   BinaryTarget,
+  BuildRecord,
   CliReleaseManifest,
   CliReleaseManifestInput,
   PackageArtifact,
   PackageEcosystem,
   PackageRecord,
+  ParseBuildRecordResult,
+  RecordedBinary,
+  ReleaseDistConfig,
   ReleaseEnvelope,
+  ReleaseHost,
   ReleaseMetadata,
   ReleaseSubject,
-} from './manifest.js'
+} from './manifest/index.js'
 
 export {
   ReleasesConfigSchema,
   defineReleasesConfig,
-} from './release-config.js'
+} from './config.js'
 export type {
   ReleasesConfig,
   ReleasesConfigInput,
-} from './release-config.js'
+} from './config.js'
 
-export { verifyReleaseBinaries } from './binary.js'
-export type { BinaryVerificationFailure, VerifiedBinary, VerifyBinaryInput, VerifyBinaryResult } from './binary.js'
+export { packageRelease } from './package/index.js'
+export type {
+  PackageReleaseFailure,
+  PackageReleaseInput,
+  PackageReleaseResult,
+} from './package/index.js'
 
-export { verifyPackageArtifacts } from './artifacts.js'
+export { verifyReleaseBinaries } from './package/verify-binary.js'
+export type {
+  BinaryVerificationFailure,
+  VerifiedBinary,
+  VerifyBinaryInput,
+  VerifyBinaryResult,
+} from './package/verify-binary.js'
+
+export { verifyPackageArtifacts } from './package/verify-artifact.js'
 export type {
   PackageArtifactVerificationFailure,
   VerifiedPackageArtifact,
   VerifyPackageArtifactsInput,
   VerifyPackageArtifactsResult,
-} from './artifacts.js'
-
-export { packageRelease } from './package.js'
-export type { PackageReleaseFailure, PackageReleaseInput, PackageReleaseResult } from './package.js'
+} from './package/verify-artifact.js'
 
 export { planReleaseYank } from './yank.js'
 export type { ReleaseYankPlan, YankPackagePlan } from './yank.js'

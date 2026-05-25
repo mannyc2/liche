@@ -1,4 +1,4 @@
-import type { PackageEcosystem } from '../manifest.js'
+import type { PackageEcosystem } from '../manifest/index.js'
 import { PACKAGE_ECOSYSTEMS } from '../renderers/index.js'
 import type { PublishStep, ReleasePublishPlan } from './plan.js'
 
