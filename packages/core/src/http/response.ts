@@ -1,6 +1,6 @@
-import { authInvalid, authPermissionDenied } from '../auth/errors.js'
 import { LicheError } from '../errors/error.js'
 import { asError, remoteError, safeUrl } from './errors.js'
+import type { CommandError } from '../types.js'
 import type { HttpOperationCall, SerializedHttpRequest } from './types.js'
 
 export function mapStatusError<TInput extends Record<string, unknown>, TOutput>(
@@ -11,21 +11,8 @@ export function mapStatusError<TInput extends Record<string, unknown>, TOutput>(
   secrets: string[],
   safeBodyBytes: number,
 ): LicheError {
-  if (response.status === 401 && options.auth?.kind === 'resolved') {
-    return authInvalid({ providerId: options.auth.credential.providerId, status: 401 })
-  }
-  if (
-    response.status === 403 &&
-    options.auth?.kind === 'resolved' &&
-    options.requiredPermissions &&
-    options.requiredPermissions.length > 0
-  ) {
-    return authPermissionDenied({
-      providerId: options.auth.credential.providerId,
-      requiredPermissions: [...options.requiredPermissions],
-      status: 403,
-    })
-  }
+  if (response.status === 401 && options.auth?.kind === 'resolved' && options.auth.statusErrors?.[401]) return licheStatusError(options.auth.statusErrors[401])
+  if (response.status === 403 && options.auth?.kind === 'resolved' && options.auth.statusErrors?.[403]) return licheStatusError(options.auth.statusErrors[403])
   return remoteError('REMOTE_HTTP_STATUS', 'Remote server returned an error status.', {
     bodyPreview: safeBodyPreview(text, safeBodyBytes, secrets),
     method: request.method,
@@ -34,6 +21,25 @@ export function mapStatusError<TInput extends Record<string, unknown>, TOutput>(
     status: response.status,
     statusText: response.statusText,
     url: safeUrl(request.url),
+  })
+}
+
+function licheStatusError(error: CommandError): LicheError {
+  return new LicheError({
+    code: error.code,
+    message: error.message,
+    ...(error.code_actions ? { code_actions: error.code_actions } : undefined),
+    ...(error.detail !== undefined ? { detail: error.detail } : undefined),
+    ...(error.details !== undefined ? { details: error.details } : undefined),
+    ...(error.hint !== undefined ? { hint: error.hint } : undefined),
+    ...(error.instance !== undefined ? { instance: error.instance } : undefined),
+    ...(error.retry_after !== undefined ? { retry_after: error.retry_after } : undefined),
+    ...(error.retryable !== undefined ? { retryable: error.retryable } : undefined),
+    ...(error.status !== undefined ? { status: error.status } : undefined),
+    ...(error.suggested_fix !== undefined ? { suggested_fix: error.suggested_fix } : undefined),
+    ...(error.title !== undefined ? { title: error.title } : undefined),
+    ...(error.type !== undefined ? { type: error.type } : undefined),
+    ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : undefined),
   })
 }
 

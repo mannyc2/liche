@@ -12,7 +12,6 @@ const FROZEN_PUBLIC_VALUES = [
   'eventCommand',
   'execute',
   'Formatter',
-  'applyAuth',
   'callHttpOperation',
   'defaultHelpRenderer',
   'defineCli',

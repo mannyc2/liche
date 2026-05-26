@@ -1,5 +1,4 @@
-import type { AuthCredential } from '../auth/types.js'
-import type { Schema } from '../types.js'
+import type { CommandError, Schema } from '../types.js'
 
 export type RuntimeValue =
   | { envVar: string; literal?: string | undefined }
@@ -9,7 +8,12 @@ export type HttpAuth =
   | { kind: 'none' }
   | { kind: 'bearer'; envVar: string }
   | { kind: 'apiKey'; envVar: string; header: string }
-  | { kind: 'resolved'; credential: AuthCredential }
+  | {
+      kind: 'resolved'
+      headers: Record<string, string>
+      secrets?: readonly string[] | undefined
+      statusErrors?: { 401?: CommandError | undefined; 403?: CommandError | undefined } | undefined
+    }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
@@ -47,7 +51,6 @@ export type HttpOperationCall<TInput = Record<string, unknown>, TOutput = unknow
     fetch?: HttpFetch | undefined
     timeoutMs?: number | undefined
     safeBodyBytes?: number | undefined
-    requiredPermissions?: readonly string[] | undefined
   }
 
 export type RemoteErrorDetails = {

@@ -21,7 +21,6 @@ export function completions(options: CompletionsOptions = {}): CliExtension {
         output: z.string(),
         path: ['completions'],
         run: ({ ctx, input }) => completionScript(input.args.shell, options.commandName ?? ctx.name),
-        safety: { readOnly: true },
       }),
     ],
   })

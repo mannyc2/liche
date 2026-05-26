@@ -51,7 +51,6 @@ export function mcpInstaller(options: McpInstallerOptions = {}): CliExtension {
             global: input.options.global !== false,
           }),
         }),
-        safety: { idempotent: true },
       }),
     ],
   })

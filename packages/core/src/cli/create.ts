@@ -250,8 +250,6 @@ function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefini
     ...(input?.env ? { env: input.env } : undefined),
     ...(input?.options ? { options: input.options } : undefined),
     ...(input?.sources ? { sources: input.sources } : undefined),
-    ...(definition.effects ? undefined : command.safety ? { effects: effectsFromSafety(command.safety) } : undefined),
-    ...(definition.policy ? undefined : command.safety ? { policy: policyFromSafety(command.safety) } : undefined),
     ...(summary ? { summary } : undefined),
     ...(run
       ? {
@@ -332,20 +330,6 @@ function registerDeclarativeAlias(commands: Map<string, any>, targetPath: string
 
   const parent = ensureCommandParent(commands, targetParent)
   parent.set(aliasPath.at(-1)!, { _alias: true, target: targetPath.at(-1)! })
-}
-
-function effectsFromSafety(safety: NonNullable<DeclarativeCommand['safety']>) {
-  return {
-    kind: safety.readOnly === true ? 'read' : safety.destructive === true ? 'delete' : 'write',
-    ...(safety.idempotent !== undefined ? { idempotent: safety.idempotent } : undefined),
-  } as const
-}
-
-function policyFromSafety(safety: NonNullable<DeclarativeCommand['safety']>) {
-  return {
-    ...(safety.destructive !== undefined ? { dangerous: safety.destructive } : undefined),
-    ...(safety.destructive === true ? { requiresConfirmation: true } : undefined),
-  }
 }
 
 function createRuntimeEntry(name: string, definition: CommandDefinition): RuntimeEntry {

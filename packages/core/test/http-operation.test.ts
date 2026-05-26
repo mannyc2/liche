@@ -1,11 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import {
   callHttpOperation,
-  secret,
   serializeHttpOperationRequest,
   z,
 } from '../src/index.js'
-import type { AuthCredential } from '../src/index.js'
 import { LicheError } from '../src/errors/error.js'
 
 function expectLicheError(fn: () => unknown, code: string): LicheError {
@@ -256,18 +254,17 @@ describe('HTTP operation transport', () => {
     ])
   })
 
-  test('maps 401 with resolved auth through auth error semantics', async () => {
-    const credential: AuthCredential = {
-      providerId: 'acme',
-      source: 'env',
-      kind: 'bearer',
-      secret: secret('bad-token'),
-      refreshAvailable: false,
-    }
-
+  test('maps 401 with resolved auth through caller-provided status errors', async () => {
     await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',
-      auth: { kind: 'resolved', credential },
+      auth: {
+        kind: 'resolved',
+        headers: { authorization: 'Bearer bad-token' },
+        secrets: ['bad-token'],
+        statusErrors: {
+          401: { code: 'AUTH_INVALID', message: 'Authentication rejected by server.', exitCode: 1 },
+        },
+      },
       method: 'GET',
       path: '/me',
       bind: {},

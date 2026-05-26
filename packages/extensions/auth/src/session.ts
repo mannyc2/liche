@@ -1,8 +1,7 @@
-import { applyAuth } from '@liche/core'
-import type { AuthIdentityProbeInput, ContextRuntime } from '@liche/core'
 import { authInvalid } from './errors.js'
+import { applyAuth } from './http.js'
 import { resolveAuth } from './resolve.js'
-import type { AuthRuntimeInput, AuthStatus, StoredProfile } from './types.js'
+import type { AuthIdentityProbeInput, AuthRuntimeInput, AuthStatus, ContextRuntime, StoredProfile } from './types.js'
 
 export async function authWhoami(input: AuthRuntimeInput): Promise<AuthStatus> {
   const profile = input.profile ?? input.global?.profile

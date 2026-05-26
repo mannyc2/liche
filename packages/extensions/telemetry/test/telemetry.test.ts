@@ -13,7 +13,6 @@ function buildCli(env: Record<string, string | undefined>, telemetryOpts: Parame
         path: ['deploy'],
         summary: 'Deploy a service',
         output: z.object({ id: z.string() }),
-        safety: { readOnly: false },
         run: () => ({ id: 'dep-1' }),
       }),
     ],

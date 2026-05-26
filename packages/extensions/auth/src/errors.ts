@@ -87,6 +87,22 @@ export function authInvalid(input: { providerId: string; status?: number | undef
   })
 }
 
+export function authPermissionDenied(input: {
+  providerId: string
+  requiredPermissions?: string[] | undefined
+  status?: number | undefined
+}): CommandError {
+  return authError('AUTH_PERMISSION_DENIED', 'Permission denied.', {
+    providerId: input.providerId,
+    requiredPermissions: input.requiredPermissions,
+    status: input.status ?? 403,
+  }, {
+    suggested_fix: input.requiredPermissions && input.requiredPermissions.length > 0
+      ? `Use credentials with these permissions: ${input.requiredPermissions.join(', ')}.`
+      : 'Use credentials with permission to perform this action.',
+  })
+}
+
 export function authExpired(input: { providerId: string; loginCommand?: string | undefined }): CommandError {
   return authError('AUTH_EXPIRED', 'Authentication expired.', input, {
     code_actions: loginAction(input.loginCommand, 'Log in again'),

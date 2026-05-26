@@ -1,8 +1,7 @@
 import { secret } from '@liche/core'
-import type { AuthCredential, AuthIdentityProbeInput } from '@liche/core'
 import { authInvalid, authInteractiveRequired } from './errors.js'
 import { activeProfile, compactStatus, probeIdentity } from './session.js'
-import type { AuthRuntimeInput, AuthStatus } from './types.js'
+import type { AuthCredential, AuthIdentityProbeInput, AuthRuntimeInput, AuthStatus } from './types.js'
 
 type DeviceCodeResponse = {
   deviceCode: string

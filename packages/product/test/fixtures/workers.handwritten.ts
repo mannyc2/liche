@@ -63,7 +63,6 @@ const cli = defineCli({
             name: z.string(),
           })),
           env: ctx.env as Record<string, string | undefined>,
-          requiredPermissions: ['workers:read'],
         })
         const source = ctx.sources.source('config', 'apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'
         return ctx.ok(data, { execution: { mode: 'remote-http', source } })

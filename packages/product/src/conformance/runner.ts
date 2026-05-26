@@ -165,7 +165,6 @@ async function runCase(
       ...requestSpec,
       fetch: fetcher,
       output: runnable.output,
-      requiredPermissions: runnable.cap.requires.permissions,
     }
     const data = await callHttpOperation(call)
     const responseMismatch = fixture?.expectResponse?.body !== undefined &&

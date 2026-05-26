@@ -203,31 +203,6 @@ describe('parity: --llms shape', () => {
     expect((list as any).result.tools.map((tool: any) => tool.name)).toEqual(['danger'])
   })
 
-  test('command contracts carry safety metadata into manifest and MCP annotations', async () => {
-    const cli = testCli('app', [testCommand('delete', {
-      description: 'delete a thing',
-      effects: { kind: 'delete', idempotent: false },
-      policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
-      run: () => ({}),
-    })])
-    const state = (cli as InternalCli)[stateSymbol]
-
-    const envelope = manifestEnvelope('app', state)
-    expect(envelope.commands[0]).toMatchObject({
-      effects: { kind: 'delete', idempotent: false },
-      policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
-    })
-
-    const list = await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
-    expect((list as any).result.tools[0].annotations).toMatchObject({
-      command: 'delete',
-      destructiveHint: true,
-      effects: { kind: 'delete', idempotent: false },
-      policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: true },
-      readOnlyHint: false,
-    })
-  })
-
   test('MCP tools include command output schemas when declared', async () => {
     const cli = testCli('app', [testCommand('status', {
       output: z.object({ ok: z.boolean() }),

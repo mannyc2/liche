@@ -1,4 +1,3 @@
-import { applyAuth } from '../auth/resolve.js'
 import { remoteError } from './errors.js'
 import type { HttpAuth } from './types.js'
 
@@ -11,9 +10,8 @@ export function applyTransportAuth(
 ): void {
   if (auth.kind === 'none') return
   if (auth.kind === 'resolved') {
-    const secret = auth.credential.secret.reveal()
-    secrets.push(secret)
-    applyAuth(headers, auth.credential)
+    if (auth.secrets) secrets.push(...auth.secrets)
+    for (const [key, value] of Object.entries(auth.headers)) headers.set(key, value)
     return
   }
   const value = env[auth.envVar]
@@ -37,7 +35,7 @@ export function collectAuthSecrets(
 ): void {
   if (!auth || auth.kind === 'none') return
   if (auth.kind === 'resolved') {
-    secrets.push(auth.credential.secret.reveal())
+    if (auth.secrets) secrets.push(...auth.secrets)
     return
   }
   const value = env[auth.envVar]

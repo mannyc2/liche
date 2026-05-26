@@ -140,9 +140,7 @@ export type Result =
 
 export type CommandContract = {
   aliases?: readonly string[] | undefined;
-  auth?: CommandAuthMetadata | undefined;
   description?: string | undefined;
-  effects?: CommandEffects | undefined;
   examples?: readonly Example[] | undefined;
   format?: Format | undefined;
   hint?: string | undefined;
@@ -150,58 +148,9 @@ export type CommandContract = {
   name: string;
   outputPolicy?: OutputPolicy | undefined;
   path?: readonly string[] | undefined;
-  policy?: CommandPolicy | undefined;
-  safety?: CommandSafety | undefined;
   schema?: unknown;
   summary?: string | undefined;
   usage?: readonly Usage[] | undefined;
-};
-
-export type CommandEffectKind =
-  | "read"
-  | "write"
-  | "delete"
-  | "exec"
-  | "auth-session"
-  | "auth-session-read"
-  | "auth-session-write"
-  | "auth-session-delete"
-  | "auth-context-write";
-
-export type CommandEffects = {
-  kind: CommandEffectKind;
-  idempotent?: boolean | undefined;
-};
-
-export type CommandPolicy = {
-  conformanceEligible?: boolean | undefined;
-  dangerous?: boolean | undefined;
-  requiresConfirmation?: boolean | undefined;
-};
-
-export type CommandSafety = {
-  auth?: "none" | "optional" | "required" | undefined;
-  destructive?: boolean | undefined;
-  idempotent?: boolean | undefined;
-  interactive?: "never" | "optional" | "required" | undefined;
-  openWorld?: boolean | undefined;
-  readOnly?: boolean | undefined;
-};
-
-export type CommandAuthMetadata = {
-  required: boolean;
-  status: "not-required" | "requires-runtime-resolution";
-  providerId?: string | undefined;
-  envVars?: readonly string[] | undefined;
-  contexts?:
-    | readonly {
-        id: string;
-        envVar?: string | undefined;
-        flag?: string | undefined;
-      }[]
-    | undefined;
-  requiredPermissions?: readonly string[] | undefined;
-  requiredScopes?: readonly string[] | undefined;
 };
 
 export type CommandManifest = {
@@ -432,11 +381,9 @@ export type CommandDefinition<
   alias?: Record<string, string> | undefined;
   aliases?: string[] | undefined;
   args?: A | undefined;
-  auth?: CommandAuthMetadata | undefined;
   basePath?: string | undefined;
   description?: string | undefined;
   env?: E | undefined;
-  effects?: CommandEffects | undefined;
   examples?: Example[] | undefined;
   fetch?: FetchHandler | undefined;
   format?: Format | undefined;
@@ -447,8 +394,6 @@ export type CommandDefinition<
   options?: O | undefined;
   output?: Out | undefined;
   outputPolicy?: OutputPolicy | undefined;
-  policy?: CommandPolicy | undefined;
-  safety?: CommandSafety | undefined;
   sources?:
     | {
         options?: Record<string, readonly InputSourceBinding[]> | undefined;

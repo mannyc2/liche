@@ -213,7 +213,6 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
         source: z.string().optional(),
         invocation: z.string(),
       }),
-      safety: { readOnly: true },
       run: ({ ctx, input }) => {
         const runtimeEnv = { ...currentEnv(), ...(input.env as TelemetryEnv) }
         const invocation = detectInvocation(runtimeEnv)
@@ -239,7 +238,6 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
       path: ['telemetry', 'enable'],
       input: { args: enableDisableArgs },
       output: z.object({ instructions: z.string(), envVar: z.string() }),
-      safety: { readOnly: true },
       run: ({ ctx }) => {
         const envVar = cliVarFromName(ctx.name, options.cliEnabledEnvVar)
         return {
@@ -253,7 +251,6 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
       path: ['telemetry', 'disable'],
       input: { args: enableDisableArgs },
       output: z.object({ instructions: z.string(), envVar: z.string() }),
-      safety: { readOnly: true },
       run: ({ ctx }) => {
         const envVar = cliVarFromName(ctx.name, options.cliEnabledEnvVar)
         return {
@@ -267,7 +264,6 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
       path: ['telemetry', 'inspect'],
       input: { args: inspectArgs },
       output: z.object({ instructions: z.string() }),
-      safety: { readOnly: true },
       run: () => ({
         instructions: `To inspect wire events without sending them to configured sinks:\n\n  export LICHE_TELEMETRY_DEBUG=stderr\n  # run your command — events are printed to stderr prefixed with "[telemetry]"\n\nThis adds a stderr sink alongside any others; secrets are redacted before printing.`,
       }),

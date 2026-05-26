@@ -19,21 +19,8 @@ export * as Formatter from './format/index.js'
 export { commandError, fail, ok } from './errors/error.js'
 
 export { secret } from './auth/secret.js'
-export { applyAuth } from './auth/resolve.js'
 export { callHttpOperation, serializeHttpOperationRequest } from './http/index.js'
 export type { SecretString } from './auth/secret.js'
-export type {
-  AuthCommandRuntime,
-  AuthCredential,
-  AuthIdentityProbeInput,
-  AuthProviderRuntime,
-  ContextRuntime,
-  EnvTokenSourceSpec,
-  IdentityRuntime,
-  OAuthDeviceRuntime,
-  SessionTokenSourceSpec,
-  TokenSourceSpec,
-} from './auth/types.js'
 
 export type {
   Awaitable,
@@ -52,14 +39,9 @@ export type {
   CliExtension,
   CliState,
   CliHookRegistration,
-  CommandAuthMetadata,
   CommandContract,
-  CommandEffectKind,
-  CommandEffects,
   CliInstance,
   CommandError,
-  CommandPolicy,
-  CommandSafety,
   CommandInput,
   Cta,
   CtaBlock,

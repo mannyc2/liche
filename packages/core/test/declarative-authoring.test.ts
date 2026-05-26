@@ -19,7 +19,6 @@ describe('declarative authoring API', () => {
             options: z.object({ dryRun: z.boolean().default(false) }),
           },
           output: z.object({ dryRun: z.boolean(), target: z.string() }),
-          safety: { destructive: false, idempotent: false, interactive: 'never', openWorld: true, readOnly: false },
           run: ({ input }) => ({ dryRun: input.options.dryRun, target: input.args.target }),
         }),
       ],
@@ -139,7 +138,6 @@ describe('declarative authoring API', () => {
         defineCommand({
           examples: ['app status'],
           path: ['status'],
-          safety: { destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
           summary: 'Show status',
           run: () => {
             executed = true
@@ -156,7 +154,6 @@ describe('declarative authoring API', () => {
       examples: ['app status'],
       name: 'status',
       path: ['status'],
-      safety: { readOnly: true, idempotent: true, openWorld: false },
       summary: 'Show status',
     })
 
@@ -164,11 +161,7 @@ describe('declarative authoring API', () => {
     expect(executed).toBe(false)
     expect((tools as any).result.tools[0].annotations).toMatchObject({
       command: 'status',
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: false,
-      readOnlyHint: true,
-      safety: { readOnly: true },
+      examples: ['app status'],
     })
   })
 
@@ -186,7 +179,6 @@ describe('declarative authoring API', () => {
           },
           output: z.object({ ok: z.boolean() }),
           path: ['status'],
-          safety: { destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
           summary: 'Show status',
           usage: [{ options: ['verbose'] }],
           run: () => {

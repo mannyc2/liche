@@ -228,7 +228,6 @@ export function configDoctor(): CliExtension {
             keys: Object.keys((ctx.sources.value('config', '') as Dict | undefined) ?? {}).sort(),
           },
         }),
-        safety: { readOnly: true },
       }),
     ],
   })

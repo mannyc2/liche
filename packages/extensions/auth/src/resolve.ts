@@ -1,7 +1,6 @@
 import { secret } from '@liche/core'
-import type { AuthCredential, AuthProviderRuntime } from '@liche/core'
 import { authCiTokenMissing, authExpired, authMissing, authScopeMissing } from './errors.js'
-import type { ResolveAuthInput, StoredProfile } from './types.js'
+import type { AuthCredential, AuthProviderRuntime, ResolveAuthInput, StoredProfile } from './types.js'
 
 export async function resolveAuth(input: ResolveAuthInput): Promise<AuthCredential | undefined> {
   const { provider, required, requiredScopes, requiredPermissions, invocation, env = {} } = input

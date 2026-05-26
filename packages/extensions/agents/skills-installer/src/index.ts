@@ -45,13 +45,11 @@ export function skillsInstaller(options: SkillsInstallerOptions = {}): CliExtens
             skill,
           }),
         }),
-        safety: { idempotent: true },
       }),
       defineCommand({
         description: 'List available skills',
         path: ['skills', 'list'],
         run: ({ ctx }) => ({ skills: [{ installed: false, name: ctx.name }] }),
-        safety: { readOnly: true },
       }),
     ],
     ...(skill ? { skill } : undefined),

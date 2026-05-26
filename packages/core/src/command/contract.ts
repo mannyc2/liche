@@ -16,9 +16,7 @@ export function commandContractFromDefinition(
   definition: CommandDefinition,
 ): CommandContract {
   return {
-    ...(definition.auth ? { auth: definition.auth } : undefined),
     description: definition.description,
-    ...(definition.effects ? { effects: definition.effects } : undefined),
     ...(definition.examples ? { examples: definition.examples } : undefined),
     ...(definition.format ? { format: definition.format } : undefined),
     ...(definition.hint ? { hint: definition.hint } : undefined),
@@ -26,8 +24,6 @@ export function commandContractFromDefinition(
     name,
     ...(definition.outputPolicy ? { outputPolicy: definition.outputPolicy } : undefined),
     path: contractPath(name),
-    ...(definition.policy ? { policy: definition.policy } : undefined),
-    ...(definition.safety ? { safety: definition.safety } : undefined),
     schema: commandSchema(definition),
     ...(definition.summary ? { summary: definition.summary } : undefined),
     ...(definition.usage ? { usage: definition.usage } : undefined),
