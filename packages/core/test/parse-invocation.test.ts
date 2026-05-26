@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCommand, dispatch, parseInvocation, ParseError, z } from '../src/index.js'
+import { arg, defineCommand, dispatch, parseInvocation, ParseError, z } from '../src/index.js'
 import type { CliEvent, ParsedInvocation, ParseInvocationResult } from '../src/index.js'
 import { isRuntimeResult } from '../src/errors/error.js'
 import { testCli, testCommand } from './helpers.js'
@@ -432,6 +432,42 @@ describe('parseInvocation', () => {
       expect(dispatched.ok).toBe(false)
       if (dispatched.ok) throw new Error('expected fail')
       expect(dispatched.error.code).toBe('VALIDATION_ERROR')
+    })
+  })
+
+  describe('arg.* codec integration', () => {
+    test('arg.positiveInt() in options decodes to number through parseInvocation and dispatch', async () => {
+      const cli = testCli('app', [
+        testCommand('deploy', {
+          options: z.object({ replicas: arg.positiveInt().default(1) }),
+          run: ({ options }: any) => ({ replicas: options.replicas }),
+        }),
+      ])
+
+      const parsed = unwrap(await parseInvocation(cli, ['deploy', '--replicas', '3']))
+      expect((parsed.input.options as { replicas: number }).replicas).toBe(3)
+      expect(typeof (parsed.input.options as { replicas: number }).replicas).toBe('number')
+
+      const dispatched = await dispatch(cli, ['deploy', '--replicas', '3'])
+      if (!dispatched.ok) throw new Error(`expected ok, got ${dispatched.error.code}`)
+      expect(dispatched.data).toEqual({ replicas: 3 })
+    })
+
+    test('arg.port() as positional decodes to number through parseInvocation and dispatch', async () => {
+      const cli = testCli('app', [
+        testCommand('listen', {
+          args: z.object({ port: arg.port() }),
+          run: ({ args }: any) => ({ port: args.port }),
+        }),
+      ])
+
+      const parsed = unwrap(await parseInvocation(cli, ['listen', '8080']))
+      expect((parsed.input.args as { port: number }).port).toBe(8080)
+      expect(typeof (parsed.input.args as { port: number }).port).toBe('number')
+
+      const dispatched = await dispatch(cli, ['listen', '8080'])
+      if (!dispatched.ok) throw new Error(`expected ok, got ${dispatched.error.code}`)
+      expect(dispatched.data).toEqual({ port: 8080 })
     })
   })
 })

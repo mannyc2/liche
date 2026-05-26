@@ -37,6 +37,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'Formatter',
     'ParseError',
     'ValidationError',
+    'arg',
     'callHttpOperation',
     'collectCommandContracts',
     'commandError',

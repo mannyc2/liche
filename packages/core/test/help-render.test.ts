@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defaultHelpRenderer, defineCli, defineCommand, help as helpControl, z } from '../src/index.js'
+import { arg, defaultHelpRenderer, defineCli, defineCommand, help as helpControl, z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { renderHelp } from '../src/help/render.js'
 import { runCli, testCli, testCommand } from './helpers.js'
@@ -89,6 +89,16 @@ describe('renderHelp — options', () => {
     const help = renderHelp('app', stateOf(cli), undefined, ['run'])
     expect(help).toContain('--dry-run')
     expect(help).not.toContain('--dryRun')
+  })
+
+  test('arg.boolean() flags render with no <value> placeholder', () => {
+    const cli = cliWith('run', {
+      options: z.object({ verbose: arg.boolean().default(false) }),
+      run: () => ({}),
+    })
+    const help = renderHelp('app', stateOf(cli), undefined, ['run'])
+    expect(help).toContain('--verbose')
+    expect(help).not.toContain('--verbose <verbose>')
   })
 
   test('alias renders as "-a, --long"', () => {

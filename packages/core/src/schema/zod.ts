@@ -67,7 +67,13 @@ export function isObjectSchema(schema: Schema | undefined): boolean {
 }
 
 export function isBooleanSchema(schema: Schema | undefined): boolean {
-  return kind(unwrap(schema)) === 'boolean'
+  const inner = unwrap(schema)
+  if (kind(inner) === 'boolean') return true
+  if (kind(inner) === 'pipe') {
+    const out = (inner as any)?.def?.out
+    return kind(unwrap(out)) === 'boolean'
+  }
+  return false
 }
 
 export function primitiveKind(schema: Schema | undefined): string | undefined {

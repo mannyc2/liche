@@ -190,6 +190,7 @@ export type _PublicTypeBag = [
 ]
 
 const FROZEN_PUBLIC_VALUES = [
+  'arg',
   'collectCommandContracts',
   'commandError',
   'createLifecycleEvent',

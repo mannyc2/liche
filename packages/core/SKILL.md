@@ -111,21 +111,27 @@ defineCommand({ path: ['corpus', 'search'], aliases: ['find', ['s']], run })
 
 Per-command option help reads `.describe()` from the schema. Without it the description column in `--help` is blank.
 
-Numeric flags arrive from argv as strings, so use `z.coerce.number()` with the refinements you need:
+Numeric and boolean flags arrive from argv as strings. Prefer the `arg.*` namespace over `z.coerce.*` when a value crosses a CLI/env/fetch boundary — `arg.*` codecs use ASCII decimal grammar instead of broad `Number()` coercion and reject the usual sloppy inputs (`"+3"`, `"1e3"`, `"Infinity"`, leading zeroes, whitespace, etc.); `arg.boolean()` accepts only `"true"`/`"false"`/`"1"`/`"0"` plus JSON booleans. The helpers return ordinary Zod schemas, so `.optional()`, `.default(...)`, and `.describe(...)` compose normally:
 
 ```ts
+import { arg, defineCommand, z } from '@liche/core'
+
 defineCommand({
   path: ['deploy'],
   description: 'Deploy a service',
   input: {
     options: z.object({
       entrypoint: z.string().describe('Path to the service entrypoint'),
-      replicas: z.coerce.number().int().positive().default(1).describe('Number of replicas'),
+      replicas: arg.positiveInt().default(1).describe('Number of replicas'),
+      port: arg.port().default(3000).describe('Listen port'),
+      yes: arg.boolean().default(false).describe('Skip the confirmation prompt'),
     }),
   },
   // ...
 })
 ```
+
+Plain Zod schemas (`z.string()`, `z.enum(...)`, `z.object(...)`, refinements) remain valid; use them for already-typed or naturally string-shaped inputs. Reach for `arg.*` only when the value is crossing a string boundary and the runtime value is not a string.
 
 Non-boolean options render as `--name <name>` in the help table by default. Override the placeholder via zod meta when the key reads poorly:
 

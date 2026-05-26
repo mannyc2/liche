@@ -5,6 +5,7 @@ import * as Core from '@liche/core'
 // and docs/api-boundary.md. Asserts package-level resolution (not just source-relative
 // imports) so generated code in @liche/product can only depend on the approved API.
 const FROZEN_PUBLIC_VALUES = [
+  'arg',
   'collectCommandContracts',
   'commandError',
   'createLifecycleEvent',

@@ -82,6 +82,30 @@ defineCli({
 });
 ```
 
+## CLI input codecs
+
+Numeric and boolean flags arrive from argv as strings. The `arg` namespace exposes strict Zod schema factories that reject the usual sloppy coercions (`"+3"`, `"1e3"`, `"Infinity"`, leading zeroes, whitespace) while staying composable with `.optional()`, `.default(...)`, and `.describe(...)`:
+
+```ts
+import { arg, defineCommand, z } from "@liche/core";
+
+defineCommand({
+  path: ["deploy"],
+  input: {
+    options: z.object({
+      replicas: arg.positiveInt().default(1).describe("Number of replicas"),
+      port: arg.port().default(3000),
+      yes: arg.boolean().default(false),
+    }),
+  },
+  run({ input }) {
+    input.options.replicas; // number
+  },
+});
+```
+
+Available built-ins: `arg.number()`, `arg.int()`, `arg.positiveInt()`, `arg.port()`, `arg.boolean()`. Plain Zod schemas (`z.string()`, `z.enum(...)`, `z.object(...)`, refinements) remain valid; reach for `arg.*` only when a value crosses a string boundary (argv, env, query string, JSON body) and the runtime value is not a string.
+
 ## Returning results
 
 Handlers usually return plain data; the executor validates it against `output` and wraps it in a success envelope:

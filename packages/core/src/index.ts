@@ -6,6 +6,7 @@ export type { HelpControlOptions, OutputControlsOptions, ReflectionControlsOptio
 export { middleware } from './cli/context.js'
 export { defineOutputRenderer } from './format/index.js'
 export { defaultHelpRenderer } from './help/render.js'
+export { arg } from './schema/arg.js'
 export { z, parseSchema, parseSchemaAsync } from './schema/zod.js'
 export { ParseError, ValidationError } from './errors/error.js'
 

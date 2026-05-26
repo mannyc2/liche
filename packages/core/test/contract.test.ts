@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { middleware, z } from '../src/index.js'
+import { arg, middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '@liche/mcp-server'
 import { mcpServer } from '@liche/mcp-server'
@@ -527,4 +527,56 @@ describe('contract: mcp, completions, and token behavior', () => {
     })
   })
 
+})
+
+describe('contract: arg.boolean parser integration', () => {
+  function booleanCli() {
+    return testCli('app', [testCommand('run', {
+      alias: { yes: 'y' },
+      options: z.object({
+        yes: arg.boolean().default(false),
+      }),
+      run: ({ options, args }: any) => ({ args, options }),
+    })])
+  }
+
+  test('--yes sets true without consuming next argv token', async () => {
+    const result = await runCli(booleanCli(), ['run', '--yes', '--json'])
+    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: true } })
+  })
+
+  test('--yes positional treats positional as positional, not flag value', async () => {
+    const cli = testCli('app', [testCommand('run', {
+      args: z.object({ name: z.string().optional() }),
+      options: z.object({ yes: arg.boolean().default(false) }),
+      run: ({ options, args }: any) => ({ args, options }),
+    })])
+    const result = await runCli(cli, ['run', '--yes', 'positional', '--json'])
+    expect(parseJsonOutput(result.stdout)).toEqual({
+      args: { name: 'positional' },
+      options: { yes: true },
+    })
+  })
+
+  test('--no-yes sets false', async () => {
+    const result = await runCli(booleanCli(), ['run', '--no-yes', '--json'])
+    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: false } })
+  })
+
+  test('--yes=true and --yes=false parse explicit literals', async () => {
+    const trueResult = await runCli(booleanCli(), ['run', '--yes=true', '--json'])
+    expect(parseJsonOutput(trueResult.stdout)).toEqual({ args: {}, options: { yes: true } })
+    const falseResult = await runCli(booleanCli(), ['run', '--yes=false', '--json'])
+    expect(parseJsonOutput(falseResult.stdout)).toEqual({ args: {}, options: { yes: false } })
+  })
+
+  test('-y alias sets true', async () => {
+    const result = await runCli(booleanCli(), ['run', '-y', '--json'])
+    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: true } })
+  })
+
+  test('omitted falls back to default', async () => {
+    const result = await runCli(booleanCli(), ['run', '--json'])
+    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: false } })
+  })
 })

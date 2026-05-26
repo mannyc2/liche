@@ -34,6 +34,7 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 | `defaultHelpRenderer` | Default renderer for the serializable help model; custom `help({ renderer })` implementations can wrap it. |
 | `middleware` | Around-command middleware authoring helper. |
 | `z` | Public schema authoring convenience (re-exported Zod). |
+| `arg` | Namespace of strict Zod schema factories for CLI/env/fetch string boundaries. Built-ins: `arg.number()`, `arg.int()`, `arg.positiveInt()`, `arg.port()`, `arg.boolean()`. Each returns an ordinary Zod schema (so `.optional()`, `.default()`, `.describe()` compose) but uses ASCII decimal grammar instead of broad `Number()` coercion; boolean accepts only `"true"`/`"false"`/`"1"`/`"0"` plus JSON booleans. Prefer over `z.coerce.*` when the value crosses a string boundary; plain Zod schemas remain valid. |
 | `parseSchema`, `parseSchemaAsync` | Schema-boundary parse helpers that funnel errors through `normalizeZodError` into `ValidationError`. Use `parseSchemaAsync` when the schema may contain async codecs, transforms, or refinements (e.g. `arg.fromString({ decode: async })`); use sync `parseSchema` for intentionally sync boundaries such as config-file merging and telemetry wire validation. |
 | `Formatter` | Output formatter namespace and renderer registry utilities for handwritten CLIs. |
 | `collectCommandContracts`, `manifest`, `manifestEnvelope`, `mcpToolName`, `selectCommand` | Serializable command reflection/projection helpers used by first-party extensions. |
