@@ -87,7 +87,7 @@ describe('generated CLI — boundary discipline', () => {
     expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z')
     expect(source).toContain(`import { llms } from '@liche/agents'`)
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
-    expect(source).toContain(`import { createLocalTelemetrySink } from '@liche/telemetry'`)
+    expect(source).toContain(`import { jsonlFileSink, telemetry } from '@liche/telemetry'`)
     expect(source).toContain(`async function runGeneratedLocalDoctor`)
     expect(source).not.toContain(`@liche/extensions/support`)
     expect(source).not.toContain(`runLocalDoctor`)
@@ -391,16 +391,17 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(release.data.install.map((entry: { manager: string }) => entry.manager)).toEqual(['bun', 'npm'])
     expect(release.data.yankedVersions[0].version).toBe('0.9.0')
 
-    const telemetry = JSON.parse((await runCli(workersGenerated, ['telemetry', '--json'], {
+    const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
       env: {
         WORKERS_TELEMETRY: '1',
         WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
       },
     })).stdout)
-    expect(telemetry.data).toEqual({
+    expect(telemetryStatus.data).toMatchObject({
       enabled: true,
-      sink: { kind: 'file', path: '/tmp/workers-telemetry.jsonl' },
-      redaction: 'enabled',
+      reason: 'cli-enabled',
+      source: 'WORKERS_TELEMETRY',
+      invocation: 'cli',
     })
   })
 

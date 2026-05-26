@@ -231,7 +231,7 @@ Release order:
 
 The same workflow keeps a manual `workflow_dispatch` dry-run path for CI validation and emergency release operations. Manual dispatch defaults to `dry_run=true`; tag pushes publish by default.
 
-New public package names need one bootstrap publish before trusted publishing can own them. npm trusted-publisher configuration is package-scoped, so `npm trust` and the npmjs.com package settings require the package to already exist on the registry. To avoid UI setup, run `bun run release:bootstrap-names` from an authenticated npm session; it publishes only missing package names at `0.0.0-bootstrap.0` with the `bootstrap` dist-tag from temporary package copies. Then run `bun run release:trust` to configure trusted publishing for `mannyc2/liche`, `publish.yml`, `npm-production`, and `npm publish`. After that, use the tag workflow for synchronized releases.
+New public package names need one bootstrap publish before trusted publishing can own them. npm trusted-publisher configuration is package-scoped, so the trusted-publisher registry API and the npmjs.com package settings require the package to already exist on the registry. To avoid UI setup, run `bun run release:bootstrap-names` from an authenticated npm session; it publishes only missing package names at `0.0.0-bootstrap.0` with the `bootstrap` dist-tag from temporary package copies. Then run `bun run release:trust` to configure trusted publishing for `mannyc2/liche`, `publish.yml`, `npm-production`, and the `npm publish` allowed action. After that, use the tag workflow for synchronized releases.
 
 ## Package metadata rule
 
@@ -259,7 +259,7 @@ npm trusted publishing uses OIDC to publish from CI without long-lived npm token
 
 The release workflow committed in this repository is `.github/workflows/publish.yml`. It publishes on pushed `v*` tags, keeps a manual `workflow_dispatch` dry-run path, uses GitHub-hosted Ubuntu runners, Node 24, Bun 1.3.0, npm 11.10+, `id-token: write`, disabled package-manager caching, and the GitHub environment `npm-production`.
 
-Trusted publishing is not the first-package creation path for npm: the `npm trust` command requires the package to already exist on the registry, and the npm website configures trusted publishers from package settings. To set up trusted publishing for new packages:
+Trusted publishing is not the first-package creation path for npm: trusted-publisher configuration requires the package to already exist on the registry, and the npm website configures trusted publishers from package settings. `bun run release:trust` uses the registry API directly so it can send the current allowed-action permission payload. To set up trusted publishing for new packages:
 
 1. Create the npm organization for the package scope.
 2. Align package names, imports, docs, and release checks with that scope.

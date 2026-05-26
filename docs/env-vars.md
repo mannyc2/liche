@@ -100,3 +100,22 @@ Auth/session generated CLIs add a stricter env contract:
 - raw secret CLI flags such as `--token`, `--api-key`, or `--auth-env NAME=VALUE` are not the primary generated path and must not be emitted by default
 
 Credential resolution order and generated flags are defined in `docs/auth-session.md`.
+
+## Telemetry env vars
+
+`@liche/telemetry` is **opt-in by default** — no events fire until consent is set. Seven env vars govern resolution; a kill at any level wins, an enable at any level requires no higher-level disable. Generated from `packages/extensions/telemetry/src/internal/consent.ts`.
+
+| Name | Purpose | Required | Values |
+|---|---|---|---|
+| `LICHE_TELEMETRY` | Liche-wide telemetry switch | no | `1\|true\|yes\|on` enables; `0\|false\|off\|no\|''` disables; anything else → disabled |
+| `${CLI_NAME_UPPER}_TELEMETRY` | Per-CLI telemetry switch (e.g. `SHIPYARD_TELEMETRY`) | no | same vocabulary |
+| `DO_NOT_TRACK` | Universal opt-out (consoledonottrack.com) | no | non-empty and not `0` → kills, overrides per-CLI enable |
+| `LICHE_TELEMETRY_CLI` | Per-invocation override for `cli` | no | same vocabulary |
+| `LICHE_TELEMETRY_CI` | Per-invocation override for `ci` (default off) | no | same vocabulary |
+| `LICHE_TELEMETRY_AGENT` | Per-invocation override for `agent` (default off; catches `cli.fetch()`) | no | same vocabulary |
+| `LICHE_TELEMETRY_MCP` | Per-invocation override for `mcp` (default off) | no | same vocabulary |
+| `LICHE_TELEMETRY_DEBUG` | When `stderr`, installs a console sink alongside any configured sinks (prints redacted wire events without sending) | no | `stderr` enables; other values ignored |
+
+Precedence (top wins): `DO_NOT_TRACK` → `LICHE_TELEMETRY` → `${CLI}_TELEMETRY` → `LICHE_TELEMETRY_<INVOCATION>`. Any value outside the documented vocabulary is treated as "unset" → disabled.
+
+Telemetry env vars do not participate in `input.sources` or schema-declared `env` — they are read by the extension itself. They are **not** redacted in command output because they are not secrets; the redaction policy applies to event payloads, not to the consent signal.

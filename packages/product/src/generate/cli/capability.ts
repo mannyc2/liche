@@ -45,9 +45,6 @@ export function renderCli(catalog: Catalog): string[] {
   lines.push(`  generated: { machineOutput: 'envelope' },`)
   const extensions = renderExtensionDeclarations(catalog)
   if (extensions.length > 0) lines.push(`  extensions: [${extensions.join(', ')}],`)
-  if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
-    lines.push(`  events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],`)
-  }
   lines.push(`  commands: [`)
   for (const cap of catalog.capabilities) {
     lines.push(...renderCapability('    ', catalog, cap))
@@ -74,6 +71,11 @@ function renderExtensionDeclarations(catalog: Catalog): string[] {
   if (catalog.config) {
     extensions.push(renderConfigExtension(catalog))
     extensions.push('configDoctor()')
+  }
+  if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
+    extensions.push(
+      `telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })`,
+    )
   }
   return extensions
 }

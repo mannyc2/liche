@@ -12,7 +12,7 @@
 import { callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
 import { llms } from '@liche/agents'
 import { config as configExtension, configDoctor, files } from '@liche/config'
-import { createLocalTelemetrySink } from '@liche/telemetry'
+import { jsonlFileSink, telemetry } from '@liche/telemetry'
 import { deploy, dev } from './impl/wrangler.js'
 
 const PRODUCT_ID = 'workers'
@@ -898,8 +898,7 @@ const cli = defineCli({
   extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms(), configExtension({ schema: z.strictObject({
     'accountId': z.string().optional(),
     'apiBaseUrl': z.string().default("https://api.cloudflare.test"),
-  }), sources: [files({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], scopes: { project: { discoverUpwards: true }, user: { xdg: true } } })] }), configDoctor()],
-  events: [createLocalTelemetrySink({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, fileEnvVar: TELEMETRY_FILE_ENV_VAR })],
+  }), sources: [files({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], scopes: { project: { discoverUpwards: true }, user: { xdg: true } } })] }), configDoctor(), telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })],
   commands: [
     defineCommand({
       path: ['script', 'list'],
@@ -1031,26 +1030,6 @@ const cli = defineCli({
       output: z.unknown(),
       safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
       run() { return STATIC_RELEASE },
-    }),
-    defineCommand({
-      path: ['telemetry'],
-      agent: true,
-      summary: 'Show local telemetry sink status.',
-      input: { env: z.object({
-        [TELEMETRY_ENABLED_ENV_VAR]: z.string().optional(),
-        [TELEMETRY_FILE_ENV_VAR]: z.string().optional(),
-      }) },
-      output: z.unknown(),
-      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
-      run({ ctx }) {
-        const raw = ctx.env[TELEMETRY_ENABLED_ENV_VAR]
-        const enabled = raw !== undefined && raw !== '' && raw !== '0' && raw.toLowerCase() !== 'false'
-        return {
-          enabled,
-          sink: ctx.env[TELEMETRY_FILE_ENV_VAR] ? { kind: 'file', path: ctx.env[TELEMETRY_FILE_ENV_VAR] } : undefined,
-          redaction: 'enabled',
-        }
-      },
     }),
   ],
 })

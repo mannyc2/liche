@@ -78,19 +78,23 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'completions',
     'config',
     'configDoctor',
+    'consoleSink',
     'createFileSessionStore',
-    'createLocalTelemetrySink',
     'env',
     'files',
+    'httpSink',
+    'jsonlFileSink',
     'llms',
     'logoutAuthSession',
     'mcpInstaller',
     'mcpServer',
+    'noopSink',
     'oauthDeviceLogin',
     'resolveAuth',
     'resolveContext',
     'skillsInstaller',
     'skillsRuntime',
+    'telemetry',
     'tokenCount',
     'tokenSlice',
     'tokens',
@@ -113,7 +117,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
   '@liche/mcp-server': ['MCP_PROTOCOL_VERSION', 'handleMcpHttp', 'mcpMessage', 'mcpServer', 'serveMcp'],
   '@liche/skills-installer': ['skillsInstaller', 'writeSkill'],
   '@liche/skills-runtime': ['skillIndex', 'skillMarkdown', 'skillsRuntime'],
-  '@liche/telemetry': ['createLocalTelemetrySink'],
+  '@liche/telemetry': ['consoleSink', 'httpSink', 'jsonlFileSink', 'noopSink', 'telemetry', 'wrapSink'],
   '@liche/tokens': ['tokenCount', 'tokenSlice', 'tokens'],
   '@liche/build': [
     'BuildRecordSchema',
@@ -410,8 +414,8 @@ const cli = Core.defineCli({
     }),
   ],
 })
-const sink = Extensions.createLocalTelemetrySink({ env: {}, append() {} })
-await sink({ type: 'version.rendered', occurredAt: new Date().toISOString(), cli: { name: 'consumer' }, format: 'json', formatExplicit: true, invocation: 'cli', agent: true, surface: { kind: 'version' } })
+const telemetryExt = Extensions.telemetry({ sinks: [Extensions.noopSink()], env: {} })
+if (!telemetryExt.events || telemetryExt.events.length === 0) throw new Error('telemetry extension missing events')
 if ('runLocalDoctor' in Extensions) throw new Error('runLocalDoctor leaked from @liche/extensions root')
 
 const plan = Build.createCompilePlan({
@@ -558,7 +562,7 @@ const parsed = Releases.parseCliReleaseManifest({
 
 const refs = [
   cli,
-  sink,
+  telemetryExt,
   plan,
   generated,
   generatedResult,

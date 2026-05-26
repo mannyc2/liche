@@ -59,7 +59,7 @@ export function renderImports(catalog: Catalog): string[] {
     out.push(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
   }
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
-    out.push(`import { createLocalTelemetrySink } from '@liche/telemetry'`)
+    out.push(`import { jsonlFileSink, telemetry } from '@liche/telemetry'`)
   }
   const byModule = new Map<string, Set<string>>()
   for (const h of collectLocalHandlers(catalog)) {

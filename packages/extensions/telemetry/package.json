@@ -3,7 +3,7 @@
   "version": "0.5.0",
   "type": "module",
   "license": "MIT",
-  "description": "Local JSONL telemetry sink for Liche CLIs.",
+  "description": "Client-side telemetry extension for Liche CLIs: schema-validated, redacted, opt-in, bring-your-own sink.",
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"
@@ -12,6 +12,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
     }
   },
   "files": [

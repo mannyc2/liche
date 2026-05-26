@@ -202,14 +202,15 @@ describe('product-workers example', () => {
     expect(JSON.parse(release.stdout).data.yankedVersions[0].version).toBe('0.1.0')
 
     const telemetryFile = join(outDir, 'telemetry.jsonl')
-    const telemetry = await runGenerated(cli, ['telemetry', '--json'], {
+    const telemetryStatus = await runGenerated(cli, ['telemetry', 'status', '--json'], {
       WORKERS_TELEMETRY: '1',
       WORKERS_TELEMETRY_FILE: telemetryFile,
     })
-    expect(JSON.parse(telemetry.stdout).data).toEqual({
+    expect(JSON.parse(telemetryStatus.stdout).data).toMatchObject({
       enabled: true,
-      sink: { kind: 'file', path: telemetryFile },
-      redaction: 'enabled',
+      reason: 'cli-enabled',
+      source: 'WORKERS_TELEMETRY',
+      invocation: 'cli',
     })
 
     const savedTelemetry = {

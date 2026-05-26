@@ -182,7 +182,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z')
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
-    expect(source).toContain(`import { createLocalTelemetrySink } from '@liche/telemetry'`)
+    expect(source).toContain(`import { jsonlFileSink, telemetry } from '@liche/telemetry'`)
     expect(source).toContain(`async function runGeneratedLocalDoctor`)
     expect(source).not.toContain(`@liche/extensions/support`)
     expect(source).not.toContain(`runLocalDoctor`)

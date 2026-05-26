@@ -51,7 +51,7 @@ Landed lanes:
 - `@liche/mcp-server`: `mcpServer()` and MCP runtime handlers.
 - `@liche/skills-installer`: `skillsInstaller()` and skill writing helpers.
 - `@liche/skills-runtime`: `skillsRuntime()` / `llms()` and live skill manifest rendering.
-- `@liche/telemetry`: `createLocalTelemetrySink()`.
+- `@liche/telemetry`: `telemetry()`, `jsonlFileSink()`, `httpSink()`, `consoleSink()`, and `noopSink()`.
 
 Auth-enabled CLIs install the auth lane to declare the standard profile/session globals:
 

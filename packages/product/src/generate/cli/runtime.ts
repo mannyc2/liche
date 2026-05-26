@@ -128,28 +128,6 @@ export function renderOpsCommands(indent: string, catalog: Catalog): string[] {
     lines.push(`${indent}  run() { return STATIC_RELEASE },`)
     lines.push(`${indent}}),`)
   }
-  if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
-    lines.push(`${indent}defineCommand({`)
-    lines.push(`${indent}  path: ['telemetry'],`)
-    lines.push(`${indent}  agent: true,`)
-    lines.push(`${indent}  summary: 'Show local telemetry sink status.',`)
-    lines.push(`${indent}  input: { env: z.object({`)
-    lines.push(`${indent}    [TELEMETRY_ENABLED_ENV_VAR]: z.string().optional(),`)
-    lines.push(`${indent}    [TELEMETRY_FILE_ENV_VAR]: z.string().optional(),`)
-    lines.push(`${indent}  }) },`)
-    lines.push(`${indent}  output: z.unknown(),`)
-    lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
-    lines.push(`${indent}  run({ ctx }) {`)
-    lines.push(`${indent}    const raw = ctx.env[TELEMETRY_ENABLED_ENV_VAR]`)
-    lines.push(`${indent}    const enabled = raw !== undefined && raw !== '' && raw !== '0' && raw.toLowerCase() !== 'false'`)
-    lines.push(`${indent}    return {`)
-    lines.push(`${indent}      enabled,`)
-    lines.push(`${indent}      sink: ctx.env[TELEMETRY_FILE_ENV_VAR] ? { kind: 'file', path: ctx.env[TELEMETRY_FILE_ENV_VAR] } : undefined,`)
-    lines.push(`${indent}      redaction: 'enabled',`)
-    lines.push(`${indent}    }`)
-    lines.push(`${indent}  },`)
-    lines.push(`${indent}}),`)
-  }
   return lines
 }
 

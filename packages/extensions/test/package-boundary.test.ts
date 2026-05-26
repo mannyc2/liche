@@ -76,7 +76,7 @@ describe('package boundary: @liche/extensions', () => {
     expect(root.mcpServer).toBe(mcpServer.mcpServer)
     expect(root.skillsInstaller).toBe(skillsInstaller.skillsInstaller)
     expect(root.skillsRuntime).toBe(skillsRuntime.skillsRuntime)
-    expect(root.createLocalTelemetrySink).toBe(telemetry.createLocalTelemetrySink)
+    expect(root.jsonlFileSink).toBe(telemetry.jsonlFileSink)
     expect('runLocalDoctor' in root).toBe(false)
   })
 })
