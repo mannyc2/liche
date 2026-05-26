@@ -61,6 +61,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'middleware',
     'ok',
     'outputControls',
+    'parseInvocation',
     'parseSchema',
     'reflectionControls',
     'run',

@@ -160,6 +160,40 @@ export type CommandManifest = {
   version?: string | undefined;
 };
 
+export type ParseWarning =
+  | { kind: 'deprecated-option'; flag: string; option: string };
+
+export type ParsedInvocationContextPatch = {
+  args?: unknown;
+  options?: unknown;
+  env?: unknown;
+  vars?: unknown;
+  sources?: SourceInspector;
+  format?: Format;
+  formatExplicit?: boolean;
+  globals?: GlobalOptions;
+};
+
+export type ParsedInvocation = {
+  command: CommandContract;
+  contextOverrides: ParsedInvocationContextPatch;
+  format: Format;
+  formatExplicit: boolean;
+  globals: GlobalOptions;
+  input: {
+    args: unknown;
+    options: unknown;
+    env: unknown;
+    vars: unknown;
+  };
+  sources: SourceInspector;
+  warnings: ParseWarning[];
+};
+
+export type ParseInvocationResult =
+  | { ok: true; data: ParsedInvocation; error: null; meta?: ResultMeta | undefined }
+  | { ok: false; data: null; error: CommandError; meta?: ResultMeta | undefined };
+
 export type RunContext<
   A = Record<string, unknown>,
   O = Record<string, unknown>,

@@ -7,17 +7,25 @@ import type {
   CommandError,
   Dict,
   Format,
+  ParsedInvocation,
+  ParsedInvocationContextPatch,
+  ParseInvocationResult,
+  ParseWarning,
   Result,
   RunContext,
   ServeOptions,
+  SourceInspector,
 } from '../types.js'
-import { fail, ParseError } from '../errors/error.js'
+import { fail, ok, ParseError } from '../errors/error.js'
 import { toCommandError } from '../errors/normalize.js'
 import { parseGlobals } from '../parser/index.js'
 import { selectCommand } from '../command/registry.js'
+import { commandContract } from '../command/contract.js'
+import { isCommand, isFetch } from '../command/guards.js'
 import { execute } from './execute.js'
 import { getCliState } from './create.js'
 import { contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareContext } from './invocation.js'
+import { resolveCommandInput } from './input-sources.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 
 export type DispatchOptions = {
@@ -208,6 +216,170 @@ export async function dispatch(
     ...(options.onChunk ? { onChunk: options.onChunk } : undefined),
     version: state.def.version,
   })
+}
+
+export type ParseInvocationOptions = {
+  env?: Dict<string | undefined> | undefined
+  format?: Format | undefined
+}
+
+export async function parseInvocation(
+  cli: CliInstance,
+  argv: string[],
+  options: ParseInvocationOptions = {},
+): Promise<ParseInvocationResult> {
+  const state = getCliState(cli)
+  const env = options.env ?? defaultEnv()
+
+  let flags
+  try {
+    flags = parseGlobals(argv, state.globals)
+  } catch (error) {
+    return fail(preExecuteCommandError(error)) as ParseInvocationResult
+  }
+
+  if (env['COMPLETE']) {
+    return fail({
+      code: 'PARSE_ERROR',
+      message: 'Shell completion is only available through serve, not parseInvocation',
+      exitCode: 1,
+    }) as ParseInvocationResult
+  }
+  if (flags.version) {
+    return fail({
+      code: 'PARSE_ERROR',
+      message: '--version is only available through serve, not parseInvocation',
+      exitCode: 1,
+    }) as ParseInvocationResult
+  }
+  if (flags.help) {
+    return fail({
+      code: 'PARSE_ERROR',
+      message: '--help is only available through serve, not parseInvocation',
+      exitCode: 1,
+    }) as ParseInvocationResult
+  }
+  if (flags.schema) {
+    return fail({
+      code: 'PARSE_ERROR',
+      message: '--schema is only available through serve, not parseInvocation',
+      exitCode: 1,
+    }) as ParseInvocationResult
+  }
+  for (const handler of state.serveHandlers) {
+    if (flags[handler.flagKey]) {
+      return fail({
+        code: 'PARSE_ERROR',
+        message: `--${handler.flagKey} is only available through serve, not parseInvocation`,
+        exitCode: 1,
+      }) as ParseInvocationResult
+    }
+  }
+
+  const selected = selectCommand(state, flags.rest)
+  if (!selected) {
+    if (flags.rest.some(isFlagLikeToken)) {
+      const token = flags.rest.find(isFlagLikeToken) ?? flags.rest[0] ?? ''
+      return fail({ code: 'PARSE_ERROR', message: `Unknown option: ${token}`, exitCode: 1 }) as ParseInvocationResult
+    }
+    const path = flags.rest.join(' ')
+    return fail({
+      code: 'COMMAND_NOT_FOUND',
+      message: path ? `Unknown command: ${path}` : 'No command specified',
+      exitCode: 1,
+    }) as ParseInvocationResult
+  }
+
+  const resolved = resolveFormat({
+    explicit: options.format,
+    flags,
+    selected,
+    cliDefault: state.def.format,
+  })
+
+  let contextOverrides: Partial<RunContext>
+  try {
+    contextOverrides = await runPrepareContext(
+      [...state.hooks.prepareContext, ...selected.hooks.prepareContext],
+      { name: cli.name, env, flags },
+    )
+  } catch (error) {
+    return fail(preExecuteCommandError(error)) as ParseInvocationResult
+  }
+
+  if (isFetch(selected.entry)) {
+    return fail({
+      code: 'COMMAND_NOT_RUNNABLE',
+      message: 'Fetch entries are not parsable via parseInvocation',
+      exitCode: 1,
+    }) as ParseInvocationResult
+  }
+  if (!isCommand(selected.entry)) {
+    return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler', exitCode: 1 }) as ParseInvocationResult
+  }
+  const runtime = selected.entry.runtime
+  if (!runtime.run) {
+    return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler', exitCode: 1 }) as ParseInvocationResult
+  }
+
+  const warnings: ParseWarning[] = []
+  let resolvedInput
+  try {
+    resolvedInput = await resolveCommandInput({
+      argvOptions: selected.argv,
+      commandPath: selected.path,
+      env,
+      flags,
+      inputSources: state.inputSources,
+      onDeprecation: (flag, option) => warnings.push({ kind: 'deprecated-option', flag, option }),
+      rootVarsSchema: (selected.rootDef as { vars?: import('../types.js').Schema<unknown> } | undefined)?.vars,
+      runtime,
+    })
+  } catch (error) {
+    return fail(toCommandError(error)) as ParseInvocationResult
+  }
+
+  const overridePatch = narrowContextPatch(contextOverrides)
+  const mergedInput = {
+    args: 'args' in overridePatch ? overridePatch.args : resolvedInput.args,
+    options: 'options' in overridePatch ? overridePatch.options : resolvedInput.options,
+    env: 'env' in overridePatch ? overridePatch.env : resolvedInput.env,
+    vars: 'vars' in overridePatch ? overridePatch.vars : resolvedInput.vars,
+  }
+  const mergedSources: SourceInspector = overridePatch.sources ?? resolvedInput.sources
+  const baseGlobals = contextGlobals(flags, state)
+
+  const contract = commandContract(selected.path.join(' ') || '(root)', selected.entry)
+  if (!contract) {
+    return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no contract', exitCode: 1 }) as ParseInvocationResult
+  }
+
+  const data: ParsedInvocation = {
+    command: contract,
+    contextOverrides: overridePatch,
+    format: overridePatch.format ?? resolved.format,
+    formatExplicit: overridePatch.formatExplicit ?? resolved.formatExplicit,
+    globals: overridePatch.globals ?? baseGlobals,
+    input: mergedInput,
+    sources: mergedSources,
+    warnings,
+  }
+  return ok(data) as ParseInvocationResult
+}
+
+function narrowContextPatch(overrides: Partial<RunContext>): ParsedInvocationContextPatch {
+  const patch: ParsedInvocationContextPatch = {}
+  if ('args' in overrides) patch.args = overrides.args
+  if ('options' in overrides) patch.options = overrides.options
+  if ('env' in overrides) patch.env = overrides.env
+  if ('var' in overrides) patch.vars = overrides.var
+  if ('sources' in overrides && overrides.sources) patch.sources = overrides.sources as SourceInspector
+  if ('format' in overrides && overrides.format) patch.format = overrides.format
+  if ('formatExplicit' in overrides && typeof overrides.formatExplicit === 'boolean') {
+    patch.formatExplicit = overrides.formatExplicit
+  }
+  if ('global' in overrides && overrides.global) patch.globals = overrides.global
+  return patch
 }
 
 function preExecuteCommandError(error: unknown): CommandError {

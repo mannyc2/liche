@@ -1,6 +1,6 @@
 export { defineCli, defineCommand, defineExtension, defineGlobal, getCliState } from './cli/create.js'
-export { dispatch, run } from './cli/dispatch.js'
-export type { DispatchOptions } from './cli/dispatch.js'
+export { dispatch, parseInvocation, run } from './cli/dispatch.js'
+export type { DispatchOptions, ParseInvocationOptions } from './cli/dispatch.js'
 export { help, outputControls, reflectionControls, version } from './cli/controls.js'
 export type { HelpControlOptions, OutputControlsOptions, ReflectionControlsOptions } from './cli/controls.js'
 export { middleware } from './cli/context.js'
@@ -79,6 +79,10 @@ export type {
   OutputRenderStage,
   OutputTransform,
   OutputTransformInput,
+  ParsedInvocation,
+  ParsedInvocationContextPatch,
+  ParseInvocationResult,
+  ParseWarning,
   PrepareContextHook,
   PrepareContextInput,
   PrepareContextResult,

@@ -30,6 +30,7 @@ const FROZEN_PUBLIC_VALUES = [
   'middleware',
   'ok',
   'outputControls',
+  'parseInvocation',
   'parseSchema',
   'ParseError',
   'reflectionControls',
