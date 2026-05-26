@@ -7,7 +7,7 @@ import { runShipCommand } from './cli/ship-command.js'
 import { PublisherCredentialEnvSchema } from './cli/types.js'
 import { ReleasesConfigSchema } from './config.js'
 
-const RELEASE_TOOL_VERSION = '0.5.0'
+const RELEASE_TOOL_VERSION = '0.6.0'
 
 export const cli = defineCli({
   commands: [

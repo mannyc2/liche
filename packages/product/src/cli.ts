@@ -9,7 +9,7 @@ import { checkAgainstDir, generateToDir } from './generate/index.js'
 import type { RuntimeProduct } from './product/types.js'
 import { LI_PRODUCT_SKILL_INDEX, LI_PRODUCT_SKILL_MARKDOWN } from './skill.js'
 
-const GENERATOR_VERSION = '0.5.0'
+const GENERATOR_VERSION = '0.6.0'
 
 async function loadProduct(productPath: string): Promise<RuntimeProduct> {
   const absolute = isAbsolute(productPath) ? productPath : resolve(process.cwd(), productPath)

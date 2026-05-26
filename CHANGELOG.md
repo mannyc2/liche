@@ -12,6 +12,8 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+## 0.6.0 — 2026-05-26
+
 ### Added
 
 - **`@liche/core`: `defineGlobal({ default })`.** Globals can declare a pre-resolved fallback that populates `ctx.global.<key>` when the flag is absent and renders as `(default: …)` in help. `parse` does not run on the default.

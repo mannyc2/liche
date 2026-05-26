@@ -1,6 +1,6 @@
 {
   "name": "@liche/agents",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "license": "MIT",
   "description": "Meta-extension bundling the MCP installer and skill installer for agent-facing Liche CLIs.",
@@ -27,12 +27,12 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.5.0",
-    "@liche/mcp-installer": "^0.5.0",
-    "@liche/mcp-server": "^0.5.0",
-    "@liche/skills-installer": "^0.5.0",
-    "@liche/skills-runtime": "^0.5.0",
-    "@liche/tokens": "^0.5.0"
+    "@liche/core": "^0.6.0",
+    "@liche/mcp-installer": "^0.6.0",
+    "@liche/mcp-server": "^0.6.0",
+    "@liche/skills-installer": "^0.6.0",
+    "@liche/skills-runtime": "^0.6.0",
+    "@liche/tokens": "^0.6.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
