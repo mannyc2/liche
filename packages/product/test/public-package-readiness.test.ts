@@ -63,6 +63,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'outputControls',
     'parseInvocation',
     'parseSchema',
+    'parseSchemaAsync',
     'reflectionControls',
     'run',
     'secret',

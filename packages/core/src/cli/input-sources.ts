@@ -10,7 +10,7 @@ import type {
 } from '../types.js'
 import { ParseError } from '../errors/error.js'
 import { isObjectSchema, objectShape, primitiveKind } from '../schema/zod.js'
-import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
+import { parseArgsAsync, parseCommandOptions, parseObjectAsync } from '../parser/argv.js'
 
 export type ResolveCommandInputOptions = {
   argvOptions: { args: string[]; argsObject?: Dict | undefined; options?: Dict | undefined }
@@ -68,14 +68,19 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
 
   const envBag = assembleDeclaredEnv(providers.get('env'), input.runtime.env, input.env)
 
+  const args = input.argvOptions.argsObject !== undefined
+    ? await parseObjectAsync(input.runtime.args, input.argvOptions.argsObject)
+    : await parseArgsAsync(input.runtime.args, argv.args)
+  const env = await parseObjectAsync(input.runtime.env, envBag)
+  const options = await parseObjectAsync(input.runtime.options, rawOptions)
+  const vars = await parseObjectAsync(input.rootVarsSchema, {})
+
   return {
-    args: input.argvOptions.argsObject !== undefined
-      ? parseObject(input.runtime.args, input.argvOptions.argsObject)
-      : parseArgs(input.runtime.args, argv.args),
-    env: parseObject(input.runtime.env, envBag),
-    options: parseObject(input.runtime.options, rawOptions),
+    args,
+    env,
+    options,
     sources: buildSourceInspector(providers, optionSources),
-    vars: parseObject(input.rootVarsSchema, {}),
+    vars,
   }
 }
 

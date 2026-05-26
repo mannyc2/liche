@@ -18,7 +18,7 @@ import { fail, isRuntimeResult, LicheError, ok, toCommandError } from '../errors
 import { callFetch } from '../fetch/curl.js'
 import { isCommand, isFetch } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
-import { parseSchema } from '../schema/zod.js'
+import { parseSchemaAsync } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
 import { resolveCommandInput } from './input-sources.js'
 
@@ -137,7 +137,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       await emitResultEvent(binaryName, input, command, startedAt, completed)
       return completed
     }
-    const data = parseSchema(runtime.output, result, result)
+    const data = await parseSchemaAsync(runtime.output, result, result)
     const completed = ok(data)
     await emitResultEvent(binaryName, input, command, startedAt, completed)
     return completed

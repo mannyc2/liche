@@ -34,6 +34,7 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 | `defaultHelpRenderer` | Default renderer for the serializable help model; custom `help({ renderer })` implementations can wrap it. |
 | `middleware` | Around-command middleware authoring helper. |
 | `z` | Public schema authoring convenience (re-exported Zod). |
+| `parseSchema`, `parseSchemaAsync` | Schema-boundary parse helpers that funnel errors through `normalizeZodError` into `ValidationError`. Use `parseSchemaAsync` when the schema may contain async codecs, transforms, or refinements (e.g. `arg.fromString({ decode: async })`); use sync `parseSchema` for intentionally sync boundaries such as config-file merging and telemetry wire validation. |
 | `Formatter` | Output formatter namespace and renderer registry utilities for handwritten CLIs. |
 | `collectCommandContracts`, `manifest`, `manifestEnvelope`, `mcpToolName`, `selectCommand` | Serializable command reflection/projection helpers used by first-party extensions. |
 | `ok`, `fail`, `commandError` | Object-first result/error factories for command-authored outcomes. |

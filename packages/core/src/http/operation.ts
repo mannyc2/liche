@@ -1,5 +1,5 @@
 import { ValidationError } from '../errors/error.js'
-import { parseSchema } from '../schema/zod.js'
+import { parseSchemaAsync } from '../schema/zod.js'
 import { serializeHttpOperationRequest } from './binding.js'
 import { asError, isAbortError, remoteError, safeUrl } from './errors.js'
 import { mapStatusError, parseResponseBody, readResponseText } from './response.js'
@@ -60,7 +60,7 @@ export async function callHttpOperation<TInput extends Record<string, unknown>, 
 
   const parsed = parseResponseBody(response, text, request, options.id)
   try {
-    return parseSchema(options.output, parsed, parsed) as TOutput
+    return (await parseSchemaAsync(options.output, parsed, parsed)) as TOutput
   } catch (error) {
     if (error instanceof ValidationError) {
       throw remoteError('REMOTE_RESPONSE_SCHEMA', 'Remote response did not match the expected schema.', {

@@ -14,6 +14,22 @@ export function parseSchema<T>(schema: Schema<T> | undefined, input: unknown, fa
   }
 }
 
+export async function parseSchemaAsync<T>(
+  schema: Schema<T> | undefined,
+  input: unknown,
+  fallback: unknown = {},
+): Promise<T | Dict> {
+  if (!schema) return fallback as Dict
+  try {
+    if (typeof (schema as any).decodeAsync === 'function') {
+      return await (schema as any).decodeAsync(input)
+    }
+    return await (schema as any).parseAsync(input)
+  } catch (error) {
+    throw normalizeZodError(error)
+  }
+}
+
 export function toJsonSchema(schema: Schema | undefined): unknown {
   if (!schema) return undefined
   if (typeof (z as any).toJSONSchema === 'function') return (z as any).toJSONSchema(schema, { io: 'input' })

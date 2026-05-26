@@ -254,6 +254,44 @@ describe('HTTP operation transport', () => {
     ])
   })
 
+  test('awaits async output codec and decodes response body', async () => {
+    const result = await callHttpOperation({
+      baseUrl: 'https://api.example.test',
+      method: 'GET',
+      path: '/status',
+      bind: {},
+      input: {},
+      output: z.object({
+        name: z.string().transform(async (s) => s.toUpperCase()),
+      }),
+      fetch: async () => new Response(JSON.stringify({ name: 'ada' }), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    })
+
+    expect(result).toEqual({ name: 'ADA' } as any)
+  })
+
+  test('maps async output validation failures to REMOTE_RESPONSE_SCHEMA', async () => {
+    const schema = await expectRejectedLicheError(callHttpOperation({
+      baseUrl: 'https://api.example.test',
+      method: 'GET',
+      path: '/status',
+      bind: {},
+      input: {},
+      output: z.object({
+        name: z.string().refine(async (s) => s.length >= 3, 'too short (async)'),
+      }),
+      fetch: async () => new Response(JSON.stringify({ name: 'a' }), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    }), 'REMOTE_RESPONSE_SCHEMA')
+
+    expect(schema.details?.['validation']).toEqual([
+      expect.objectContaining({ path: '$.name', message: expect.stringContaining('too short') }),
+    ])
+  })
+
   test('maps 401 with resolved auth through caller-provided status errors', async () => {
     await expectRejectedLicheError(callHttpOperation({
       baseUrl: 'https://api.example.test',

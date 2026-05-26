@@ -341,4 +341,97 @@ describe('parseInvocation', () => {
     expect(result.ok).toBe(true)
     expect(result.ok ? result.data : null).toEqual({ doubled: 14 })
   })
+
+  describe('async schema parsing', () => {
+    test('async option codec decodes before handler (parseInvocation + dispatch)', async () => {
+      const cli = testCli('app', [
+        testCommand('go', {
+          options: z.object({
+            name: z.string().transform(async (s) => s.toUpperCase()),
+          }),
+          run: ({ options }) => ({ name: options.name }),
+        }),
+      ])
+
+      const parsed = unwrap(await parseInvocation(cli, ['go', '--name', 'ada']))
+      expect((parsed.input.options as { name: string }).name).toBe('ADA')
+
+      const dispatched = await dispatch(cli, ['go', '--name', 'ada'])
+      expect(dispatched.ok).toBe(true)
+      expect(dispatched.ok ? dispatched.data : null).toEqual({ name: 'ADA' })
+    })
+
+    test('async positional arg codec decodes before handler', async () => {
+      const cli = testCli('app', [
+        testCommand('go', {
+          args: z.object({
+            msg: z.string().transform(async (s) => `async:${s}`),
+          }),
+          run: ({ args }) => ({ msg: args.msg }),
+        }),
+      ])
+
+      const parsed = unwrap(await parseInvocation(cli, ['go', 'hello']))
+      expect((parsed.input.args as { msg: string }).msg).toBe('async:hello')
+
+      const dispatched = await dispatch(cli, ['go', 'hello'])
+      expect(dispatched.ok ? dispatched.data : null).toEqual({ msg: 'async:hello' })
+    })
+
+    test('async env codec decodes before handler', async () => {
+      const cli = testCli('app', [
+        testCommand('go', {
+          env: z.object({
+            TOKEN: z.string().transform(async (s) => `secret:${s}`),
+          }),
+          run: ({ env }) => ({ token: env.TOKEN }),
+        }),
+      ])
+
+      const parsed = unwrap(await parseInvocation(cli, ['go'], { env: { TOKEN: 'abc' } }))
+      expect((parsed.input.env as { TOKEN: string }).TOKEN).toBe('secret:abc')
+
+      const dispatched = await dispatch(cli, ['go'], { env: { TOKEN: 'abc' } })
+      expect(dispatched.ok ? dispatched.data : null).toEqual({ token: 'secret:abc' })
+    })
+
+    test('async root vars codec decodes before handler', async () => {
+      const cli = testCli({
+        name: 'app',
+        vars: z.object({
+          tag: z.string().default('v0').transform(async (s) => `tag:${s}`),
+        }),
+      }, [testCommand('go', { run: (ctx: any) => ({ tag: ctx.var.tag }) })])
+
+      const parsed = unwrap(await parseInvocation(cli, ['go']))
+      expect((parsed.input.vars as { tag: string }).tag).toBe('tag:v0')
+
+      const dispatched = await dispatch(cli, ['go'])
+      expect(dispatched.ok ? dispatched.data : null).toEqual({ tag: 'tag:v0' })
+    })
+
+    test('async validation failure normalizes to VALIDATION_ERROR', async () => {
+      const cli = testCli('app', [
+        testCommand('go', {
+          options: z.object({
+            name: z.string().refine(async (s) => s.length >= 3, 'too short (async)'),
+          }),
+          run: () => ({ ok: true }),
+        }),
+      ])
+
+      const result = await parseInvocation(cli, ['go', '--name', 'ab'])
+      expect(result.ok).toBe(false)
+      if (result.ok) throw new Error('expected fail')
+      expect(result.error.code).toBe('VALIDATION_ERROR')
+      const field = result.error.fieldErrors?.[0]
+      expect(field?.path).toBe('$.name')
+      expect(field?.message).toContain('too short')
+
+      const dispatched = await dispatch(cli, ['go', '--name', 'ab'])
+      expect(dispatched.ok).toBe(false)
+      if (dispatched.ok) throw new Error('expected fail')
+      expect(dispatched.error.code).toBe('VALIDATION_ERROR')
+    })
+  })
 })

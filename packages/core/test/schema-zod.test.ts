@@ -11,6 +11,7 @@ import {
   meta,
   objectShape,
   parseSchema,
+  parseSchemaAsync,
   toJsonSchema,
   z,
 } from '../src/schema/zod.js'
@@ -95,6 +96,59 @@ describe('parseSchema', () => {
     const schema = z.string()
     ;(schema as any).decode = (input: unknown) => `decoded:${String(input)}`
     expect(parseSchema(schema, 'x' as any)).toBe('decoded:x' as any)
+  })
+})
+
+describe('parseSchemaAsync', () => {
+  test('returns fallback when schema is undefined', async () => {
+    expect(await parseSchemaAsync(undefined, { a: 1 })).toEqual({})
+    expect(await parseSchemaAsync(undefined, { a: 1 }, 'custom')).toBe('custom' as any)
+  })
+
+  test('passes sync schemas through unchanged', async () => {
+    const schema = z.object({ a: z.string() })
+    expect(await parseSchemaAsync(schema, { a: 'hi' })).toEqual({ a: 'hi' })
+  })
+
+  test('resolves an async transform', async () => {
+    const schema = z.string().transform(async (s) => `async:${s}`)
+    expect(await parseSchemaAsync(schema, 'x')).toBe('async:x' as any)
+  })
+
+  test('resolves a codec with async decode', async () => {
+    const schema = z.codec(z.string(), z.number(), {
+      decode: async (s) => Number(s),
+      encode: (n) => String(n),
+    })
+    expect(await parseSchemaAsync(schema, '42')).toBe(42 as any)
+  })
+
+  test('normalizes async validation errors into ValidationError', async () => {
+    const schema = z.object({ a: z.string() })
+    try {
+      await parseSchemaAsync(schema, { a: 42 })
+      throw new Error('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(ValidationError)
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.path).toBe('$.a')
+      expect(fe.code).toBe('invalid_type')
+      expect(fe.expected).toBe('string')
+      expect(fe.received).toBe('number')
+    }
+  })
+
+  test('async refinement failures normalize too', async () => {
+    const schema = z.string().refine(async () => false, 'custom-async')
+    try {
+      await parseSchemaAsync(schema, 'x')
+      throw new Error('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(ValidationError)
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.path).toBe('$')
+      expect(fe.message).toBe('custom-async')
+    }
   })
 })
 

@@ -1,7 +1,7 @@
 import type { CommandRuntime, Dict, Schema } from '../types.js'
 import { camel, kebab } from '../internal.js'
 import { ParseError } from '../errors/error.js'
-import { isBooleanSchema, isDeprecated, isObjectSchema, objectShape, parseSchema } from '../schema/zod.js'
+import { isBooleanSchema, isDeprecated, isObjectSchema, objectShape, parseSchema, parseSchemaAsync } from '../schema/zod.js'
 
 export type DeprecationWarning = { flag: string; option: string }
 
@@ -19,6 +19,22 @@ export function parseArgs(schema: Schema | undefined, values: string[]): unknown
 
 export function parseObject(schema: Schema | undefined, data: Dict = {}): unknown {
   return parseSchema(schema, data)
+}
+
+export async function parseArgsAsync(schema: Schema | undefined, values: string[]): Promise<unknown> {
+  if (!schema) return values.length ? values : {}
+  if (!isObjectSchema(schema)) return parseSchemaAsync(schema, values[0], values[0])
+
+  const shape = objectShape(schema)
+  const input: Dict = {}
+  Object.keys(shape).forEach((key, index) => {
+    if (values[index] !== undefined) input[key] = values[index]
+  })
+  return parseSchemaAsync(schema, input)
+}
+
+export async function parseObjectAsync(schema: Schema | undefined, data: Dict = {}): Promise<unknown> {
+  return parseSchemaAsync(schema, data)
 }
 
 export function parseCommandOptions(

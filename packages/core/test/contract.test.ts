@@ -292,6 +292,39 @@ describe('contract: fetch and schema', () => {
       },
     })
   })
+
+  test('output validation awaits async output codecs and decodes handler results', async () => {
+    const cli = testCli('app', [testCommand('ship', {
+      output: z.object({
+        name: z.string().transform(async (s) => s.toUpperCase()),
+      }),
+      run: () => ({ name: 'ada' }),
+    })])
+
+    const result = await runCli(cli, ['ship', '--json'])
+    expect(result.exitCode).toBe(0)
+    expect(parseJsonOutput(result.stdout)).toEqual({ name: 'ADA' })
+  })
+
+  test('async output validation failures normalize into VALIDATION_ERROR', async () => {
+    const cli = testCli('app', [testCommand('ship', {
+      output: z.object({
+        name: z.string().refine(async (s) => s.length >= 3, 'too short (async)'),
+      }),
+      run: () => ({ name: 'a' }),
+    })])
+
+    const result = await runCli(cli, ['ship', '--json'])
+    expect(result.exitCode).toBe(1)
+    expect(parseJsonOutput(result.stdout)).toMatchObject({
+      ok: false,
+      data: null,
+      error: {
+        code: 'VALIDATION_ERROR',
+        fieldErrors: [{ path: '$.name' }],
+      },
+    })
+  })
 })
 
 describe('contract: mcp, completions, and token behavior', () => {
