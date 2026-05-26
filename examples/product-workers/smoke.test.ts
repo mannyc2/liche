@@ -232,10 +232,12 @@ describe('product-workers example', () => {
     })
 
     const savedTelemetry = {
+      LICHE_TELEMETRY_CI: process.env.LICHE_TELEMETRY_CI,
       WORKERS_TELEMETRY: process.env.WORKERS_TELEMETRY,
       WORKERS_TELEMETRY_FILE: process.env.WORKERS_TELEMETRY_FILE,
     }
     try {
+      process.env.LICHE_TELEMETRY_CI = '1'
       process.env.WORKERS_TELEMETRY = '1'
       process.env.WORKERS_TELEMETRY_FILE = telemetryFile
       const deploy = await runGenerated(cli, ['deploy', '--entrypoint', 'src/index.ts', '--json'])
@@ -243,6 +245,8 @@ describe('product-workers example', () => {
       const lines = (await readEventually(telemetryFile)).trim().split('\n')
       expect(lines.some((line) => line.includes('command.completed'))).toBe(true)
     } finally {
+      if (savedTelemetry.LICHE_TELEMETRY_CI === undefined) delete process.env.LICHE_TELEMETRY_CI
+      else process.env.LICHE_TELEMETRY_CI = savedTelemetry.LICHE_TELEMETRY_CI
       if (savedTelemetry.WORKERS_TELEMETRY === undefined) delete process.env.WORKERS_TELEMETRY
       else process.env.WORKERS_TELEMETRY = savedTelemetry.WORKERS_TELEMETRY
       if (savedTelemetry.WORKERS_TELEMETRY_FILE === undefined) delete process.env.WORKERS_TELEMETRY_FILE

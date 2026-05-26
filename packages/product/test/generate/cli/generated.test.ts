@@ -427,10 +427,12 @@ describe('generated CLI — runtime parity with handwritten', () => {
     const dir = mkdtempSync(join(tmpdir(), 'liche-workers-telemetry-'))
     const file = join(dir, 'telemetry.jsonl')
     const saved = {
+      LICHE_TELEMETRY_CI: process.env.LICHE_TELEMETRY_CI,
       WORKERS_TELEMETRY: process.env.WORKERS_TELEMETRY,
       WORKERS_TELEMETRY_FILE: process.env.WORKERS_TELEMETRY_FILE,
     }
     try {
+      process.env.LICHE_TELEMETRY_CI = '1'
       process.env.WORKERS_TELEMETRY = '1'
       process.env.WORKERS_TELEMETRY_FILE = file
       const out = await runCli(workersGenerated, ['deploy', '--entrypoint', 'src/index.ts', '--json'])
@@ -439,6 +441,8 @@ describe('generated CLI — runtime parity with handwritten', () => {
       expect(lines.length).toBeGreaterThan(0)
       expect(lines.some((line) => line.includes('command.completed'))).toBe(true)
     } finally {
+      if (saved.LICHE_TELEMETRY_CI === undefined) delete process.env.LICHE_TELEMETRY_CI
+      else process.env.LICHE_TELEMETRY_CI = saved.LICHE_TELEMETRY_CI
       if (saved.WORKERS_TELEMETRY === undefined) delete process.env.WORKERS_TELEMETRY
       else process.env.WORKERS_TELEMETRY = saved.WORKERS_TELEMETRY
       if (saved.WORKERS_TELEMETRY_FILE === undefined) delete process.env.WORKERS_TELEMETRY_FILE
