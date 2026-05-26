@@ -16,6 +16,7 @@ Then read the topic-specific requirement docs as needed:
 - [product-schema.md](./product-schema.md) — `defineProduct` authoring and canonical catalog.
 - [config-primitive.md](./config-primitive.md) — config declaration, discovery, provenance.
 - [opt-in-globals-plan.md](./opt-in-globals-plan.md) — hard cutover plan for opt-in global flags and customizable core help.
+- [research-request-core-api-internals.md](./research-request-core-api-internals.md) — research brief for improving `@liche/core` API and internals before public API freeze.
 - [auth-session.md](./auth-session.md) — auth providers, sessions, OAuth device login.
 - [env-vars.md](./env-vars.md) — env var contract.
 - [http-operation-transport.md](./http-operation-transport.md) — outbound HTTP transport.
