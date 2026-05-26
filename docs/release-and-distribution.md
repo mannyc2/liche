@@ -198,11 +198,11 @@ Keep the package suite pre-`1.0.0` until there is enough downstream use to freez
 
 Rules:
 
-- Use synchronized versions across all five packages by default. This keeps examples, package-to-package dependency ranges, generated-tool constants, and release troubleshooting simple.
-- Treat `0.x` minor bumps as the breaking-change lane. Public API removals, generated output contract changes, command behavior changes, or a repo-wide generated release CLI should move from `0.4.x` to `0.5.0`.
-- Treat `0.x` patch bumps as the compatible lane. Documentation fixes, metadata fixes, test-only hardening, internal refactors, and bug fixes that preserve public imports and command behavior should move from `0.4.0` to `0.4.1`.
-- Use prerelease suffixes only for intentionally unstable public artifacts, for example `0.4.0-rc.1`. Do not use a prerelease suffix for normal manual patch releases.
-- Keep package dependencies on matching caret ranges, such as `@liche/core: ^0.4.1`, after each synchronized bump.
+- Use synchronized versions across all public packages by default. This keeps examples, package-to-package dependency ranges, generated-tool constants, and release troubleshooting simple.
+- Treat `0.x` minor bumps as the breaking-change lane. Public API removals, generated output contract changes, command behavior changes, or a repo-wide generated release CLI should move from `0.5.x` to `0.6.0`.
+- Treat `0.x` patch bumps as the compatible lane. Documentation fixes, metadata fixes, test-only hardening, internal refactors, and bug fixes that preserve public imports and command behavior should move from `0.5.0` to `0.5.1`.
+- Use prerelease suffixes only for intentionally unstable public artifacts, for example `0.5.0-rc.1`. Do not use a prerelease suffix for normal manual patch releases.
+- Keep package dependencies on matching caret ranges, such as `@liche/core: ^0.5.1`, after each synchronized bump.
 
 Manual bump checklist:
 
@@ -225,8 +225,8 @@ Release order:
 2. Apply the manual bump checklist.
 3. Run `bun run release:check`.
 4. Run `bun run --silent release:names`.
-5. Create and push a matching tag, for example `git tag v0.4.1 && git push origin v0.4.1`.
-6. The publish workflow validates that the tag version matches every public package version, verifies the versions are not already published, and publishes packages in order: `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/product`, `@liche/releases`.
+5. Create and push a matching tag, for example `git tag v0.5.1 && git push origin v0.5.1`.
+6. The publish workflow validates that the tag version matches every public package version, verifies the versions are not already published, and publishes packages in dependency order: `@liche/core`, extension leaf packages, `@liche/agents`, `@liche/extensions`, `@liche/build`, `@liche/releases`, `@liche/product`.
 7. Re-run `bun run --silent release:names` and verify every package reports the new version.
 
 The same workflow keeps a manual `workflow_dispatch` dry-run path for CI validation and emergency release operations. Manual dispatch defaults to `dry_run=true`; tag pushes publish by default.

@@ -6,11 +6,23 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core' },
+  { name: '@liche/auth', dir: 'packages/extensions/auth' },
+  { name: '@liche/completions', dir: 'packages/extensions/completions' },
+  { name: '@liche/config', dir: 'packages/extensions/config' },
+  { name: '@liche/mcp-installer', dir: 'packages/extensions/mcp-installer' },
+  { name: '@liche/mcp-server', dir: 'packages/extensions/mcp-server' },
+  { name: '@liche/skills-installer', dir: 'packages/extensions/skills-installer' },
+  { name: '@liche/skills-runtime', dir: 'packages/extensions/skills-runtime' },
+  { name: '@liche/telemetry', dir: 'packages/extensions/telemetry' },
+  { name: '@liche/tokens', dir: 'packages/extensions/tokens' },
+  { name: '@liche/agents', dir: 'packages/extensions/agents' },
   { name: '@liche/extensions', dir: 'packages/extensions' },
   { name: '@liche/build', dir: 'packages/build' },
-  { name: '@liche/product', dir: 'packages/product' },
   { name: '@liche/releases', dir: 'packages/releases' },
+  { name: '@liche/product', dir: 'packages/product' },
 ] as const
+
+const PUBLIC_PACKAGE_DIRS = PUBLIC_PACKAGES.map((pkg) => pkg.dir)
 
 const EXPECTED_REPOSITORY_URL = 'https://github.com/mannyc2/liche.git'
 
@@ -187,10 +199,11 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
         ? pass('workflow:tag-trigger', 'publish workflow runs on v* tags')
         : fail('workflow:tag-trigger', 'publish workflow must run on v* tags'),
     )
+    const packageDirsInWorkflow = PUBLIC_PACKAGE_DIRS.every((dir) => workflow.includes(dir))
     checks.push(
-      workflow.includes('packages/core packages/extensions packages/build packages/product packages/releases')
-        ? pass('workflow:public-package-list', 'publish workflow publishes every public package in order')
-        : fail('workflow:public-package-list', 'publish workflow must publish every public package in order'),
+      packageDirsInWorkflow
+        ? pass('workflow:public-package-list', 'publish workflow references every public package directory')
+        : fail('workflow:public-package-list', `publish workflow must include ${PUBLIC_PACKAGE_DIRS.join(', ')}`),
     )
     checks.push(
       workflow.includes('Check tag matches package versions')

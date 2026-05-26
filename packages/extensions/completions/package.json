@@ -1,6 +1,6 @@
 {
   "name": "@liche/completions",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "license": "MIT",
   "description": "Shell completion extension for Liche CLIs.",
@@ -27,10 +27,15 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.4.0"
+    "@liche/core": "^0.5.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "latest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mannyc2/liche.git",
+    "directory": "packages/extensions/completions"
   }
 }

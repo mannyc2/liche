@@ -6,10 +6,20 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core' },
+  { name: '@liche/auth', dir: 'packages/extensions/auth' },
+  { name: '@liche/completions', dir: 'packages/extensions/completions' },
+  { name: '@liche/config', dir: 'packages/extensions/config' },
+  { name: '@liche/mcp-installer', dir: 'packages/extensions/mcp-installer' },
+  { name: '@liche/mcp-server', dir: 'packages/extensions/mcp-server' },
+  { name: '@liche/skills-installer', dir: 'packages/extensions/skills-installer' },
+  { name: '@liche/skills-runtime', dir: 'packages/extensions/skills-runtime' },
+  { name: '@liche/telemetry', dir: 'packages/extensions/telemetry' },
+  { name: '@liche/tokens', dir: 'packages/extensions/tokens' },
+  { name: '@liche/agents', dir: 'packages/extensions/agents' },
   { name: '@liche/extensions', dir: 'packages/extensions' },
   { name: '@liche/build', dir: 'packages/build' },
-  { name: '@liche/product', dir: 'packages/product' },
   { name: '@liche/releases', dir: 'packages/releases' },
+  { name: '@liche/product', dir: 'packages/product' },
 ] as const
 
 const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs'])

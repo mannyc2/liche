@@ -1,6 +1,6 @@
 {
   "name": "@liche/core",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "license": "MIT",
   "description": "Bun-native CLI runtime framework for Liche.",
@@ -19,7 +19,12 @@
       "default": "./src/index.ts"
     }
   },
-  "files": ["src", "README.md", "SKILL.md", "LICENSE"],
+  "files": [
+    "src",
+    "README.md",
+    "SKILL.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -38,10 +43,10 @@
   },
   "devDependencies": {
     "@hughescr/stryker-bun-runner": "^1.2.2",
-    "@liche/config": "workspace:*",
-    "@liche/mcp-server": "workspace:*",
-    "@liche/skills-runtime": "workspace:*",
-    "@liche/tokens": "workspace:*",
+    "@liche/config": "^0.5.0",
+    "@liche/mcp-server": "^0.5.0",
+    "@liche/skills-runtime": "^0.5.0",
+    "@liche/tokens": "^0.5.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "latest",

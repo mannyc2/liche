@@ -1,4 +1,20 @@
-const PUBLIC_PACKAGES = ['@liche/core', '@liche/extensions', '@liche/build', '@liche/product', '@liche/releases'] as const
+const PUBLIC_PACKAGES = [
+  '@liche/core',
+  '@liche/auth',
+  '@liche/completions',
+  '@liche/config',
+  '@liche/mcp-installer',
+  '@liche/mcp-server',
+  '@liche/skills-installer',
+  '@liche/skills-runtime',
+  '@liche/telemetry',
+  '@liche/tokens',
+  '@liche/agents',
+  '@liche/extensions',
+  '@liche/build',
+  '@liche/releases',
+  '@liche/product',
+] as const
 
 type PackageRegistryStatus =
   | {

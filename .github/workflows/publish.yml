@@ -66,7 +66,23 @@ jobs:
           set -euo pipefail
 
           tag_version="${GITHUB_REF_NAME#v}"
-          package_dirs=(packages/core packages/extensions packages/build packages/product packages/releases)
+          package_dirs=(
+            packages/core
+            packages/extensions/auth
+            packages/extensions/completions
+            packages/extensions/config
+            packages/extensions/mcp-installer
+            packages/extensions/mcp-server
+            packages/extensions/skills-installer
+            packages/extensions/skills-runtime
+            packages/extensions/telemetry
+            packages/extensions/tokens
+            packages/extensions/agents
+            packages/extensions
+            packages/build
+            packages/releases
+            packages/product
+          )
 
           for package_dir in "${package_dirs[@]}"; do
             package_version="$(node -p "require('./${package_dir}/package.json').version")"
@@ -81,7 +97,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          package_dirs=(packages/core packages/extensions packages/build packages/product packages/releases)
+          package_dirs=(
+            packages/core
+            packages/extensions/auth
+            packages/extensions/completions
+            packages/extensions/config
+            packages/extensions/mcp-installer
+            packages/extensions/mcp-server
+            packages/extensions/skills-installer
+            packages/extensions/skills-runtime
+            packages/extensions/telemetry
+            packages/extensions/tokens
+            packages/extensions/agents
+            packages/extensions
+            packages/build
+            packages/releases
+            packages/product
+          )
 
           for package_dir in "${package_dirs[@]}"; do
             package_name="$(node -p "require('./${package_dir}/package.json').name")"
@@ -103,7 +135,25 @@ jobs:
             args+=("--dry-run")
           fi
 
-          for package_dir in packages/core packages/extensions packages/build packages/product packages/releases; do
+          package_dirs=(
+            packages/core
+            packages/extensions/auth
+            packages/extensions/completions
+            packages/extensions/config
+            packages/extensions/mcp-installer
+            packages/extensions/mcp-server
+            packages/extensions/skills-installer
+            packages/extensions/skills-runtime
+            packages/extensions/telemetry
+            packages/extensions/tokens
+            packages/extensions/agents
+            packages/extensions
+            packages/build
+            packages/releases
+            packages/product
+          )
+
+          for package_dir in "${package_dirs[@]}"; do
             echo "Publishing ${package_dir}"
             (cd "$package_dir" && npm publish "${args[@]}")
           done

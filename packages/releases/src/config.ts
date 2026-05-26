@@ -132,7 +132,7 @@ export function distConfigFromReleasesConfig(config: ReleasesConfig): ReleaseDis
     },
     metadata: distMetadata,
     host,
-    release: { generatorVersion: '0.4.0' },
+    release: { generatorVersion: '0.5.0' },
   }
   if (config.contract) out.contract = config.contract
   if (config.filenameTemplate) out.filenameTemplate = config.filenameTemplate

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
-const PUBLIC_PACKAGE_VERSION = '0.4.0'
+const PUBLIC_PACKAGE_VERSION = '0.5.0'
 const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
@@ -341,6 +341,7 @@ import * as McpServer from '@liche/mcp-server'
 import * as SkillsInstaller from '@liche/skills-installer'
 import * as SkillsRuntime from '@liche/skills-runtime'
 import * as Telemetry from '@liche/telemetry'
+import * as Tokens from '@liche/tokens'
 import * as Build from '@liche/build'
 import * as Product from '@liche/product'
 import * as Releases from '@liche/releases'
@@ -372,6 +373,7 @@ const modules = {
   '@liche/skills-installer': SkillsInstaller,
   '@liche/skills-runtime': SkillsRuntime,
   '@liche/telemetry': Telemetry,
+  '@liche/tokens': Tokens,
   '@liche/build': Build,
   '@liche/product': Product,
   '@liche/releases': Releases,
