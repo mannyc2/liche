@@ -895,7 +895,7 @@ const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
   generated: { machineOutput: 'envelope' },
-  extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms(), configExtension({ schema: z.strictObject({
+  extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({ schema: z.strictObject({
     'accountId': z.string().optional(),
     'apiBaseUrl': z.string().default("https://api.cloudflare.test"),
   }), sources: [files({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], scopes: { project: { discoverUpwards: true }, user: { xdg: true } } })] }), configDoctor(), telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, env: () => process.env, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })],
@@ -904,9 +904,6 @@ const cli = defineCli({
       path: ['script', 'list'],
       summary: 'List Worker scripts',
       examples: [{ command: 'workers script list --json' }],
-      effects: { kind: 'read', idempotent: true },
-      policy: { dangerous: false, requiresConfirmation: false, conformanceEligible: true },
-      auth: { required: false, status: 'not-required', requiredPermissions: ['workers:read'], requiredScopes: ['workers.read'] },
       input: {
         options: z.object({}),
       },
@@ -915,7 +912,6 @@ const cli = defineCli({
         'id': z.string(),
         'name': z.string(),
       })),
-      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: true, readOnly: true },
       async run({ ctx }) {
         const remoteBaseUrl = ctx.sources.value('config', 'apiBaseUrl')
         if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {
@@ -942,7 +938,6 @@ const cli = defineCli({
             'name': z.string(),
           })),
           env: ctx.env as Record<string, string | undefined>,
-          requiredPermissions: ['workers:read'],
         })
         return ctx.ok(data, { execution: { mode: 'remote-http', source: remoteBaseUrlSource } })
       },
@@ -951,9 +946,6 @@ const cli = defineCli({
       path: ['deploy'],
       summary: 'Deploy a Worker',
       examples: [{ command: 'workers deploy --entrypoint src/index.ts --environment preview --json' }],
-      effects: { kind: 'exec', idempotent: false },
-      policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: false },
-      auth: { required: false, status: 'not-required', requiredPermissions: ['workers:edit'], requiredScopes: ['workers.edit'] },
       input: {
         options: z.object({
           'entrypoint': z.string(),
@@ -964,7 +956,6 @@ const cli = defineCli({
         'deployment_id': z.string(),
         'url': z.string().optional(),
       }),
-      safety: { auth: 'none', destructive: true, idempotent: false, interactive: 'never', openWorld: true, readOnly: false },
       async run({ ctx }) {
         const data = await deploy(ctx.options)
         return ctx.ok(data, { execution: { mode: 'hybrid-workflow', source: 'schema-default' } })
@@ -981,7 +972,6 @@ const cli = defineCli({
       output: z.object({
         'url': z.string(),
       }),
-      safety: { auth: 'none', destructive: false, idempotent: false, interactive: 'never', openWorld: false, readOnly: false },
       async run({ ctx }) {
         const data = await dev(ctx.options)
         return ctx.ok(data, { execution: { mode: 'local', source: 'schema-default' } })
@@ -992,7 +982,6 @@ const cli = defineCli({
       summary: 'Run local installation and PATH diagnostics.',
       input: { env: z.object({ 'PATH': z.string().optional() }) },
       output: z.unknown(),
-      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
       async run({ ctx }) {
         const local = await runGeneratedLocalDoctor({
           cliName: PRODUCT_ID,
@@ -1007,21 +996,18 @@ const cli = defineCli({
       path: ['catalog'],
       summary: 'Print the generated local catalog artifact.',
       output: z.unknown(),
-      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
       run() { return GENERATED_CATALOG },
     }),
     defineCommand({
       path: ['notices'],
       summary: 'Print static update, channel, and yank notices.',
       output: z.unknown(),
-      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
       run() { return STATIC_NOTICES },
     }),
     defineCommand({
       path: ['release'],
       summary: 'Print static release, install, update, and channel metadata.',
       output: z.unknown(),
-      safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
       run() { return STATIC_RELEASE },
     }),
   ],

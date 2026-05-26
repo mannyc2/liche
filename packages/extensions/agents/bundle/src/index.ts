@@ -11,11 +11,13 @@ export type AgentsOptions = {
   skill?: SkillDefinition | undefined
 }
 
+const AGENT_HELPER_COMMANDS = ['mcp add', 'skills add', 'skills list']
+
 export function agents(options: AgentsOptions = {}): CliExtension {
   const installer = mcpInstaller({ command: options.command })
-  const server = mcpServer()
+  const server = mcpServer({ tools: { exclude: AGENT_HELPER_COMMANDS } })
   const skills = skillsInstaller({ skill: options.skill })
-  const runtime = skillsRuntime()
+  const runtime = skillsRuntime({ commands: { exclude: AGENT_HELPER_COMMANDS } })
   const tk = tokens()
   return defineExtension({
     id: 'liche.agents',

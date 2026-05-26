@@ -7,11 +7,10 @@ import type {
   NormalizedPermission,
 } from '../../catalog/types.js'
 import {
-  hasHttpTransport,
   neededContexts,
   needsAuthResolution,
 } from './predicates.js'
-import { q, renderEffects, renderPolicy, renderRuntimeValue, renderSafety, renderStringArray } from './render.js'
+import { q, renderRuntimeValue, renderStringArray } from './render.js'
 
 export function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
   const sources = auth.tokenSources
@@ -185,11 +184,8 @@ export function renderAuthCapability(indent: string, catalog: Catalog, cap: Comm
   const lines: string[] = []
   lines.push(`${indent}defineCommand({`)
   lines.push(`${indent}  path: ${renderStringArray(cap.command)},`)
-  if (!cap.surfaces.agent) lines.push(`${indent}  interactive: true,`)
+  if (cap.id === 'auth.login') lines.push(`${indent}  interactive: true,`)
   lines.push(`${indent}  summary: ${q(cap.summary)},`)
-  if (cap.effects) lines.push(`${indent}  effects: ${renderEffects(cap.effects)},`)
-  if (cap.policy) lines.push(`${indent}  policy: ${renderPolicy(cap.policy)},`)
-  lines.push(`${indent}  safety: ${renderSafety(cap, hasHttpTransport(cap), needsAuthResolution(cap))},`)
   lines.push(`${indent}  input: {`)
   if (cap.id === 'auth.switch') {
     lines.push(`${indent}    options: ${renderSwitchOptions(catalog.contexts, `${indent}    `)},`)
@@ -200,9 +196,6 @@ export function renderAuthCapability(indent: string, catalog: Catalog, cap: Comm
   }
   lines.push(`${indent}  },`)
   lines.push(`${indent}  output: ${renderAuthOutputSchema(cap.id)},`)
-  if (cap.id === 'auth.whoami') {
-    lines.push(`${indent}  auth: { required: false, status: 'requires-runtime-resolution', providerId: AUTH_PROVIDER.id },`)
-  }
   lines.push(`${indent}  async run({ ctx }) {`)
   lines.push(`${indent}    const sessionStore = createFileSessionStore()`)
   lines.push(`${indent}    const profile = typeof ctx.options.profile === 'string' ? ctx.options.profile : undefined`)

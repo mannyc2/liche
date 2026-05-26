@@ -1,8 +1,9 @@
 import type { CliState, ServeOptions } from '@liche/core'
 import { mcpParseError } from './json-rpc.js'
 import { mcpMessage } from './protocol.js'
+import type { McpToolPolicy } from './protocol.js'
 
-export async function serveMcp(binaryName: string, state: CliState, options: ServeOptions = {}): Promise<void> {
+export async function serveMcp(binaryName: string, state: CliState, options: ServeOptions = {}, policy: McpToolPolicy = {}): Promise<void> {
   const out = options.stdout ?? ((s: string) => void Bun.stdout.write(s))
   const stdin = (options.stdin ?? Bun.stdin.stream()) as AsyncIterable<string | Uint8Array>
   const decoder = new TextDecoder()
@@ -11,7 +12,7 @@ export async function serveMcp(binaryName: string, state: CliState, options: Ser
   async function emit(line: string) {
     if (!line.trim()) return
     try {
-      const response = await mcpMessage(binaryName, state, JSON.parse(line))
+      const response = await mcpMessage(binaryName, state, JSON.parse(line), policy)
       if (response) out(`${JSON.stringify(response)}\n`)
     } catch {
       out(`${JSON.stringify(mcpParseError())}\n`)

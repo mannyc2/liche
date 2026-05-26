@@ -10,11 +10,9 @@ import type { JsonSchemaNode } from '../../types.js'
 import {
   renderAuthCapability,
   renderAuthPreamble,
-  requiredScopesFor,
 } from './auth.js'
 import { parseHandler } from './imports.js'
 import {
-  capabilityHasAuthMetadata,
   hasHttpTransport,
   isAuthCommand,
   missingRemoteError,
@@ -26,12 +24,9 @@ import {
 } from './predicates.js'
 import {
   q,
-  renderEffects,
   renderExamples,
   renderHttpBind,
-  renderPolicy,
   renderRuntimeValue,
-  renderSafety,
   renderSchema,
   renderStringArray,
 } from './render.js'
@@ -58,16 +53,21 @@ export function renderCli(catalog: Catalog): string[] {
 }
 
 function renderExtensionDeclarations(catalog: Catalog): string[] {
+  const agentCommands = renderStringArray(
+    catalog.capabilities
+      .filter((capability) => capability.surfaces.cli && capability.surfaces.agent)
+      .map((capability) => capability.command.join(' ')),
+  )
   const extensions: string[] = [
     'help()',
     'version()',
     'outputControls({ json: true, fullOutput: true, filterOutput: true })',
     'reflectionControls({ schema: true })',
-    'llms()',
+    `llms({ commands: { include: ${agentCommands} } })`,
   ]
   if (needsTokens(catalog)) extensions.push('tokens()')
   if (needsAuthExtension(catalog)) extensions.push('authExtension()')
-  if (needsMcpServer(catalog)) extensions.push('mcpServer()')
+  if (needsMcpServer(catalog)) extensions.push(`mcpServer({ tools: { include: ${agentCommands} } })`)
   if (catalog.config) {
     extensions.push(renderConfigExtension(catalog))
     extensions.push('configDoctor()')
@@ -88,13 +88,9 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   lines.push(`${indent}  summary: ${q(cap.summary)},`)
   if (cap.description) lines.push(`${indent}  description: ${q(cap.description)},`)
   if (cap.examples.length > 0) lines.push(`${indent}  examples: ${renderExamples(cap.examples)},`)
-  if (cap.effects) lines.push(`${indent}  effects: ${renderEffects(cap.effects)},`)
-  if (cap.policy) lines.push(`${indent}  policy: ${renderPolicy(cap.policy)},`)
   const inputSchema = capabilityInputSchema(catalog, cap)
   const outputSchema = capabilityOutputSchema(catalog, cap)
   const envSchema = capabilityEnvSchema(catalog, cap)
-  const authMetadata = renderCommandAuthMetadata(catalog, cap)
-  if (authMetadata) lines.push(`${indent}  auth: ${authMetadata},`)
   const optionSources = capabilityOptionSources(cap)
   lines.push(`${indent}  input: {`)
   if (envSchema) lines.push(`${indent}    env: ${renderSchema(envSchema, `${indent}    `)},`)
@@ -102,7 +98,6 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   lines.push(`${indent}    options: ${renderSchema(inputSchema, `${indent}    `)},`)
   lines.push(`${indent}  },`)
   lines.push(`${indent}  output: ${renderSchema(outputSchema, `${indent}  `)},`)
-  lines.push(`${indent}  safety: ${renderSafety(cap, hasHttpTransport(cap), needsAuthResolution(cap))},`)
   lines.push(`${indent}  async run({ ctx }) {`)
   lines.push(...renderCapabilityRun(`${indent}    `, catalog, cap))
   lines.push(`${indent}  },`)
@@ -142,7 +137,7 @@ function renderRemoteCall(
     ? `{ ...(ctx.options as Record<string, unknown>), ...context }`
     : `ctx.options as Record<string, unknown>`
   const authExpr = needsAuthResolution(cap)
-    ? `credential ? { kind: 'resolved', credential } : { kind: 'none' }`
+    ? `credential ? credentialHttpAuth(credential, { requiredPermissions: ${renderStringArray(cap.requires.permissions)} }) : { kind: 'none' }`
     : `{ kind: 'none' }`
   return [
     ...preamble,
@@ -158,7 +153,6 @@ function renderRemoteCall(
     `${indent}  inputFields: ${renderStringArray(remoteInputFieldNames(catalog, cap))},`,
     `${indent}  output: ${renderSchema(capabilityOutputSchema(catalog, cap), `${indent}  `)},`,
     `${indent}  env: ctx.env as Record<string, string | undefined>,`,
-    ...(cap.requires.permissions.length > 0 ? [`${indent}  requiredPermissions: ${renderStringArray(cap.requires.permissions)},`] : []),
     `${indent}})`,
     `${indent}return ctx.ok(data, { execution: { mode: 'remote-http', source: ${remote.source} } })`,
   ]
@@ -263,36 +257,6 @@ function shapeToJsonSchema(catalog: Catalog, shape: NormalizedShape): JsonSchema
     )
   }
   return resolved.jsonSchema
-}
-
-function renderCommandAuthMetadata(catalog: Catalog, cap: Capability): string | undefined {
-  if (!capabilityHasAuthMetadata(cap)) return undefined
-  const status =
-    cap.requires.auth || cap.requires.contexts.length > 0
-      ? 'requires-runtime-resolution'
-      : 'not-required'
-  const fields = [
-    `required: ${cap.requires.auth ? 'true' : 'false'}`,
-    `status: ${q(status)}`,
-  ]
-  if (cap.requires.auth && catalog.auth.kind !== 'none') {
-    fields.push(`providerId: ${q(catalog.auth.id)}`)
-    fields.push(`envVars: ${renderStringArray(catalog.auth.tokenSources.flatMap((s) => s.kind === 'env' ? [s.envVar] : []))}`)
-  }
-  const contexts = cap.requires.contexts.map((ctxId) => {
-    const ctx = catalog.contexts.find((c) => c.id === ctxId)
-    const parts = [`id: ${q(ctxId)}`]
-    if (ctx?.select.flag) parts.push(`flag: ${q(ctx.select.flag)}`)
-    if (ctx?.select.env) parts.push(`envVar: ${q(ctx.select.env)}`)
-    return `{ ${parts.join(', ')} }`
-  })
-  if (contexts.length > 0) fields.push(`contexts: [${contexts.join(', ')}]`)
-  if (cap.requires.permissions.length > 0) {
-    fields.push(`requiredPermissions: ${renderStringArray(cap.requires.permissions)}`)
-  }
-  const requiredScopes = requiredScopesFor(catalog.permissions, cap)
-  if (requiredScopes.length > 0) fields.push(`requiredScopes: ${renderStringArray(requiredScopes)}`)
-  return `{ ${fields.join(', ')} }`
 }
 
 function inputFieldNames(catalog: Catalog, cap: Capability): string[] {

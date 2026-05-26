@@ -94,10 +94,10 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z')
     expect(source).toContain(`import { llms } from '@liche/agents'`)
-    expect(source).toContain(`import { auth as authExtension, createFileSessionStore, detectInvocation, resolveAuth, resolveContext } from '@liche/auth'`)
+    expect(source).toContain(`import { auth as authExtension, createFileSessionStore, credentialHttpAuth, detectInvocation, resolveAuth, resolveContext } from '@liche/auth'`)
     expect(source).toContain(`import { mcpServer } from '@liche/mcp-server'`)
     expect(source).toContain(`import { tokens } from '@liche/tokens'`)
-    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms(), tokens(), authExtension(), mcpServer()],`)
+    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: ['purge'] } }), tokens(), authExtension(), mcpServer({ tools: { include: ['purge'] } })],`)
     expect(source).not.toContain(`globals: [`)
   })
 
@@ -145,8 +145,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('const headers = new Headers()')
     expect(source).toContain(`const data = await callHttpOperation({`)
     expect(source).toContain(`baseUrl: { envVar: 'ACME_API_BASE_URL' },`)
-    expect(source).toContain(`auth: credential ? { kind: 'resolved', credential } : { kind: 'none' },`)
-    expect(source).toContain(`requiredPermissions: ['cache:write'],`)
+    expect(source).toContain(`auth: credential ? credentialHttpAuth(credential, { requiredPermissions: ['cache:write'] }) : { kind: 'none' },`)
     expect(source).not.toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
   })
 
@@ -157,12 +156,10 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('process.env.ACME_TOKEN')
   })
 
-  test('generated command metadata exposes auth requirements without secrets for agent/MCP surfaces', () => {
+  test('generated command metadata does not expose auth requirements through core command contracts', () => {
     const source = generate(workersAuthProduct)
-    expect(source).toContain(`auth: { required: true, status: 'requires-runtime-resolution', providerId: 'acme'`)
-    expect(source).toContain(`envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN']`)
-    expect(source).toContain(`requiredPermissions: ['cache:write']`)
-    expect(source).toContain(`requiredScopes: ['cache.write']`)
+    expect(source).not.toContain(`auth: { required: true, status: 'requires-runtime-resolution'`)
+    expect(source).not.toContain(`envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN']`)
     expect(source).not.toContain('tok-runtime')
   })
 
@@ -493,37 +490,25 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     expect(JSON.stringify(body)).not.toContain('tok-runtime')
   })
 
-  test('--llms --json command manifest includes non-secret auth requirements for agent planning', async () => {
+  test('--llms --json command manifest does not expose core auth metadata', async () => {
     const { stdout, exitCode } = await runGenerated(['--llms', '--json'])
     expect(exitCode).toBe(0)
     const manifest = JSON.parse(stdout)
     const purge = manifest.commands.find((c: { name: string }) => c.name === 'purge')
-    expect(purge.auth).toMatchObject({
-      required: true,
-      status: 'requires-runtime-resolution',
-      providerId: 'acme',
-      envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN'],
-      requiredPermissions: ['cache:write'],
-      requiredScopes: ['cache.write'],
-    })
-    expect(JSON.stringify(purge.auth)).not.toContain('tok-runtime')
+    expect(purge).toBeDefined()
+    expect(purge.auth).toBeUndefined()
+    expect(JSON.stringify(purge)).not.toContain('tok-runtime')
   })
 
-  test('MCP tools/list includes the same non-secret auth requirements', async () => {
+  test('MCP tools/list does not expose core auth metadata', async () => {
     const request = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
     const { stdout, exitCode } = await runGenerated(['--mcp'], {}, asyncIter([`${request}\n`]))
     expect(exitCode).toBe(0)
     const response = JSON.parse(stdout.trim())
     const purge = response.result.tools.find((tool: { name: string }) => tool.name === 'purge')
-    expect(purge.auth).toMatchObject({
-      required: true,
-      status: 'requires-runtime-resolution',
-      providerId: 'acme',
-      envVars: ['ACME_TOKEN', 'ACME_CI_TOKEN'],
-      requiredPermissions: ['cache:write'],
-      requiredScopes: ['cache.write'],
-    })
-    expect(JSON.stringify(purge.auth)).not.toContain('tok-runtime')
+    expect(purge).toBeDefined()
+    expect(purge.auth).toBeUndefined()
+    expect(JSON.stringify(purge)).not.toContain('tok-runtime')
   })
 
   test('generated OAuth login/whoami/switch/logout round-trip through file sessions', async () => {

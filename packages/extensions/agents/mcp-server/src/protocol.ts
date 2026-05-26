@@ -14,7 +14,12 @@ import { isRecord, jsonRpcError, validateJsonRpc } from './json-rpc.js'
 
 export const MCP_PROTOCOL_VERSION = '2025-11-25'
 
-export async function mcpMessage(binaryName: string, state: CliState, message: any) {
+export type McpToolPolicy = {
+  include?: readonly string[] | undefined
+  exclude?: readonly string[] | undefined
+}
+
+export async function mcpMessage(binaryName: string, state: CliState, message: any, policy: McpToolPolicy = {}) {
   const protocol = validateJsonRpc(message)
   if (!protocol.ok) return protocol.response
   if (protocol.notification) return undefined
@@ -41,8 +46,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
   }
 
   if (message?.method === 'tools/list') {
-    const tools = mcpCommandContracts(state).map((command: any) => ({
-      ...(command.auth ? { auth: command.auth } : undefined),
+    const tools = mcpCommandContracts(state, policy).map((command: any) => ({
       description: command.description,
       inputSchema: {
         additionalProperties: false,
@@ -81,7 +85,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       return jsonRpcError(id, -32600, 'Invalid Request')
     }
     const { name: toolName, arguments: input = {} } = message.params
-    const canonical = mcpCommandContracts(state).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
+    const canonical = mcpCommandContracts(state, policy).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
     const path = !canonical || canonical === '(root)' ? [] : canonical.split(' ')
     const selected = canonical ? selectCommand(state, path) : undefined
     const selectedToolName = selected?.path.length ? mcpToolName(selected.path.join(' ')) : '(root)'
@@ -144,8 +148,17 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
   return { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } }
 }
 
-function mcpCommandContracts(state: CliState) {
-  return collectCommandContracts(state.commands, state.root).filter((command) => !command.interactive)
+function mcpCommandContracts(state: CliState, policy: McpToolPolicy) {
+  return collectCommandContracts(state.commands, state.root).filter((command) => isToolVisible(command, policy))
+}
+
+function isToolVisible(command: { interactive?: boolean | undefined; name: string }, policy: McpToolPolicy): boolean {
+  if (command.interactive) return false
+  const path = command.name
+  const tool = mcpToolName(command.name)
+  if (policy.include && !policy.include.some((value) => value === path || value === tool)) return false
+  if (policy.exclude?.some((value) => value === path || value === tool)) return false
+  return true
 }
 
 async function emitMcpLifecycle(

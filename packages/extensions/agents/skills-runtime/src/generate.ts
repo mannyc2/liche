@@ -1,7 +1,12 @@
 import type { CliState, CommandContract } from '@liche/core'
-import { collectCommandContracts, manifest } from '@liche/core'
+import { collectCommandContracts, manifest, mcpToolName } from '@liche/core'
 
-export function skillMarkdown(name: string, state: CliState): string {
+export type SkillCommandPolicy = {
+  include?: readonly string[] | undefined
+  exclude?: readonly string[] | undefined
+}
+
+export function skillMarkdown(name: string, state: CliState, policy: SkillCommandPolicy = {}): string {
   if (state.def.skill?.markdown) return state.def.skill.markdown
 
   const data = manifest(name, state)
@@ -18,7 +23,7 @@ export function skillMarkdown(name: string, state: CliState): string {
     '## Commands',
   ]
 
-  for (const command of skillCommandContracts(state)) {
+  for (const command of skillCommandContracts(state, policy)) {
     lines.push('', `### ${command.name}`, command.description ?? '', '', code(name, command.name))
     const schema = command.schema as any
     const optionsSchema = schema?.options
@@ -39,15 +44,24 @@ export function skillMarkdown(name: string, state: CliState): string {
   return lines.join('\n')
 }
 
-export function skillIndex(name: string, state: CliState): string {
+export function skillIndex(name: string, state: CliState, policy: SkillCommandPolicy = {}): string {
   if (state.def.skill?.index) return state.def.skill.index
 
-  const commands = skillCommandContracts(state)
+  const commands = skillCommandContracts(state, policy)
   return [`# ${name}`, state.def.description ?? '', '', ...commands.map((command) => `- ${command.name}: ${command.description ?? ''}`)].join('\n')
 }
 
-function skillCommandContracts(state: CliState): CommandContract[] {
-  return collectCommandContracts(state.commands, state.root).filter((command) => !command.interactive)
+function skillCommandContracts(state: CliState, policy: SkillCommandPolicy): CommandContract[] {
+  return collectCommandContracts(state.commands, state.root).filter((command) => isSkillVisible(command, policy))
+}
+
+function isSkillVisible(command: CommandContract, policy: SkillCommandPolicy): boolean {
+  if (command.interactive) return false
+  const name = command.name
+  const tool = mcpToolName(command.name)
+  if (policy.include && !policy.include.some((value) => value === name || value === tool)) return false
+  if (policy.exclude?.some((value) => value === name || value === tool)) return false
+  return true
 }
 
 function renderExamples(name: string, command: CommandContract): string[] {
