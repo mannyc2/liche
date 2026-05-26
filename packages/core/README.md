@@ -4,7 +4,7 @@ Bun-native CLI runtime for handwritten and generated Liche CLIs.
 
 This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; the current package format does not ship `dist` or declaration artifacts.
 
-Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, JSON/JSONL/YAML/Markdown output envelopes, serializable command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skill installers, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
+Use `@liche/core` when you want to own the command implementation directly and still get typed parsing, JSON/JSONL/YAML/Markdown/CSV output envelopes, serializable command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skill installers, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
 
 ```ts
 import { defineCli, defineCommand, z } from "@liche/core";
@@ -48,7 +48,7 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 - `callHttpOperation()` is the shared outbound HTTP transport for remote commands.
 - `secret()` and `applyAuth()` are low-level redaction and already-resolved auth/header primitives.
 
-Core output renderers are `json`, `jsonl`, `yaml`, and `md`. Additional renderers register through `CliExtension.outputRenderers`; expose them deliberately with `outputControls({ format: true, formats: ["json", "custom"] })`.
+Core output renderers are `json`, `jsonl`, `yaml`, `md`, and `csv`. Additional renderers register through `CliExtension.outputRenderers`; expose them deliberately with `outputControls({ format: true, formats: ["json", "custom"] })`.
 
 ## Command Handlers
 

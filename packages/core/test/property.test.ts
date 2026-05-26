@@ -30,4 +30,21 @@ describe('property tests', () => {
     )
   })
 
+  test('csv formatter escapes scalar strings as parseable single-column rows', () => {
+    const singleLine = fc.string().filter((value) => !/[\n\r]/.test(value))
+    fc.assert(
+      fc.property(fc.array(singleLine, { maxLength: 20 }), (items) => {
+        const lines = format(items, 'csv').split('\n')
+        const rows = lines.length === 1 && lines[0] === '' ? [] : lines
+        expect(rows[0]).toBe(items.length === 0 ? undefined : 'value')
+        expect(rows.slice(1).map(parseSingleCsvCell)).toEqual(items)
+      }),
+    )
+  })
 })
+
+function parseSingleCsvCell(cell: string): string {
+  if (!cell.startsWith('"')) return cell
+  expect(cell.endsWith('"')).toBe(true)
+  return cell.slice(1, -1).replaceAll('""', '"')
+}

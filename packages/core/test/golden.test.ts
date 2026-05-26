@@ -26,7 +26,7 @@ Options:
 Global Options:
   --help, -h
   --version
-  --format <json|yaml|md|jsonl>
+  --format <json|yaml|md|jsonl|csv>
   --json
   --full-output
   --filter-output <paths>
@@ -62,7 +62,7 @@ Commands:
 Global Options:
   --help, -h
   --version
-  --format <json|yaml|md|jsonl>
+  --format <json|yaml|md|jsonl|csv>
   --json
   --full-output
   --filter-output <paths>
@@ -84,7 +84,7 @@ Commands:
 Global Options:
   --help, -h
   --version
-  --format <json|yaml|md|jsonl>
+  --format <json|yaml|md|jsonl|csv>
   --json
   --full-output
   --filter-output <paths>

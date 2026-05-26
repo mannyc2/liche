@@ -71,7 +71,7 @@ Core owns a generic final-value rendering phase after command execution and outp
 Runtime guarantees:
 
 - `json` is the default built-in output renderer.
-- `json`, `jsonl`, `yaml`, and `md` are first-party built-in renderers.
+- `json`, `jsonl`, `yaml`, `md`, and `csv` are first-party built-in renderers.
 - Custom renderers receive only the final value and an `OutputRenderContext`; they do not parse argv, load config, mutate command inputs, or own result-envelope selection.
 - Duplicate custom renderer names fail during CLI creation. A custom renderer may deliberately replace a built-in renderer name, including `json`.
 - Installing a renderer does not install a global flag. The CLI still opts into `--json` and `--format` through `outputControls()`.

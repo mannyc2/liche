@@ -323,7 +323,7 @@ describe('renderHelp — global sections always present', () => {
     const cli = cliWith('run', { run: () => ({}) })
     const help = renderHelp('app', stateOf(cli))
     expect(help).toContain('Global Options:')
-    expect(help).toContain('--format <json|yaml|md|jsonl>')
+    expect(help).toContain('--format <json|yaml|md|jsonl|csv>')
     expect(help).toContain('--help, -h')
     expect(help).toContain('--version')
   })

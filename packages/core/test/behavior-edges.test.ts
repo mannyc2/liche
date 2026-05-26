@@ -190,6 +190,16 @@ describe('format, filter, CTA, and schema behavior', () => {
     expect(Formatter.format('plain', 'md')).toBe('plain')
     expect(Formatter.format({ ok: true }, 'md')).toBe('```json\n{\n  "ok": true\n}\n```')
     expect(Formatter.format({ ok: true }, 'yaml')).toBe('ok: true')
+    expect(Formatter.format([{ id: 1, name: 'Ada' }, { id: 2, name: 'Grace' }], 'csv')).toBe('id,name\n1,Ada\n2,Grace')
+  })
+
+  test('CSV formatter preserves headers and escapes cells', () => {
+    expect(
+      Formatter.format([
+        { id: 1, name: 'Ada, "Countess"', active: true },
+        { id: 2, note: 'line\nbreak', tags: ['math', 'code'] },
+      ], 'csv'),
+    ).toBe('id,name,active,note,tags\n1,"Ada, ""Countess""",true,,\n2,,,"line\nbreak","[""math"",""code""]"')
   })
 })
 

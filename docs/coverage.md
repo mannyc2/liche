@@ -37,6 +37,7 @@ See [env-vars.md](./env-vars.md) for the env var contract, [config-primitive.md]
 | FMT-001 | Formatter default | Formatter output defaults to JSON. | `formatter-default.test.ts` | Defaulting to a non-JSON plugin renderer. |
 | FMT-002 | JSONL | JSONL output is one valid JSON value per line. | `property.test.ts` | Joining with commas or pretty JSON. |
 | FMT-003 | Output renderers | Extension-provided output renderers can be selected by `--format`, and `--json` resolves through the same renderer registry. | `define-extension.test.ts` | Special-casing JSON outside the renderer primitive or installing renderer globals implicitly. |
+| FMT-006 | CSV | CSV output renders record arrays with a stable union header, scalar rows with `value`, and RFC-style comma/quote/newline escaping. | `behavior-edges.test.ts`, `property.test.ts` | Dumping JSON as one cell, dropping later record keys, or failing to escape CSV cells. |
 | HTTP-001 | Fetch | `cli.fetch()` dispatches URL path segments and query/body options. | `contract.test.ts` | Ignoring query params or not wrapping results. |
 | SCHEMA-001 | Schema | When `reflectionControls({ schema: true })` is installed, `--schema` is generated from Zod schemas. | `contract.test.ts` | Hand-written schema snapshots or implicit Core schema flags. |
 | LLM-001 | LLM index | When `llms()` from `@liche/agents` is installed, `--llms` emits a markdown command index unless format is explicit. | `golden.test.ts`, `agents.test.ts` | Formatting the index as JSON by default or leaving the flag implicit in Core. |
@@ -125,6 +126,7 @@ Maps the behavior cases above to the tests that exercise them in the current imp
 | FMT-001 formatter default | behavior cases | test/formatter-default.test.ts | Formatter output defaults to JSON | behavior plan | non-JSON plugin renderer becomes the default |
 | FMT-002 JSONL line contract | behavior cases | test/property.test.ts | jsonl formatter produces one parseable JSON value per input element | fast-check property | JSONL joined with commas or pretty JSON |
 | FMT-003 renderer registry | behavior cases | test/define-extension.test.ts | extension renderers can be selected by --format and --json uses the registry | public extension primitive | JSON bypasses output renderers |
+| FMT-006 CSV table contract | behavior cases | test/behavior-edges.test.ts | CSV formatter preserves headers and escapes cells | CSV escaping examples | headers drop sparse keys or comma, quote, and newline cells are not escaped |
 | HTTP-001 fetch dispatch | behavior cases | test/contract.test.ts | fetch dispatches HTTP paths to commands and returns an envelope | behavior plan | query params ignored |
 | SCHEMA-001 Zod JSON schema | behavior cases | test/contract.test.ts | schema output is generated from Zod, not hand-written fixtures | Zod | hand-written schema snapshot |
 | OUT-001 output validation | behavior cases | test/contract.test.ts | output validation rejects handler results that do not match the output schema | Zod | output validation skipped |
