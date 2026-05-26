@@ -43,6 +43,10 @@ export function needsMcpServer(catalog: Catalog): boolean {
   return catalog.capabilities.some((cap) => cap.surfaces.agent === true)
 }
 
+export function needsTokens(catalog: Catalog): boolean {
+  return needsMcpServer(catalog)
+}
+
 export function profileEnvVar(productId: string): string {
   return `${productId.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase()}_PROFILE`
 }

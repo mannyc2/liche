@@ -6,6 +6,7 @@ import {
   isAuthCommand,
   needsAuthExtension,
   needsMcpServer,
+  needsTokens,
 } from './predicates.js'
 
 export type ParsedHandler = { module: string; export: string }
@@ -39,6 +40,9 @@ export function renderImports(catalog: Catalog): string[] {
   if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
   const out: string[] = [`import { ${[...coreNames].sort().join(', ')} } from '@liche/core'`]
   out.push(`import { llms } from '@liche/agents'`)
+  if (needsTokens(catalog)) {
+    out.push(`import { tokens } from '@liche/tokens'`)
+  }
   if (needsAuthExtension(catalog)) {
     const authNames = [
       'auth as authExtension',

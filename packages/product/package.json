@@ -48,6 +48,7 @@
     "@liche/skills-installer": "^0.4.0",
     "@liche/skills-runtime": "^0.4.0",
     "@liche/telemetry": "^0.4.0",
+    "@liche/tokens": "^0.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

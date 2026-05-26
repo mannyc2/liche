@@ -41,7 +41,8 @@
     "@liche/mcp-server": "^0.4.0",
     "@liche/skills-installer": "^0.4.0",
     "@liche/skills-runtime": "^0.4.0",
-    "@liche/telemetry": "^0.4.0"
+    "@liche/telemetry": "^0.4.0",
+    "@liche/tokens": "^0.4.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -96,7 +96,8 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).toContain(`import { llms } from '@liche/agents'`)
     expect(source).toContain(`import { auth as authExtension, createFileSessionStore, resolveAuth, resolveContext } from '@liche/auth'`)
     expect(source).toContain(`import { mcpServer } from '@liche/mcp-server'`)
-    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true, tokenCount: true, tokenLimit: true, tokenOffset: true }), reflectionControls({ schema: true }), llms(), authExtension(), mcpServer()],`)
+    expect(source).toContain(`import { tokens } from '@liche/tokens'`)
+    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms(), tokens(), authExtension(), mcpServer()],`)
     expect(source).not.toContain(`globals: [`)
   })
 

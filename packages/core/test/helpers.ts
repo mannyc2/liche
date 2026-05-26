@@ -1,4 +1,5 @@
 import { defineCli, defineCommand, help, outputControls, reflectionControls, version } from '../src/index.js'
+import { tokens } from '@liche/tokens'
 import type {
   CliExtension,
   CliInstance,
@@ -73,7 +74,7 @@ type TestCliDefinition = Omit<CreateOptions, 'name'> & {
   testControls?: boolean
 }
 
-const defaultTestControls = [help(), version(), outputControls(), reflectionControls()]
+const defaultTestControls = [help(), version(), outputControls(), tokens(), reflectionControls()]
 
 export function testCli(
   nameOrDefinition: string | (TestCliDefinition & { name: string }),

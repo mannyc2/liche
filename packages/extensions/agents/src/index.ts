@@ -4,6 +4,7 @@ import { mcpInstaller } from '@liche/mcp-installer'
 import { mcpServer } from '@liche/mcp-server'
 import { skillsInstaller } from '@liche/skills-installer'
 import { skillsRuntime } from '@liche/skills-runtime'
+import { tokens } from '@liche/tokens'
 
 export type AgentsOptions = {
   command?: string | undefined
@@ -15,6 +16,7 @@ export function agents(options: AgentsOptions = {}): CliExtension {
   const server = mcpServer()
   const skills = skillsInstaller({ skill: options.skill })
   const runtime = skillsRuntime()
+  const tk = tokens()
   return defineExtension({
     id: 'liche.agents',
     commands: [
@@ -22,7 +24,8 @@ export function agents(options: AgentsOptions = {}): CliExtension {
       ...(skills.commands ?? []),
     ],
     fetchRoutes: [...(server.fetchRoutes ?? [])],
-    globals: [...(server.globals ?? []), ...(runtime.globals ?? [])],
+    globals: [...(server.globals ?? []), ...(runtime.globals ?? []), ...(tk.globals ?? [])],
+    outputTransforms: [...(tk.outputTransforms ?? [])],
     serveHandlers: [...(server.serveHandlers ?? []), ...(runtime.serveHandlers ?? [])],
     ...(options.skill ? { skill: options.skill } : undefined),
   })

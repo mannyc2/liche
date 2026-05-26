@@ -184,14 +184,12 @@ describe('format, filter, CTA, and schema behavior', () => {
     }
   })
 
-  test('formatters and token helpers preserve output modes and unbounded slices', () => {
+  test('formatters preserve output modes', () => {
     expect(Formatter.format({ ok: true }, 'json')).toBe('{\n  "ok": true\n}')
     expect(Formatter.format([{ id: 1 }, { id: 2 }], 'jsonl')).toBe('{"id":1}\n{"id":2}')
     expect(Formatter.format('plain', 'md')).toBe('plain')
     expect(Formatter.format({ ok: true }, 'md')).toBe('```json\n{\n  "ok": true\n}\n```')
     expect(Formatter.format({ ok: true }, 'yaml')).toBe('ok: true')
-    expect(Formatter.tokenSlice('alpha beta gamma', 1)).not.toContain('[truncated:')
-    expect(Formatter.tokenSlice('alpha beta gamma', 0, 99)).not.toContain('[truncated:')
   })
 })
 

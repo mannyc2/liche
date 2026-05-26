@@ -46,6 +46,7 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
     inputSources: definition.inputSources ? [...definition.inputSources] : [],
     middlewares: definition.middleware ? [...definition.middleware] : [],
     outputRenderers: createOutputRendererRegistry(definition.outputRenderers),
+    outputTransforms: definition.outputTransforms ? [...definition.outputTransforms] : [],
     root,
     serveHandlers: definition.serveHandlers ? [...definition.serveHandlers] : [],
   }
@@ -121,6 +122,10 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...(definition.outputRenderers ?? []),
     ...extensions.flatMap((extension) => [...(extension.outputRenderers ?? [])]),
   ]
+  const outputTransforms = [
+    ...(definition.outputTransforms ?? []),
+    ...extensions.flatMap((extension) => [...(extension.outputTransforms ?? [])]),
+  ]
   const serveHandlers = [
     ...(definition.serveHandlers ?? []),
     ...extensions.flatMap((extension) => [...(extension.serveHandlers ?? [])]),
@@ -145,6 +150,7 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...(inputSources.length ? { inputSources } : undefined),
     ...(middleware.length ? { middleware } : undefined),
     ...(outputRenderers.length ? { outputRenderers } : undefined),
+    ...(outputTransforms.length ? { outputTransforms } : undefined),
     ...(serveHandlers.length ? { serveHandlers } : undefined),
     ...(skill !== undefined ? { skill } : undefined),
   }

@@ -10,7 +10,7 @@ const cli = defineCli({
   extensions: [
     help(),
     version(),
-    outputControls({ json: true, fullOutput: true, filterOutput: true, tokenCount: true, tokenLimit: true, tokenOffset: true }),
+    outputControls({ json: true, fullOutput: true, filterOutput: true }),
     reflectionControls({ schema: true }),
     llms(),
     configExtension({

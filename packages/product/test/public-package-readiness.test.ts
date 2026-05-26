@@ -20,6 +20,7 @@ const PUBLIC_PACKAGES = [
   { name: '@liche/skills-installer', dir: 'packages/extensions/skills-installer', bin: undefined },
   { name: '@liche/skills-runtime', dir: 'packages/extensions/skills-runtime', bin: undefined },
   { name: '@liche/telemetry', dir: 'packages/extensions/telemetry', bin: undefined },
+  { name: '@liche/tokens', dir: 'packages/extensions/tokens', bin: undefined },
   { name: '@liche/build', dir: 'packages/build', bin: 'liche-build' },
   { name: '@liche/product', dir: 'packages/product', bin: 'liche-product' },
   { name: '@liche/releases', dir: 'packages/releases', bin: 'liche-release' },
@@ -90,6 +91,9 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'resolveContext',
     'skillsInstaller',
     'skillsRuntime',
+    'tokenCount',
+    'tokenSlice',
+    'tokens',
   ],
   '@liche/agents': ['agents', 'llms'],
   '@liche/auth': [
@@ -110,6 +114,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
   '@liche/skills-installer': ['skillsInstaller', 'writeSkill'],
   '@liche/skills-runtime': ['skillIndex', 'skillMarkdown', 'skillsRuntime'],
   '@liche/telemetry': ['createLocalTelemetrySink'],
+  '@liche/tokens': ['tokenCount', 'tokenSlice', 'tokens'],
   '@liche/build': [
     'BuildRecordSchema',
     'TARGETS',

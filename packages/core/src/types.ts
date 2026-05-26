@@ -500,6 +500,7 @@ export type CliExtension = {
   inputSources?: readonly InputSourceProvider[] | undefined
   middleware?: readonly MiddlewareHandler[] | undefined
   outputRenderers?: readonly OutputRenderer[] | undefined
+  outputTransforms?: readonly OutputTransform[] | undefined
   serveHandlers?: readonly ServeHandler[] | undefined
   skill?: SkillDefinition | undefined
 }
@@ -514,6 +515,18 @@ export type ServeHandlerInput = {
 export type ServeHandler = {
   flagKey: string
   handle: (input: ServeHandlerInput) => Promise<void> | void
+}
+
+export type OutputTransformInput = {
+  flags: GlobalFlags
+  format: Format
+  stage: 'result'
+}
+
+export type OutputTransform = {
+  id: string
+  bufferingFlagKeys?: readonly string[] | undefined
+  transform: (text: string, input: OutputTransformInput) => string
 }
 
 export type FetchRouteInput = {
@@ -542,9 +555,6 @@ export type GlobalFlags = {
   profile?: string | undefined
   rest: string[]
   schema?: boolean | undefined
-  tokenCount?: boolean | undefined
-  tokenLimit?: number | undefined
-  tokenOffset?: number | undefined
   version?: boolean | undefined
 }
 
@@ -573,6 +583,7 @@ export type CreateOptions<
   globals?: readonly GlobalInputDefinition[] | undefined
   inputSources?: readonly InputSourceProvider[] | undefined
   outputRenderers?: readonly OutputRenderer[] | undefined
+  outputTransforms?: readonly OutputTransform[] | undefined
   serveHandlers?: readonly ServeHandler[] | undefined
   skill?: SkillDefinition | undefined
   name?: string | undefined
@@ -644,6 +655,7 @@ export type CliState = {
   inputSources: readonly InputSourceProvider[]
   middlewares: MiddlewareHandler[]
   outputRenderers: readonly OutputRenderer[]
+  outputTransforms: readonly OutputTransform[]
   root?: RuntimeEntry | undefined
   serveHandlers: readonly ServeHandler[]
 }

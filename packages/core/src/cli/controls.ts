@@ -12,9 +12,6 @@ export type OutputControlsOptions = {
   formats?: readonly Format[] | undefined
   fullOutput?: boolean | undefined
   json?: boolean | undefined
-  tokenCount?: boolean | undefined
-  tokenLimit?: boolean | undefined
-  tokenOffset?: boolean | undefined
 }
 
 export type ReflectionControlsOptions = {
@@ -56,15 +53,6 @@ export function outputControls(options?: OutputControlsOptions): CliExtension {
   if (enabled(options, 'filterOutput')) {
     globals.push({ expose: 'runtime', flag: 'filter-output', key: 'filterOutput', type: 'string', valueLabel: 'paths' })
   }
-  if (enabled(options, 'tokenCount')) {
-    globals.push({ expose: 'runtime', flag: 'token-count', key: 'tokenCount', type: 'boolean' })
-  }
-  if (enabled(options, 'tokenLimit')) {
-    globals.push({ expose: 'runtime', flag: 'token-limit', key: 'tokenLimit', parse: parseFiniteNumber, type: 'string', valueLabel: 'n' })
-  }
-  if (enabled(options, 'tokenOffset')) {
-    globals.push({ expose: 'runtime', flag: 'token-offset', key: 'tokenOffset', parse: parseFiniteNumber, type: 'string', valueLabel: 'n' })
-  }
 
   return defineExtension({
     id: 'liche.core.output-controls',
@@ -93,12 +81,4 @@ function parseFormat(formatValues: readonly Format[]): (value: string, flag: str
     }
     return value
   }
-}
-
-function parseFiniteNumber(value: string, flag: string): number {
-  const n = Number(value)
-  if (!Number.isFinite(n) || value.trim() === '') {
-    throw new Error(`Invalid value for --${flag}: "${value}"`)
-  }
-  return n
 }

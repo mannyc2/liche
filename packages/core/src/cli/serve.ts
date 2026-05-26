@@ -1,7 +1,7 @@
 import type { CliEvent, CliEventSubscription, CliState, Dict, Format, PrepareContextHook, RunContext, ServeOptions } from '../types.js'
 import { execute } from './execute.js'
 import { isRuntimeResult, ParseError } from '../errors/error.js'
-import { formatCta, pick, renderOutput, tokenCount, tokenSlice } from '../format/index.js'
+import { formatCta, pick, renderOutput } from '../format/index.js'
 import { parseGlobals } from '../parser/index.js'
 import { commandFormat, outputPolicy, selectCommand } from '../command/registry.js'
 import { renderHelp } from '../help/render.js'
@@ -176,7 +176,8 @@ export async function serveCli(
   }
 
   const policy = outputPolicy(selected) ?? state.def.outputPolicy ?? 'all'
-  const streamingEligible = !flags.fullOutput && !flags.filterOutput && !flags.tokenCount && flags.tokenLimit === undefined && !flags.tokenOffset
+  const transformsBuffering = state.outputTransforms.some((t) => (t.bufferingFlagKeys ?? []).some((key) => Boolean(flags[key])))
+  const streamingEligible = !flags.fullOutput && !flags.filterOutput && !transformsBuffering
   let streamed = false
   const chunkFormat: Format = outputFormat === 'jsonl' ? 'jsonl' : outputFormat
 
@@ -217,8 +218,10 @@ export async function serveCli(
   if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
 
   const rendered = renderOutput(data, outputFormat, state.outputRenderers, { stage: 'result' })
-  let text = flags.tokenCount ? String(tokenCount(rendered)) : rendered
-  if (flags.tokenLimit !== undefined || flags.tokenOffset) text = tokenSlice(text, flags.tokenOffset ?? 0, flags.tokenLimit ?? Infinity)
+  let text = rendered
+  for (const transform of state.outputTransforms) {
+    text = transform.transform(text, { flags, format: outputFormat, stage: 'result' })
+  }
 
   const suppressStreamedRecap = streamed && result.ok
   if (!(policy === 'agent-only' && human && result.ok && !flags.fullOutput) && !suppressStreamedRecap) io.out(text.endsWith('\n') ? text : `${text}\n`)

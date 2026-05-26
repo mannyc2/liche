@@ -34,8 +34,6 @@
     "mutate": "stryker run"
   },
   "dependencies": {
-    "tokenx": "^1.3.0",
-    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -43,6 +41,7 @@
     "@liche/config": "workspace:*",
     "@liche/mcp-server": "workspace:*",
     "@liche/skills-runtime": "workspace:*",
+    "@liche/tokens": "workspace:*",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "latest",

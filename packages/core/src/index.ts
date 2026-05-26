@@ -95,6 +95,8 @@ export type {
   OutputRenderContext,
   OutputRenderer,
   OutputRenderStage,
+  OutputTransform,
+  OutputTransformInput,
   PrepareContextHook,
   PrepareContextInput,
   PrepareContextResult,

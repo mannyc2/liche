@@ -8,7 +8,7 @@ See [env-vars.md](./env-vars.md) for the env var contract, [config-primitive.md]
 
 - Keep the public authoring API centered on `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, `middleware()`, and `z`. Command declaration is data-first only; lifecycle events, hooks, and middleware are declared through `defineCli()` data, not fluent instance mutators.
 - Use Bun-native edges for process/runtime work: `Bun.argv`, `Bun.env`, `Bun.file`, `Bun.write`, Bun Shell, Bun stdin/stdout, and `bun:test`.
-- Use small runtime dependencies where they provide concrete feature parity: `zod` for public schema compatibility and JSON Schema conversion, `tokenx` for token count and slicing, `yaml` for config/output stringification.
+- Use small runtime dependencies where they provide concrete feature parity: `zod` for public schema compatibility and JSON Schema conversion, `yaml` for config/output stringification. Token-aware output (`tokenx`) is opt-in via the `@liche/tokens` extension and is auto-included by `@liche/agents`.
 - Keep stdout/stderr channel discipline explicit: stdout carries only the requested output format; stderr carries warnings, CTA blocks, prompts, and human diagnostics.
 - Keep implementation modules small enough for focused review and mutation testing.
 
@@ -135,7 +135,7 @@ Maps the behavior cases above to the tests that exercise them in the current imp
 | EXT-HELPER-001 public helper behavior | audit finding | test/contract.test.ts | first-party helper commands are opt-in and available through public CLI behavior when enabled | behavior plan | helper commands drift from metadata, output format, or opt-in policy |
 | BLD-002 product vocabulary lints | docs/build-system.md | packages/product/test/vocabulary-lints.test.ts | product lints reject vocabulary drift and invalid capability structure | requirement fixture | vocabulary drift or invalid generated-surface inputs accepted |
 | SKILL-001 packaged skill content | behavior cases | test/skill-markdown.test.ts, packages/product/test/cli.test.ts | CLIs can provide authored skill markdown/index and `liche-product skills add` installs the authored guidance | behavior plan + product fixture | generic reflected skill content replaces packaged guidance |
-| TOK-001 tokenx behavior | behavior cases | test/contract.test.ts | token count and token limit use tokenx semantics instead of character length | explicit regression | character count used instead of tokenx |
+| TOK-001 tokenx behavior | behavior cases | packages/extensions/tokens/test/tokens.test.ts | token count and token limit use tokenx semantics instead of character length | explicit regression | character count used instead of tokenx |
 | HTTP-002 fetch body and errors | audit finding | test/contract.test.ts | fetch dispatch merges JSON body options and normalizes not found and validation errors | behavior plan | body options ignored or errors escape envelope |
 | HTTP-003 fetch proxy curl parsing | audit finding | test/behavior-edges.test.ts | parseCurl preserves method, headers, JSON body, and path segments | curl behavior | method/header/body parsing ignored |
 | HTTP-004 fetch proxy responses | audit finding | test/behavior-edges.test.ts | callFetch joins base paths and normalizes text and JSON responses | fetch behavior | base path or non-2xx response mishandled |

@@ -21,6 +21,7 @@ import {
   neededContexts,
   needsAuthExtension,
   needsMcpServer,
+  needsTokens,
   needsAuthResolution,
 } from './predicates.js'
 import {
@@ -63,10 +64,11 @@ function renderExtensionDeclarations(catalog: Catalog): string[] {
   const extensions: string[] = [
     'help()',
     'version()',
-    'outputControls({ json: true, fullOutput: true, filterOutput: true, tokenCount: true, tokenLimit: true, tokenOffset: true })',
+    'outputControls({ json: true, fullOutput: true, filterOutput: true })',
     'reflectionControls({ schema: true })',
     'llms()',
   ]
+  if (needsTokens(catalog)) extensions.push('tokens()')
   if (needsAuthExtension(catalog)) extensions.push('authExtension()')
   if (needsMcpServer(catalog)) extensions.push('mcpServer()')
   if (catalog.config) {

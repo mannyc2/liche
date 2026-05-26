@@ -1,8 +1,6 @@
-import { stringify as yamlStringify } from 'yaml'
 import type { BuiltInFormat, Format, OutputRenderContext, OutputRenderer } from '../types.js'
 
 export { pick } from './filter.js'
-export { tokenCount, tokenSlice } from './tokens.js'
 export { formatCta } from './cta.js'
 
 export const builtInFormatValues = ['json', 'yaml', 'md', 'jsonl'] as const satisfies readonly BuiltInFormat[]
@@ -35,7 +33,7 @@ const yamlRenderer = defineOutputRenderer({
   mediaType: 'application/yaml',
   name: 'yaml',
   render(value) {
-    return yamlStringify(value).trimEnd()
+    return Bun.YAML.stringify(value, null, 2).trimEnd()
   },
 })
 

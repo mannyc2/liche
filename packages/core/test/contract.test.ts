@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { Formatter, middleware, z } from '../src/index.js'
+import { middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '@liche/mcp-server'
 import { mcpServer } from '@liche/mcp-server'
@@ -494,10 +494,4 @@ describe('contract: mcp, completions, and token behavior', () => {
     })
   })
 
-  test('token count and token limit use tokenx semantics instead of character length', () => {
-    const text = 'alpha beta gamma delta'
-
-    expect(Formatter.tokenCount(text)).toBeLessThan(text.length)
-    expect(Formatter.tokenSlice(text, 0, 2)).toContain('[truncated: showing tokens 0-2')
-  })
 })
