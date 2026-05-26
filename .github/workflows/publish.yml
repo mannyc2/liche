@@ -71,13 +71,13 @@ jobs:
             packages/extensions/auth
             packages/extensions/completions
             packages/extensions/config
-            packages/extensions/mcp-installer
-            packages/extensions/mcp-server
-            packages/extensions/skills-installer
-            packages/extensions/skills-runtime
+            packages/extensions/agents/mcp-installer
+            packages/extensions/agents/mcp-server
+            packages/extensions/agents/skills-installer
+            packages/extensions/agents/skills-runtime
             packages/extensions/telemetry
-            packages/extensions/tokens
-            packages/extensions/agents
+            packages/extensions/agents/tokens
+            packages/extensions/agents/bundle
             packages/extensions
             packages/build
             packages/releases
@@ -102,13 +102,13 @@ jobs:
             packages/extensions/auth
             packages/extensions/completions
             packages/extensions/config
-            packages/extensions/mcp-installer
-            packages/extensions/mcp-server
-            packages/extensions/skills-installer
-            packages/extensions/skills-runtime
+            packages/extensions/agents/mcp-installer
+            packages/extensions/agents/mcp-server
+            packages/extensions/agents/skills-installer
+            packages/extensions/agents/skills-runtime
             packages/extensions/telemetry
-            packages/extensions/tokens
-            packages/extensions/agents
+            packages/extensions/agents/tokens
+            packages/extensions/agents/bundle
             packages/extensions
             packages/build
             packages/releases
@@ -140,13 +140,13 @@ jobs:
             packages/extensions/auth
             packages/extensions/completions
             packages/extensions/config
-            packages/extensions/mcp-installer
-            packages/extensions/mcp-server
-            packages/extensions/skills-installer
-            packages/extensions/skills-runtime
+            packages/extensions/agents/mcp-installer
+            packages/extensions/agents/mcp-server
+            packages/extensions/agents/skills-installer
+            packages/extensions/agents/skills-runtime
             packages/extensions/telemetry
-            packages/extensions/tokens
-            packages/extensions/agents
+            packages/extensions/agents/tokens
+            packages/extensions/agents/bundle
             packages/extensions
             packages/build
             packages/releases

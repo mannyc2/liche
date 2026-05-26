@@ -36,6 +36,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/mannyc2/liche.git",
-    "directory": "packages/extensions/mcp-installer"
+    "directory": "packages/extensions/agents/mcp-installer"
   }
 }

@@ -1,9 +1,9 @@
 {
-  "name": "@liche/mcp-server",
+  "name": "@liche/skills-installer",
   "version": "0.6.0",
   "type": "module",
   "license": "MIT",
-  "description": "MCP server runtime extension for Liche CLIs.",
+  "description": "Skill markdown installer extension for Liche CLIs.",
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"
@@ -30,13 +30,12 @@
     "@liche/core": "^0.6.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
     "@types/bun": "latest",
     "typescript": "latest"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/mannyc2/liche.git",
-    "directory": "packages/extensions/mcp-server"
+    "directory": "packages/extensions/agents/skills-installer"
   }
 }

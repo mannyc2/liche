@@ -41,6 +41,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/mannyc2/liche.git",
-    "directory": "packages/extensions/agents"
+    "directory": "packages/extensions/agents/bundle"
   }
 }
