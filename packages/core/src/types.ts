@@ -9,6 +9,7 @@ export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
 export type GlobalInputType = 'boolean' | 'string'
 export type GlobalInputDefinition = {
   alias?: string | undefined
+  default?: boolean | string | undefined
   deprecated?: boolean | string | undefined
   description?: string | undefined
   expose?: 'context' | 'runtime' | undefined
@@ -354,6 +355,7 @@ export type HelpCommand = {
 
 export type HelpGlobal = {
   alias?: string | undefined
+  defaultValue?: string | undefined
   deprecated?: boolean | string | undefined
   description?: string | undefined
   flag: string

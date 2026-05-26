@@ -59,5 +59,11 @@ export function parseGlobals(
     }
   }
 
+  for (const global of registry) {
+    if (flags[global.key] === undefined && global.default !== undefined) {
+      flags[global.key] = global.default
+    }
+  }
+
   return flags
 }

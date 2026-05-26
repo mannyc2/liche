@@ -66,6 +66,33 @@ describe('global input definitions', () => {
     expect(renderHelp('app', stateOf(cli), undefined, ['show'])).toContain('--tenant <id>')
   })
 
+  test('global default fills ctx.global when the flag is absent and renders in help', async () => {
+    const cli = defineCli({
+      name: 'app',
+      extensions: [outputControls({ json: true })],
+      globals: [
+        defineGlobal({ default: 'twitte.sqlite', description: 'Database path', key: 'db', type: 'string', valueLabel: 'path' }),
+      ],
+      commands: [
+        defineCommand({
+          path: ['show'],
+          output: z.object({ db: z.string() }),
+          run: ({ ctx }) => ({ db: String(ctx.global['db']) }),
+        }),
+      ],
+    })
+
+    const fallback = await runCli(cli, ['show', '--json'])
+    expect(parseJsonOutput(fallback.stdout)).toEqual({ db: 'twitte.sqlite' })
+
+    const explicit = await runCli(cli, ['show', '--db', 'custom.sqlite', '--json'])
+    expect(parseJsonOutput(explicit.stdout)).toEqual({ db: 'custom.sqlite' })
+
+    const help = renderHelp('app', stateOf(cli), undefined, ['show'])
+    expect(help).toContain('--db <path>')
+    expect(help).toContain('(default: twitte.sqlite)')
+  })
+
   test('duplicate global flags are rejected before runtime', () => {
     expect(() =>
       defineCli({

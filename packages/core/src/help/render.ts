@@ -193,6 +193,7 @@ function globalFields(state: CliState): HelpGlobal[] {
   const globals = state.globals.filter((global) => !global.hidden)
   return globals.map((global) => ({
     ...(global.alias ? { alias: global.alias } : undefined),
+    ...(global.default !== undefined ? { defaultValue: String(global.default) } : undefined),
     deprecated: global.deprecated,
     description: global.description,
     flag: global.flag,
@@ -206,7 +207,8 @@ function globalLines(globals: readonly HelpGlobal[]): string[] {
     const deprecatedSuffix = global.deprecated
       ? ` ${typeof global.deprecated === 'string' ? `[deprecated: ${global.deprecated}]` : '[deprecated]'}`
       : ''
-    const descriptionText = `${global.description ?? ''}${deprecatedSuffix}`
+    const defaultSuffix = global.defaultValue === undefined ? '' : ` (default: ${global.defaultValue})`
+    const descriptionText = `${global.description ?? ''}${defaultSuffix}${deprecatedSuffix}`
     return descriptionText ? `  ${global.label.padEnd(32)}  ${descriptionText}` : `  ${global.label}`
   })
 }
