@@ -12,6 +12,28 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+### Added
+
+- **`@liche/core`: `defineGlobal({ default })`.** Globals can declare a pre-resolved fallback that populates `ctx.global.<key>` when the flag is absent and renders as `(default: …)` in help. `parse` does not run on the default.
+
+  ```ts
+  defineGlobal({ key: 'db', type: 'string', default: 'twitte.sqlite', valueLabel: 'path' })
+  ```
+
+- **`@liche/core`: per-command output renderers via `defineCommand({ formats })`.** Attach a format-specific render function on a single command without registering a CLI-wide renderer. Runs at the `result` stage when the chosen output format matches; structured formats (`--json`) still route to the registered renderer.
+
+  ```ts
+  defineCommand({
+    path: ['report'],
+    formats: { md: (data) => formatTable(data) },
+    run: () => collectRows(),
+  })
+  ```
+
+- **`@liche/core`: value tokens in the per-command options table.** Non-boolean options render as `--name <name>` in help (matching the usage line). Override the placeholder via zod meta: `z.string().meta({ valueLabel: 'path' })`.
+
+- **`@liche/core`: bare-string shorthand for single-segment command aliases.** `defineCommand({ aliases: ['find', ['s']] })` is accepted alongside the existing nested-array form.
+
 ### Changed
 
 - **`@liche/core`: standard globals are now explicit controls.** Plain `defineCli()` no longer reserves `--help`, `--version`, `--json`, `--format`, `--schema`, `--llms`, or output-slicing flags. Install `help()`, `version()`, `outputControls()`, and `reflectionControls()` for those Core-owned flags.

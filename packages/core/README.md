@@ -39,10 +39,10 @@ if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 
 ## Runtime Surfaces
 
-- `defineCli()` and `defineCommand()` define serializable command graphs for CLI, JSON, MCP, and command-contract surfaces.
-- `defineGlobal()` and `defineCli({ globals })` declare CLI-wide flags that feed parsing, help, and `ctx.global`.
+- `defineCli()` and `defineCommand()` define serializable command graphs for CLI, JSON, MCP, and command-contract surfaces. Commands can attach `formats` for per-command result-stage renderers and accept single-segment aliases as bare strings.
+- `defineGlobal()` and `defineCli({ globals })` declare CLI-wide flags that feed parsing, help, and `ctx.global`. Globals support `default` for pre-resolved fallback values.
 - `defineCli({ extensions })` composes extension-provided commands, globals, input sources, output renderers, events, hooks, middleware, and packaged skill content.
-- `help()`, `version()`, `outputControls()`, and `reflectionControls()` install the standard Core-owned globals explicitly. `help({ renderer })` can replace or wrap `defaultHelpRenderer()`.
+- `help()`, `version()`, `outputControls()`, and `reflectionControls()` install the standard Core-owned globals explicitly. `help({ renderer })` can replace or wrap `defaultHelpRenderer()`. Per-command non-boolean options render with `<key>` value tokens in the help table; override via `z.string().meta({ valueLabel: 'path' })`.
 - `defineOutputRenderer()` declares a named final-value renderer. `--json` selects the built-in `json` renderer through the same renderer registry that powers `--format`.
 - `ctx.ok()`, `ctx.error()`, `ok()`, `fail()`, and `commandError()` produce the standard machine result/error objects without public error classes.
 - `callHttpOperation()` is the shared outbound HTTP transport for remote commands.

@@ -66,6 +66,10 @@ See [env-vars.md](./env-vars.md) for the env var contract, [config-primitive.md]
 | OPENAPI-001 | OpenAPI emit | `GET /openapi.json` returns a `3.1.0` document keyed by command paths with `operationId` derived from the underscored command name. | `parity.test.ts` | Returning the legacy manifest. |
 | OPENAPI-002 | OpenAPI ingest | `ingestOpenApi(spec)` maps path/query/body parameters into typed command descriptors. | `parity.test.ts` | Dropping body parameters. |
 | VARS-001 | Vars defaults | Zod `vars` defaults populate `c.var`; middleware `set()` overrides those defaults. | `parity.test.ts` | Letting defaults clobber middleware-set values. |
+| GLOBAL-DEFAULT-001 | Global default | `defineGlobal({ default })` populates `flags[key]` and `ctx.global[key]` when the flag is absent, explicit argv overrides it, and help renders `(default: …)` next to the description. `parse` does not run on the default. | `global-inputs.test.ts` | Defaults clobbering explicit values, leaking through `parse`, or missing from help. |
+| FMT-007 | Per-command renderers | `defineCommand({ formats })` runs the per-command render function at the `result` stage for the matched format. `--json` still routes to the registered JSON renderer regardless. | `declarative-authoring.test.ts` | Per-command renderer hijacking structured formats or never firing for human formats. |
+| HELP-004 | Option value tokens | Non-boolean per-command options render as `--name <key>` in the help options table; `z.string().meta({ valueLabel })` overrides the placeholder; boolean options have no value token. | `help-render.test.ts` | Options table missing value placeholders or showing one on boolean flags. |
+| CLI-003 alias shorthand | Aliases | `defineCommand({ aliases: ['s'] })` accepts a bare string as shorthand for `[['s']]` (single-segment alias). Nested arrays still work for multi-segment forms. | `declarative-authoring.test.ts` | Bare-string aliases spreading into character arrays, or the shorthand bypassing the parent-path constraint. |
 
 ## Mutation priorities
 
@@ -153,6 +157,12 @@ Maps the behavior cases above to the tests that exercise them in the current imp
 | MCP-002 protocol edge cases | mutation finding | test/behavior-edges.test.ts | MCP protocol exposes root tools, tool schemas, error content, and missing tool envelopes | MCP protocol behavior | unknown tool calls fall back to root command |
 | RUNTIME-002 Bun live binding | mutation finding | test/runtime-mock.test.ts | runtime process helpers read a mocked Bun platform binding | Bun mock.module live binding | runtime captures Bun globals at module load |
 | RUNTIME-003 human CLI policy | mutation finding | test/runtime-mock.test.ts | public CLI human output policy and errors use the mocked TTY runtime | Bun runtime behavior | agent-only policy or human error output ignored |
+| GLOBAL-DEFAULT-001 global default | behavior cases | test/global-inputs.test.ts | global default fills ctx.global when the flag is absent and renders in help | behavior plan | default missing from ctx.global, parsed through `parse`, or absent from help |
+| FMT-007 per-command renderers | behavior cases | test/declarative-authoring.test.ts | per-command formats render the result without affecting --json | behavior plan | per-command renderer hijacking --json or never firing for human formats |
+| HELP-004 option value token (default) | behavior cases | test/help-render.test.ts | non-boolean option appends "<key>" value token to its options-table label | behavior plan | options-table label missing value placeholder for non-boolean options |
+| HELP-004 option value token (boolean) | behavior cases | test/help-render.test.ts | boolean option has no value token in its options-table label | behavior plan | boolean flags rendered as value-bearing options |
+| HELP-004 option value token (override) | behavior cases | test/help-render.test.ts | meta valueLabel overrides the default <key> token | behavior plan | meta override ignored or shadowed by `<key>` fallback |
+| CLI-003 alias bare-string shorthand | behavior cases | test/declarative-authoring.test.ts | single-segment aliases accept bare strings as shorthand for [name] | behavior plan | bare-string alias spreading into character arrays |
 
 ## Coverage matrix — rewrite
 
