@@ -74,7 +74,7 @@ function renderExtensionDeclarations(catalog: Catalog): string[] {
   }
   if (catalog.ops.enabled && catalog.ops.telemetry !== false) {
     extensions.push(
-      `telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, env: process.env, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })`,
+      `telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, env: () => process.env, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })`,
     )
   }
   return extensions

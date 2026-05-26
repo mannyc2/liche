@@ -898,7 +898,7 @@ const cli = defineCli({
   extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms(), configExtension({ schema: z.strictObject({
     'accountId': z.string().optional(),
     'apiBaseUrl': z.string().default("https://api.cloudflare.test"),
-  }), sources: [files({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], scopes: { project: { discoverUpwards: true }, user: { xdg: true } } })] }), configDoctor(), telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, env: process.env, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })],
+  }), sources: [files({ files: ['workers.jsonc', 'workers.yaml', 'workers.toml'], scopes: { project: { discoverUpwards: true }, user: { xdg: true } } })] }), configDoctor(), telemetry({ enabledEnvVar: TELEMETRY_ENABLED_ENV_VAR, env: () => process.env, sinks: [jsonlFileSink({ path: () => process.env[TELEMETRY_FILE_ENV_VAR] })] })],
   commands: [
     defineCommand({
       path: ['script', 'list'],

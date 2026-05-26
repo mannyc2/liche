@@ -50,6 +50,8 @@ const ALL_COMMANDS: ReadonlyArray<CliEventType> = [
 ]
 
 export type TelemetryPreset = 'essential' | 'all-commands' | 'errors-only' | 'all'
+export type TelemetryEnv = Record<string, string | undefined>
+export type TelemetryEnvSource = TelemetryEnv | (() => TelemetryEnv)
 
 export type TelemetryOptions = {
   readonly enabledEnvVar?: string
@@ -71,7 +73,7 @@ export type TelemetryOptions = {
   readonly debug?: boolean | 'stderr'
 
   readonly flushTimeoutMs?: number
-  readonly env?: Record<string, string | undefined>
+  readonly env?: TelemetryEnvSource
   readonly warn?: (message: string) => void
 }
 
@@ -83,13 +85,15 @@ function resolveAllowedTypes(events: TelemetryOptions['events']): ReadonlyArray<
   return events
 }
 
-function readEnv(options: TelemetryOptions): Record<string, string | undefined> {
+function readEnv(options: TelemetryOptions): TelemetryEnv {
+  if (typeof options.env === 'function') return options.env()
   if (options.env) return options.env
-  return (typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>
+  return (typeof Bun !== 'undefined' ? Bun.env : process.env) as TelemetryEnv
 }
 
 export function telemetry(options: TelemetryOptions = {}): CliExtension {
-  const env = readEnv(options)
+  const initialEnv = readEnv(options)
+  const currentEnv = (): TelemetryEnv => readEnv(options)
   const allowedTypes = resolveAllowedTypes(options.events)
   const allowedInvocations = options.invocations ?? (['cli'] as const)
   const flushTimeoutMs = options.flushTimeoutMs ?? 2000
@@ -118,7 +122,7 @@ export function telemetry(options: TelemetryOptions = {}): CliExtension {
   const validator = createValidator({ ...(options.warn && { warn: options.warn }) })
 
   const debugSink =
-    options.debug === 'stderr' || options.debug === true || env['LICHE_TELEMETRY_DEBUG'] === 'stderr'
+    options.debug === 'stderr' || options.debug === true || initialEnv['LICHE_TELEMETRY_DEBUG'] === 'stderr'
       ? [consoleSink({ stream: 'stderr' })]
       : []
   const baseSinks: ReadonlyArray<TelemetrySink> = [...(options.sinks ?? []), ...debugSink]
@@ -148,7 +152,7 @@ export function telemetry(options: TelemetryOptions = {}): CliExtension {
   const dispatcher: CliEventSubscriber = async (event) => {
     if (allowedTypes !== '*' && !allowedTypes.includes(event.type)) return
     const consent = resolveConsent({
-      env,
+      env: currentEnv(),
       cliName: event.cli.name,
       invocation: event.invocation,
       ...(options.enabledEnvVar !== undefined && { enabledEnvVar: options.enabledEnvVar }),
@@ -176,7 +180,7 @@ export function telemetry(options: TelemetryOptions = {}): CliExtension {
   return defineExtension({
     id: 'liche.telemetry',
     events: [{ target: '*', subscriber: dispatcher }],
-    commands: buildSubcommands(options, env),
+    commands: buildSubcommands(options, currentEnv),
   })
 }
 
@@ -186,7 +190,7 @@ const inspectArgs = z.object({})
 const enableDisableArgs = z.object({})
 const passthroughEnv = z.record(z.string(), z.string().optional())
 
-function buildSubcommands(options: TelemetryOptions, env: Record<string, string | undefined>) {
+function buildSubcommands(options: TelemetryOptions, currentEnv: () => TelemetryEnv) {
   return [
     defineCommand({
       agent: false,
@@ -201,7 +205,7 @@ function buildSubcommands(options: TelemetryOptions, env: Record<string, string 
       }),
       safety: { readOnly: true },
       run: ({ ctx, input }) => {
-        const runtimeEnv = { ...env, ...(input.env as Record<string, string | undefined>) }
+        const runtimeEnv = { ...currentEnv(), ...(input.env as TelemetryEnv) }
         const consent = resolveConsent({
           env: runtimeEnv,
           cliName: ctx.name,

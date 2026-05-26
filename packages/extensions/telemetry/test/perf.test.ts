@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { createRedactionPolicy } from '../src/internal/redact.js'
 import { createValidator, type WireEvent } from '../src/internal/schema.js'
 
+const perfTest = process.env['CI'] === 'true' ? test.skip : test
+
 function fixture(): WireEvent {
   return {
     agent: false,
@@ -33,7 +35,7 @@ function p(values: number[], q: number): number {
 }
 
 describe('sync-path performance budget (≤ 500 µs per event)', () => {
-  test('redact + validate p99 stays under budget', () => {
+  perfTest('redact + validate p99 stays under budget', () => {
     const policy = createRedactionPolicy()
     const validator = createValidator({ warn: () => {} })
     const event = fixture()

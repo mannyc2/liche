@@ -7,7 +7,7 @@ function buildCli(env: Record<string, string | undefined>, telemetryOpts: Parame
   return defineCli({
     name: 'shipyard',
     version: '0.1.0',
-    extensions: [telemetry({ ...telemetryOpts, env })],
+    extensions: [telemetry({ ...telemetryOpts, env: telemetryOpts.env ?? env })],
     commands: [
       defineCommand({
         path: ['deploy'],
@@ -64,6 +64,15 @@ describe('opt-in by default', () => {
     const cli = buildCli(env, { sinks: [sink] })
     await runSilent(cli, ['deploy'], env)
     expect(sink.events.length).toBeGreaterThan(0)
+  })
+
+  test('env function is resolved at invocation time', async () => {
+    const env: Record<string, string | undefined> = {}
+    const sink = memorySink()
+    const cli = buildCli(env, { sinks: [sink], env: () => env })
+    env['SHIPYARD_TELEMETRY'] = '1'
+    await runSilent(cli, ['deploy'], env)
+    expect(sink.events.map((e) => e.type)).toContain('command.completed')
   })
 })
 
