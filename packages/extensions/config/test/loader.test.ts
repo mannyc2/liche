@@ -80,6 +80,31 @@ describe('config extension loader', () => {
     }
   })
 
+  test('reads JSONC with trailing commas while preserving comment markers inside strings', async () => {
+    const path = join(dir, 'app.jsonc')
+    writeFileSync(path, `{
+      // leading comment
+      "url": "https://example.test/path",
+      "glob": "src/**/*.ts",
+      "literal": "keep /* this */ and // this",
+      "list": [
+        "one",
+        "two",
+      ],
+    }`)
+
+    const cli = cliFor(undefined, undefined)
+    const result = await runCli(cli, ['run', '--config', path, '--json'])
+
+    expect(result.exitCode).toBe(0)
+    expect(JSON.parse(result.stdout).config).toEqual({
+      url: 'https://example.test/path',
+      glob: 'src/**/*.ts',
+      literal: 'keep /* this */ and // this',
+      list: ['one', 'two'],
+    })
+  })
+
   test('throws ParseError with the path when explicit --config file does not exist', async () => {
     const cli = cliFor(undefined, undefined)
     const result = await runCli(cli, ['run', '--config', `${dir}/missing.json`, '--json'])
