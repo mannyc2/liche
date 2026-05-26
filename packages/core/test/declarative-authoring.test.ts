@@ -78,6 +78,31 @@ describe('declarative authoring API', () => {
     expect(parseJsonOutput(nested.stdout)).toEqual({ ok: true })
   })
 
+  test('per-command formats render the result without affecting --json', async () => {
+    const cli = defineCli({
+      name: 'app',
+      extensions: [outputControls({ json: true, format: true, formats: ['md'] })],
+      commands: [
+        defineCommand({
+          path: ['report'],
+          formats: {
+            md: (value) => {
+              const data = value as { rows: { label: string; count: number }[] }
+              return data.rows.map((row) => `- ${row.label}: ${row.count}`).join('\n')
+            },
+          },
+          run: () => ({ rows: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] }),
+        }),
+      ],
+    })
+
+    const md = await runCli(cli, ['report', '--format', 'md'])
+    expect(md.stdout.trim()).toBe('- a: 1\n- b: 2')
+
+    const json = await runCli(cli, ['report', '--json'])
+    expect(parseJsonOutput(json.stdout)).toEqual({ rows: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] })
+  })
+
   test('option aliases and group descriptions are declared as command data', async () => {
     const cli = defineCli({
       name: 'app',

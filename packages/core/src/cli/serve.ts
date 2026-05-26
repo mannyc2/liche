@@ -3,7 +3,7 @@ import { execute } from './execute.js'
 import { isRuntimeResult, ParseError } from '../errors/error.js'
 import { formatCta, pick, renderOutput } from '../format/index.js'
 import { parseGlobals } from '../parser/index.js'
-import { commandFormat, outputPolicy, selectCommand } from '../command/registry.js'
+import { commandFormat, commandFormatRenderers, outputPolicy, selectCommand } from '../command/registry.js'
 import { renderHelp } from '../help/render.js'
 import { commandContract } from '../command/contract.js'
 import { complete, shells } from '../completions/shells.js'
@@ -217,7 +217,10 @@ export async function serveCli(
   let data: unknown = flags.fullOutput || envelopeMode || machineErrorEnvelope ? result : result.ok ? result.data : result.error
   if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
 
-  const rendered = renderOutput(data, outputFormat, state.outputRenderers, { stage: 'result' })
+  const localRenderer = commandFormatRenderers(selected)?.[outputFormat]
+  const rendered = localRenderer
+    ? localRenderer(data, { format: outputFormat, stage: 'result' })
+    : renderOutput(data, outputFormat, state.outputRenderers, { stage: 'result' })
   let text = rendered
   for (const transform of state.outputTransforms) {
     text = transform.transform(text, { flags, format: outputFormat, stage: 'result' })

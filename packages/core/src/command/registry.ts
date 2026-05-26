@@ -136,6 +136,11 @@ export function commandFormat(selected: SelectedCommand) {
   return commandContract(selected.path.join(' ') || '(root)', selected.entry)?.format
 }
 
+export function commandFormatRenderers(selected: SelectedCommand) {
+  const entry = selected.entry
+  return '_command' in entry ? entry.runtime.formats : undefined
+}
+
 export function outputPolicy(selected: SelectedCommand) {
   return commandContract(selected.path.join(' ') || '(root)', selected.entry)?.outputPolicy
 }

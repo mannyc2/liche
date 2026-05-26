@@ -370,6 +370,7 @@ function commandRuntime(definition: CommandDefinition): CommandRuntime {
     ...(definition.alias ? { alias: definition.alias } : undefined),
     ...(definition.args ? { args: definition.args } : undefined),
     ...(definition.env ? { env: definition.env } : undefined),
+    ...(definition.formats ? { formats: definition.formats } : undefined),
     ...(definition.middleware ? { middleware: definition.middleware } : undefined),
     ...(definition.options ? { options: definition.options } : undefined),
     ...(definition.output ? { output: definition.output } : undefined),

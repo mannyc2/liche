@@ -418,6 +418,7 @@ export type CommandDefinition<
   examples?: Example[] | undefined
   fetch?: FetchHandler | undefined
   format?: Format | undefined
+  formats?: Partial<Record<Format, OutputRenderer['render']>> | undefined
   hint?: string | undefined
   middleware?: MiddlewareHandler[] | undefined
   options?: O | undefined
@@ -616,6 +617,7 @@ export type CommandRuntime = {
   alias?: Record<string, string> | undefined
   args?: Schema<any> | undefined
   env?: Schema<any> | undefined
+  formats?: Partial<Record<Format, OutputRenderer['render']>> | undefined
   middleware?: MiddlewareHandler[] | undefined
   options?: Schema<any> | undefined
   output?: Schema<any> | undefined
