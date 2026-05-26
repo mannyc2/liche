@@ -19,6 +19,24 @@ type GeneratedCliModule = {
   }
 }
 
+async function readEventually(path: string, timeoutMs = 1000): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      const text = readFileSync(path, 'utf8')
+      if (text.trim()) return text
+    } catch (error) {
+      lastError = error
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+
+  if (lastError instanceof Error) throw lastError
+  throw new Error(`Timed out waiting for ${path}`)
+}
+
 describe('product-workers example', () => {
   let outDir: string
 
@@ -222,7 +240,7 @@ describe('product-workers example', () => {
       process.env.WORKERS_TELEMETRY_FILE = telemetryFile
       const deploy = await runGenerated(cli, ['deploy', '--entrypoint', 'src/index.ts', '--json'])
       expect(deploy.exitCode).toBe(0)
-      const lines = readFileSync(telemetryFile, 'utf8').trim().split('\n')
+      const lines = (await readEventually(telemetryFile)).trim().split('\n')
       expect(lines.some((line) => line.includes('command.completed'))).toBe(true)
     } finally {
       if (savedTelemetry.WORKERS_TELEMETRY === undefined) delete process.env.WORKERS_TELEMETRY

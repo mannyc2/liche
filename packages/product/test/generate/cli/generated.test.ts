@@ -24,6 +24,24 @@ type GeneratedCli = typeof workersGenerated
 
 type CapturedRun = { stdout: string; stderr: string; exitCode: number }
 
+async function readEventually(path: string, timeoutMs = 1000): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      const text = readFileSync(path, 'utf8')
+      if (text.trim()) return text
+    } catch (error) {
+      lastError = error
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+
+  if (lastError instanceof Error) throw lastError
+  throw new Error(`Timed out waiting for ${path}`)
+}
+
 async function runCli(
   cli: GeneratedCli,
   argv: string[],
@@ -417,7 +435,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
       process.env.WORKERS_TELEMETRY_FILE = file
       const out = await runCli(workersGenerated, ['deploy', '--entrypoint', 'src/index.ts', '--json'])
       expect(out.exitCode).toBe(0)
-      const lines = readFileSync(file, 'utf8').trim().split('\n')
+      const lines = (await readEventually(file)).trim().split('\n')
       expect(lines.length).toBeGreaterThan(0)
       expect(lines.some((line) => line.includes('command.completed'))).toBe(true)
     } finally {
