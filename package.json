@@ -47,8 +47,10 @@
     "examples:smoke": "bun test examples",
     "metrics": "bun scripts/release-candidate-metrics.ts",
     "release:check": "bun run check && bun run test && bun run test:examples && bun run --silent metrics && bun run --silent release:metadata && git diff --check",
+    "release:bootstrap-names": "bun scripts/bootstrap-npm-package-names.ts",
     "release:metadata": "bun scripts/release-metadata-check.ts",
     "release:names": "bun scripts/check-npm-package-availability.ts",
+    "release:trust": "bun scripts/configure-npm-trusted-publishers.ts",
     "test": "bun run --filter '*' test",
     "test:core": "bun run --filter @liche/core test",
     "test:examples": "bun test examples"
