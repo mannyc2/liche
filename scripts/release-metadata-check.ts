@@ -306,6 +306,7 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
     packages,
     remainingHumanGates: [
       'Confirm npm organization ownership and package publish rights for the final scope before each manual publish.',
+      'Bootstrap any new public package names with maintainer authentication before relying on package-scoped trusted publishing.',
       'Keep package repository.url aligned with the exact trusted-publishing GitHub repository before every publish.',
       'Set homepage, bugs, and funding metadata only after canonical public URLs are real.',
       'Configure or verify npm trusted publishers for .github/workflows/publish.yml and npm-production before relying on CI publishing.',

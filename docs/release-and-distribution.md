@@ -231,6 +231,8 @@ Release order:
 
 The same workflow keeps a manual `workflow_dispatch` dry-run path for CI validation and emergency release operations. Manual dispatch defaults to `dry_run=true`; tag pushes publish by default.
 
+New public package names need one manual bootstrap publish before trusted publishing can own them. npm trusted-publisher configuration is package-scoped, so `npm trust` and the npmjs.com package settings require the package to already exist on the registry. For a new package name, publish the initial public version with maintainer authentication (`npm publish --access public` from the package directory), configure its trusted publisher (`mannyc2/liche`, `publish.yml`, `npm-production`, `npm publish`), then use the tag workflow for subsequent synchronized releases.
+
 ## Package metadata rule
 
 Every publishable package must set `repository.url` to `https://github.com/mannyc2/liche.git` and `repository.directory` to its package directory. Do not add homepage, bugs, or funding metadata until the canonical public URLs are real. Placeholder metadata is worse than absence because npm trusted publishing checks package repository metadata during GitHub-based publication.
