@@ -1,6 +1,6 @@
 # @liche/core
 
-Write a command as a typed function. Get a terminal CLI, an HTTP endpoint, and an MCP tool from it — sharing the same parsing, validation, and result envelope.
+Write a command as a typed function. Get a terminal CLI, an HTTP endpoint, and extension-driven agent adapters from it — sharing the same parsing, validation, and result envelope.
 
 ```ts
 import { defineCommand, z } from "@liche/core";
@@ -37,7 +37,7 @@ Three ways to reach the same `deploy` command:
 
 - **Terminal** — `shipyard deploy --entrypoint app`. Argv flags become the `options` object.
 - **HTTP** — `POST /deploy` with body `{"entrypoint":"app"}`. URL path selects the command; query string and JSON body merge into `options`.
-- **MCP** — the `deploy` tool appears at the `/mcp` route on `cli.fetch`. JSON-RPC `tools/call` arguments become `options`.
+- **MCP** — with the `agents()` or `mcpServer()` extension installed, the `deploy` tool appears at the `/mcp` route on `cli.fetch`. JSON-RPC `tools/call` arguments become `options`.
 
 All three run the same `run({ input })` handler, validate against the same Zod schema, and return the same `{ ok, data, error }` envelope.
 
@@ -52,7 +52,7 @@ A *transport* is how an invocation reaches your command — what form the input 
 ## Defining commands
 
 - `defineCli()` — root: `name`, `version`, `commands`, `globals`, `extensions`, `hooks`, `middleware`.
-- `defineCommand()` — one command: `path`, `input` (`args`, `options`, `env`, `vars`), `output`, `run`, `safety`, optional `format` and single-segment string aliases.
+- `defineCommand()` — one command: `path`, `input` (`args`, `options`, `env`, `vars`), `output`, `run`, optional `interactive`, `format`, and single-segment string aliases.
 - `defineGlobal()` — CLI-wide flag that feeds parsing, help, and `ctx.global`. Globals have a `key`, an optional `alias`, a `type`, and choose how they're exposed.
 
 ```ts
@@ -177,7 +177,7 @@ One line, and `shipyard` is also an MCP server. Run `shipyard mcp add` to instal
 ## Lower-level primitives
 
 - `callHttpOperation()` — *outbound* HTTP for remote commands that call external APIs. (Not to be confused with `cli.fetch`, which is the *inbound* HTTP server.)
-- `secret()` and `applyAuth()` — redaction and already-resolved auth/header primitives.
+- `secret()` — redaction primitive for values that should not stringify or inspect as raw secrets. Auth workflow and header helpers live in `@liche/auth`.
 
 ## Requirements
 

@@ -353,14 +353,6 @@ export const cli = defineCli({
           name: z.string(),
         })),
       }),
-      safety: {
-        auth: "required",
-        destructive: false,
-        idempotent: true,
-        interactive: "never",
-        openWorld: true,
-        readOnly: true,
-      },
       async run({ ctx }) {
         const data = await callHttpOperation({
           id: "workers.script.list",

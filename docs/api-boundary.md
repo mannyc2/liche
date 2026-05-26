@@ -36,20 +36,20 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 | `Formatter` | Output formatter namespace and renderer registry utilities for handwritten CLIs. |
 | `collectCommandContracts`, `manifest`, `manifestEnvelope`, `mcpToolName`, `selectCommand` | Serializable command reflection/projection helpers used by first-party extensions. |
 | `ok`, `fail`, `commandError` | Object-first result/error factories for command-authored outcomes. |
-| `secret`, `applyAuth` | Auth redaction primitive and transport-facing header helper. |
+| `secret` | Redaction primitive for values that should not stringify or inspect as raw secrets. |
 | `serializeHttpOperationRequest`, `callHttpOperation` | Outbound HTTP operation transport primitives. |
 
 ### Types — public because authoring/runtime helpers expose them
 
-`Awaitable`, `CliInstance`, `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventSurface`, `CliExtension`, `CliHookRegistration`, `BeforeExecuteHook`, `BuiltInFormat`, `CommandContract`, `CommandEffectKind`, `CommandEffects`, `CommandError`, `CommandInput`, `CommandPolicy`, `CommandSafety`, `Cta`, `CtaBlock`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, `DefineCliOptions`, `DispatchOptions`, `Example`, `FetchHandler`, `FieldError`, `Format`, `GlobalFlags`, `GlobalInputDefinition`, `GlobalInputType`, `HelpCommand`, `HelpControlOptions`, `HelpField`, `HelpGlobal`, `HelpModel`, `HelpRenderContext`, `HelpRenderer`, `InferSchema`, `InputSourceBinding`, `InputSourceProvider`, `InputSourceProvenance`, `InputSourceResolveInput`, `MiddlewareContext`, `MiddlewareHandler`, `OptionValueSource`, `OutputControlsOptions`, `OutputPolicy`, `OutputRenderContext`, `OutputRenderer`, `OutputRenderStage`, `ReflectionControlsOptions`, `ResolvedInputSource`, `Result`, `ResultMeta`, `RunContext`, `Schema`, `ServeHandler`, `ServeOptions`, `SkillDefinition`, `SourceInspector`, `Usage`, `UsageObject`.
+`Awaitable`, `CliInstance`, `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventSurface`, `CliExtension`, `CliHookRegistration`, `BeforeExecuteHook`, `BuiltInFormat`, `CommandContract`, `CommandError`, `CommandInput`, `Cta`, `CtaBlock`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, `DefineCliOptions`, `DispatchOptions`, `Example`, `FetchHandler`, `FieldError`, `Format`, `GlobalFlags`, `GlobalInputDefinition`, `GlobalInputType`, `HelpCommand`, `HelpControlOptions`, `HelpField`, `HelpGlobal`, `HelpModel`, `HelpRenderContext`, `HelpRenderer`, `InferSchema`, `InputSourceBinding`, `InputSourceProvider`, `InputSourceProvenance`, `InputSourceResolveInput`, `MiddlewareContext`, `MiddlewareHandler`, `OptionValueSource`, `OutputControlsOptions`, `OutputPolicy`, `OutputRenderContext`, `OutputRenderer`, `OutputRenderStage`, `ReflectionControlsOptions`, `ResolvedInputSource`, `Result`, `ResultMeta`, `RunContext`, `Schema`, `ServeHandler`, `ServeOptions`, `SkillDefinition`, `SourceInspector`, `Usage`, `UsageObject`.
 
 ### Auth/session runtime types
 
-`SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `TokenSourceSpec`, `CommandAuthMetadata`, `AuthCommandRuntime`, `AuthIdentityProbeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`.
+`SecretString` remains a core redaction primitive because outbound transports and extensions both need a value that cannot accidentally reveal itself. Auth workflow types such as `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `TokenSourceSpec`, `AuthCommandRuntime`, `AuthIdentityProbeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, and `IdentityRuntime` live in `@liche/auth`.
 
 `InvocationKind` (the `'cli' | 'ci' | 'agent' | 'mcp'` discriminator) was moved out of core. It now lives in `@liche/auth` because auth is the only consumer that actually branches on the value.
 
-Workflow helpers (`resolveAuth`, `resolveContext`, `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`) live in `@liche/auth`, not core.
+Workflow helpers (`resolveAuth`, `resolveContext`, `applyAuth`, `credentialHttpAuth`, `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`) live in `@liche/auth`, not core. Command-level auth metadata is a Product/adapter concern, not a core `CommandContract` field.
 
 ### HTTP transport types
 
@@ -107,7 +107,7 @@ The following are source-path internals. White-box tests may import them from so
 - `Filter` — formatter filter helpers; `Formatter.pick` is the public path.
 - `Completions` — completion engine; reach through `cli.serve()` or `cli.fetch()`.
 - `Fetch` — in-process fetch-command internals. Outbound remote transport is `serializeHttpOperationRequest` and `callHttpOperation`.
-- `Mcp` — MCP helpers; reach through `cli.fetch()`/`cli.serve()`.
+- MCP server execution lives in `@liche/mcp-server`; core exposes only command reflection helpers such as `mcpToolName`.
 - `Schema` namespace — Zod adapter internals. `z` is the public path; `Schema` is reserved as a public type name.
 - `Skill` — skill helpers; use `DefineCliOptions.skill` or `CliInstance` accessors.
 

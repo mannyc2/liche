@@ -37,7 +37,12 @@ export type HttpAuth =
   | { kind: "none" }
   | { kind: "bearer"; envVar: string }
   | { kind: "apiKey"; envVar: string; header: string }
-  | { kind: "resolved"; credential: AuthCredential };
+  | {
+      kind: "resolved";
+      headers: Record<string, string>;
+      secrets?: readonly string[];
+      statusErrors?: { 401?: CommandError; 403?: CommandError };
+    };
 
 export type HttpOperationBind<TInput = Record<string, unknown>> = {
   path?: Array<keyof TInput & string>;
@@ -73,7 +78,6 @@ export type HttpOperationCall<TInput, TOutput> =
     fetch?: HttpFetch;
     timeoutMs?: number;
     safeBodyBytes?: number;
-    requiredPermissions?: string[];
   };
 ```
 
@@ -81,7 +85,7 @@ export type HttpOperationCall<TInput, TOutput> =
 
 Generated Product callers support literal, env-backed, and config-backed remote base URL sources. Config-backed values use the config provider from [config-primitive.md](./config-primitive.md) and are resolved before transport through `ctx.sources.value("config", ...)` plus `ctx.sources.source("config", ...)`.
 
-Env-backed `bearer` and `apiKey` auth are supported for handwritten CLIs. Auth/session-aware generated CLIs resolve credentials before transport and pass `{ kind: "resolved", credential }` so `callHttpOperation` only applies headers and reports HTTP failures. See [auth-session.md](./auth-session.md).
+Env-backed `bearer` and `apiKey` auth are supported for handwritten CLIs. Auth/session-aware generated CLIs resolve credentials before transport and pass `{ kind: "resolved", headers, secrets, statusErrors }` from `@liche/auth` so `callHttpOperation` only applies headers, redacts declared secrets, and reports HTTP failures. See [auth-session.md](./auth-session.md).
 
 There is no retry. The default is no retry; the API does not preclude adding it later.
 
@@ -141,7 +145,7 @@ Auth is product-level. Per-capability provider selection is not supported.
 
 Secret values do not flow through CLI flags such as `--auth-env NAME=VALUE`. Conformance and runtime read inherited environment or explicit env files/target config.
 
-When a resolved credential is present, `applyAuth` mutates headers. Generated code does not pass raw token strings to transport.
+When resolved auth is present, the caller provides headers and redaction secrets. Generated code does not pass raw token strings directly to transport.
 
 Generated Product commands call this transport only when the catalog declares a product-level remote base URL source. Without that declaration, Product linting reports `catalog/remote-required` and CLI generation fails. Generated callers pass a resolved base URL sourced from a literal, env var, or declared config field while keeping auth/session resolution separate.
 
@@ -258,14 +262,6 @@ export const cli = defineCli({
       path: ["users", "list"],
       input: { options: input },
       output,
-      safety: {
-        auth: "required",
-        destructive: false,
-        idempotent: true,
-        interactive: "never",
-        openWorld: true,
-        readOnly: true,
-      },
       async run({ ctx }) {
         return await callHttpOperation({
           id: "users.list",
@@ -304,7 +300,7 @@ defineCommand({
     const data = await callHttpOperation({
       id: "users.list",
       baseUrl: remoteBaseUrl,
-      auth: contract.remote.auth,
+      auth: { kind: "none" },
       method: "GET",
       path: "/users",
       bind: { query: ["limit"] },

@@ -15,4 +15,4 @@ defineCli({
 })
 ```
 
-Core owns the wire-level primitives: `SecretString`, `applyAuth(headers, credential)`, and the `authInvalid` / `authPermissionDenied` HTTP-response errors. This package owns everything above that — what core would call "workflow" — and stays optional so a CLI can ship with neither auth flags nor stored sessions.
+Core owns only generic runtime primitives such as `SecretString` and outbound HTTP transport. This package owns credential resolution, `applyAuth(headers, credential)`, auth-specific HTTP status errors, and everything above that workflow boundary, so a CLI can ship with neither auth flags nor stored sessions.

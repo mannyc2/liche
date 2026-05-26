@@ -61,13 +61,6 @@ export const cli = defineCli({
         },
       },
       output: z.object({ deploymentId: z.string() }),
-      safety: {
-        destructive: false,
-        idempotent: false,
-        interactive: 'never',
-        openWorld: true,
-        readOnly: false,
-      },
       run({ ctx, input }) {
         return { deploymentId: `${ctx.global.profile ?? 'default'}-${input.options.entrypoint}` }
       },
@@ -189,7 +182,7 @@ Optional first-party helper commands live in `@liche/extensions`, not core:
 - `mcpInstaller()` and `skillsInstaller()` can be installed separately.
 - `auth()` declares standard auth globals and generated auth helper commands.
 
-All extension helpers register as normal commands. They use the same option parsing, help, completions, lifecycle, output formatting, and MCP visibility rules as authored commands. Local helper commands are `agent: false`, so they are hidden from MCP `tools/list` and cannot be called through MCP by guessing the tool name.
+All extension helpers register as normal commands. They use the same option parsing, help, completions, lifecycle, output formatting, and adapter visibility rules as authored commands. MCP and skill adapters own their include/exclude policy; generated Product CLIs pass the catalog's agent-visible command list into those adapters.
 
 Common user commands:
 

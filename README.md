@@ -35,13 +35,6 @@ export const cli = defineCli({
         options: z.object({ entrypoint: z.string() }),
       },
       output: z.object({ deployment_id: z.string() }),
-      safety: {
-        destructive: false,
-        idempotent: false,
-        interactive: "never",
-        openWorld: true,
-        readOnly: false,
-      },
       run({ input }) {
         return { deployment_id: `dep-${input.options.entrypoint}` };
       },
@@ -52,7 +45,7 @@ export const cli = defineCli({
 if (import.meta.main) await cli.serve(Bun.argv.slice(2));
 ```
 
-`@liche/core` provides declarative command graphs, typed args/options/env parsing, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, direct MCP stdio projection from command contracts, lifecycle events, global inputs, extension composition, and HTTP operation transport. Optional helpers such as config authoring, completions, `mcp add`, `skills add`, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
+`@liche/core` provides declarative command graphs, typed args/options/env parsing, object-first result/error factories, JSON/JSONL/YAML/Markdown output envelopes, lifecycle events, global inputs, extension composition, command reflection primitives, and HTTP operation transport. Optional helpers such as config authoring, completions, MCP/skills adapters, `mcp add`, `skills add`, auth/session workflows, and telemetry sinks live in `@liche/extensions`.
 
 Core command handlers usually return plain data. Use `ctx.ok()` when a command needs result metadata, `ctx.error()` for expected structured failures, and async generators for streaming. Do not hand-write result-shaped objects; only the result factories create runtime envelopes.
 
@@ -147,8 +140,8 @@ The examples cover handwritten CLIs, generated Product CLIs, auth/context resolu
 
 ## Packages
 
-- `@liche/core`: CLI runtime, global inputs, extension protocol, HTTP transport, command contracts, direct MCP projection, and low-level redaction/auth header primitives.
-- `@liche/extensions`: optional first-party config, completions, agent helper installers, auth/session workflows, and telemetry adapters.
+- `@liche/core`: CLI runtime, global inputs, extension protocol, HTTP transport, command contracts, reflection helpers, and low-level redaction primitives.
+- `@liche/extensions`: optional first-party config, completions, MCP/skills adapters, agent helper installers, auth/session workflows, and telemetry adapters.
 - `@liche/product`: Product schema, generated surfaces, conformance, auth/session generated commands, local ops generated commands, catalog and discovery artifacts.
 - `@liche/build`: Bun build and compile planning, compile flag profiles, build records, target resolution.
 - `@liche/releases`: release manifest, binary verification, package renderers, package artifact verification, official-flow handoffs, publish and yank planning.

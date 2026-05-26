@@ -49,23 +49,15 @@ Core may expose primitives that make those features possible. It should not own 
 
 ## Cleanup audit before freezing the invocation API
 
-The follow-up audit is mostly right, but not every item should block `run` / `dispatch` / `parseInvocation`.
+The first cleanup pass removed MCP-specific event fields, the core `InvocationKind` enum, the overloaded runtime `agent` boolean, and the `agent-only` output-policy name. A re-audit changed the command metadata direction: `interactive` is a real CLI primitive, but `CommandSafety`, command-level auth metadata, and agent/MCP visibility are not core primitives.
 
-The prep blocker is vocabulary that would become public API if `dispatch` lands first:
+- Keep `interactive?: boolean` only for commands that genuinely require or enter human/TTY interaction.
+- Remove `CommandSafety` and command-level auth metadata from core.
+- Move auth workflow types and errors to `@liche/auth`.
+- Move MCP/skills discovery and annotations to the adapters.
+- Keep Product `surfaces.agent` in Product/catalog code; do not mirror it into `CommandContract`.
 
-- Core currently enumerates MCP in shared types: `InvocationKind`, `CliEventType`, `CliEventSurface.kind`, and `CliEvent.mcp`.
-- Runtime machine-output mode and static agent-surface discovery both use the field name `agent`.
-- `OutputPolicy` also says `agent-only` even though the behavior is machine-output visibility, not agent identity.
-
-Fix those names before widening the public invocation API. Otherwise `DispatchOptions`, `RunContext`, `CliEvent`, command contracts, generated CLI source, and first-party extensions will all encode the wrong vocabulary.
-
-The cleanup direction (as shipped):
-
-- **Delete `InvocationKind` from core.** Core never branches on the value; it is pure observability tagging that had accreted into `MiddlewareContext`, `RunContext`, `CliEvent`, and `ExecuteInput`. After deletion, no runtime context field tags "where this call came from"; subscribers and commands that care derive their own tag (CI from env via `detectInvocation` in `@liche/auth`, MCP from the wrapping lane's `LICHE_INVOCATION` env override). The type now lives in `@liche/auth`, the only consumer that actually branches on it.
-- Replace `CliEvent.mcp` with a generic extension-safe metadata bag `attributes?: Record<string, unknown>`. MCP emits `{ mcpMethod, mcpToolCount }` there, and telemetry decides which extension attributes it forwards. `CliEventSurface.kind === 'mcp'` is removed; surfaces stay a closed core-owned set. `CliEventType` opens to `(string & {})` so extensions can emit their own event names.
-- **Delete the synthesized runtime boolean entirely.** A field originally named `agent` and renamed mid-cleanup to `machine` turned out to be derived state (`!isTty || formatExplicit`) that no runtime caller actually read for branching — every site was a write. It came off `RunContext`, `MiddlewareContext`, `CliEvent`, and `ExecuteInput`. Consumers needing machine-output mode derive it from `isTty` + `formatExplicit` at the read site. The real primitives stay on context: `isTty`, `formatExplicit`, `format`.
-- Replace static command visibility (`CommandContract.agent?: boolean`, where `false` meant "hide from agents") with a **flat `interactive?: boolean`** on `CommandContract` and `CommandDefinition`. Polarity flips: the old `agent: false` becomes `interactive: true`. The new name describes the command, not the discovery surface — only commands that genuinely require human interaction (prompts, TTY flows) get the flag. Setup/management commands that were marked `agent: false` for "hide from MCP discovery" reasons are unmarked and become MCP-visible. MCP/skills-runtime filters became `!command.interactive`.
-- Rename `OutputPolicy` value `agent-only` to `machine-only`.
+Run this cleanup before widening `run`, `dispatch`, `parseInvocation`, or runtime codec APIs. Otherwise the new public APIs will freeze the wrong vocabulary.
 
 Do not start by collapsing all command representations. The six-shape command pipeline is real, but it is a deeper internal-shape problem. The public API risk is exposing or depending on those shapes. `dispatch` and `parseInvocation` should hide `CliState`, `Entry`, `SelectedCommand`, and `CommandRuntime` from callers; a later internal refactor can collapse shapes once the public lanes are in place.
 
@@ -198,9 +190,9 @@ Runtime-only custom decoders are allowed for CLI execution, but they need an exp
 Default policy:
 
 - `arg.fromString()` without an explicit surface policy is CLI/programmatic-dispatch only.
-- A command using a CLI-only runtime codec must set `agent: false`, otherwise `defineCli` fails. Extension-driven tool discovery must not advertise tools that cannot be called.
+- A command using a CLI-only runtime codec must not be advertised by extension transports that cannot call it. This is adapter-owned surface policy, not a core `agent` or `interactive` visibility field.
 - `cli.fetch()` remains a generic command-dispatch surface. If it reaches a command whose input contains a codec unsupported on `fetch`, execution returns a structured `UNSUPPORTED_SURFACE` error instead of attempting partial decoding.
-- `dispatch()` defaults to the programmatic agent invocation and may execute CLI-only codecs unless the caller sets a restricted invocation such as `{ invocation: "mcp" }`.
+- `dispatch()` is a programmatic core execution lane. It does not imply agent or MCP invocation; adapters apply their own surface restrictions before calling it.
 - A codec can opt into `fetch`, `all`, or named extension transports such as `mcp` only when its decode result is safe for that surface and all required transport behavior is documented.
 
 ## Internal architecture changes
@@ -308,53 +300,16 @@ Field errors should preserve:
 
 ### Commit 0A: Public vocabulary cleanup
 
-Goal: remove extension-specific and overloaded names from public core types, and delete the `InvocationKind` observability enum, before the invocation API is widened.
+Goal: complete the core primitive vocabulary cleanup before public invocation APIs widen.
 
-Motivation: a working-tree audit found that core type definitions know about specific extensions (MCP appears as `InvocationKind = ...'mcp'`, `CliEventSurface.kind = ...'mcp'`, `CliEvent.mcp`, and the MCP-discovery gate is named `CommandContract.agent`); that two completely different runtime concepts both go by the name `agent` (`MiddlewareContext.agent` = machine-output mode vs `CommandContract.agent` = MCP visibility); and that `InvocationKind` itself is pure observability tagging — core has no branch on its value. All three leaks make Commit 1's "generic primitive" framing dishonest.
-
-This commit is a deletion-and-rename pass. It does not redesign the replaced concepts; replacements that need their own design come in later slices once we see what actually breaks.
-
-Decisions as shipped (the cleanup went further than originally planned — two of the renames turned into outright deletions after audit):
-
-- **Delete `InvocationKind` from core.** Removes the type from `types.ts` and the duplicate in `auth/types.ts`. Drops `MiddlewareContext.invocation`, `RunContext.invocation`, `CliEvent.invocation`, and `ExecuteInput.invocation`. The `isCiEnv` heuristic in `serve.ts` is deleted with it (its only consumer was the `invocation` field). The type is moved to `@liche/auth` since auth is the only consumer that actually branches on the value. A new `detectInvocation({ sources })` helper in `@liche/auth` reads CI from env via `ctx.sources.value('env', ...)` and honors a `LICHE_INVOCATION=mcp|agent|cli|ci` env override (set by the MCP server when it executes commands). Core no longer enumerates.
-- **Remove `CliEvent.mcp` and `kind: 'mcp'` from `CliEventSurface`.** Add `attributes?: Record<string, unknown>` to `CliEvent` as a generic extension-safe metadata bag. MCP emits `{ mcpMethod, mcpToolCount }` there; telemetry decides which attributes it forwards. `CliEventSurface.kind` stays a closed core-owned set. `CliEventType` opens to `(string & {})` so extension event names (`mcp.tool_call.started`, etc.) round-trip without needing core to enumerate them.
-- **Delete the synthesized runtime boolean entirely.** The audit started by renaming `agent: boolean` → `machine: boolean` on `RunContext`/`MiddlewareContext`/`CliEvent`/`ExecuteInput`, but a follow-up pass found no caller actually *reads* it for branching — every site was a write of `!isTty || formatExplicit`. It came off all four shapes. The real primitives stay on context: `isTty`, `formatExplicit`, `format`. Consumers who want "machine output mode" derive `!isTty || formatExplicit` at the read site. Lifecycle events carry `isTty` instead.
-- **Replace `CommandContract.agent` with a flat `interactive?: boolean`.** The original audit proposed nesting under `surfaces.agent` for Product-catalog parity. The audit-on-audit decided that conflated two concepts (one was Product's surface enumeration; one was core's discovery gate) and went flatter with semantic accuracy: `interactive: true` describes the command (needs a human/TTY/prompt), not its visibility on a surface. Polarity flips relative to the old `agent: false`. MCP/skills-runtime filters became `!command.interactive`. Setup/management commands previously marked `agent: false` for "hide from MCP" reasons (telemetry status, config doctor, completions install, mcp install, skills add/list) are unmarked under the new semantic and become MCP-visible.
-- **Rename `OutputPolicy` value `agent-only` to `machine-only`.** Stable string enum on `CommandContract.outputPolicy`. Its gate in `serve.ts` reads the same `isTty`/`formatExplicit` derivation; no field needed.
-
-What's deliberately *not* in this commit:
-
-- Any redesign of how extensions declare command visibility beyond `interactive`. If a non-interactive command still needs to be hidden from a specific surface, that's a follow-up — but no command in the current codebase actually has that requirement.
-- Any change to `serve`'s display branches. Tangled display logic in `serve.ts` is a known issue but waits for the larger pipeline refactor (`Internal architecture changes §1`).
-
-Files touched:
-
-- `packages/core/src/types.ts` (delete `InvocationKind`, `CliEventMcp`; open `CliEventType` to extension strings; remove `'mcp'` from `CliEventSurface.kind`; drop `invocation` and `machine` from `RunContext`/`CliEvent`; add `attributes?` to `CliEvent`; flip `CommandContract.agent` → `interactive?`; rename `OutputPolicy` value)
-- `packages/core/src/auth/types.ts` (delete duplicate `InvocationKind`)
-- `packages/core/src/cli/execute.ts`, `serve.ts`, `fetch.ts`, `dispatch.ts` (drop `invocation` and `machine`/`agent` field writes; delete `isCiEnv` in `serve.ts`)
-- `packages/core/src/cli/lifecycle.ts` (replace `mcp` cloning with `attributes` cloning in snapshot)
-- `packages/core/src/command/contract.ts` (read `definition.interactive` instead of `definition.agent`)
-- `packages/core/src/index.ts` (remove `InvocationKind`/`CliEventMcp` exports)
-- `packages/extensions/auth/src/types.ts` (define local `InvocationKind`)
-- `packages/extensions/auth/src/invocation.ts` (new — `detectInvocation` helper)
-- `packages/extensions/auth/src/index.ts` (export `detectInvocation` and `InvocationKind`)
-- `packages/extensions/agents/mcp-server/src/protocol.ts` (filter `!command.interactive`; emit lifecycle events with `attributes` + `surface.kind: 'command'`; inject `LICHE_INVOCATION=mcp` into env when executing commands)
-- `packages/extensions/agents/skills-runtime/src/generate.ts` (filter `!command.interactive`)
-- `packages/extensions/telemetry/src/internal/schema.ts` (drop `agent`/`invocation`/`mcp` fields; add `isTty` and `attributes`)
-- `packages/extensions/telemetry/src/index.ts` (telemetry status command uses local `detectInvocation` from env)
-- `packages/extensions/telemetry/src/internal/sinks.ts` (drop `cli.invocation` OTLP attribute)
-- `packages/extensions/src/index.ts` (re-export `detectInvocation` from auth)
-- `packages/extensions/config/src/index.ts`, `packages/extensions/completions/src/index.ts`, `packages/extensions/agents/mcp-installer/src/index.ts`, `packages/extensions/agents/skills-installer/src/index.ts` (drop spurious `agent: false`/`interactive: true` from non-interactive commands so they become agent-callable)
-- `packages/product/src/generate/cli/auth.ts`, `capability.ts`, `imports.ts`, `runtime.ts` (emit `detectInvocation(ctx)` for auth runtime invocation; drop spurious `agent:`/`interactive:` emissions for workflow capabilities; add `detectInvocation` to the auth import line)
-- `packages/product/test/fixtures/workers.generated.ts` (regenerated to match)
-- API snapshot, package-root consumer, lifecycle, parity, telemetry schema, and generated CLI tests (renames + deletions)
-- `docs/api-boundary.md`, `docs/coverage.md`, `docs/auth-session.md`, `docs/opt-in-globals-plan.md` (updated to new vocabulary)
+This is no longer just `agent`/`InvocationKind` cleanup. The target is to delete core's abstract command safety/auth fields, keep `interactive` as the only command-level human-interaction primitive, and move MCP/skills discovery plus auth workflow policy to their owning extensions.
 
 Verification:
 
-- `rg "InvocationKind|CliEventMcp|mcp\\?:|kind: 'mcp'|agent-only|ctx\\.agent|event\\.agent|ctx\\.invocation|event\\.invocation|CommandContract.*agent|\\bagent\\?: boolean|\\bmachine\\?: boolean|ctx\\.machine|event\\.machine" packages/core/src packages/core/test packages/extensions/agents packages/extensions/telemetry packages/extensions/auth/src` finds nothing in core or first-party extensions (the auth extension keeps its own local `InvocationKind`).
+- `rg "InvocationKind|CliEventMcp|mcp\\?:|kind: 'mcp'|agent-only|ctx\\.agent|event\\.agent|ctx\\.invocation|event\\.invocation|CommandContract.*agent|\\bagent\\?: boolean|\\bmachine\\?: boolean|ctx\\.machine|event\\.machine" packages/core/src packages/core/test packages/extensions/agents packages/extensions/telemetry packages/extensions/auth/src` finds nothing in core or first-party extensions except the auth extension's local invocation type if it is still needed.
+- `rg "CommandSafety|CommandAuthMetadata|safety:" packages/core/src packages/core/test` finds nothing.
 - `rg "Bun\\.env|commandFormat\\(selected\\)" packages/core/src/cli` matches only the `defaultEnv`/`resolveFormat` helpers in `invocation.ts`.
-- MCP extension tests still prove interactive commands are not listed or callable through MCP, now via `!command.interactive` (test in `packages/core/test/parity.test.ts` updated to use a `login` fixture for accuracy).
+- MCP extension tests still prove interactive commands and adapter-excluded commands are not listed or callable through MCP.
 - Lifecycle subscribers see `event.isTty` instead of `event.machine`/`event.invocation`; telemetry wire schema asserts `isTty` and `attributes`.
 - All 15 packages pass `bun run check` and `bun run test`.
 
@@ -511,7 +466,7 @@ Verification:
 
 - `arg.fromString()` can return a custom object from a string before handler execution.
 - `--schema`, command manifest, and extension tool schemas show the declared input string shape.
-- CLI-only runtime codecs force `agent: false` at declaration time, execute through CLI/programmatic dispatch, and fail with a structured unsupported-surface error if reached through fetch.
+- CLI-only runtime codecs execute through CLI/programmatic dispatch, are excluded by adapter-owned transport policy when unsupported, and fail with a structured unsupported-surface error if reached through fetch.
 
 ### Commit 6: Source-aware validation errors
 
@@ -584,12 +539,12 @@ Audit evidence:
 - `packages/core/src/cli/execute.ts` already collects async-generator chunks and calls `onChunk` when supplied. `dispatch` should expose that existing behavior instead of creating another streaming contract.
 - `packages/core/src/schema/zod.ts` exports sync `parseSchema`, and `packages/extensions/config/src/index.ts` plus `packages/extensions/telemetry/src/internal/schema.ts` use it through the package root for non-command schema boundaries. That makes `parseSchema` still legitimate public API.
 - `packages/core/src/command/schema.ts` already projects schemas through `toJsonSchema`, and `toJsonSchema` uses Zod's input mode. The codec plan should preserve that direction instead of projecting decoded runtime values.
-- `agent: false` is already the agent/tool visibility gate in command contracts. Runtime-only CLI codecs should use that existing gate for extension transports such as MCP rather than inventing a separate discovery filter.
+- Extension transports such as MCP must own runtime-codec discovery policy. Runtime-only CLI codecs should not add a core agent/tool visibility gate.
 
 1. **Name the parse-only API `parseInvocation`.** Current public and internal code already has `parseSchema`, parser helpers, and Zod parse vocabulary. A specific name keeps the root export clear.
 2. **Keep streaming collection and `onChunk` together.** The current executor already collects async-generator chunks and calls `onChunk` when supplied. `dispatch` should expose that behavior directly instead of forking streaming semantics.
 3. **Use canonical decimal grammar for built-in numeric codecs.** Broad `Number()` coercion is the bug class this plan is removing. Decimal-only strings plus JSON numeric inputs are enough for CLI/env/config/fetch use and easier to test.
-4. **Fail early for agent-visible CLI-only codecs, fail at runtime for fetch.** Extension tool discovery is a contract surface, so uncallable tools should not be listed. Fetch is a generic inbound dispatcher today, so unsupported runtime codecs should return a structured `UNSUPPORTED_SURFACE` error there.
+4. **Fail early for adapter-visible CLI-only codecs, fail at runtime for fetch.** Extension tool discovery is a contract surface, so uncallable tools should not be listed. Fetch is a generic inbound dispatcher today, so unsupported runtime codecs should return a structured `UNSUPPORTED_SURFACE` error there.
 5. **Keep `parseSchema` public and add `parseSchemaAsync`.** First-party extensions already use `parseSchema` for config and telemetry wire validation through package-root imports. `dispatch` and `parseInvocation` reduce command-execution pressure, but they do not replace low-level schema-boundary parsing.
 6. **Support async output validation.** Once command input parsing moves to `parseSchemaAsync`, output validation should use the same helper so async codecs/refinements behave consistently across input and output boundaries.
 7. **`dispatch` returns `Result.fail` for non-runnable invocations.** It should never throw typed parse/control errors and should not embed rendered help or version text in `Result.data`. Help, version, schema, completions, and extension serve-handlers remain `serve` display behavior.

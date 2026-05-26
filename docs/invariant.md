@@ -121,7 +121,7 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser/config engine, standard formatter, extension protocol, direct MCP basics, packaged skill/docs reflection basics, command contracts, and outbound HTTP operation transport. | The liche runtime itself, including handwritten CLIs, direct MCP execution, and the shared remote HTTP transport. |
+| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser/input-source engine, standard formatter, extension protocol, command contracts, packaged skill/docs reflection basics, and outbound HTTP operation transport. | The liche runtime itself, including handwritten CLIs and the shared remote HTTP transport. |
 | `@liche/extensions` | no | Official optional extensions over public core lanes: config authoring, completions, agent setup helpers, auth/session workflows, and telemetry adapters. | First-party optional factories and helper workflows. Handwritten core CLIs still run, and Product can still generate catalog-owned surfaces. |
 | `@liche/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | Product-driven generation and conformance. Handwritten CLIs still work. |
 | `@liche/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | liche's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
@@ -140,10 +140,10 @@ Owns:
 - config resolution, file parsing, precedence, and provenance semantics
 - formatter/output envelope behavior
 - extension protocol and extension merge rules
-- MCP basics (`--mcp` runtime support and direct command-contract execution)
+- command reflection helpers consumed by MCP and skill adapters
 - skills/docs basics (packaged skill content and runtime reflection for handwritten CLIs; installers live in extensions)
 - outbound HTTP operation transport
-- auth redaction and transport-safety primitives (`SecretString`, non-secret auth metadata, and resolved auth/header application contracts)
+- redaction and transport primitives (`SecretString` plus generic HTTP auth header contracts)
 
 Must not depend on `@liche/extensions`, `@liche/build`, `@liche/product`, or `@liche/releases`.
 
@@ -221,9 +221,9 @@ Core owns the runtime contract required by both handwritten and generated CLIs:
 - command declaration, parsing, validation, execution, middleware, lifecycle events, mutation hooks, and structured errors
 - args/options/env/config loading, value provenance, and the standard result/error envelope
 - standard output formats: JSON, JSONL, YAML, and Markdown
-- stable serializable command contract data needed for help, manifests, schema export, and direct MCP projection
-- config resolution/provenance, auth redaction/metadata, and outbound HTTP transport primitives that generated and handwritten commands call at runtime
-- narrow runtime projections that must share executor internals to stay correct, such as direct MCP tool execution over the command contract
+- stable serializable command contract data needed for help, manifests, schema export, and first-party adapters
+- input-source provenance, redaction, and outbound HTTP transport primitives that generated and handwritten commands call at runtime
+- serializable command reflection helpers that adapters can consume without importing internals
 
 A feature belongs in core only when a CLI cannot keep the same basic command semantics without it, or when putting it outside core would duplicate parser/executor/security/provenance behavior. Core APIs must be source-of-truth primitives, not convenience workflows.
 
@@ -238,7 +238,7 @@ These are optional extensions/adapters, even when they are useful first-party wo
 - hosted/export telemetry sinks, Product-generated diagnostics, and hosted ingestion clients
 - release, build, Product surface, server adapter, dashboard, SDK, Terraform, or framework-specific behavior
 
-The narrow core exception is direct runtime projection that must share executor internals, such as MCP tool execution over the command contract. Command-shaped helpers register through extensions as normal commands, must stay disabled unless requested by the CLI author, and must not pull in broader vendor publishing adapters.
+Command-shaped helpers register through extensions as normal commands, must stay disabled unless requested by the CLI author, and must not pull in broader vendor publishing adapters.
 
 ### Belongs in `@liche/product`
 

@@ -256,11 +256,16 @@ export interface SessionStore {
 export function createFileSessionStore(options?: { root?: string }): SessionStore;
 
 export function applyAuth(headers: Headers, credential: AuthCredential): void;
+
+export function credentialHttpAuth(
+  credential: AuthCredential,
+  input?: { requiredPermissions?: readonly string[] },
+): HttpAuth;
 ```
 
 `SecretString` is a redaction boundary. It does not serialize, stringify, or inspect as the raw secret by accident. Only transport/session code calls `reveal()`.
 
-`resolveAuth`, `resolveContext`, `SessionStore`, and `createFileSessionStore` are exported from `@liche/auth`. `secret` and `applyAuth` are public top-level `@liche/core` APIs.
+`resolveAuth`, `resolveContext`, `applyAuth`, `credentialHttpAuth`, `SessionStore`, and `createFileSessionStore` are exported from `@liche/auth`. `secret` is the only auth-adjacent public top-level `@liche/core` API.
 
 Structured auth errors:
 
@@ -533,7 +538,7 @@ const context = await resolveContext({
 return await callHttpOperation({
   id: "deployments.create",
   baseUrl: { envVar: "ACME_API_URL" },
-  auth: credential ? { kind: "resolved", credential } : { kind: "none" },
+  auth: credential ? credentialHttpAuth(credential, { requiredPermissions: ["deployments:write"] }) : { kind: "none" },
   method: "POST",
   path: "/orgs/{org_id}/projects/{project_id}/deployments",
   bind: { path: ["org_id", "project_id"], body: true },
@@ -543,11 +548,11 @@ return await callHttpOperation({
 });
 ```
 
-`callHttpOperation` accepts resolved credentials and applies headers through `applyAuth`. Generated code does not pass raw token strings directly.
+`callHttpOperation` accepts resolved headers/secrets. Generated code uses `credentialHttpAuth()` from `@liche/auth`, so raw token strings never enter generated command source and only the auth extension calls `SecretString.reveal()`.
 
 ## Agent and MCP metadata
 
-Agents see non-secret auth state:
+Product-generated agent and MCP artifacts can include non-secret auth state from the catalog or from adapter-specific runtime checks:
 
 ```ts
 {
@@ -568,7 +573,7 @@ Agents see non-secret auth state:
 }
 ```
 
-Only values useful for safe planning and recovery are exposed. Token values, refresh tokens, API keys, authorization headers, env var values, device user codes, session file contents, keychain references, raw HTTP auth failures with secrets, and full local filesystem paths are never exposed.
+Only values useful for safe planning and recovery are exposed. Core command manifests do not carry auth metadata. Token values, refresh tokens, API keys, authorization headers, env var values, device user codes, session file contents, keychain references, raw HTTP auth failures with secrets, and full local filesystem paths are never exposed.
 
 `login`, `logout`, and `switch` are not agent-visible. `whoami` is agent-visible because it is local, read-only, and redacted.
 
