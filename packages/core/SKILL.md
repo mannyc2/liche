@@ -96,9 +96,87 @@ Do not hand-write result-shaped objects such as `{ ok: true, data }`; they are d
 
 Commands can set `format` to choose their default output format. Explicit output-control globals still win when installed, so `--json` returns JSON even when a command defaults to Markdown.
 
+Use `formats` on `defineCommand` to attach a per-command renderer for one or more formats. The function runs at the `result` stage when the chosen output format matches; structured formats stay machine-readable.
+
+```ts
+defineCommand({
+  path: ['report'],
+  formats: {
+    md: (value) => (value as { rows: Row[] }).rows.map((r) => `- ${r.label}: ${r.count}`).join('\n'),
+  },
+  run: () => ({ rows: getRows() }),
+})
+```
+
+Aliases accept a bare string as shorthand for a single-segment alias:
+
+```ts
+defineCommand({ path: ['corpus', 'search'], aliases: ['find', ['s']], run })
+```
+
+## Documenting Options
+
+Per-command option help reads `.describe()` from the schema. Without it the description column in `--help` is blank.
+
+Numeric flags arrive from argv as strings, so use `z.coerce.number()` with the refinements you need:
+
+```ts
+defineCommand({
+  path: ['deploy'],
+  description: 'Deploy a service',
+  input: {
+    options: z.object({
+      entrypoint: z.string().describe('Path to the service entrypoint'),
+      replicas: z.coerce.number().int().positive().default(1).describe('Number of replicas'),
+    }),
+  },
+  // ...
+})
+```
+
+Non-boolean options render as `--name <name>` in the help table by default. Override the placeholder via zod meta when the key reads poorly:
+
+```ts
+options: z.object({ entrypoint: z.string().meta({ valueLabel: 'path' }) })
+// → --entrypoint <path>
+```
+
+## Middleware and Resource Lifecycle
+
+Use `middleware()` to scope resources around the handler — open on entry, close in `finally`, share via `ctx.var`. Declare the shape with `vars` on `defineCli` so handlers can read it back type-safely.
+
+```ts
+import { defineCli, middleware, z } from '@liche/core'
+
+const withDb = middleware(async (ctx, next) => {
+  const db = await openDb(ctx.global.db)
+  ctx.var['db'] = db
+  try {
+    await next()
+  } finally {
+    await db.close()
+  }
+})
+
+defineCli({
+  // ...
+  middleware: [withDb],
+  vars: z.object({ db: z.any().optional() }),
+  commands: [/* handlers read ctx.var.db */],
+})
+```
+
+Middleware on `defineCli` wraps every command; attach `middleware` on individual `defineCommand` entries to scope it. `PrepareContextHook` is the lower-level alternative that runs before argv parsing and is the right place when the loaded value must feed input binding.
+
 ## Globals and Extensions
 
 Use `defineGlobal()` or `defineCli({ globals })` for CLI-wide flags that belong to the command runtime. Globals feed parsing, help, and `ctx.global`; they do not run side effects, load config, or resolve auth.
+
+Set `default` to a pre-resolved value (not an argv string). Defaults populate `ctx.global` when the flag is absent and render as `(default: …)` in help. `parse` does not run on the default.
+
+```ts
+defineGlobal({ key: 'db', type: 'string', default: 'twitte.sqlite', valueLabel: 'path' })
+```
 
 Core's standard user-visible flags are opt-in controls: `help()`, `version()`, `outputControls()`, and `reflectionControls()`. `help({ renderer })` customizes explicit help, fallback help, and validation help; wrap `defaultHelpRenderer()` to preserve the standard layout with additions. Output renderers use `defineOutputRenderer()` and `CliExtension.outputRenderers`; expose custom format names with `outputControls({ format: true, formats: [...] })`. Do not assume a minimal `defineCli()` reserves `--help`, `--version`, `--json`, `--format`, `--schema`, or `--llms`.
 
