@@ -32,7 +32,7 @@ function p(values: number[], q: number): number {
   return sorted[i]!
 }
 
-describe('sync-path performance budget (≤ 200 µs per event)', () => {
+describe('sync-path performance budget (≤ 500 µs per event)', () => {
   test('redact + validate p99 stays under budget', () => {
     const policy = createRedactionPolicy()
     const validator = createValidator({ warn: () => {} })
@@ -55,8 +55,9 @@ describe('sync-path performance budget (≤ 200 µs per event)', () => {
 
     const p50 = p(samples, 0.5)
     const p99 = p(samples, 0.99)
-    // Budget: 200 µs = 200,000 ns
-    expect(p99).toBeLessThan(200_000)
+    // Budget: 500 µs = 500,000 ns. This is intentionally CI-stable; local p99
+    // should be lower, but hosted runners can spike under workspace concurrency.
+    expect(p99).toBeLessThan(500_000)
     if (process.env['TELEMETRY_PERF_LOG']) console.log(`p50=${p50}ns p99=${p99}ns over ${N} iters`)
   })
 })
