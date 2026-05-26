@@ -148,6 +148,35 @@ describe('renderHelp — options', () => {
     expect(help).not.toContain('[deprecated]')
   })
 
+  test('non-boolean option appends "<key>" value token to its options-table label', () => {
+    const cli = cliWith('run', {
+      options: z.object({ name: z.string() }),
+      run: () => ({}),
+    })
+    const help = renderHelp('app', stateOf(cli), undefined, ['run'])
+    expect(help).toContain('--name <name>')
+  })
+
+  test('boolean option has no value token in its options-table label', () => {
+    const cli = cliWith('run', {
+      options: z.object({ verbose: z.boolean().default(false) }),
+      run: () => ({}),
+    })
+    const help = renderHelp('app', stateOf(cli), undefined, ['run'])
+    expect(help).toContain('--verbose')
+    expect(help).not.toMatch(/--verbose\s*</)
+  })
+
+  test('meta valueLabel overrides the default <key> token', () => {
+    const cli = cliWith('run', {
+      options: z.object({ name: z.string().meta({ valueLabel: 'identity' }) }),
+      run: () => ({}),
+    })
+    const help = renderHelp('app', stateOf(cli), undefined, ['run'])
+    expect(help).toContain('--name <identity>')
+    expect(help).not.toContain('--name <name>')
+  })
+
   test('description from .describe() renders in option row', () => {
     const cli = cliWith('run', {
       options: z.object({ mode: z.string().describe('which mode to run in') }),

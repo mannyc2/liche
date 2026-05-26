@@ -15,7 +15,7 @@ import type {
 } from '../types.js'
 import { isCommand } from '../command/guards.js'
 import { childCommands, commandScope } from '../command/registry.js'
-import { description, encodeDefault, isBooleanSchema, isDeprecated, isOptional, objectShape } from '../schema/zod.js'
+import { description, encodeDefault, isBooleanSchema, isDeprecated, isOptional, meta, objectShape } from '../schema/zod.js'
 import { kebab } from '../internal.js'
 
 export function renderHelp(name: string, state: CliState, selected?: SelectedCommand | undefined, rest: string[] = []): string {
@@ -104,12 +104,18 @@ function optionFields(schema: Schema, aliases: Dict<string> = {}, optionSources:
       deprecated: isDeprecated(item),
       description: description(item),
       ...(envName ? { env: envName } : undefined),
-      label: renderedFlag.trim(),
+      label: `${renderedFlag.trim()}${optionValueToken(key, item)}`,
       name: key,
       required: !isOptional(item),
       usage: optionUsageToken(key, item, aliases),
     }
   })
+}
+
+function optionValueToken(key: string, item: Schema | undefined): string {
+  if (isBooleanSchema(item)) return ''
+  const override = meta(item)?.['valueLabel']
+  return ` <${typeof override === 'string' ? override : key}>`
 }
 
 function usageLines(
