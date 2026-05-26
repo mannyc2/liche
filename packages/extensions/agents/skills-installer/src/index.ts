@@ -34,7 +34,6 @@ export function skillsInstaller(options: SkillsInstallerOptions = {}): CliExtens
     id: 'liche.skills-installer',
     commands: [
       defineCommand({
-        agent: false,
         description: 'Sync skill file',
         input: { env: installEnv, options: installOptions },
         path: ['skills', 'add'],
@@ -49,7 +48,6 @@ export function skillsInstaller(options: SkillsInstallerOptions = {}): CliExtens
         safety: { idempotent: true },
       }),
       defineCommand({
-        agent: false,
         description: 'List available skills',
         path: ['skills', 'list'],
         run: ({ ctx }) => ({ skills: [{ installed: false, name: ctx.name }] }),

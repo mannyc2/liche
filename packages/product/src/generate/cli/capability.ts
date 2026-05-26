@@ -85,7 +85,6 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
   const lines: string[] = []
   lines.push(`${indent}defineCommand({`)
   lines.push(`${indent}  path: ${renderStringArray(cap.command)},`)
-  lines.push(`${indent}  agent: ${cap.surfaces.agent ? 'true' : 'false'},`)
   lines.push(`${indent}  summary: ${q(cap.summary)},`)
   if (cap.description) lines.push(`${indent}  description: ${q(cap.description)},`)
   if (cap.examples.length > 0) lines.push(`${indent}  examples: ${renderExamples(cap.examples)},`)

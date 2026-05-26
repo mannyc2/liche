@@ -9,7 +9,7 @@ import type {
   SourceInspector,
 } from '../types.js'
 import { ParseError } from '../errors/error.js'
-import { objectShape, primitiveKind } from '../schema/zod.js'
+import { isObjectSchema, objectShape, primitiveKind } from '../schema/zod.js'
 import { parseArgs, parseCommandOptions, parseObject } from '../parser/argv.js'
 
 export type ResolveCommandInputOptions = {
@@ -66,15 +66,42 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
     }
   }
 
+  const envBag = assembleDeclaredEnv(providers.get('env'), input.runtime.env, input.env)
+
   return {
     args: input.argvOptions.argsObject !== undefined
       ? parseObject(input.runtime.args, input.argvOptions.argsObject)
       : parseArgs(input.runtime.args, argv.args),
-    env: parseObject(input.runtime.env, input.env),
+    env: parseObject(input.runtime.env, envBag),
     options: parseObject(input.runtime.options, rawOptions),
     sources: buildSourceInspector(providers, optionSources),
     vars: parseObject(input.rootVarsSchema, {}),
   }
+}
+
+function assembleDeclaredEnv(
+  envProviderResolved: ResolvedInputSource | undefined,
+  envSchema: Schema | undefined,
+  rawEnv: Dict<string | undefined>,
+): Dict<unknown> {
+  if (!envSchema) return {}
+  if (!envProviderResolved) return rawEnv
+  if (isObjectSchema(envSchema)) {
+    const out: Dict<unknown> = {}
+    for (const key of Object.keys(objectShape(envSchema))) {
+      const value = envProviderResolved.get(key)
+      if (value !== undefined) out[key] = value
+    }
+    return out
+  }
+  // Non-object env schemas (e.g. z.record passthrough) read the full bag.
+  // The envProvider is still consulted per key so provenance is uniform.
+  const out: Dict<unknown> = {}
+  for (const key of Object.keys(rawEnv)) {
+    const value = envProviderResolved.get(key)
+    if (value !== undefined) out[key] = value
+  }
+  return out
 }
 
 function buildSourceInspector(

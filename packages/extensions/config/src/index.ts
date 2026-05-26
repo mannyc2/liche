@@ -220,7 +220,6 @@ export function configDoctor(): CliExtension {
     id: 'liche.config-doctor',
     commands: [
       defineCommand({
-        agent: false,
         description: 'Inspect config loading',
         path: ['config', 'doctor'],
         run: ({ ctx }) => ({

@@ -227,7 +227,7 @@ describe('command registry and guards behavior', () => {
     const cli = testCli('app', { description: 'root app' }, [
       testCommand('admin', {
         description: 'admin root',
-        outputPolicy: 'agent-only',
+        outputPolicy: 'machine-only',
         run: () => ({ root: true }),
       }),
       testCommand(['admin', 'audit'], { aliases: ['a'], description: 'audit logs', run: () => ({ ok: true }) }),
@@ -249,7 +249,7 @@ describe('command registry and guards behavior', () => {
     const selectedAlias = selectCommand(state, ['admin', 'a', 'tail'])
     expect(selectedAlias?.path).toEqual(['admin', 'audit'])
     expect(selectedAlias?.argv.args).toEqual(['tail'])
-    expect(outputPolicy(selectCommand(state, ['admin'])!)).toBe('agent-only')
+    expect(outputPolicy(selectCommand(state, ['admin'])!)).toBe('machine-only')
 
     expect(completionCommands(state, ['admin', 'a'])).toEqual(['audit', 'a'])
     expect(completionCommands(state, ['admin', 'audit', 'x'])).toEqual([])

@@ -198,7 +198,6 @@ function toOtlpLogs(events: ReadonlyArray<WireEvent>): unknown {
               body: { stringValue: e.type },
               attributes: [
                 { key: 'cli.event.type', value: { stringValue: e.type } },
-                { key: 'cli.invocation', value: { stringValue: e.invocation } },
                 ...(e.command ? [{ key: 'cli.command.id', value: { stringValue: e.command.id } }] : []),
                 ...(e.durationMs !== undefined ? [{ key: 'cli.duration_ms', value: { intValue: e.durationMs } }] : []),
                 ...(e.exitCode !== undefined ? [{ key: 'cli.exit_code', value: { intValue: e.exitCode } }] : []),

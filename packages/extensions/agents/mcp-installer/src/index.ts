@@ -36,7 +36,6 @@ export function mcpInstaller(options: McpInstallerOptions = {}): CliExtension {
     id: 'liche.mcp-installer',
     commands: [
       defineCommand({
-        agent: false,
         description: 'Register MCP server config',
         input: {
           aliases: { command: 'c' },

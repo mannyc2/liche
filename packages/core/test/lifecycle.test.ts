@@ -45,7 +45,6 @@ describe('lifecycle events and hooks', () => {
       command: { id: 'deploy', path: ['deploy'] },
       format: 'json',
       formatExplicit: true,
-      invocation: 'cli',
     })
     const serialized = JSON.stringify(events)
     expect(serialized).not.toContain('prod')
@@ -281,9 +280,9 @@ describe('lifecycle events and hooks', () => {
       'mcp.tool_call.completed',
       'mcp.tool_call.failed',
     ])
-    expect(events.find((event) => event.type === 'mcp.tools_listed')?.mcp).toEqual({
-      method: 'tools/list',
-      toolCount: 1,
+    expect(events.find((event) => event.type === 'mcp.tools_listed')?.attributes).toMatchObject({
+      mcpMethod: 'tools/list',
+      mcpToolCount: 1,
     })
     expect(events.find((event) => event.type === 'mcp.tool_call.started')?.command).toEqual({
       id: 'echo',

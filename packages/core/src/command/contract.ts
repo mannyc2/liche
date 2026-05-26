@@ -16,13 +16,13 @@ export function commandContractFromDefinition(
   definition: CommandDefinition,
 ): CommandContract {
   return {
-    ...(definition.agent !== undefined ? { agent: definition.agent } : undefined),
     ...(definition.auth ? { auth: definition.auth } : undefined),
     description: definition.description,
     ...(definition.effects ? { effects: definition.effects } : undefined),
     ...(definition.examples ? { examples: definition.examples } : undefined),
     ...(definition.format ? { format: definition.format } : undefined),
     ...(definition.hint ? { hint: definition.hint } : undefined),
+    ...(definition.interactive !== undefined ? { interactive: definition.interactive } : undefined),
     name,
     ...(definition.outputPolicy ? { outputPolicy: definition.outputPolicy } : undefined),
     path: contractPath(name),

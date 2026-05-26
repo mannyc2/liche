@@ -11,11 +11,10 @@ import type { WireEvent } from '../src/internal/schema.js'
 
 function event(overrides: Partial<WireEvent> = {}): WireEvent {
   return {
-    agent: false,
+    isTty: false,
     cli: { name: 'shipyard', version: '0.1.0' },
     format: 'json',
     formatExplicit: true,
-    invocation: 'cli',
     occurredAt: '2026-05-21T00:00:00.000Z',
     type: 'command.completed',
     durationMs: 12,

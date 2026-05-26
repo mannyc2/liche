@@ -86,7 +86,6 @@ export function renderOpsCommands(indent: string, catalog: Catalog): string[] {
     const envFields = doctorEnvVars(catalog).map((envVar) => `${q(envVar)}: z.string().optional()`).join(', ')
     lines.push(`${indent}defineCommand({`)
     lines.push(`${indent}  path: ['doctor'],`)
-    lines.push(`${indent}  agent: true,`)
     lines.push(`${indent}  summary: 'Run local installation and PATH diagnostics.',`)
     lines.push(`${indent}  input: { env: z.object({ ${envFields} }) },`)
     lines.push(`${indent}  output: z.unknown(),`)
@@ -104,7 +103,6 @@ export function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   }
   lines.push(`${indent}defineCommand({`)
   lines.push(`${indent}  path: ['catalog'],`)
-  lines.push(`${indent}  agent: true,`)
   lines.push(`${indent}  summary: 'Print the generated local catalog artifact.',`)
   lines.push(`${indent}  output: z.unknown(),`)
   lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
@@ -112,7 +110,6 @@ export function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   lines.push(`${indent}}),`)
   lines.push(`${indent}defineCommand({`)
   lines.push(`${indent}  path: ['notices'],`)
-  lines.push(`${indent}  agent: true,`)
   lines.push(`${indent}  summary: 'Print static update, channel, and yank notices.',`)
   lines.push(`${indent}  output: z.unknown(),`)
   lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)
@@ -121,7 +118,6 @@ export function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   if (catalog.ops.release !== false) {
     lines.push(`${indent}defineCommand({`)
     lines.push(`${indent}  path: ['release'],`)
-    lines.push(`${indent}  agent: true,`)
     lines.push(`${indent}  summary: 'Print static release, install, update, and channel metadata.',`)
     lines.push(`${indent}  output: z.unknown(),`)
     lines.push(`${indent}  safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },`)

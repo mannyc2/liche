@@ -15,7 +15,6 @@ export function completions(options: CompletionsOptions = {}): CliExtension {
     id: 'liche.completions',
     commands: [
       defineCommand({
-        agent: false,
         description: 'Generate shell completion script',
         format: 'md',
         input: { args: completionArgs },

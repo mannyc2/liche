@@ -108,10 +108,10 @@ describe('parity: MCP tool naming uses underscores', () => {
     expect((call as any).result.isError).toBe(false)
   })
 
-  test('tools/call cannot invoke commands hidden from agents', async () => {
+  test('tools/call cannot invoke interactive commands', async () => {
     const cli = testCli('app', [
       testCommand('visible', { run: () => ({ ok: true }) }),
-      testCommand('hidden', { agent: false, run: () => ({ shouldNotRun: true }) }),
+      testCommand('login', { interactive: true, run: () => ({ shouldNotRun: true }) }),
     ])
     const state = (cli as InternalCli)[stateSymbol]
 
@@ -122,27 +122,27 @@ describe('parity: MCP tool naming uses underscores', () => {
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
-      params: { name: 'hidden', arguments: {} },
+      params: { name: 'login', arguments: {} },
     })
     expect((call as any).result).toEqual({
-      content: [{ text: '{"code":"COMMAND_NOT_FOUND","message":"No tool hidden"}', type: 'text' }],
+      content: [{ text: '{"code":"COMMAND_NOT_FOUND","message":"No tool login"}', type: 'text' }],
       isError: true,
     })
   })
 })
 
-describe('parity: --json flips agent on a TTY', () => {
-  test('agent is true when explicit format is requested on a TTY', async () => {
+describe('parity: --json flips formatExplicit on a TTY', () => {
+  test('formatExplicit is true when --json is passed on a TTY', async () => {
     const cli = testCli('app', [testCommand('show', {
-      run: ({ agent }) => ({ agent }),
+      run: ({ formatExplicit, isTty }) => ({ formatExplicit, isTty }),
     })])
     const result = await runCli(cli, ['show', '--json'], { isTty: true })
-    expect(parseJsonOutput(result.stdout)).toEqual({ agent: true })
+    expect(parseJsonOutput(result.stdout)).toEqual({ formatExplicit: true, isTty: true })
   })
 
-  test('agent is false on a TTY without explicit format', async () => {
+  test('formatExplicit is false on a TTY without an explicit format flag', async () => {
     const cli = testCli('app', [testCommand('show', {
-      run: ({ agent }) => ({ agent }),
+      run: ({ formatExplicit }) => ({ formatExplicit }),
     })])
     const result = await runCli(cli, ['show'], { isTty: true })
     expect(result.stdout).toContain('false')

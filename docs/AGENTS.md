@@ -8,7 +8,8 @@ Start here when reviewing a change to implementation or tests:
 
 1. [invariant.md](./invariant.md) — product invariants, workspace layout, package boundaries.
 2. [api-boundary.md](./api-boundary.md) — what's public in `@liche/core` and the decision rule for widening.
-3. [coverage.md](./coverage.md) — behavior cases, mutation priorities, and the requirement-to-test traceability matrix.
+3. [core-run-and-arg-codecs-plan.md](./core-run-and-arg-codecs-plan.md) — planned public invocation APIs and strict Zod-backed CLI argument codecs.
+4. [coverage.md](./coverage.md) — behavior cases, mutation priorities, and the requirement-to-test traceability matrix.
 
 Then read the topic-specific requirement docs as needed:
 

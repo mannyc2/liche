@@ -80,7 +80,7 @@ export function renderAuthRuntimeArgs(indent: string, catalog: Catalog): string[
     `${indent}provider: AUTH_PROVIDER,`,
     `${indent}profileEnvVar: PROFILE_ENV_VAR,`,
     `${indent}global: ctx.global,`,
-    `${indent}invocation: ctx.invocation,`,
+    `${indent}invocation: detectInvocation(ctx),`,
     `${indent}env: ctx.env as Record<string, string | undefined>,`,
     `${indent}loginCommand: ${q(`${catalog.product.id} login`)},`,
   ]
@@ -145,7 +145,7 @@ export function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capabi
     if (requiredScopes.length > 0) {
       lines.push(`${indent}  requiredScopes: ${renderStringArray(requiredScopes)},`)
     }
-    lines.push(`${indent}  invocation: ctx.invocation,`)
+    lines.push(`${indent}  invocation: detectInvocation(ctx),`)
     lines.push(`${indent}  profile: ctx.global.profile,`)
     lines.push(`${indent}  profileEnvVar: PROFILE_ENV_VAR,`)
     lines.push(`${indent}  nonInteractive: ctx.global.nonInteractive,`)
@@ -185,7 +185,7 @@ export function renderAuthCapability(indent: string, catalog: Catalog, cap: Comm
   const lines: string[] = []
   lines.push(`${indent}defineCommand({`)
   lines.push(`${indent}  path: ${renderStringArray(cap.command)},`)
-  lines.push(`${indent}  agent: ${cap.surfaces.agent ? 'true' : 'false'},`)
+  if (!cap.surfaces.agent) lines.push(`${indent}  interactive: true,`)
   lines.push(`${indent}  summary: ${q(cap.summary)},`)
   if (cap.effects) lines.push(`${indent}  effects: ${renderEffects(cap.effects)},`)
   if (cap.policy) lines.push(`${indent}  policy: ${renderPolicy(cap.policy)},`)

@@ -3,8 +3,9 @@ import type {
   AuthIdentityProbeInput,
   AuthProviderRuntime,
   ContextRuntime,
-  InvocationKind,
 } from '@liche/core'
+
+export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
 
 export type StoredProfile = {
   schemaVersion: 1

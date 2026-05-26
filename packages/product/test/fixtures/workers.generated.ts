@@ -902,7 +902,6 @@ const cli = defineCli({
   commands: [
     defineCommand({
       path: ['script', 'list'],
-      agent: false,
       summary: 'List Worker scripts',
       examples: [{ command: 'workers script list --json' }],
       effects: { kind: 'read', idempotent: true },
@@ -950,7 +949,6 @@ const cli = defineCli({
     }),
     defineCommand({
       path: ['deploy'],
-      agent: false,
       summary: 'Deploy a Worker',
       examples: [{ command: 'workers deploy --entrypoint src/index.ts --environment preview --json' }],
       effects: { kind: 'exec', idempotent: false },
@@ -974,7 +972,6 @@ const cli = defineCli({
     }),
     defineCommand({
       path: ['dev'],
-      agent: false,
       summary: 'Run a local development server',
       input: {
         options: z.object({
@@ -992,7 +989,6 @@ const cli = defineCli({
     }),
     defineCommand({
       path: ['doctor'],
-      agent: true,
       summary: 'Run local installation and PATH diagnostics.',
       input: { env: z.object({ 'PATH': z.string().optional() }) },
       output: z.unknown(),
@@ -1009,7 +1005,6 @@ const cli = defineCli({
     }),
     defineCommand({
       path: ['catalog'],
-      agent: true,
       summary: 'Print the generated local catalog artifact.',
       output: z.unknown(),
       safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
@@ -1017,7 +1012,6 @@ const cli = defineCli({
     }),
     defineCommand({
       path: ['notices'],
-      agent: true,
       summary: 'Print static update, channel, and yank notices.',
       output: z.unknown(),
       safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },
@@ -1025,7 +1019,6 @@ const cli = defineCli({
     }),
     defineCommand({
       path: ['release'],
-      agent: true,
       summary: 'Print static release, install, update, and channel metadata.',
       output: z.unknown(),
       safety: { auth: 'none', destructive: false, idempotent: true, interactive: 'never', openWorld: false, readOnly: true },

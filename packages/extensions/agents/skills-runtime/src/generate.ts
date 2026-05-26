@@ -47,7 +47,7 @@ export function skillIndex(name: string, state: CliState): string {
 }
 
 function skillCommandContracts(state: CliState): CommandContract[] {
-  return collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false)
+  return collectCommandContracts(state.commands, state.root).filter((command) => !command.interactive)
 }
 
 function renderExamples(name: string, command: CommandContract): string[] {

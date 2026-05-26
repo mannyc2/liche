@@ -425,9 +425,9 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(version.stdout).toBe('0.0.0\n')
   })
 
-  test('serve honors agent-only output policy unless full output is requested', async () => {
+  test('serve honors machine-only output policy unless full output is requested', async () => {
     const cli = testCli('app', [testCommand('quiet', {
-      outputPolicy: 'agent-only',
+      outputPolicy: 'machine-only',
       run: () => ({ hidden: true }),
     })])
 

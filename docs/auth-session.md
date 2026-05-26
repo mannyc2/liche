@@ -183,7 +183,7 @@ One auth provider per product. Auth is declared at the product level, not per ca
 
 ## Core runtime API
 
-Core exposes small public primitives usable by handwritten and generated CLIs. Generated code may wrap them in product-specific helpers, but it does not import private core subpaths.
+Core (`@liche/core`) exposes the redaction/transport primitives — `SecretString`, `TokenSourceSpec`, `AuthProviderRuntime`, `AuthCredential`, etc. The auth runtime itself — `resolveAuth`, `resolveContext`, session stores, OAuth device flows, and the `InvocationKind` discriminator that gates interactive auth flows — lives in `@liche/auth`, the only consumer that actually branches on those values. Generated code may wrap either in product-specific helpers, but does not import private core subpaths.
 
 ```ts
 export type SecretString = {

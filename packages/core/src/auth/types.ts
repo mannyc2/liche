@@ -1,8 +1,6 @@
 import type { HttpFetch, HttpMethod, RuntimeValue } from '../http/index.js'
 import type { SecretString } from './secret.js'
 
-export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
-
 export type EnvTokenSourceSpec = {
   kind: 'env'
   envVar: string

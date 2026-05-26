@@ -4,6 +4,7 @@ export {
   authSwitch,
   authWhoami,
   createFileSessionStore,
+  detectInvocation,
   logoutAuthSession,
   oauthDeviceLogin,
   resolveAuth,

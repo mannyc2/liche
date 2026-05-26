@@ -3,11 +3,10 @@ import { createValidator, wireEventSchema, type WireEvent } from '../src/interna
 
 function validEvent(overrides: Partial<WireEvent> = {}): WireEvent {
   return {
-    agent: false,
+    isTty: false,
     cli: { name: 'shipyard', version: '0.1.0' },
     format: 'json',
     formatExplicit: true,
-    invocation: 'cli',
     occurredAt: '2026-05-21T00:00:00.000Z',
     type: 'command.completed',
     telemetry: {
@@ -27,7 +26,7 @@ describe('wireEventSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  test('accepts every CliEventType', () => {
+  test('accepts core CliEventType literals and extension strings', () => {
     const types = [
       'command.selected',
       'command.started',
@@ -40,12 +39,12 @@ describe('wireEventSchema', () => {
       'version.rendered',
       'completion.generated',
       'schema.generated',
+      'hook.failed',
       'mcp.initialize',
       'mcp.tools_listed',
       'mcp.tool_call.started',
       'mcp.tool_call.completed',
       'mcp.tool_call.failed',
-      'hook.failed',
     ] as const
     for (const type of types) {
       const result = wireEventSchema.safeParse(validEvent({ type }))
@@ -53,7 +52,7 @@ describe('wireEventSchema', () => {
     }
   })
 
-  test('accepts events with command, error, mcp, surface, result, durationMs, exitCode', () => {
+  test('accepts events with command, error, attributes, surface, result, durationMs, exitCode', () => {
     const result = wireEventSchema.safeParse(
       validEvent({
         command: { id: 'deploy', path: ['deploy'] },
@@ -62,7 +61,7 @@ describe('wireEventSchema', () => {
         result: 'success',
         surface: { kind: 'command', name: 'deploy' },
         error: { code: 'X', exitCode: 1, retryable: false },
-        mcp: { method: 'tools/call', toolCount: 3 },
+        attributes: { mcpMethod: 'tools/call', mcpToolCount: 3 },
       }),
     )
     expect(result.success).toBe(true)
@@ -70,11 +69,6 @@ describe('wireEventSchema', () => {
 
   test('rejects missing required fields', () => {
     const result = wireEventSchema.safeParse({ ...validEvent(), occurredAt: undefined })
-    expect(result.success).toBe(false)
-  })
-
-  test('rejects invalid invocation enum', () => {
-    const result = wireEventSchema.safeParse({ ...validEvent(), invocation: 'desktop' })
     expect(result.success).toBe(false)
   })
 

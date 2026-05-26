@@ -22,12 +22,11 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
 
   if (message?.method === 'initialize') {
     await emitMcpLifecycle(binaryName, state, state.events, {
-      agent: true,
+      isTty: false,
       format: 'json',
       formatExplicit: true,
-      invocation: 'mcp',
-      mcp: { method: 'initialize' },
-      surface: { kind: 'mcp' },
+      attributes: { mcpMethod: 'initialize' },
+      surface: { kind: 'command' },
       type: 'mcp.initialize',
     })
     return {
@@ -58,12 +57,11 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       annotations: mcpAnnotations(command),
     }))
     await emitMcpLifecycle(binaryName, state, state.events, {
-      agent: true,
+      isTty: false,
       format: 'json',
       formatExplicit: true,
-      invocation: 'mcp',
-      mcp: { method: 'tools/list', toolCount: tools.length },
-      surface: { kind: 'mcp' },
+      attributes: { mcpMethod: 'tools/list', mcpToolCount: tools.length },
+      surface: { kind: 'command' },
       type: 'mcp.tools_listed',
     })
     return {
@@ -92,28 +90,25 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
     const startedAt = Date.now()
     if (command) {
       await emitMcpLifecycle(binaryName, state, subscriptions, {
-        agent: true,
+        isTty: false,
         command,
         format: 'json',
         formatExplicit: true,
-        invocation: 'mcp',
-        mcp: { method: 'tools/call' },
-        surface: { kind: 'mcp' },
+        attributes: { mcpMethod: 'tools/call' },
+        surface: { kind: 'command' },
         type: 'mcp.tool_call.started',
       })
     }
     const result: Result = selected && command
       ? await execute(binaryName, selected, {
-          agent: true,
           argvOptions: { args: [], argsObject: input.args ?? {}, options: input.options ?? {} },
           displayName: binaryName,
           events: subscriptions,
-          env: Bun.env as Dict<string | undefined>,
+          env: { ...(Bun.env as Dict<string | undefined>), LICHE_INVOCATION: 'mcp' } as Dict<string | undefined>,
           format: 'json',
           formatExplicit: true,
           global: {},
           hooks: mergeHooks(state.hooks, selected.hooks),
-          invocation: 'mcp',
           isTty: false,
           middlewares: state.middlewares.concat(selected.middlewares),
           version: state.def.version,
@@ -121,7 +116,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       : { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }
 
     await emitMcpLifecycle(binaryName, state, subscriptions, {
-      agent: true,
+      isTty: false,
       ...(command ? { command } : undefined),
       durationMs: Date.now() - startedAt,
       ...(result.ok ? { exitCode: 0, result: 'success' as const } : {
@@ -131,9 +126,8 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       }),
       format: 'json',
       formatExplicit: true,
-      invocation: 'mcp',
-      mcp: { method: 'tools/call' },
-      surface: { kind: 'mcp' },
+      attributes: { mcpMethod: 'tools/call' },
+      surface: { kind: 'command' },
       type: result.ok ? 'mcp.tool_call.completed' : 'mcp.tool_call.failed',
     })
 
@@ -151,7 +145,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
 }
 
 function mcpCommandContracts(state: CliState) {
-  return collectCommandContracts(state.commands, state.root).filter((command) => command.agent !== false)
+  return collectCommandContracts(state.commands, state.root).filter((command) => !command.interactive)
 }
 
 async function emitMcpLifecycle(

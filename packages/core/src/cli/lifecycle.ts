@@ -75,7 +75,7 @@ function snapshotEvent(event: CliEvent): Readonly<CliEvent> {
     ...(event.command ? { command: Object.freeze({ ...event.command, path: Object.freeze([...event.command.path]) }) } : undefined),
     ...(event.completion ? { completion: Object.freeze({ ...event.completion }) } : undefined),
     ...(event.error ? { error: Object.freeze({ ...event.error }) } : undefined),
-    ...(event.mcp ? { mcp: Object.freeze({ ...event.mcp }) } : undefined),
+    ...(event.attributes ? { attributes: Object.freeze({ ...event.attributes }) } : undefined),
     ...(event.surface ? { surface: Object.freeze({ ...event.surface }) } : undefined),
   }
   return Object.freeze(snapshot)

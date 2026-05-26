@@ -130,7 +130,7 @@ Customization requirements:
 4. Move agent controls to `agents()`
    - Move `--llms` handling and any skill/manifest rendering needed by that flag into the agents extension path.
    - Keep MCP stdio/HTTP and installer commands in the agents bundle by default.
-   - Confirm agent helper commands remain `agent: false` so they do not appear as MCP tools.
+   - Confirm interactive agent helper commands remain `interactive: true` so they do not appear as MCP tools.
    - Verify: core alone exposes no agent commands or agent globals; `agents()` exposes the expected agent surface.
 
 5. Add help renderer API

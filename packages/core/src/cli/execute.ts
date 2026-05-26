@@ -8,7 +8,6 @@ import type {
   Format,
   GlobalOptions,
   InputSourceProvider,
-  InvocationKind,
   MiddlewareContext,
   MiddlewareHandler,
   Result,
@@ -24,7 +23,6 @@ import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecy
 import { resolveCommandInput } from './input-sources.js'
 
 export type ExecuteInput = {
-  agent: boolean
   argvOptions: { args: string[]; argsObject?: Dict | undefined; options?: Dict | undefined }
   contextOverrides?: Partial<RunContext> | undefined
   displayName: string
@@ -35,7 +33,6 @@ export type ExecuteInput = {
   global?: GlobalOptions | undefined
   hooks: CliHooks
   inputSources?: readonly InputSourceProvider[] | undefined
-  invocation: InvocationKind
   isTty?: boolean | undefined
   middlewares: MiddlewareHandler[]
   events: CliEventSubscription[]
@@ -75,7 +72,6 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
     })
 
     const baseContext: MiddlewareContext = {
-      agent: input.agent,
       args: resolved.args as Dict,
       displayName: input.displayName,
       env: resolved.env as Dict,
@@ -85,7 +81,6 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       format: input.format,
       formatExplicit: input.formatExplicit,
       global: input.global ?? {},
-      invocation: input.invocation,
       isTty: input.isTty ?? false,
       name: binaryName,
       ok(data, meta) {
@@ -179,11 +174,10 @@ async function emitCommandEvent(
   extra: Partial<CliEvent> = {},
 ): Promise<void> {
   await emitLifecycleEvent(input.events, createLifecycleEvent(binaryName, input.version, {
-    agent: input.agent,
+    isTty: input.isTty ?? false,
     command,
     format: input.format,
     formatExplicit: input.formatExplicit,
-    invocation: input.invocation,
     surface: { kind: 'command' },
     type,
     ...extra,

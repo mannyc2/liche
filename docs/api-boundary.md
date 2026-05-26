@@ -24,6 +24,8 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 |---|---|
 | `defineCli` | Canonical handwritten CLI authoring helper for data-first command graphs. |
 | `defineCommand` | Canonical command declaration helper for analyzable command metadata plus a handler. |
+| `run` | Top-level effectful CLI entrypoint. Equivalent to `cli.serve(argv ?? Bun.argv.slice(2), options)` — writes stdout/stderr and exits the process. |
+| `dispatch` | Result-returning execution lane for extensions or adapters that drive a command without writing stdout/stderr or calling `process.exit`. Returns the same `Result` envelope `serve` would have printed under `--json`. |
 | `defineExtension` | Canonical extension declaration helper; validates the extension id and freezes the result. |
 | `defineGlobal` | Canonical global flag declaration helper for reusable parser/help/context metadata. |
 | `defineOutputRenderer` | Canonical output renderer declaration helper for named final-value renderers. |
@@ -39,11 +41,13 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 
 ### Types — public because authoring/runtime helpers expose them
 
-`Awaitable`, `CliInstance`, `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventMcp`, `CliEventSurface`, `CliExtension`, `CliHookRegistration`, `BeforeExecuteHook`, `BuiltInFormat`, `CommandContract`, `CommandEffectKind`, `CommandEffects`, `CommandError`, `CommandInput`, `CommandPolicy`, `CommandSafety`, `Cta`, `CtaBlock`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, `DefineCliOptions`, `Example`, `FetchHandler`, `FieldError`, `Format`, `GlobalFlags`, `GlobalInputDefinition`, `GlobalInputType`, `HelpCommand`, `HelpControlOptions`, `HelpField`, `HelpGlobal`, `HelpModel`, `HelpRenderContext`, `HelpRenderer`, `InferSchema`, `InputSourceBinding`, `InputSourceProvider`, `InputSourceProvenance`, `InputSourceResolveInput`, `MiddlewareContext`, `MiddlewareHandler`, `OptionValueSource`, `OutputControlsOptions`, `OutputPolicy`, `OutputRenderContext`, `OutputRenderer`, `OutputRenderStage`, `ReflectionControlsOptions`, `ResolvedInputSource`, `Result`, `ResultMeta`, `RunContext`, `Schema`, `ServeHandler`, `ServeOptions`, `SkillDefinition`, `SourceInspector`, `Usage`, `UsageObject`.
+`Awaitable`, `CliInstance`, `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventSurface`, `CliExtension`, `CliHookRegistration`, `BeforeExecuteHook`, `BuiltInFormat`, `CommandContract`, `CommandEffectKind`, `CommandEffects`, `CommandError`, `CommandInput`, `CommandPolicy`, `CommandSafety`, `Cta`, `CtaBlock`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, `DefineCliOptions`, `DispatchOptions`, `Example`, `FetchHandler`, `FieldError`, `Format`, `GlobalFlags`, `GlobalInputDefinition`, `GlobalInputType`, `HelpCommand`, `HelpControlOptions`, `HelpField`, `HelpGlobal`, `HelpModel`, `HelpRenderContext`, `HelpRenderer`, `InferSchema`, `InputSourceBinding`, `InputSourceProvider`, `InputSourceProvenance`, `InputSourceResolveInput`, `MiddlewareContext`, `MiddlewareHandler`, `OptionValueSource`, `OutputControlsOptions`, `OutputPolicy`, `OutputRenderContext`, `OutputRenderer`, `OutputRenderStage`, `ReflectionControlsOptions`, `ResolvedInputSource`, `Result`, `ResultMeta`, `RunContext`, `Schema`, `ServeHandler`, `ServeOptions`, `SkillDefinition`, `SourceInspector`, `Usage`, `UsageObject`.
 
 ### Auth/session runtime types
 
-`SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `InvocationKind`, `TokenSourceSpec`, `CommandAuthMetadata`, `AuthCommandRuntime`, `AuthIdentityProbeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`.
+`SecretString`, `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `TokenSourceSpec`, `CommandAuthMetadata`, `AuthCommandRuntime`, `AuthIdentityProbeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, `IdentityRuntime`.
+
+`InvocationKind` (the `'cli' | 'ci' | 'agent' | 'mcp'` discriminator) was moved out of core. It now lives in `@liche/auth` because auth is the only consumer that actually branches on the value.
 
 Workflow helpers (`resolveAuth`, `resolveContext`, `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`) live in `@liche/auth`, not core.
 

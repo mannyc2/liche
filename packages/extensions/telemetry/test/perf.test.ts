@@ -6,14 +6,13 @@ const perfTest = process.env['CI'] === 'true' ? test.skip : test
 
 function fixture(): WireEvent {
   return {
-    agent: false,
+    isTty: false,
     cli: { name: 'shipyard', version: '0.1.0' },
     command: { id: 'deploy', path: ['deploy'] },
     durationMs: 12,
     exitCode: 0,
     format: 'json',
     formatExplicit: true,
-    invocation: 'cli',
     occurredAt: '2026-05-21T00:00:00.000Z',
     result: 'success',
     surface: { kind: 'command', name: 'deploy' },

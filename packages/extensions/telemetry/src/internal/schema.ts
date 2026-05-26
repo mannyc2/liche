@@ -1,29 +1,9 @@
 import { z, parseSchema } from '@liche/core'
 
-const cliEventTypeSchema = z.enum([
-  'command.selected',
-  'command.started',
-  'command.completed',
-  'command.failed',
-  'validation.failed',
-  'parse.failed',
-  'command.not_found',
-  'help.rendered',
-  'version.rendered',
-  'completion.generated',
-  'schema.generated',
-  'mcp.initialize',
-  'mcp.tools_listed',
-  'mcp.tool_call.started',
-  'mcp.tool_call.completed',
-  'mcp.tool_call.failed',
-  'hook.failed',
-])
-
-const invocationSchema = z.enum(['cli', 'ci', 'agent', 'mcp'])
+const cliEventTypeSchema = z.string()
 
 export const wireEventSchema = z.object({
-  agent: z.boolean(),
+  attributes: z.record(z.string(), z.unknown()).optional(),
   cli: z.object({ name: z.string(), version: z.string().optional() }),
   command: z.object({ id: z.string(), path: z.array(z.string()) }).optional(),
   completion: z.object({ shell: z.string().optional(), suggestionCount: z.number().optional() }).optional(),
@@ -40,18 +20,12 @@ export const wireEventSchema = z.object({
   exitCode: z.number().optional(),
   format: z.string(),
   formatExplicit: z.boolean(),
-  invocation: invocationSchema,
-  mcp: z
-    .object({
-      method: z.enum(['initialize', 'tools/list', 'tools/call']),
-      toolCount: z.number().optional(),
-    })
-    .optional(),
+  isTty: z.boolean(),
   occurredAt: z.string(),
   result: z.enum(['success', 'user_error', 'system_error', 'canceled']).optional(),
   surface: z
     .object({
-      kind: z.enum(['command', 'completion', 'help', 'mcp', 'parse', 'schema', 'version']),
+      kind: z.enum(['command', 'completion', 'help', 'parse', 'schema', 'version']),
       name: z.string().optional(),
     })
     .optional(),

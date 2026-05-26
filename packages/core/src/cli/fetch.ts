@@ -1,7 +1,8 @@
-import type { CliState, Dict } from '../types.js'
+import type { CliState } from '../types.js'
 import { execute } from './execute.js'
 import { selectCommand } from '../command/registry.js'
 import { isObject } from '../internal.js'
+import { defaultEnv } from './invocation.js'
 import { createLifecycleEvent, emitLifecycleEvent, mergeHooks } from './lifecycle.js'
 
 export async function fetchCli(name: string, state: CliState, request: Request): Promise<Response> {
@@ -15,11 +16,10 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   const selected = selectCommand(state, path)
   if (!selected) {
     await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
-      agent: true,
+      isTty: false,
       error: { code: 'COMMAND_NOT_FOUND', status: 404 },
       format: 'json',
       formatExplicit: true,
-      invocation: 'agent',
       surface: { kind: 'command' },
       type: 'command.not_found',
     }))
@@ -38,18 +38,16 @@ export async function fetchCli(name: string, state: CliState, request: Request):
       async start(controller) {
         const encoder = new TextEncoder()
         const result = await execute(name, selected, {
-          agent: true,
           argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
           displayName: name,
           events: state.events.concat(selected.events),
-          env: Bun.env as Dict<string | undefined>,
+          env: defaultEnv(),
           flags: {},
           format: 'jsonl',
           formatExplicit: true,
           global: {},
           hooks: mergeHooks(state.hooks, selected.hooks),
           inputSources: state.inputSources,
-          invocation: 'agent',
           isTty: false,
           middlewares: state.middlewares.concat(selected.middlewares),
           onChunk: (chunk) => {
@@ -65,18 +63,16 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   }
 
   const result = await execute(name, selected, {
-    agent: true,
     argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
     displayName: name,
     events: state.events.concat(selected.events),
-    env: Bun.env as Dict<string | undefined>,
+    env: defaultEnv(),
     flags: {},
     format: 'json',
     formatExplicit: true,
     global: {},
     hooks: mergeHooks(state.hooks, selected.hooks),
     inputSources: state.inputSources,
-    invocation: 'agent',
     isTty: false,
     middlewares: state.middlewares.concat(selected.middlewares),
     version: state.def.version,

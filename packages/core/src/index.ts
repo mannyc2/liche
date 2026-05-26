@@ -1,4 +1,6 @@
 export { defineCli, defineCommand, defineExtension, defineGlobal, getCliState } from './cli/create.js'
+export { dispatch, run } from './cli/dispatch.js'
+export type { DispatchOptions } from './cli/dispatch.js'
 export { help, outputControls, reflectionControls, version } from './cli/controls.js'
 export type { HelpControlOptions, OutputControlsOptions, ReflectionControlsOptions } from './cli/controls.js'
 export { middleware } from './cli/context.js'
@@ -28,7 +30,6 @@ export type {
   ContextRuntime,
   EnvTokenSourceSpec,
   IdentityRuntime,
-  InvocationKind,
   OAuthDeviceRuntime,
   SessionTokenSourceSpec,
   TokenSourceSpec,
@@ -42,7 +43,6 @@ export type {
   CliEventCommand,
   CliEventCompletion,
   CliEventError,
-  CliEventMcp,
   CliEventRegistration,
   CliEventSubscriber,
   CliEventSubscription,

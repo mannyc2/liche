@@ -91,6 +91,16 @@ function readEnv(options: TelemetryOptions): TelemetryEnv {
   return (typeof Bun !== 'undefined' ? Bun.env : process.env) as TelemetryEnv
 }
 
+function detectInvocation(env: TelemetryEnv): Invocation {
+  const value = env['CI']
+  if (value !== undefined && value !== '' && value !== '0' && value.toLowerCase() !== 'false') return 'ci'
+  if (['GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'].some((key) => {
+    const v = env[key]
+    return v !== undefined && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
+  })) return 'ci'
+  return 'cli'
+}
+
 export function telemetry(options: TelemetryOptions = {}): CliExtension {
   const initialEnv = readEnv(options)
   const currentEnv = (): TelemetryEnv => readEnv(options)
@@ -151,10 +161,11 @@ export function telemetry(options: TelemetryOptions = {}): CliExtension {
 
   const dispatcher: CliEventSubscriber = async (event) => {
     if (allowedTypes !== '*' && !allowedTypes.includes(event.type)) return
+    const env = currentEnv()
     const consent = resolveConsent({
-      env: currentEnv(),
+      env,
       cliName: event.cli.name,
-      invocation: event.invocation,
+      invocation: detectInvocation(env),
       ...(options.enabledEnvVar !== undefined && { enabledEnvVar: options.enabledEnvVar }),
       ...(options.cliEnabledEnvVar !== undefined && { cliEnabledEnvVar: options.cliEnabledEnvVar }),
       ...(options.respectDoNotTrack !== undefined && { respectDoNotTrack: options.respectDoNotTrack }),
@@ -193,7 +204,6 @@ const passthroughEnv = z.record(z.string(), z.string().optional())
 function buildSubcommands(options: TelemetryOptions, currentEnv: () => TelemetryEnv) {
   return [
     defineCommand({
-      agent: false,
       description: 'Show resolved telemetry state for the current environment',
       path: ['telemetry', 'status'],
       input: { args: enableDisableArgs, env: passthroughEnv },
@@ -206,10 +216,11 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
       safety: { readOnly: true },
       run: ({ ctx, input }) => {
         const runtimeEnv = { ...currentEnv(), ...(input.env as TelemetryEnv) }
+        const invocation = detectInvocation(runtimeEnv)
         const consent = resolveConsent({
           env: runtimeEnv,
           cliName: ctx.name,
-          invocation: ctx.invocation,
+          invocation,
           ...(options.enabledEnvVar !== undefined && { enabledEnvVar: options.enabledEnvVar }),
           ...(options.cliEnabledEnvVar !== undefined && { cliEnabledEnvVar: options.cliEnabledEnvVar }),
           ...(options.respectDoNotTrack !== undefined && { respectDoNotTrack: options.respectDoNotTrack }),
@@ -219,12 +230,11 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
           enabled: consent.enabled,
           reason: consent.reason,
           ...(consent.source && { source: consent.source }),
-          invocation: ctx.invocation,
+          invocation,
         }
       },
     }),
     defineCommand({
-      agent: false,
       description: 'Print the env var to set to enable telemetry',
       path: ['telemetry', 'enable'],
       input: { args: enableDisableArgs },
@@ -239,7 +249,6 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
       },
     }),
     defineCommand({
-      agent: false,
       description: 'Print the env var to set to disable telemetry',
       path: ['telemetry', 'disable'],
       input: { args: enableDisableArgs },
@@ -254,7 +263,6 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
       },
     }),
     defineCommand({
-      agent: false,
       description: 'Print instructions for inspecting telemetry wire events without sending them',
       path: ['telemetry', 'inspect'],
       input: { args: inspectArgs },

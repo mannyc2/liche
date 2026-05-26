@@ -12,15 +12,15 @@ function asyncIter<T>(values: T[]): AsyncIterable<T> {
 }
 
 describe('ServeOptions injection boundary', () => {
-  test('isTty=true sets human-readable output policy and middleware sees agent=false', async () => {
-    let captured: { agent?: boolean } = {}
+  test('isTty=true hides machine-only output and middleware sees isTty=true', async () => {
+    let captured: { isTty?: boolean } = {}
     const stdout: string[] = []
     const stderr: string[] = []
 
     const cli = testCli('app', [testCommand('show', {
-      outputPolicy: 'agent-only',
-      run: ({ agent }) => {
-        captured.agent = agent
+      outputPolicy: 'machine-only',
+      run: ({ isTty }) => {
+        captured.isTty = isTty
         return { hidden: true }
       },
     })])
@@ -31,19 +31,19 @@ describe('ServeOptions injection boundary', () => {
       stderr: (s) => stderr.push(s),
     })
 
-    expect(captured.agent).toBe(false)
+    expect(captured.isTty).toBe(true)
     expect(stdout).toEqual([])
     expect(stderr).toEqual([])
   })
 
-  test('isTty=false treats caller as agent and emits structured output', async () => {
-    let captured: { agent?: boolean } = {}
+  test('isTty=false emits structured output for machine-only commands', async () => {
+    let captured: { isTty?: boolean } = {}
     const stdout: string[] = []
 
     const cli = testCli('app', [testCommand('show', {
-      outputPolicy: 'agent-only',
-      run: ({ agent }) => {
-        captured.agent = agent
+      outputPolicy: 'machine-only',
+      run: ({ isTty }) => {
+        captured.isTty = isTty
         return { hidden: true }
       },
     })])
@@ -53,14 +53,14 @@ describe('ServeOptions injection boundary', () => {
       stdout: (s) => stdout.push(s),
     })
 
-    expect(captured.agent).toBe(true)
+    expect(captured.isTty).toBe(false)
     expect(stdout.join('')).toContain('"hidden": true')
   })
 
-  test('--full-output overrides agent-only policy regardless of TTY', async () => {
+  test('--full-output overrides machine-only policy regardless of TTY', async () => {
     const stdout: string[] = []
     const cli = testCli('app', [testCommand('show', {
-      outputPolicy: 'agent-only',
+      outputPolicy: 'machine-only',
       run: () => ({ hidden: true }),
     })])
 

@@ -94,7 +94,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z')
     expect(source).toContain(`import { llms } from '@liche/agents'`)
-    expect(source).toContain(`import { auth as authExtension, createFileSessionStore, resolveAuth, resolveContext } from '@liche/auth'`)
+    expect(source).toContain(`import { auth as authExtension, createFileSessionStore, detectInvocation, resolveAuth, resolveContext } from '@liche/auth'`)
     expect(source).toContain(`import { mcpServer } from '@liche/mcp-server'`)
     expect(source).toContain(`import { tokens } from '@liche/tokens'`)
     expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms(), tokens(), authExtension(), mcpServer()],`)
@@ -136,7 +136,7 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
   test('run body resolves auth and context before calling core HTTP transport', () => {
     const source = generate(workersAuthProduct)
     expect(source).toMatch(
-      /const credential = await resolveAuth\(\{[\s\S]*?provider: AUTH_PROVIDER,[\s\S]*?required: true,[\s\S]*?requiredPermissions: \['cache:write'\],[\s\S]*?requiredScopes: \['cache\.write'\],[\s\S]*?invocation: ctx\.invocation,[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?\}\)/,
+      /const credential = await resolveAuth\(\{[\s\S]*?provider: AUTH_PROVIDER,[\s\S]*?required: true,[\s\S]*?requiredPermissions: \['cache:write'\],[\s\S]*?requiredScopes: \['cache\.write'\],[\s\S]*?invocation: detectInvocation\(ctx\),[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?\}\)/,
     )
     expect(source).toMatch(
       /const context = await resolveContext\(\{[\s\S]*?contexts: CONTEXTS,[\s\S]*?required: \['org'\],[\s\S]*?explicit: ctx\.options[\s\S]*?env: ctx\.env as Record<string, string \| undefined>,[\s\S]*?providerId: AUTH_PROVIDER\.id,[\s\S]*?\}\)/,
@@ -196,11 +196,10 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).toContain(`oauthDevice: { clientId: 'acme-cli'`)
     expect(source).toContain(`identity: { http: { method: 'GET', path: '/me' }, subject: 'id', label: 'email' }`)
     expect(source).toContain(`path: ['whoami'],`)
-    expect(source).toContain(`agent: true`)
     expect(source).toContain(`path: ['switch'],`)
     expect(source).toContain(`path: ['login'],`)
     expect(source).toContain(`path: ['logout'],`)
-    expect(source).toContain(`agent: false`)
+    expect(source).toContain(`interactive: true`)
     expect(source).toContain(`createFileSessionStore`)
     expect(source).toContain(`oauthDeviceLogin`)
     expect(source).toContain(`authWhoami`)
