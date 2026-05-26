@@ -476,7 +476,7 @@ export type DeclarativeCommand<
   O extends Schema<any> | undefined = Schema<any> | undefined,
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = Omit<CommandDefinition<A, E, O, Out>, 'alias' | 'aliases' | 'args' | 'env' | 'options' | 'run'> & {
-  aliases?: readonly (readonly string[])[] | undefined
+  aliases?: readonly (string | readonly string[])[] | undefined
   input?: CommandInput<A, E, O> | undefined
   path: readonly [string, ...string[]]
   run?:

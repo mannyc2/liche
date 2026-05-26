@@ -78,7 +78,9 @@ export function defineCommand<
 >(definition: DeclarativeCommand<A, E, O, Out>): DeclarativeCommand<A, E, O, Out> {
   return Object.freeze({
     ...definition,
-    ...(definition.aliases ? { aliases: Object.freeze(definition.aliases.map((alias) => Object.freeze([...alias]))) } : undefined),
+    ...(definition.aliases
+      ? { aliases: Object.freeze(definition.aliases.map((alias) => Object.freeze(typeof alias === 'string' ? [alias] : [...alias]))) }
+      : undefined),
     path: Object.freeze([...definition.path]) as readonly [string, ...string[]],
   })
 }

@@ -56,6 +56,28 @@ describe('declarative authoring API', () => {
     expect(parseJsonOutput(aliased.stdout)).toEqual({ ok: true })
   })
 
+  test('single-segment aliases accept bare strings as shorthand for [name]', async () => {
+    const cli = defineCli({
+      name: 'app',
+      extensions: [outputControls({ json: true })],
+      commands: [
+        defineCommand({
+          aliases: ['find', ['s']],
+          path: ['corpus', 'search'],
+          summary: 'Search corpus',
+          run: () => ({ ok: true }),
+        }),
+      ],
+    })
+
+    const direct = await runCli(cli, ['corpus', 'search', '--json'])
+    const bare = await runCli(cli, ['corpus', 'find', '--json'])
+    const nested = await runCli(cli, ['corpus', 's', '--json'])
+    expect(parseJsonOutput(direct.stdout)).toEqual({ ok: true })
+    expect(parseJsonOutput(bare.stdout)).toEqual({ ok: true })
+    expect(parseJsonOutput(nested.stdout)).toEqual({ ok: true })
+  })
+
   test('option aliases and group descriptions are declared as command data', async () => {
     const cli = defineCli({
       name: 'app',
