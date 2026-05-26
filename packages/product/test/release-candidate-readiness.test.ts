@@ -6,6 +6,7 @@ import { resolve } from 'node:path'
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
 
 const PUBLIC_PACKAGES = ['@liche/core', '@liche/extensions', '@liche/build', '@liche/product', '@liche/releases']
+const EXPECTED_REPOSITORY_URL = 'https://github.com/mannyc2/liche.git'
 
 function expectedPackageFiles(packageName: string): string[] {
   return packageName === '@liche/core'
@@ -84,12 +85,19 @@ describe('release candidate readiness gate', () => {
     expect(report.remainingHumanGates).toContain(
       'Configure or verify npm trusted publishers for .github/workflows/publish.yml and npm-production before relying on CI publishing.',
     )
+    expect(report.remainingHumanGates).toContain(
+      'Keep package repository.url aligned with the exact trusted-publishing GitHub repository before every publish.',
+    )
 
     for (const pkg of report.packages) {
       expect(PUBLIC_PACKAGES).toContain(pkg.name)
       expect(pkg.license).toBe('MIT')
       expect(pkg.files).toEqual(expectedPackageFiles(pkg.name))
-      expect(pkg.repository).toBeNull()
+      expect(JSON.parse(pkg.repository)).toEqual({
+        type: 'git',
+        url: EXPECTED_REPOSITORY_URL,
+        directory: pkg.dir,
+      })
       expect(pkg.homepage).toBeNull()
       expect(pkg.bugs).toBeNull()
       expect(pkg.funding).toBeNull()

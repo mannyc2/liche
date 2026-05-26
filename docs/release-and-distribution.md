@@ -215,24 +215,25 @@ Manual bump checklist:
 
 A repo-wide Liche CLI generated through `@liche/product` and released through `@liche/releases` is the kind of change that earns a minor bump.
 
-## Manual publish path
+## Automated npm publish path
 
-Publishing remains manual for now. Use the local checks and npm's official publishing path rather than adding custom version automation in this slice.
+Publishing through npm trusted publishing is tag-driven. The workflow uses npm's official `npm publish` command with GitHub Actions OIDC, not a long-lived npm token.
 
-Manual release order:
+Release order:
 
 1. Choose the next synchronized version using the versioning policy.
 2. Apply the manual bump checklist.
 3. Run `bun run release:check`.
 4. Run `bun run --silent release:names`.
-5. Publish packages in dependency order: `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/releases`, `@liche/product`.
-6. Re-run `bun run --silent release:names` and verify every package reports the new version.
+5. Create and push a matching tag, for example `git tag v0.4.1 && git push origin v0.4.1`.
+6. The publish workflow validates that the tag version matches every public package version, verifies the versions are not already published, and publishes packages in order: `@liche/core`, `@liche/extensions`, `@liche/build`, `@liche/product`, `@liche/releases`.
+7. Re-run `bun run --silent release:names` and verify every package reports the new version.
 
-The committed `.github/workflows/publish.yml` is the intended CI path once trusted publishing is configured, but manual publishing stays the source of truth until that credential path is proven.
+The same workflow keeps a manual `workflow_dispatch` dry-run path for CI validation and emergency release operations. Manual dispatch defaults to `dry_run=true`; tag pushes publish by default.
 
 ## Package metadata rule
 
-Do not add repository, homepage, bugs, or funding metadata until the canonical public URLs are real. Placeholder metadata is worse than absence because npm trusted publishing checks package repository metadata during GitHub-based publication.
+Every publishable package must set `repository.url` to `https://github.com/mannyc2/liche.git` and `repository.directory` to its package directory. Do not add homepage, bugs, or funding metadata until the canonical public URLs are real. Placeholder metadata is worse than absence because npm trusted publishing checks package repository metadata during GitHub-based publication.
 
 Before the first public publish:
 
@@ -241,7 +242,8 @@ Before the first public publish:
 - every publishable package ships `README.md` and `LICENSE`
 - every publishable package keeps `publishConfig.access = "public"`
 - package-to-package `@liche/*` dependencies use the synchronized public version range
-- repository, homepage, bugs, and funding fields are either real or absent
+- `repository.url` and `repository.directory` match the trusted-publishing repository and package directory
+- homepage, bugs, and funding fields are either real or absent
 
 The offline check is:
 
@@ -253,7 +255,7 @@ bun run --silent release:metadata
 
 npm trusted publishing uses OIDC to publish from CI without long-lived npm tokens. The current npm docs require npm CLI `11.5.1` or later and Node `22.14.0` or later for trusted publishing, and GitHub Actions configuration needs `id-token: write`. The npm trusted publisher settings must name the GitHub organization or user, repository, workflow filename, optional environment, and allowed action.
 
-The release workflow committed in this repository is `.github/workflows/publish.yml`. It uses a manual `workflow_dispatch` trigger, a `dry_run` input that defaults to `true`, GitHub-hosted Ubuntu runners, Node 24, Bun 1.3.0, npm 11.10+, `id-token: write`, disabled package-manager caching, and the GitHub environment `npm-production`.
+The release workflow committed in this repository is `.github/workflows/publish.yml`. It publishes on pushed `v*` tags, keeps a manual `workflow_dispatch` dry-run path, uses GitHub-hosted Ubuntu runners, Node 24, Bun 1.3.0, npm 11.10+, `id-token: write`, disabled package-manager caching, and the GitHub environment `npm-production`.
 
 Trusted publishing is not the first-package creation path for npm: the `npm trust` command requires the package to already exist on the registry, and the npm website configures trusted publishers from package settings. To set up trusted publishing for new packages:
 

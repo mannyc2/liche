@@ -4,6 +4,11 @@
   "type": "module",
   "license": "MIT",
   "description": "Bun-native CLI runtime framework for Liche.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mannyc2/liche.git",
+    "directory": "packages/core"
+  },
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"

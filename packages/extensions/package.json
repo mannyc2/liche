@@ -4,6 +4,11 @@
   "type": "module",
   "license": "MIT",
   "description": "Official optional extensions for Liche CLIs.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mannyc2/liche.git",
+    "directory": "packages/extensions"
+  },
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"

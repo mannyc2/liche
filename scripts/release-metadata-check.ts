@@ -12,6 +12,8 @@ const PUBLIC_PACKAGES = [
   { name: '@liche/releases', dir: 'packages/releases' },
 ] as const
 
+const EXPECTED_REPOSITORY_URL = 'https://github.com/mannyc2/liche.git'
+
 const REQUIRED_SUPPORT_FILES = [
   'LICENSE',
   'SECURITY.md',
@@ -69,6 +71,19 @@ function packageMetadataValue(json: Record<string, any>, key: string): string | 
   if (typeof value === 'string') return value
   if (value && typeof value === 'object') return JSON.stringify(value)
   return null
+}
+
+function packageRepository(json: Record<string, any>): { url: string | null; directory: string | null } {
+  if (typeof json.repository === 'string') {
+    return { url: json.repository, directory: null }
+  }
+  if (!json.repository || typeof json.repository !== 'object') {
+    return { url: null, directory: null }
+  }
+  return {
+    url: typeof json.repository.url === 'string' ? json.repository.url : null,
+    directory: typeof json.repository.directory === 'string' ? json.repository.directory : null,
+  }
 }
 
 function collectBinIssues(packageDir: string, bin: unknown): string[] {
@@ -167,6 +182,26 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
         ? pass('workflow:no-release-cache', 'publish workflow disables package-manager cache')
         : fail('workflow:no-release-cache', 'publish workflow must disable package-manager cache'),
     )
+    checks.push(
+      workflow.includes('tags:') && (workflow.includes('- "v*"') || workflow.includes("- 'v*'"))
+        ? pass('workflow:tag-trigger', 'publish workflow runs on v* tags')
+        : fail('workflow:tag-trigger', 'publish workflow must run on v* tags'),
+    )
+    checks.push(
+      workflow.includes('packages/core packages/extensions packages/build packages/product packages/releases')
+        ? pass('workflow:public-package-list', 'publish workflow publishes every public package in order')
+        : fail('workflow:public-package-list', 'publish workflow must publish every public package in order'),
+    )
+    checks.push(
+      workflow.includes('Check tag matches package versions')
+        ? pass('workflow:tag-version-guard', 'publish workflow validates tag and package versions')
+        : fail('workflow:tag-version-guard', 'publish workflow must validate tag and package versions before publish'),
+    )
+    checks.push(
+      workflow.includes('Check package versions are unpublished')
+        ? pass('workflow:unpublished-version-guard', 'publish workflow checks package versions before publish')
+        : fail('workflow:unpublished-version-guard', 'publish workflow must fail before publishing already-published versions'),
+    )
   }
 
   const packages = PUBLIC_PACKAGES.map((pkg) => {
@@ -195,6 +230,18 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
       json.publishConfig?.access === 'public'
         ? pass(`package-access:${pkg.name}`, `${pkg.name} publishes publicly`)
         : fail(`package-access:${pkg.name}`, `${pkg.name} publishConfig.access must be public`),
+    )
+
+    const repository = packageRepository(json)
+    checks.push(
+      repository.url === EXPECTED_REPOSITORY_URL
+        ? pass(`package-repository-url:${pkg.name}`, `${pkg.name} repository.url matches trusted publishing repo`)
+        : fail(`package-repository-url:${pkg.name}`, `${pkg.name} repository.url must be ${EXPECTED_REPOSITORY_URL}`),
+    )
+    checks.push(
+      repository.directory === pkg.dir
+        ? pass(`package-repository-directory:${pkg.name}`, `${pkg.name} repository.directory matches package dir`)
+        : fail(`package-repository-directory:${pkg.name}`, `${pkg.name} repository.directory must be ${pkg.dir}`),
     )
 
     const binIssues = collectBinIssues(packageDir, json.bin)
@@ -246,7 +293,8 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
     packages,
     remainingHumanGates: [
       'Confirm npm organization ownership and package publish rights for the final scope before each manual publish.',
-      'Set package repository/homepage/bugs/funding only after canonical public URLs are real.',
+      'Keep package repository.url aligned with the exact trusted-publishing GitHub repository before every publish.',
+      'Set homepage, bugs, and funding metadata only after canonical public URLs are real.',
       'Configure or verify npm trusted publishers for .github/workflows/publish.yml and npm-production before relying on CI publishing.',
       'Configure PyPI trusted publishers for the final release workflow and environment when PyPI artifacts are published.',
       'Verify GitHub release asset layout and checksums against final release artifacts.',

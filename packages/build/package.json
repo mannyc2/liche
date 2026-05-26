@@ -4,6 +4,11 @@
   "type": "module",
   "license": "MIT",
   "description": "Build and compile planning primitives for Bun-native Liche CLIs.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mannyc2/liche.git",
+    "directory": "packages/build"
+  },
   "sideEffects": false,
   "engines": {
     "bun": ">=1.3.0"
