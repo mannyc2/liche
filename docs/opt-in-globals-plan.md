@@ -122,8 +122,8 @@ Customization requirements:
    - Verify: a minimal `defineCli()` has an empty global registry and help output has no `Global Options:` section.
 
 3. Keep runtime behavior flag-gated
-   - `serveCli()` must not branch on `flags.version`, `flags.schema`, `flags.llms`, or output-control flags unless the corresponding control contributed that flag.
-   - Prefer `serveHandlers` for controls such as version, schema, llms, and mcp so extension ownership is visible.
+   - `runTerminalCli()` must not branch on `flags.version`, `flags.schema`, `flags.llms`, or output-control flags unless the corresponding control contributed that flag.
+   - Prefer `terminalHandlers` for controls such as version, schema, llms, and mcp so extension ownership is visible.
    - Ensure `--help` is not special unless `help()` is installed. No-args/group fallback help may remain, but explicit unknown flags must not be mistaken for help.
    - Verify: `app --version` and `app --schema` are command input or parse errors unless their controls are installed.
 

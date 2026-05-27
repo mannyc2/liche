@@ -148,7 +148,7 @@ describe('contract: args, flags, env, middleware', () => {
       .toEqual({ region: 'iad', source: { kind: 'default' } })
   })
 
-  test('validates command env from the supplied serve env', async () => {
+  test('validates command env from the supplied run env', async () => {
     const cli = testCli('app', [testCommand('token', {
       env: z.object({ TOKEN: z.string() }),
       run: ({ env }) => ({ token: env.TOKEN }),
@@ -364,7 +364,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(Completions.complete(state, ['i'], 0)).toEqual(['inspect', 'install', 'i'])
   })
 
-  test('completion requests are served through the public CLI path', async () => {
+  test('completion requests run through the public CLI path', async () => {
     const cli = testCli('app', [testCommand('inspect', { aliases: ['i'], run: () => ({ ok: true }) }), testCommand('install', { run: () => ({ ok: true }) })])
 
     const result = await runCli(cli, ['--', 'i'], { env: { COMPLETE: 'bash' } })
@@ -410,7 +410,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(minimalHelp.stdout).not.toContain('skills add')
   })
 
-  test('serve handles version, full output, filters, token limits, and CTA metadata', async () => {
+  test('run handles version, full output, filters, token limits, and CTA metadata', async () => {
     const cli = testCli('app', { version: '2.0.0' }, [testCommand('deploy', {
       run: ({ ok }) =>
         ok(
@@ -444,7 +444,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(offset.stdout).not.toEqual((await runCli(cli, ['deploy', '--json'])).stdout)
   })
 
-  test('serve handles completion errors, empty completions, default version, and MCP mode', async () => {
+  test('run handles completion errors, empty completions, default version, and MCP mode', async () => {
     const cli = testCli('app')
 
     const badCompletion = await runCli(cli, ['--'], { env: { COMPLETE: 'powershell' } })
@@ -458,7 +458,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(version.stdout).toBe('0.0.0\n')
   })
 
-  test('serve honors machine-only output policy unless full output is requested', async () => {
+  test('run honors machine-only output policy unless full output is requested', async () => {
     const cli = testCli('app', [testCommand('quiet', {
       outputPolicy: 'machine-only',
       run: () => ({ hidden: true }),
@@ -471,7 +471,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(parseJsonOutput(full.stdout)).toEqual({ ok: true, data: { hidden: true }, error: null })
   })
 
-  test('serve normalizes ctx.error exit codes and command-not-runnable errors', async () => {
+  test('run normalizes ctx.error exit codes and command-not-runnable errors', async () => {
     const cli = testCli('app', [testCommand('fail', {
         run: ({ error }) => error({
           code: 'NOPE',

@@ -6,7 +6,7 @@ See [core-run-and-arg-codecs-plan.md](./core-run-and-arg-codecs-plan.md) for the
 
 ## Goals
 
-- Keep the public authoring API centered on `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, `middleware()`, and `z`. Command declaration is data-first only; lifecycle events, hooks, and middleware are declared through `defineCli()` data, not fluent instance mutators.
+- Keep the public authoring API centered on `defineCli()`, `defineCommand()`, `run(cli)`, `cli.fetch()`, `middleware()`, and `z`. Command declaration is data-first only; lifecycle events, hooks, and middleware are declared through `defineCli()` data, not fluent instance mutators.
 - Use Bun-native edges for process/runtime work: `Bun.argv`, `Bun.env`, `Bun.file`, `Bun.write`, Bun Shell, Bun stdin/stdout, and `bun:test`.
 - Use small runtime dependencies where they provide concrete feature parity: `zod` for public schema compatibility and JSON Schema conversion, `yaml` for config/output stringification. Token-aware output (`tokenx`) is opt-in via the `@liche/tokens` extension and is auto-included by `@liche/agents`.
 - Keep stdout/stderr channel discipline explicit: stdout carries only the requested output format; stderr carries warnings, CTA blocks, prompts, and human diagnostics.
@@ -27,9 +27,9 @@ See [core-run-and-arg-codecs-plan.md](./core-run-and-arg-codecs-plan.md) for the
 | CLI-001 | Command resolution | If no subcommand matches, the root command runs. | `contract.test.ts` | Always requiring a subcommand. |
 | CLI-002 | Command resolution | A subcommand takes precedence over a root command. | `contract.test.ts` | Running root before checking subcommands. |
 | CLI-003 | Aliases | Command aliases resolve to the original command. | `contract.test.ts` | Registering aliases as separate empty commands. |
-| RUN-001 | Public invocation | `run(cli, argv?)` is the effectful public CLI entrypoint; omitting `argv` uses `Bun.argv.slice(2)`, and explicit argv matches `cli.serve(argv)` behavior. | planned: `invocation-api.test.ts`, temp-consumer proof | Requiring authors to hand-roll `Bun.argv` slicing or bypassing `serve` semantics. |
+| RUN-001 | Public invocation | `run(cli, argv?)` is the effectful public CLI entrypoint; omitting `argv` uses `Bun.argv.slice(2)`, and explicit argv matches `run(cli, argv)` behavior. | planned: `invocation-api.test.ts`, temp-consumer proof | Requiring authors to hand-roll `Bun.argv` slicing or bypassing terminal-runner semantics. |
 | DISPATCH-001 | Public invocation | `dispatch(cli, argv, options)` executes through the shared command pipeline and returns `Result` without writing stdout/stderr or calling exit; non-runnable display/control invocations such as help/version return structured `Result.fail` codes. | planned: `invocation-api.test.ts`, temp-consumer proof | Extensions or adapters must compose `getCliState`/`selectCommand`/`execute`, tests mock process I/O for result assertions, or dispatch embeds rendered help/version output in result data. |
-| PARSE-001 | Public invocation | `parseInvocation(cli, argv, options)` selects the command and resolves globals/input/provenance without running the handler. Returns `Result.fail` for non-runnable invocations (`--help`/`--version`/`--schema`/`COMPLETE`/serve-handler flags → `PARSE_ERROR`; unknown commands → `COMMAND_NOT_FOUND`; fetch entries and command entries with no `run` → `COMMAND_NOT_RUNNABLE`). Emits no lifecycle events. Deprecated options surface as `warnings` on the result. Handler-effective values (`format`, `formatExplicit`, `globals`, `input`, `sources`) reflect `prepareContext` patches; raw patch is exposed under `contextOverrides`. | `parse-invocation.test.ts` | Parse-only users must execute handlers or import parser/executor internals; introspection emits fake operational events or pollutes telemetry. |
+| PARSE-001 | Public invocation | `parseInvocation(cli, argv, options)` selects the command and resolves globals/input/provenance without running the handler. Returns `Result.fail` for non-runnable invocations (`--help`/`--version`/`--schema`/`COMPLETE`/terminal-handler flags → `PARSE_ERROR`; unknown commands → `COMMAND_NOT_FOUND`; fetch entries and command entries with no `run` → `COMMAND_NOT_RUNNABLE`). Emits no lifecycle events. Deprecated options surface as `warnings` on the result. Handler-effective values (`format`, `formatExplicit`, `globals`, `input`, `sources`) reflect `prepareContext` patches; raw patch is exposed under `contextOverrides`. | `parse-invocation.test.ts` | Parse-only users must execute handlers or import parser/executor internals; introspection emits fake operational events or pollutes telemetry. |
 | ARG-001 | Positionals | Object args bind by schema key order. | `contract.test.ts` | Treating all args as a raw array. |
 | ARG-002 | Flags | `--flag`, `--no-flag`, `--flag=value`, short aliases, and `--` are parsed correctly. | `contract.test.ts`, `property.test.ts` | Treating `false` as missing, ignoring `--`, or not resolving camel/kebab names. |
 | ARG-CODEC-001 | Argument codecs | `arg.number()`, `arg.int()`, `arg.positiveInt()`, `arg.port()`, and `arg.boolean()` are strict Zod schemas that decode documented string/JSON inputs without broad JavaScript coercion. | planned: `arg-codecs.test.ts`, `property.test.ts`, temp-consumer proof | Continuing to require repeated `z.coerce.*` schemas, accepting broad truthy/falsy values, or accepting empty/invalid numeric strings. |
@@ -70,7 +70,7 @@ See [core-run-and-arg-codecs-plan.md](./core-run-and-arg-codecs-plan.md) for the
 | CONFIG-004 | Config discovery | `--config <path>` loads exactly that file, `--no-config` disables project/user discovery, and passing both is invalid. | `parser-config.test.ts`, `parity.test.ts` | Merging explicit files with discovered files or silently accepting conflicting flags. |
 | CONFIG-005 | Explicit option binding | Config values satisfy command options only through explicit option-to-config bindings. | `contract.test.ts` | Auto-binding every matching option name to a config key. |
 | CONFIG-006 | Config schema strictness | Unknown config keys fail when the declared schema is strict. | `parser-config.test.ts` | Silently ignoring misspelled durable preferences. |
-| CHANNEL-001 | Channel discipline | Machine output modes keep stdout parseable and put warnings, CTA blocks, prompts, and human diagnostics on stderr. | `contract.test.ts`, `parity.test.ts`, `serve-options.test.ts` | Human text corrupts JSON/JSONL stdout. |
+| CHANNEL-001 | Channel discipline | Machine output modes keep stdout parseable and put warnings, CTA blocks, prompts, and human diagnostics on stderr. | `contract.test.ts`, `parity.test.ts`, `run-options.test.ts` | Human text corrupts JSON/JSONL stdout. |
 | EXT-LANE-001 | Extension lane property | Optional features that can be implemented with public command registration, lifecycle events, hooks, middleware, input sources, or generated artifacts stay out of core. Extension fixtures import only the package root, can be disabled without changing baseline command semantics, and must not depend on internals such as `CliState`, `Entry`, parser helpers, or generated source. | `extension-lane-coverage.test.ts` | Widening core for features that a public-lane extension can implement, or shipping extensions that mutate hidden runtime state. |
 | OPENAPI-001 | OpenAPI emit | `GET /openapi.json` returns a `3.1.0` document keyed by command paths with `operationId` derived from the underscored command name. | `parity.test.ts` | Returning the legacy manifest. |
 | OPENAPI-002 | OpenAPI ingest | `ingestOpenApi(spec)` maps path/query/body parameters into typed command descriptors. | `parity.test.ts` | Dropping body parameters. |
@@ -92,7 +92,7 @@ src/schema/zod.ts
 src/format/index.ts
 src/format/filter.ts
 src/format/tokens.ts
-src/cli/serve.ts
+src/cli/terminal.ts
 src/mcp/protocol.ts
 ```
 
@@ -128,7 +128,7 @@ Maps the behavior cases above to the tests that exercise them in the current imp
 | ARG-002 parser invariant | behavior cases | test/property.test.ts | flag parser preserves numeric values and boolean negation across generated inputs | fast-check property | boolean negation or numeric values corrupted |
 | CFG-001 config before CLI | behavior cases | test/contract.test.ts | merges config before CLI options so explicit CLI values win | behavior plan | config precedence reversed |
 | CFG-001 precedence invariant | behavior cases | test/property.test.ts | config/env/CLI precedence invariant keeps CLI options above config values | fast-check property | CLI options overwritten by config |
-| ENV-001 env validation success | behavior cases | test/contract.test.ts | validates command env from the supplied serve env | behavior plan | process env used instead of supplied env |
+| ENV-001 env validation success | behavior cases | test/contract.test.ts | validates command env from the supplied run env | behavior plan | process env used instead of supplied env |
 | ENV-001 env validation failure | behavior cases | test/contract.test.ts | returns a validation error when required env is missing | Zod | env validation skipped |
 | MW-001 middleware order and vars | behavior cases | test/contract.test.ts | runs middleware around command handlers and exposes vars | behavior plan | next not awaited or vars lost |
 | FMT-001 formatter default | behavior cases | test/formatter-default.test.ts | Formatter output defaults to JSON | behavior plan | non-JSON plugin renderer becomes the default |
@@ -144,7 +144,7 @@ Maps the behavior cases above to the tests that exercise them in the current imp
 | HELP-003 custom renderer | behavior cases | test/help-render.test.ts | help({ renderer }) handles explicit root help, command help, fallback help, and validation help | public renderer contract | renderHelp bypasses custom renderer |
 | MCP-001 protocol envelopes | audit target | test/contract.test.ts | mcp initialize, tools/list, tools/call, and unknown method use JSON-RPC envelopes | behavior plan | MCP method dispatch skipped |
 | CMP-001 completions aliases | audit target | test/contract.test.ts | completions include commands and aliases without duplicates | explicit regression | completions omit aliases |
-| CMP-002 completions execution path | audit finding | test/contract.test.ts | completion requests are served through the public CLI path | explicit regression | COMPLETE requests render help instead of suggestions |
+| CMP-002 completions execution path | audit finding | test/contract.test.ts | completion requests run through the public CLI path | explicit regression | COMPLETE requests render help instead of suggestions |
 | CMP-003 completion helper commands | audit finding | test/contract.test.ts | completion requests include enabled top-level extension helper commands | explicit regression | extension helper commands invisible to completions or disabled helpers leaking into completions |
 | EXT-HELPER-001 public helper behavior | audit finding | test/contract.test.ts | first-party helper commands are opt-in and available through public CLI behavior when enabled | behavior plan | helper commands drift from metadata, output format, or opt-in policy |
 | BLD-002 product vocabulary lints | docs/build-system.md | packages/product/test/vocabulary-lints.test.ts | product lints reject vocabulary drift and invalid capability structure | requirement fixture | vocabulary drift or invalid generated-surface inputs accepted |
@@ -182,7 +182,7 @@ Implemented in current `src/` first; each behavior maps to a rewrite component:
 
 | Behavior ID | Rewrite component | Test |
 |---|---|---|
-| STREAM-001 | `@liche/core` runtime (cli/execute + cli/serve + cli/fetch) | `parity.test.ts` |
+| STREAM-001 | `@liche/core` runtime (cli/execute + cli/terminal + cli/fetch) | `parity.test.ts` |
 | OPT-DEP-001 | `@liche/core` schema metadata + help renderer | `parity.test.ts` |
 | MCP-ADD-001 | `@liche/extensions` MCP installer | `packages/extensions/test/helpers.test.ts` |
 | SKILLS-ADD-001 | `@liche/extensions` skill installer | `packages/extensions/test/helpers.test.ts` |

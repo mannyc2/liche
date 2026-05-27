@@ -150,7 +150,7 @@ export const cli = defineCli({
   ],
 });
 
-if (import.meta.main) await cli.serve(Bun.argv.slice(2));
+if (import.meta.main) await run(cli, Bun.argv.slice(2));
 ```
 
 ## Core Ownership Model
@@ -205,13 +205,13 @@ This is the current architecture in prose. Treat it as authoritative for the res
    - input sources
    - output renderers
    - output transforms
-   - serve handlers
+   - terminal handlers
    - fetch routes
 4. Merges extension and root hooks into `beforeExecute` and `prepareContext` arrays.
 5. Enforces singleton extension values for `helpRenderer` and `skill`.
 6. Creates an internal `CliState`.
 7. Registers each declarative command into `state.commands`.
-8. Returns a `CliInstance` with only `name`, optional metadata, `serve()`, and `fetch()`.
+8. Returns a `CliInstance` with only `name`, optional metadata, and `fetch()`.
 
 Important current detail: the returned `CliInstance` is secretly an `InternalCli` carrying a private symbol:
 
@@ -235,7 +235,7 @@ root.globals + extension.globals -> state.globals
 root.inputSources + extension.inputSources -> state.inputSources
 root.outputRenderers + extension.outputRenderers -> state.outputRenderers
 root.outputTransforms + extension.outputTransforms -> state.outputTransforms
-root.serveHandlers + extension.serveHandlers -> state.serveHandlers
+root.terminalHandlers + extension.terminalHandlers -> state.terminalHandlers
 root.fetchRoutes + extension.fetchRoutes -> state.fetchRoutes
 root.hooks + extension.hooks -> state.hooks
 ```
@@ -312,7 +312,7 @@ type CliState = {
   outputRenderers: readonly OutputRenderer[];
   outputTransforms: readonly OutputTransform[];
   root?: RuntimeEntry;
-  serveHandlers: readonly ServeHandler[];
+  terminalHandlers: readonly TerminalHandler[];
 };
 ```
 
@@ -332,7 +332,7 @@ Field meaning:
 | `outputRenderers` | Built-in plus custom renderer registry. | Public concept, but registry shape is raw array. |
 | `outputTransforms` | Final text transforms after rendering. | Possibly too low-level for stable API. |
 | `root` | Optional root command/fetch runtime entry. | Internal command graph detail. |
-| `serveHandlers` | Flag-triggered side-effect handlers such as extension surfaces. | Strong internal/adapter smell. |
+| `terminalHandlers` | Flag-triggered side-effect handlers such as extension surfaces. | Strong internal/adapter smell. |
 
 Current state is not deeply frozen. Some arrays are copied, output renderer registry is frozen, command maps are mutable, and command entries contain handler functions. Research should explicitly decide whether public consumers should ever see this object.
 
@@ -479,18 +479,18 @@ Consequences:
 - Group-level hooks/middleware/events are selected only along the path.
 - Root fallback can run at the top level or inside a group.
 - Unknown command tokens may become positional args for a root command.
-- Unknown flag-like tokens with no selected command become parse errors in `serve()`.
+- Unknown flag-like tokens with no selected command become parse errors in `run(cli)`.
 
 Research should decide whether this selected-command state should remain private and whether a stable selection result is needed for adapters.
 
-### Serve Pipeline
+### Terminal Run Pipeline
 
-`cli.serve(argv, options)` currently delegates to an internal `serveCli(name, state, argv, options)`.
+`run(cli, argv, options)` currently delegates to an internal `runTerminalCli(name, state, argv, options)`.
 
-`ServeOptions`:
+`RunOptions`:
 
 ```ts
-type ServeOptions = {
+type RunOptions = {
   env?: Record<string, string | undefined>;
   exit?: (code: number) => void;
   isTty?: boolean;
@@ -500,7 +500,7 @@ type ServeOptions = {
 };
 ```
 
-Serve flow:
+Terminal run flow:
 
 1. Create IO writers from `options` or Bun stdout/stderr.
 2. Resolve env from `options.env` or `Bun.env`.
@@ -514,7 +514,7 @@ Serve flow:
    - root default format falls back to `json`
 7. Handle completion mode when `env.COMPLETE` is set.
 8. Handle `--version` when the version control installed the global.
-9. Run matching `serveHandlers` by flag key.
+9. Run matching `terminalHandlers` by flag key.
 10. Select a command with `selectCommand(state, flags.rest)`.
 11. If no command and rest includes flag-like tokens, emit parse failure and exit 1.
 12. If no command or `--help`, render help.
@@ -539,7 +539,7 @@ stdout data =
   : result.error
 ```
 
-Open design issue: `serve()` is the only ergonomic command entrypoint but it is coupled to IO and process exit.
+Open design issue: `run(cli)` is ergonomic but still coupled to IO and process exit.
 
 ### Execute Pipeline
 
@@ -620,7 +620,7 @@ Fetch flow:
 10. Otherwise execute command with `format=json`, `formatExplicit=true`, `agent=true`, `invocation=agent`.
 11. Return `Response.json(result, status)`.
 
-Current fetch path uses `Bun.env` directly rather than `ServeOptions.env` because fetch has no injected options object.
+Current fetch path uses `Bun.env` directly rather than `RunOptions.env` because fetch has no injected options object.
 
 Open design issue: fetch is partly command dispatch, partly HTTP adapter, and partly MCP support. Research should decide which pieces are core primitives and which need adapter APIs.
 
@@ -829,21 +829,21 @@ Current behavior:
 
 Research question: should output transforms be public Core API, extension-only adapter API, or internal implementation detail?
 
-### Serve Handlers and Fetch Routes
+### Terminal Handlers and Fetch Routes
 
 Current side-channel adapter types:
 
 ```ts
-type ServeHandlerInput = {
+type TerminalHandlerInput = {
   binaryName: string;
   flags: GlobalFlags;
-  options: ServeOptions;
+  options: RunOptions;
   state: CliState;
 };
 
-type ServeHandler = {
+type TerminalHandler = {
   flagKey: string;
-  handle: (input: ServeHandlerInput) => Promise<void> | void;
+  handle: (input: TerminalHandlerInput) => Promise<void> | void;
 };
 
 type FetchRouteInput = {
@@ -949,7 +949,7 @@ type CliHooks = {
 
 Current behavior:
 
-- `prepareContext` runs in `serve()` before `execute()`.
+- `prepareContext` runs in the terminal run path before `execute()`.
 - `prepareContext` can return `{ patch }` to override pieces of `RunContext`.
 - A failing branded result from `prepareContext` is currently converted into a `ParseError` message, losing the full structured error.
 - `beforeExecute` runs inside `execute()` after input resolution and before middleware.
@@ -1246,7 +1246,7 @@ type DefineCliOptions = {
   inputSources?: readonly InputSourceProvider[];
   outputRenderers?: readonly OutputRenderer[];
   outputTransforms?: readonly OutputTransform[];
-  serveHandlers?: readonly ServeHandler[];
+  terminalHandlers?: readonly TerminalHandler[];
   fetchRoutes?: readonly FetchRoute[];
   helpRenderer?: HelpRenderer;
   skill?: SkillDefinition;
@@ -1291,7 +1291,6 @@ type CliInstance = {
   description?: string;
   env?: Schema<any>;
   vars?: Schema<any>;
-  serve(argv?: string[], options?: ServeOptions): Promise<void>;
   fetch(request: Request): Promise<Response>;
 };
 ```
@@ -1381,7 +1380,7 @@ type CreateOptions<
   name?: string;
   outputRenderers?: readonly OutputRenderer[];
   outputTransforms?: readonly OutputTransform[];
-  serveHandlers?: readonly ServeHandler[];
+  terminalHandlers?: readonly TerminalHandler[];
   skill?: SkillDefinition;
   sync?: {
     cwd?: string;
@@ -1453,7 +1452,7 @@ type CliExtension = {
   inputSources?: readonly InputSourceProvider[];
   outputRenderers?: readonly OutputRenderer[];
   outputTransforms?: readonly OutputTransform[];
-  serveHandlers?: readonly ServeHandler[];
+  terminalHandlers?: readonly TerminalHandler[];
   fetchRoutes?: readonly FetchRoute[];
   events?: readonly CliEventRegistration[];
   hooks?: CliHookRegistration;
@@ -1466,7 +1465,7 @@ type CliExtension = {
 Extension-adjacent adapter types:
 
 ```ts
-type ServeOptions = {
+type RunOptions = {
   env?: Record<string, string | undefined>;
   exit?: (code: number) => void;
   isTty?: boolean;
@@ -1475,16 +1474,16 @@ type ServeOptions = {
   stdout?: (s: string) => void;
 };
 
-type ServeHandlerInput = {
+type TerminalHandlerInput = {
   binaryName: string;
   flags: GlobalFlags;
-  options: ServeOptions;
+  options: RunOptions;
   state: CliState;
 };
 
-type ServeHandler = {
+type TerminalHandler = {
   flagKey: string;
-  handle: (input: ServeHandlerInput) => Promise<void> | void;
+  handle: (input: TerminalHandlerInput) => Promise<void> | void;
 };
 
 type OutputTransformInput = {
@@ -1521,12 +1520,12 @@ Current behavior:
 
 - Extensions are plain frozen data objects.
 - Extension ids are currently only diagnostic labels; an id regex was removed because it did not enforce a real invariant.
-- `defineCli()` composes extension arrays by concatenating commands, globals, input sources, output renderers, output transforms, serve handlers, fetch routes, events, hooks, and middleware.
+- `defineCli()` composes extension arrays by concatenating commands, globals, input sources, output renderers, output transforms, terminal handlers, fetch routes, events, hooks, and middleware.
 - `helpRenderer` and `skill` are singleton extension values. Declaring more than one provider or declaring one at both root and extension level fails.
 - Duplicate global flags or aliases fail during CLI creation.
 - Duplicate custom output renderer names fail during CLI creation. Custom renderers may replace built-in renderer names.
 - Some optional packages still need access to low-level state/execution helpers to implement MCP and skill surfaces.
-- `ServeHandlerInput` and `FetchRouteInput` currently pass raw `CliState`, so these are not cleanly separated extension APIs.
+- `TerminalHandlerInput` and `FetchRouteInput` currently pass raw `CliState`, so these are not cleanly separated extension APIs.
 
 ### Current Internal State Types Exposed Publicly
 
@@ -1546,7 +1545,7 @@ type CliState = {
   outputRenderers: readonly OutputRenderer[];
   outputTransforms: readonly OutputTransform[];
   root?: RuntimeEntry;
-  serveHandlers: readonly ServeHandler[];
+  terminalHandlers: readonly TerminalHandler[];
 };
 
 type SelectedCommand = {
@@ -1944,7 +1943,7 @@ The recent direction is simplification and package boundary cleanup:
   - deleted Core-owned config file parsing and JSONC/path merge helpers
   - deleted Core-owned MCP protocol/server modules
   - deleted Core-owned skill markdown generation
-  - added generic extension primitives: input sources, output renderers/transforms, serve handlers, fetch routes, lifecycle events, and singleton help/skill providers
+  - added generic extension primitives: input sources, output renderers/transforms, terminal handlers, fetch routes, lifecycle events, and singleton help/skill providers
   - widened `types.ts` substantially so optional first-party packages could compile against root exports
 - `feat(extensions): add token controls`
   - moved token-related output behavior out of Core
@@ -1986,7 +1985,7 @@ Treat these as primary research targets.
    - Research whether Core should expose a read-only `CliRuntime`, `CommandDispatcher`, `ProjectionHost`, or `cli.run()` instead.
 
 3. No pure command-run API
-   - `cli.serve()` writes stdout/stderr and exits by default.
+   - `run(cli)` writes stdout/stderr and exits by default.
    - `cli.fetch()` speaks HTTP.
    - `execute()` returns `Result` but requires internal selected-command/state-shaped inputs.
    - Research whether Core needs public `cli.run(argv, options): Promise<Result>` or `cli.dispatch(commandPath, input, options): Promise<Result>`.

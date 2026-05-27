@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, help, outputControls } from '@liche/core'
-import type { CliInstance, ServeOptions } from '@liche/core'
+import { defineCli, defineCommand, help, outputControls, run } from '@liche/core'
+import type { CliInstance, RunOptions } from '@liche/core'
 import { tokenCount, tokenSlice, tokens } from '../src/index.js'
 
 describe('@liche/tokens', () => {
@@ -37,12 +37,12 @@ describe('@liche/tokens', () => {
 async function runCli(
   cli: CliInstance,
   argv: string[],
-  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+  options: Omit<RunOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit(code) { exitCode = code },
     stderr(chunk) { stderr += chunk },

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { dirname, isAbsolute, resolve } from 'node:path'
-import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
 import { completions, llms, mcpInstaller, skillsInstaller } from '@liche/extensions'
 import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
@@ -195,4 +195,4 @@ export const cli = defineCli({
   version: GENERATOR_VERSION,
 })
 
-if (import.meta.main) await cli.serve(process.argv.slice(2))
+if (import.meta.main) await run(cli, process.argv.slice(2))

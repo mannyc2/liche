@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { runCli, testCli } from './helpers.js'
 
 describe('smoke: framework wires end-to-end', () => {
-  test('builds a declarative CLI, serves it, and produces version output', async () => {
+  test('builds a declarative CLI, runs it, and produces version output', async () => {
     const cli = testCli({
       name: 'smoke',
       description: 'smoke-test cli',

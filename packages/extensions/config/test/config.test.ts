@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, outputControls, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, run, z } from '@liche/core'
 import { config } from '../src/index.js'
 
 describe('@liche/config', () => {
@@ -33,7 +33,7 @@ describe('@liche/config', () => {
 
     let stdout = ''
     let exitCode = 0
-    await cli.serve(['deploy', '--json'], {
+    await run(cli, ['deploy', '--json'], {
       exit(code) {
         exitCode = code
       },

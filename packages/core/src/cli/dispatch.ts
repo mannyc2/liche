@@ -13,7 +13,7 @@ import type {
   ParseWarning,
   Result,
   RunContext,
-  ServeOptions,
+  RunOptions,
   SourceInspector,
 } from '../types.js'
 import { fail, ok, ParseError } from '../errors/error.js'
@@ -27,6 +27,7 @@ import { getCliState } from './create.js'
 import { contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareContext } from './invocation.js'
 import { resolveCommandInput } from './input-sources.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
+import { runTerminalCli } from './terminal.js'
 
 export type DispatchOptions = {
   env?: Dict<string | undefined> | undefined
@@ -38,9 +39,10 @@ export type DispatchOptions = {
 export async function run(
   cli: CliInstance,
   argv?: string[],
-  options?: ServeOptions,
+  options: RunOptions = {},
 ): Promise<void> {
-  return cli.serve(argv, options)
+  const state = getCliState(cli)
+  return runTerminalCli(cli.name, state, argv ?? Bun.argv.slice(2), options)
 }
 
 export async function dispatch(
@@ -100,7 +102,7 @@ export async function dispatch(
     return reject(
       {
         code: 'PARSE_ERROR',
-        message: 'Shell completion is only available through serve, not dispatch',
+        message: 'Shell completion is only available through run, not dispatch',
         exitCode: 1,
       },
       'parse',
@@ -111,7 +113,7 @@ export async function dispatch(
     return reject(
       {
         code: 'PARSE_ERROR',
-        message: '--version is only available through serve, not dispatch',
+        message: '--version is only available through run, not dispatch',
         exitCode: 1,
       },
       'parse',
@@ -122,7 +124,7 @@ export async function dispatch(
     return reject(
       {
         code: 'PARSE_ERROR',
-        message: '--help is only available through serve, not dispatch',
+        message: '--help is only available through run, not dispatch',
         exitCode: 1,
       },
       'parse',
@@ -133,19 +135,19 @@ export async function dispatch(
     return reject(
       {
         code: 'PARSE_ERROR',
-        message: '--schema is only available through serve, not dispatch',
+        message: '--schema is only available through run, not dispatch',
         exitCode: 1,
       },
       'parse',
       'parse.failed',
     )
   }
-  for (const handler of state.serveHandlers) {
+  for (const handler of state.terminalHandlers) {
     if (flags[handler.flagKey]) {
       return reject(
         {
           code: 'PARSE_ERROR',
-          message: `--${handler.flagKey} is only available through serve, not dispatch`,
+          message: `--${handler.flagKey} is only available through run, not dispatch`,
           exitCode: 1,
         },
         'parse',
@@ -241,36 +243,36 @@ export async function parseInvocation(
   if (env['COMPLETE']) {
     return fail({
       code: 'PARSE_ERROR',
-      message: 'Shell completion is only available through serve, not parseInvocation',
+      message: 'Shell completion is only available through run, not parseInvocation',
       exitCode: 1,
     }) as ParseInvocationResult
   }
   if (flags.version) {
     return fail({
       code: 'PARSE_ERROR',
-      message: '--version is only available through serve, not parseInvocation',
+      message: '--version is only available through run, not parseInvocation',
       exitCode: 1,
     }) as ParseInvocationResult
   }
   if (flags.help) {
     return fail({
       code: 'PARSE_ERROR',
-      message: '--help is only available through serve, not parseInvocation',
+      message: '--help is only available through run, not parseInvocation',
       exitCode: 1,
     }) as ParseInvocationResult
   }
   if (flags.schema) {
     return fail({
       code: 'PARSE_ERROR',
-      message: '--schema is only available through serve, not parseInvocation',
+      message: '--schema is only available through run, not parseInvocation',
       exitCode: 1,
     }) as ParseInvocationResult
   }
-  for (const handler of state.serveHandlers) {
+  for (const handler of state.terminalHandlers) {
     if (flags[handler.flagKey]) {
       return fail({
         code: 'PARSE_ERROR',
-        message: `--${handler.flagKey} is only available through serve, not parseInvocation`,
+        message: `--${handler.flagKey} is only available through run, not parseInvocation`,
         exitCode: 1,
       }) as ParseInvocationResult
     }

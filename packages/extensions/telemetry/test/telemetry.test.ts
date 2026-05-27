@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, z } from '@liche/core'
+import { defineCli, defineCommand, run, z } from '@liche/core'
 import { telemetry, type WireEvent } from '../src/index.js'
 import { memorySink } from '../src/testing/index.js'
 
@@ -23,7 +23,7 @@ async function runSilent(cli: ReturnType<typeof defineCli>, argv: string[], env:
   let stdout = ''
   let stderr = ''
   let exitCode = 0
-  await cli.serve(argv, {
+  await run(cli, argv, {
     env,
     isTty: false,
     stdout: (s) => {

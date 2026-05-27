@@ -19,7 +19,7 @@ Use `defineCli()` plus `defineCommand()` data objects. Do not use fluent registr
 
 ```ts
 import { completions, config, configDoctor } from '@liche/extensions'
-import { defineCli, defineCommand, defineGlobal, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { defineCli, defineCommand, defineGlobal, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
 
 const profile = defineGlobal({
   description: 'Profile to use',
@@ -68,7 +68,7 @@ export const cli = defineCli({
   ],
 })
 
-if (import.meta.main) await cli.serve(Bun.argv.slice(2))
+if (import.meta.main) await run(cli)
 ```
 
 ## Command Handlers

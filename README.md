@@ -29,7 +29,7 @@ The current package workflow is:
 Use `@liche/core` when the command tree is already clear and you want a normal TypeScript CLI.
 
 ```ts
-import { arg, defineCli, defineCommand, z } from "@liche/core";
+import { arg, defineCli, defineCommand, run, z } from "@liche/core";
 
 export const cli = defineCli({
   name: "shipyard",
@@ -54,7 +54,7 @@ export const cli = defineCli({
   ],
 });
 
-if (import.meta.main) await cli.serve(Bun.argv.slice(2));
+if (import.meta.main) await run(cli);
 ```
 
 `@liche/core` covers the runtime essentials: declarative command graphs, strict input parsing, source-aware validation errors, the `{ ok, data, error }` result envelope across JSON/JSONL/YAML/Markdown renderers, lifecycle events, global inputs, extension composition, reflection helpers, side-effect-free invocation parsing, and outbound HTTP transport. Config authoring, completions, MCP/skills adapters, `mcp add`/`skills add` installers, auth/session workflows, and telemetry sinks ship as opt-in modules in `@liche/extensions`.

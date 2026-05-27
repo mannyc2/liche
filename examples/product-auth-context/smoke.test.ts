@@ -1,21 +1,11 @@
+import { run, type CliInstance } from '@liche/core'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { checkAgainstDir, generateToDir } from '@liche/product'
 import product from './product.js'
 
-type GeneratedCli = {
-  serve: (
-    argv: string[],
-    options: {
-      stdout: (chunk: string) => void
-      stderr: (chunk: string) => void
-      exit: (code: number) => void
-      isTty: boolean
-      env?: Record<string, string | undefined>
-    },
-  ) => Promise<void>
-}
+type GeneratedCli = CliInstance
 
 describe('product-auth-context example', () => {
   let outDir: string
@@ -129,7 +119,7 @@ async function runGenerated(
   let exitCode = 0
   let stderr = ''
   let stdout = ''
-  await cli.serve(argv, {
+  await run(cli, argv, {
     env,
     exit: (code) => {
       exitCode = code

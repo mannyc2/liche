@@ -11,7 +11,6 @@ import type {
   FetchEntry,
   GroupEntry,
   Schema,
-  ServeOptions,
   RuntimeEntry,
   BeforeExecuteHook,
   CliHookRegistration,
@@ -23,7 +22,6 @@ import { globalRegistryFor } from '../globals/registry.js'
 import { createOutputRendererRegistry } from '../format/index.js'
 import { fetchCli } from './fetch.js'
 import { normalizeEvents, normalizeHooks } from './lifecycle.js'
-import { serveCli } from './serve.js'
 
 export const stateSymbol: unique symbol = Symbol('liche.cli.state')
 export type InternalCli = CliInstance & { [stateSymbol]: CliState }
@@ -48,7 +46,7 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
     outputRenderers: createOutputRendererRegistry(definition.outputRenderers),
     outputTransforms: definition.outputTransforms ? [...definition.outputTransforms] : [],
     root,
-    serveHandlers: definition.serveHandlers ? [...definition.serveHandlers] : [],
+    terminalHandlers: definition.terminalHandlers ? [...definition.terminalHandlers] : [],
   }
 
   const cli: InternalCli = {
@@ -60,10 +58,6 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
 
     fetch(request: Request) {
       return fetchCli(name, state, request)
-    },
-
-    serve(argv?: string[], options: ServeOptions = {}) {
-      return serveCli(name, state, argv ?? Bun.argv.slice(2), options)
     },
   }
 
@@ -128,9 +122,9 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...(definition.outputTransforms ?? []),
     ...extensions.flatMap((extension) => [...(extension.outputTransforms ?? [])]),
   ]
-  const serveHandlers = [
-    ...(definition.serveHandlers ?? []),
-    ...extensions.flatMap((extension) => [...(extension.serveHandlers ?? [])]),
+  const terminalHandlers = [
+    ...(definition.terminalHandlers ?? []),
+    ...extensions.flatMap((extension) => [...(extension.terminalHandlers ?? [])]),
   ]
   const fetchRoutes = [
     ...(definition.fetchRoutes ?? []),
@@ -153,7 +147,7 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...(middleware.length ? { middleware } : undefined),
     ...(outputRenderers.length ? { outputRenderers } : undefined),
     ...(outputTransforms.length ? { outputTransforms } : undefined),
-    ...(serveHandlers.length ? { serveHandlers } : undefined),
+    ...(terminalHandlers.length ? { terminalHandlers } : undefined),
     ...(skill !== undefined ? { skill } : undefined),
   }
 }

@@ -96,9 +96,10 @@ describe('compile profile', () => {
   test('compile entrypoint runs the generated CLI default export', () => {
     expect(renderCompileEntrypoint('workers.generated.ts')).toBe(
       '#!/usr/bin/env bun\n' +
+        "import { run } from '@liche/core'\n" +
         'import cli from "./workers.generated.js"\n' +
         '\n' +
-        'await cli.serve(process.argv.slice(2))\n',
+        'await run(cli, process.argv.slice(2))\n',
     )
   })
 

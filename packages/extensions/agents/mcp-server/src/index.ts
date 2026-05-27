@@ -16,7 +16,7 @@ export function mcpServer(options: McpServerOptions = {}): CliExtension {
   return defineExtension({
     id: 'liche.mcp-server',
     globals: [{ expose: 'runtime', flag: 'mcp', key: 'mcp', type: 'boolean' }],
-    serveHandlers: [
+    terminalHandlers: [
       {
         flagKey: 'mcp',
         handle: ({ binaryName, options, state }) => serveMcp(binaryName, state, options, toolPolicy),

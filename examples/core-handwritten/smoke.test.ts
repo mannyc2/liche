@@ -1,3 +1,4 @@
+import { run } from '@liche/core'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { cli, observedEvents } from './cli.js'
 
@@ -48,7 +49,7 @@ async function runCli(
   let exitCode = 0
   let stderr = ''
   let stdout = ''
-  await cli.serve(argv, {
+  await run(cli, argv, {
     env,
     exit: (code) => {
       exitCode = code

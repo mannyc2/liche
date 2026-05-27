@@ -22,7 +22,7 @@ describe('dispatch', () => {
     expect(unwrap<{ greeting: string }>(result)).toEqual({ greeting: 'hi liche' })
   })
 
-  test('matches serve --json data on success', async () => {
+  test('matches run --json data on success', async () => {
     const cli = testCli('app', [
       testCommand('echo', {
         args: z.object({ msg: z.string() }),
@@ -31,10 +31,10 @@ describe('dispatch', () => {
     ])
 
     const dispatched = await dispatch(cli, ['echo', 'hello'])
-    const served = await runCli(cli, ['echo', 'hello', '--json'])
+    const ran = await runCli(cli, ['echo', 'hello', '--json'])
 
     expect(dispatched.ok).toBe(true)
-    expect(unwrap(dispatched)).toEqual(JSON.parse(served.stdout.trim()))
+    expect(unwrap(dispatched)).toEqual(JSON.parse(ran.stdout.trim()))
   })
 
   test('does not write stdout/stderr and does not exit', async () => {
@@ -305,7 +305,7 @@ describe('dispatch', () => {
 })
 
 describe('run', () => {
-  test('matches cli.serve stdout/stderr/exitCode for a representative command', async () => {
+  test('matches terminal runner stdout/stderr/exitCode for a representative command', async () => {
     const cli = testCli('app', [
       testCommand('greet', {
         options: z.object({ name: z.string().default('world') }),
@@ -328,10 +328,10 @@ describe('run', () => {
       },
     })
 
-    const served = await runCli(cli, ['greet', '--name', 'liche', '--json'])
+    const ran = await runCli(cli, ['greet', '--name', 'liche', '--json'])
 
-    expect(runStdout).toBe(served.stdout)
-    expect(runStderr).toBe(served.stderr)
-    expect(runExit).toBe(served.exitCode)
+    expect(runStdout).toBe(ran.stdout)
+    expect(runStderr).toBe(ran.stderr)
+    expect(runExit).toBe(ran.exitCode)
   })
 })

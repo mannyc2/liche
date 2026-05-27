@@ -1,10 +1,10 @@
-import { defineCli, defineCommand, help, outputControls, reflectionControls, version } from '../src/index.js'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version } from '../src/index.js'
 import { tokens } from '@liche/tokens'
 import type {
   CliExtension,
   CliInstance,
   DeclarativeCommand,
-  ServeOptions,
+  RunOptions,
 } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import type { CommandDefinition, CreateOptions } from '../src/types.js'
@@ -16,13 +16,13 @@ export function stateOf(cli: CliInstance) {
 export async function runCli(
   cli: CliInstance,
   argv: string[],
-  options: Omit<ServeOptions, 'stdout' | 'stderr' | 'exit'> = {},
+  options: Omit<RunOptions, 'stdout' | 'stderr' | 'exit'> = {},
 ) {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
 
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit(code) {
       exitCode = code

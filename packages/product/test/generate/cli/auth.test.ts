@@ -1,3 +1,4 @@
+import { run, type CliInstance } from '@liche/core'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -252,21 +253,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     stdin?: AsyncIterable<string>,
     isTty = false,
   ): Promise<{ stdout: string; exitCode: number }> {
-    const mod = (await import(modulePath)) as {
-      default: {
-        serve: (
-          argv: string[],
-          opts: {
-            stdout: (s: string) => void
-            stderr: (s: string) => void
-            exit: (code: number) => void
-            isTty: boolean
-            env?: Record<string, string | undefined>
-            stdin?: AsyncIterable<string>
-          },
-        ) => Promise<void>
-      }
-    }
+    const mod = (await import(modulePath)) as { default: CliInstance }
     let stdout = ''
     let exitCode = 0
     const opts: {
@@ -288,7 +275,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       env,
     }
     if (stdin) opts.stdin = stdin
-    await mod.default.serve(argv, opts)
+    await run(mod.default, argv, opts)
     return { stdout, exitCode }
   }
 
@@ -299,7 +286,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     expect(stdout).not.toContain('REMOTE_NOT_IMPLEMENTED')
   })
 
-  test('with ACME_TOKEN injected through ServeOptions.env, generated remote command calls core HTTP transport', async () => {
+  test('with ACME_TOKEN injected through RunOptions.env, generated remote command calls core HTTP transport', async () => {
     const server = Bun.serve({
       port: 0,
       fetch(request) {
@@ -358,7 +345,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     expect(stdout).not.toContain('VALIDATION_ERROR')
   })
 
-  test('CI invocation can use a ci-mode token source from ServeOptions.env', async () => {
+  test('CI invocation can use a ci-mode token source from RunOptions.env', async () => {
     const server = Bun.serve({
       port: 0,
       fetch(request) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
 import { completions, config, configDoctor, env, files, llms } from '@liche/extensions'
 
 const DeploymentSchema = z.object({
@@ -106,4 +106,4 @@ export const cli = defineCli({
   version: '0.1.0',
 })
 
-if (import.meta.main) await cli.serve(process.argv.slice(2))
+if (import.meta.main) await run(cli, process.argv.slice(2))

@@ -19,7 +19,7 @@ const deploy = defineCommand({
 `defineCli` collects one or more commands into a runnable CLI. The same `cli` projects onto multiple transports:
 
 ```ts
-import { defineCli } from "@liche/core";
+import { defineCli, run } from "@liche/core";
 
 export const cli = defineCli({
   name: "shipyard",
@@ -27,7 +27,7 @@ export const cli = defineCli({
   commands: [deploy],
 });
 
-if (import.meta.main) await cli.serve();   // terminal
+if (import.meta.main) await run(cli);      // terminal
 // or: Bun.serve({ fetch: cli.fetch });    // HTTP
 ```
 
@@ -42,7 +42,7 @@ Both run the same `run({ input })` handler, validate against the same Zod schema
 
 A *transport* is how an invocation reaches your command — what form the input arrives in, and how the result goes back out. The same command graph can be reached through any of these without changing the handler:
 
-- `cli.serve(argv?)` — terminal transport. Reads `Bun.argv.slice(2)` by default, writes stdout/stderr, exits with a status code.
+- `run(cli, argv?)` — terminal transport. Reads `Bun.argv.slice(2)` by default, writes stdout/stderr, exits with a status code.
 - `cli.fetch(request)` — HTTP transport with the Web `fetch` shape. Pass it to `Bun.serve({ fetch: cli.fetch })`. URL path selects the command; query string and JSON body become option inputs; `Accept: application/x-ndjson` streams.
 - Extension-driven transports live in `@liche/extensions` and other extension packages — they reuse the same command graph through the public adapter surface.
 

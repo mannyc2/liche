@@ -536,7 +536,7 @@ try {
   let generatedStdout = ''
   let generatedStderr = ''
   let generatedExitCode = 0
-  await generatedModule.default.serve(['deploy', '--name', 'Ada', '--json'], {
+  await Core.run(generatedModule.default, ['deploy', '--name', 'Ada', '--json'], {
     stdout: (chunk) => { generatedStdout += chunk },
     stderr: (chunk) => { generatedStderr += chunk },
     exit: (code) => { generatedExitCode = code },

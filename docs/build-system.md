@@ -642,7 +642,7 @@ The compile command chooses deterministic settings deliberately. Bun's `compile`
 
 `@liche/build` owns all `Bun.build()` calls. `@liche/releases` does not call `Bun.build()`, rebuild binaries, read generated source, or infer compile settings from a workspace. Releases receive final binary paths, final binary hashes/sizes, and the build record produced here.
 
-Generated CLI files remain importable test fixtures. The compile path writes a small internal entrypoint next to the generated CLI that imports the generated default export and calls `cli.serve(process.argv.slice(2))`. That compile entrypoint is internal build-record data, not a generated surface artifact and not release-manifest data.
+Generated CLI files remain importable test fixtures. The compile path writes a small internal entrypoint next to the generated CLI that imports the generated default export and calls `run(cli, process.argv.slice(2))`. That compile entrypoint is internal build-record data, not a generated surface artifact and not release-manifest data.
 
 ### Required compile flags
 

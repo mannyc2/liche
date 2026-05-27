@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, defineExtension, defineOutputRenderer, outputControls, z } from '../src/index.js'
+import { defineCli, defineCommand, defineExtension, defineOutputRenderer, outputControls, run, z } from '../src/index.js'
 
 describe('defineExtension', () => {
   test('returns the input and freezes the result', () => {
@@ -29,7 +29,7 @@ describe('defineExtension', () => {
       ],
     })
     let stdout = ''
-    await cli.serve(['ping', '--json'], { stdout: (chunk) => { stdout += chunk } })
+    await run(cli, ['ping', '--json'], { stdout: (chunk) => { stdout += chunk } })
     expect(JSON.parse(stdout)).toEqual({ ok: true })
   })
 
@@ -59,7 +59,7 @@ describe('defineExtension', () => {
       ],
     })
     let stdout = ''
-    await cli.serve(['ping', '--format', 'test'], { stdout: (chunk) => { stdout += chunk } })
+    await run(cli, ['ping', '--format', 'test'], { stdout: (chunk) => { stdout += chunk } })
     expect(stdout).toBe('result:{"ok":true}\n')
   })
 
@@ -89,7 +89,7 @@ describe('defineExtension', () => {
       ],
     })
     let stdout = ''
-    await cli.serve(['ping', '--json'], { stdout: (chunk) => { stdout += chunk } })
+    await run(cli, ['ping', '--json'], { stdout: (chunk) => { stdout += chunk } })
     expect(stdout).toBe('json:{"ok":true}\n')
   })
 })

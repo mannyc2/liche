@@ -532,20 +532,20 @@ export type CliExtension = {
   middleware?: readonly MiddlewareHandler[] | undefined;
   outputRenderers?: readonly OutputRenderer[] | undefined;
   outputTransforms?: readonly OutputTransform[] | undefined;
-  serveHandlers?: readonly ServeHandler[] | undefined;
+  terminalHandlers?: readonly TerminalHandler[] | undefined;
   skill?: SkillDefinition | undefined;
 };
 
-export type ServeHandlerInput = {
+export type TerminalHandlerInput = {
   binaryName: string;
   flags: GlobalFlags;
-  options: ServeOptions;
+  options: RunOptions;
   state: CliState;
 };
 
-export type ServeHandler = {
+export type TerminalHandler = {
   flagKey: string;
-  handle: (input: ServeHandlerInput) => Promise<void> | void;
+  handle: (input: TerminalHandlerInput) => Promise<void> | void;
 };
 
 export type OutputTransformInput = {
@@ -615,7 +615,7 @@ export type CreateOptions<
   inputSources?: readonly InputSourceProvider[] | undefined;
   outputRenderers?: readonly OutputRenderer[] | undefined;
   outputTransforms?: readonly OutputTransform[] | undefined;
-  serveHandlers?: readonly ServeHandler[] | undefined;
+  terminalHandlers?: readonly TerminalHandler[] | undefined;
   skill?: SkillDefinition | undefined;
   name?: string | undefined;
   sync?:
@@ -689,10 +689,10 @@ export type CliState = {
   outputRenderers: readonly OutputRenderer[];
   outputTransforms: readonly OutputTransform[];
   root?: RuntimeEntry | undefined;
-  serveHandlers: readonly ServeHandler[];
+  terminalHandlers: readonly TerminalHandler[];
 };
 
-export type ServeOptions = {
+export type RunOptions = {
   env?: Record<string, string | undefined> | undefined;
   exit?: ((code: number) => void) | undefined;
   isTty?: boolean | undefined;
@@ -709,7 +709,6 @@ export type CliInstance = {
   env?: Schema<any> | undefined;
   fetch(request: Request): Promise<Response>;
   name: string;
-  serve(argv?: string[], options?: ServeOptions): Promise<void>;
   vars?: Schema<any> | undefined;
 };
 

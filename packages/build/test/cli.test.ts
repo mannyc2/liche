@@ -2,17 +2,18 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ServeOptions } from '@liche/core'
+import { run } from '@liche/core'
+import type { RunOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
 
 async function runCli(
   argv: string[],
-  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+  options: Omit<RunOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   let exitCode = 0
   let stderr = ''
   let stdout = ''
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit: (code) => { exitCode = code },
     isTty: options.isTty ?? false,

@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import type { ServeOptions } from '@liche/core'
+import { run } from '@liche/core'
+import type { RunOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
 import { shipRelease } from '../src/cli/ship-command.js'
 import type {
@@ -14,12 +15,12 @@ import type { ReleasesConfig } from '../src/config.js'
 
 async function runCli(
   argv: string[],
-  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+  options: Omit<RunOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   let exitCode = 0
   let stderr = ''
   let stdout = ''
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit: (code) => { exitCode = code },
     isTty: options.isTty ?? false,

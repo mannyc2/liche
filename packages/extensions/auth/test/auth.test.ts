@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, help as helpControl, outputControls, z } from '@liche/core'
+import { defineCli, defineCommand, help as helpControl, outputControls, run, z } from '@liche/core'
 import { auth } from '../src/index.js'
 
 describe('@liche/auth', () => {
@@ -28,7 +28,7 @@ describe('@liche/auth', () => {
 
     let stdout = ''
     let exitCode = 0
-    await cli.serve(['show', '--profile', 'work', '--non-interactive', '--no-session', '--json'], {
+    await run(cli, ['show', '--profile', 'work', '--non-interactive', '--no-session', '--json'], {
       exit(code) {
         exitCode = code
       },
@@ -45,7 +45,7 @@ describe('@liche/auth', () => {
     })
 
     let help = ''
-    await cli.serve(['--help'], {
+    await run(cli, ['--help'], {
       stdout(chunk) {
         help += chunk
       },

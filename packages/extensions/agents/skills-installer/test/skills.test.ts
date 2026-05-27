@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineCli, defineCommand, help as helpControl, outputControls } from '@liche/core'
-import type { CliInstance, ServeOptions } from '@liche/core'
+import { defineCli, defineCommand, help as helpControl, outputControls, run } from '@liche/core'
+import type { CliInstance, RunOptions } from '@liche/core'
 import { skillsInstaller } from '../src/index.js'
 
 describe('@liche/skills-installer', () => {
@@ -76,12 +76,12 @@ describe('@liche/skills-installer', () => {
 async function runCli(
   cli: CliInstance,
   argv: string[],
-  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+  options: Omit<RunOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit(code) { exitCode = code },
     stderr(chunk) { stderr += chunk },

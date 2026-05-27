@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ServeOptions } from '@liche/core'
+import { run } from '@liche/core'
+import type { RunOptions } from '@liche/core'
 import {
   Auth,
   Command,
@@ -45,12 +46,12 @@ async function readEventually(path: string, timeoutMs = 1000): Promise<string> {
 async function runCli(
   cli: GeneratedCli,
   argv: string[],
-  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+  options: Omit<RunOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<CapturedRun> {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     stdout: (s) => { stdout += s },
     stderr: (s) => { stderr += s },

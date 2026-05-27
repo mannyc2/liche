@@ -3,13 +3,14 @@ import {
   defineCli,
   defineCommand,
   outputControls,
+  run,
   z,
 } from '@liche/core'
 import type {
   CliExtension,
   CliInstance,
   DeclarativeCommand,
-  ServeOptions,
+  RunOptions,
 } from '@liche/core'
 
 type CapturedRun = { exitCode: number; stderr: string; stdout: string }
@@ -114,12 +115,12 @@ function deleteCommand(): DeclarativeCommand {
 async function runCli(
   cli: CliInstance,
   argv: string[],
-  options: Omit<ServeOptions, 'exit' | 'stderr' | 'stdout'> = {},
+  options: Omit<RunOptions, 'exit' | 'stderr' | 'stdout'> = {},
 ): Promise<CapturedRun> {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit(code) {
       exitCode = code

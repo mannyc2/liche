@@ -1,4 +1,4 @@
-import type { CliEvent, CliEventSubscription, CliState, Format, RunContext, ServeOptions } from '../types.js'
+import type { CliEvent, CliEventSubscription, CliState, Format, RunContext, RunOptions } from '../types.js'
 import { execute } from './execute.js'
 import { ParseError } from '../errors/error.js'
 import { formatCta, pick, renderOutput } from '../format/index.js'
@@ -11,11 +11,11 @@ import { formatHumanValidationError } from './human-validation-error.js'
 import { DEFAULT_FORMAT, contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareContext } from './invocation.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 
-export async function serveCli(
+export async function runTerminalCli(
   name: string,
   state: CliState,
   argv: string[],
-  options: ServeOptions = {},
+  options: RunOptions = {},
 ): Promise<void> {
   const io = {
     err: options.stderr ?? ((s: string) => void Bun.stderr.write(s)),
@@ -29,7 +29,7 @@ export async function serveCli(
     flags = parseGlobals(argv, state.globals)
   } catch (error) {
     if (error instanceof ParseError) {
-      await emitServeLifecycle(name, state, state.events, {
+      await emitTerminalLifecycle(name, state, state.events, {
         isTty,
         error: { code: 'PARSE_ERROR', exitCode: 1 },
         exitCode: 1,
@@ -52,7 +52,7 @@ export async function serveCli(
 
   if (env['COMPLETE']) {
     if (!shells.includes(env['COMPLETE'] as any)) {
-      await emitServeLifecycle(name, state, state.events, {
+      await emitTerminalLifecycle(name, state, state.events, {
         isTty,
         error: { code: 'PARSE_ERROR' },
         format: rootOutputFormat,
@@ -65,7 +65,7 @@ export async function serveCli(
       return
     }
     const suggestions = complete(state, flags.rest, Math.max(flags.rest.length - 1, 0))
-    await emitServeLifecycle(name, state, state.events, {
+    await emitTerminalLifecycle(name, state, state.events, {
       isTty,
       completion: { shell: env['COMPLETE'], suggestionCount: suggestions.length },
       format: rootOutputFormat,
@@ -77,7 +77,7 @@ export async function serveCli(
   }
 
   if (flags.version) {
-    await emitServeLifecycle(name, state, state.events, {
+    await emitTerminalLifecycle(name, state, state.events, {
       isTty,
       format: rootOutputFormat,
       formatExplicit,
@@ -86,14 +86,14 @@ export async function serveCli(
     })
     return io.out(`${state.def.version ?? '0.0.0'}\n`)
   }
-  for (const handler of state.serveHandlers) {
+  for (const handler of state.terminalHandlers) {
     if (flags[handler.flagKey]) return await handler.handle({ binaryName: name, flags, options, state })
   }
 
   const selected = selectCommand(state, flags.rest)
   const outputFormat = resolveFormat({ flags, selected, cliDefault: state.def.format }).format
   if (!selected && flags.rest.some(isFlagLikeToken)) {
-    await emitServeLifecycle(name, state, state.events, {
+    await emitTerminalLifecycle(name, state, state.events, {
       isTty,
       error: { code: 'PARSE_ERROR', exitCode: 1 },
       exitCode: 1,
@@ -109,7 +109,7 @@ export async function serveCli(
     return
   }
   if (!selected && flags.rest.length > 0) {
-    await emitServeLifecycle(name, state, state.events, {
+    await emitTerminalLifecycle(name, state, state.events, {
       isTty,
       error: { code: 'COMMAND_NOT_FOUND' },
       format: outputFormat,
@@ -119,7 +119,7 @@ export async function serveCli(
     })
   }
   if (flags.help || !selected) {
-    await emitServeLifecycle(name, state, selected ? state.events.concat(selected.events) : state.events, {
+    await emitTerminalLifecycle(name, state, selected ? state.events.concat(selected.events) : state.events, {
       isTty,
       ...(selected ? { command: eventCommand(selected) } : undefined),
       format: outputFormat,
@@ -130,7 +130,7 @@ export async function serveCli(
     return io.out(`${renderHelp(name, state, selected, flags.rest)}\n`)
   }
   if (flags.schema) {
-    await emitServeLifecycle(name, state, state.events.concat(selected.events), {
+    await emitTerminalLifecycle(name, state, state.events.concat(selected.events), {
       isTty,
       command: eventCommand(selected),
       format: outputFormat,
@@ -147,7 +147,7 @@ export async function serveCli(
     contextOverrides = await runPrepareContext(prepareHooks, { name, env, flags })
   } catch (error) {
     if (error instanceof ParseError) {
-      await emitServeLifecycle(name, state, state.events.concat(selected.events), {
+      await emitTerminalLifecycle(name, state, state.events.concat(selected.events), {
         isTty,
         command: eventCommand(selected),
         error: { code: 'PARSE_ERROR', exitCode: 1 },
@@ -228,7 +228,7 @@ export async function serveCli(
   if (exitCode) (options.exit ?? process.exit)(exitCode)
 }
 
-async function emitServeLifecycle(
+async function emitTerminalLifecycle(
   binaryName: string,
   state: CliState,
   subscriptions: readonly CliEventSubscription[],

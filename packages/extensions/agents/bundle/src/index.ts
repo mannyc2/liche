@@ -28,7 +28,7 @@ export function agents(options: AgentsOptions = {}): CliExtension {
     fetchRoutes: [...(server.fetchRoutes ?? [])],
     globals: [...(server.globals ?? []), ...(runtime.globals ?? []), ...(tk.globals ?? [])],
     outputTransforms: [...(tk.outputTransforms ?? [])],
-    serveHandlers: [...(server.serveHandlers ?? []), ...(runtime.serveHandlers ?? [])],
+    terminalHandlers: [...(server.terminalHandlers ?? []), ...(runtime.terminalHandlers ?? [])],
     ...(options.skill ? { skill: options.skill } : undefined),
   })
 }

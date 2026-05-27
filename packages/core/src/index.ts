@@ -13,7 +13,7 @@ export type { ArgDecodeContext, ArgIssue, StoredCodecSurface } from './schema/ar
 export { z, parseSchema, parseSchemaAsync } from './schema/zod.js'
 export { ParseError, ValidationError } from './errors/error.js'
 
-// Internals exposed for first-party extensions that contribute serve/fetch handlers.
+// Internals exposed for first-party extensions that contribute terminal/fetch handlers.
 export { execute } from './cli/execute.js'
 export { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './cli/lifecycle.js'
 export { collectCommandContracts, manifest, manifestEnvelope, mcpToolName, selectCommand } from './command/registry.js'
@@ -96,9 +96,9 @@ export type {
   ResultMeta,
   RunContext,
   Schema,
-  ServeHandler,
-  ServeHandlerInput,
-  ServeOptions,
+  TerminalHandler,
+  TerminalHandlerInput,
+  RunOptions,
   SourceInspector,
   SkillDefinition,
   Usage,

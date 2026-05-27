@@ -121,7 +121,7 @@ Package boundaries must have an opt-in sentence. If a user cannot explain what t
 
 | Package | Required | Purpose | What a user gives up by not installing it |
 |---|---:|---|---|
-| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`, middleware, lifecycle events, mutation hooks, parser/input-source engine, standard formatter, extension protocol, command contracts, packaged skill/docs reflection basics, and outbound HTTP operation transport. | The liche runtime itself, including handwritten CLIs and the shared remote HTTP transport. |
+| `@liche/core` | yes | Runtime CLI framework: `defineCli()`, `defineCommand()`, `run(cli)`, `cli.fetch()`, middleware, lifecycle events, mutation hooks, parser/input-source engine, standard formatter, extension protocol, command contracts, packaged skill/docs reflection basics, and outbound HTTP operation transport. | The liche runtime itself, including handwritten CLIs and the shared remote HTTP transport. |
 | `@liche/extensions` | no | Official optional extensions over public core lanes: config authoring, completions, agent setup helpers, auth/session workflows, and telemetry adapters. | First-party optional factories and helper workflows. Handwritten core CLIs still run, and Product can still generate catalog-owned surfaces. |
 | `@liche/product` | no | Opt-in Product schema authoring, catalog linting, generated CLI/OpenAPI/MCP/docs/Agent Skill surfaces, drift checks, and server conformance. | Product-driven generation and conformance. Handwritten CLIs still work. |
 | `@liche/build` | no | Reusable Bun build/compile primitives for standalone executables, compile flag profiles, and path-independent compile provenance. | liche's compile wrapper and compile provenance. They can still call `bun build --compile` manually. |
@@ -133,7 +133,7 @@ No packages beyond `@liche/extensions` exist for Vite, docs, testkit, Bun-native
 
 Owns:
 
-- `defineCli()`, `defineCommand()`, `.serve()`, `.fetch()`
+- `defineCli()`, `defineCommand()`, `run(cli)`, `cli.fetch()`
 - middleware
 - observe-only lifecycle events and typed mutation hooks
 - parser/config/env validation
@@ -276,7 +276,7 @@ The runtime has multiple execution directions. They must be named separately.
 
 | Direction | Owner | Meaning |
 |---|---|---|
-| argv CLI runner | `@liche/core` | `.serve(argv)` parses command-line input, executes one selected command, writes output, and exits or returns. It is not an HTTP server. |
+| argv CLI runner | `@liche/core` | `run(cli, argv?)` parses command-line input, executes one selected command, writes output, and exits or returns. It is not an HTTP server. |
 | inbound HTTP handler | `@liche/core` | `.fetch(request)` receives HTTP requests and dispatches them to registered commands. It also exposes core reflection endpoints such as MCP and schema/manifest surfaces for handwritten CLIs. |
 | in-process fetch-backed command | `@liche/core` | A command can delegate to a provided `FetchHandler`. This is an in-process Request/Response bridge, not a hosted backend client. |
 | outbound HTTP operation transport | `@liche/core` | A command can call a configured remote HTTP API, parse the response, validate it against the output schema, and map failures into the standard error envelope. |

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
 import { completions, config, files } from '@liche/extensions'
 import { runPackageCommand } from './cli/package-command.js'
 import { runPublishCommand } from './cli/publish-command.js'
@@ -63,4 +63,4 @@ export const cli = defineCli({
   version: RELEASE_TOOL_VERSION,
 })
 
-if (import.meta.main) await cli.serve(process.argv.slice(2))
+if (import.meta.main) await run(cli, process.argv.slice(2))

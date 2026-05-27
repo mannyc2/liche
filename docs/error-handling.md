@@ -128,7 +128,7 @@ Arbitrary `{ ok, data, error }` objects are not control results. Factory-created
 
 ## Surface policy
 
-`arg.fromString({ surface })` declares which dispatch transports may invoke a runtime codec. The default `'cli'` makes a codec callable from `cli.serve`/`dispatch` only; opting into `'all'`, `'fetch'`, or `{ kind: 'extension', transport: '<name>' }` widens it.
+`arg.fromString({ surface })` declares which dispatch transports may invoke a runtime codec. The default `'cli'` makes a codec callable from `run(cli)`/`dispatch` only; opting into `'all'`, `'fetch'`, or `{ kind: 'extension', transport: '<name>' }` widens it.
 
 Adapters call `checkCommandSurface(entry, surface)` before invoking a command. On mismatch:
 

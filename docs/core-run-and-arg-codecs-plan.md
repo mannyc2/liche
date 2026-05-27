@@ -9,7 +9,7 @@ The design is intentionally a hard cutover plan for the pre-`1.0.0` core API. It
 
 ## Success criteria
 
-1. Handwritten CLIs can use a top-level `run(cli, argv?)` entrypoint instead of spelling `await cli.serve(Bun.argv.slice(2))`.
+1. Handwritten CLIs can use a top-level `run(cli, argv?)` entrypoint instead of spelling `await run(cli, Bun.argv.slice(2))`.
 2. Tests, extensions, and adapters can execute a CLI through a public, side-effect-controlled API that returns a `Result` without importing internal state or executor helpers.
 3. Tests and adapters can parse and resolve an invocation without running the handler through `parseInvocation`.
 4. CLI authors can declare strict numeric and boolean argument schemas through `arg.*` helpers that remain ordinary Zod schemas.
@@ -75,7 +75,7 @@ await run(cli, argv)
 await run(cli, argv, options)
 ```
 
-`run` is the effectful command-line entrypoint. It writes stdout/stderr and exits through the same behavior as `cli.serve`. With no `argv`, it uses `Bun.argv.slice(2)`.
+`run` is the effectful command-line entrypoint. It writes stdout/stderr and exits through the terminal runner. With no `argv`, it uses `Bun.argv.slice(2)`.
 
 This is mostly ergonomic, but it gives the package a cmd-ts-style entrypoint without teaching users to reach for `Bun.argv` directly.
 
@@ -93,14 +93,14 @@ const result = await dispatch(cli, ["deploy", "--replicas", "3"], {
 
 It must not write stdout/stderr or call `process.exit`. It publishes a generic primitive for any extension or adapter that needs to drive a command without composing `getCliState`, `selectCommand`, `execute`, and lifecycle helpers.
 
-For streaming handlers, `dispatch` always returns the collected chunk array as `Result.data`. It also accepts `onChunk?: (chunk) => Awaitable<void>` for callers that want progressive delivery. This matches the current executor behavior and keeps `serve`, `fetch`, and `dispatch` on one streaming path.
+For streaming handlers, `dispatch` always returns the collected chunk array as `Result.data`. It also accepts `onChunk?: (chunk) => Awaitable<void>` for callers that want progressive delivery. This matches the current executor behavior and keeps `run`, `fetch`, and `dispatch` on one streaming path.
 
-`dispatch` only executes runnable commands. It does not render help, version, schema, completions, or extension serve-handlers. Those are `serve` display concerns. Non-runnable invocations return `Result.fail` instead of throwing:
+`dispatch` only executes runnable commands. It does not render help, version, schema, completions, or extension terminal handlers. Those are `run` display concerns. Non-runnable invocations return `Result.fail` instead of throwing:
 
 - global parsing failures return `PARSE_ERROR`
 - unknown flag-like tokens with no selected command return `PARSE_ERROR`
 - unknown command paths return `COMMAND_NOT_FOUND`
-- `--help`, `--version`, `--schema`, completion requests, and extension serve-handler flags return `PARSE_ERROR` with a message that the control is only available through `serve`
+- `--help`, `--version`, `--schema`, completion requests, and extension terminal-handler flags return `PARSE_ERROR` with a message that the control is only available through `run`
 - selected entries without a runnable command handler keep using `COMMAND_NOT_RUNNABLE`
 
 ### `parseInvocation`
@@ -213,9 +213,9 @@ argv/global parse
 -> Result
 ```
 
-`serveCli`, `fetchCli`, `run`, `dispatch`, and `parseInvocation` should call the shared pipeline with different effect adapters.
+`runTerminalCli`, `fetchCli`, `run`, `dispatch`, and `parseInvocation` should call the shared pipeline with different effect adapters.
 
-Start by extracting the existing private `runPrepareContext` and `contextGlobals` helpers from `serve.ts` into `packages/core/src/cli/invocation.ts`. Do not re-export them from `serve.ts` and do not duplicate them into `dispatch.ts`; `serve.ts` should remain an adapter, not the owner of shared invocation preparation.
+Start by extracting the existing private `runPrepareContext` and `contextGlobals` helpers from `terminal.ts` into `packages/core/src/cli/invocation.ts`. Do not re-export them from `terminal.ts` and do not duplicate them into `dispatch.ts`; `terminal.ts` should remain an adapter, not the owner of shared invocation preparation.
 
 Place public `run` and `dispatch` in `packages/core/src/cli/dispatch.ts`. `dispatch.ts` should unwrap the `CliInstance` to its internal state, prepare the invocation, and call the shared executor. `run` belongs beside `dispatch` because it is the effectful wrapper over the same public invocation lane; keeping both in one file is clearer than adding a trivial standalone `run.ts`.
 
@@ -317,27 +317,27 @@ Verification:
 
 Goal: collapse duplicated adapter defaults into helpers so behavior changes happen in one place.
 
-Motivation: a working-tree audit found the same `options.env ?? Bun.env` cast in three adapters (`serve.ts:26`, `dispatch.ts:49`, `fetch.ts:45+72`), and the same five-step output-format fallback chain — `options.format ?? (flags.json ? 'json' : flags.format) ?? commandFormat(selected) ?? state.def.format ?? DEFAULT_FORMAT` — at four sites (`serve.ts:51`, `serve.ts:99`, `dispatch.ts:75`, `dispatch.ts:187`). These are not architectural decisions, just copy-paste. Drying them up makes later behavior changes single-edit and surfaces the intended convention.
+Motivation: a working-tree audit found the same `options.env ?? Bun.env` cast in three adapters (`terminal.ts`, `dispatch.ts`, `fetch.ts`), and the same output-format fallback chain in the terminal and dispatch paths. These are not architectural decisions, just copy-paste. Drying them up makes later behavior changes single-edit and surfaces the intended convention.
 
 Decisions:
 
 - **Add `defaultEnv()`** to `cli/invocation.ts`. Returns `Bun.env as Dict<string | undefined>`. Single source for the default env Dict. Adapters read `options.env ?? defaultEnv()`.
 - **Add `resolveFormat({ explicit, flags, selected, defaultFormat })`** to `cli/invocation.ts`. Returns `{ format, formatExplicit }`. Encodes the fallback chain once. Adapters pass what they have; the helper computes both fields.
-- **Keep adapter-specific I/O knobs out of these helpers.** `defaultEnv` and `resolveFormat` are pure data helpers — no Bun-stream defaults, no exit handlers, no TTY sniff. Those stay in `serve.ts` and `fetch.ts` because they are adapter-specific.
+- **Keep adapter-specific I/O knobs out of these helpers.** `defaultEnv` and `resolveFormat` are pure data helpers — no Bun-stream defaults, no exit handlers, no TTY sniff. Those stay in `terminal.ts` and `fetch.ts` because they are adapter-specific.
 
 Files likely touched:
 
 - `packages/core/src/cli/invocation.ts`
-- `packages/core/src/cli/serve.ts`
+- `packages/core/src/cli/terminal.ts`
 - `packages/core/src/cli/dispatch.ts`
 - `packages/core/src/cli/fetch.ts`
-- focused serve, dispatch, fetch, and env convention tests
+- focused run, dispatch, fetch, and env convention tests
 
 Verification:
 
 - `rg "Bun\\.env" packages/core/src/cli` matches only `defaultEnv()` in `invocation.ts`.
 - `rg "commandFormat\\(selected\\)" packages/core/src/cli` matches only `resolveFormat` in `invocation.ts`.
-- `serve`, `dispatch`, and `fetch` all use `defaultEnv()` and `resolveFormat()` instead of inline copies.
+- `run`, `dispatch`, and `fetch` all use `defaultEnv()` and `resolveFormat()` instead of inline copies.
 - Existing output-format, generated envelope, completion, help, schema, and dispatch tests pass unchanged except for deliberate name updates from Commit 0A.
 - The planned `ENV-003` coverage row is either backed by a real env-convention test in this commit or moved out of "implemented behavior" wording until the helper exists.
 
@@ -382,7 +382,7 @@ Files likely touched:
 - `packages/core/src/cli/dispatch.ts`
 - `packages/core/src/cli/invocation.ts`
 - `packages/core/src/cli/create.ts`
-- `packages/core/src/cli/serve.ts`
+- `packages/core/src/cli/terminal.ts`
 - `packages/core/src/cli/execute.ts`
 - `packages/core/src/types.ts`
 - `packages/core/src/index.ts`
@@ -391,8 +391,8 @@ Files likely touched:
 
 Verification:
 
-- `run(cli, argv)` produces the same stdout/stderr/exit behavior as `cli.serve(argv)`.
-- `dispatch(cli, argv)` returns the same `Result` data that `serve` prints under `--json`.
+- `run(cli, argv)` produces the expected stdout/stderr/exit behavior for terminal invocation.
+- `dispatch(cli, argv)` returns the same `Result` data that `run(cli, argv)` prints under `--json`.
 - `dispatch` does not write stdout/stderr or call `exit`.
 - `dispatch(cli, [])`, `dispatch(cli, ["--help"])`, `dispatch(cli, ["--version"])`, and `dispatch(cli, ["unknown-cmd"])` return `Result.fail` with structured codes, not display envelopes or thrown errors.
 - API snapshot and package-root consumer tests lock the new exports.
@@ -547,7 +547,7 @@ Audit evidence:
 4. **Fail early for adapter-visible CLI-only codecs, fail at runtime for fetch.** Extension tool discovery is a contract surface, so uncallable tools should not be listed. Fetch is a generic inbound dispatcher today, so unsupported runtime codecs should return a structured `UNSUPPORTED_SURFACE` error there.
 5. **Keep `parseSchema` public and add `parseSchemaAsync`.** First-party extensions already use `parseSchema` for config and telemetry wire validation through package-root imports. `dispatch` and `parseInvocation` reduce command-execution pressure, but they do not replace low-level schema-boundary parsing.
 6. **Support async output validation.** Once command input parsing moves to `parseSchemaAsync`, output validation should use the same helper so async codecs/refinements behave consistently across input and output boundaries.
-7. **`dispatch` returns `Result.fail` for non-runnable invocations.** It should never throw typed parse/control errors and should not embed rendered help or version text in `Result.data`. Help, version, schema, completions, and extension serve-handlers remain `serve` display behavior.
-8. **Move shared invocation helpers to `cli/invocation.ts`.** `runPrepareContext` and `contextGlobals` are shared preparation helpers, not `serve` exports. This keeps the first commit aligned with the later pipeline refactor.
+7. **`dispatch` returns `Result.fail` for non-runnable invocations.** It should never throw typed parse/control errors and should not embed rendered help or version text in `Result.data`. Help, version, schema, completions, and extension terminal handlers remain `run` display behavior.
+8. **Move shared invocation helpers to `cli/invocation.ts`.** `runPrepareContext` and `contextGlobals` are shared preparation helpers, not terminal-runner exports. This keeps the first commit aligned with the later pipeline refactor.
 9. **Put `run` and `dispatch` in `cli/dispatch.ts`.** The file owns the public result-returning invocation lane and the trivial effectful wrapper. `create.ts` should continue constructing instances rather than accumulating public entrypoint implementations.
 10. **Treat extension migration as follow-up work.** The MCP server is evidence that extensions need a public command-driving primitive, but Commit 1 should not modify MCP or any other extension. After `dispatch` is proven at the package root, adapters can migrate one by one.

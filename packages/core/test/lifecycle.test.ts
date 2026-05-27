@@ -8,7 +8,7 @@ describe('lifecycle events and hooks', () => {
   test('defineCli returns an execution instance without fluent lifecycle mutators', () => {
     const cli = testCli('app', [testCommand('ok', { run: () => ({ ok: true }) })]) as unknown as Record<string, unknown>
 
-    expect(typeof cli['serve']).toBe('function')
+    expect('serve' in cli).toBe(false)
     expect(typeof cli['fetch']).toBe('function')
     expect('on' in cli).toBe(false)
     expect('hook' in cli).toBe(false)

@@ -2,19 +2,19 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineCli, defineCommand, outputControls, z } from '@liche/core'
-import type { CliInstance, ServeOptions } from '@liche/core'
+import { defineCli, defineCommand, outputControls, run, z } from '@liche/core'
+import type { CliInstance, RunOptions } from '@liche/core'
 import { config, files } from '../src/index.js'
 
 function tmp(): string {
   return mkdtempSync(join(tmpdir(), 'liche-cfg-'))
 }
 
-async function runCli(cli: CliInstance, argv: string[], options: Omit<ServeOptions, 'stdout' | 'stderr' | 'exit'> = {}) {
+async function runCli(cli: CliInstance, argv: string[], options: Omit<RunOptions, 'stdout' | 'stderr' | 'exit'> = {}) {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
-  await cli.serve(argv, {
+  await run(cli, argv, {
     ...options,
     exit(code) { exitCode = code },
     stderr(chunk) { stderr += chunk },

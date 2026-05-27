@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { mcpServer } from '@liche/mcp-server'
 import { testCli, testCommand } from './helpers.js'
-import { z } from '../src/index.js'
+import { run, z } from '../src/index.js'
 
 const encoder = new TextEncoder()
 
@@ -11,7 +11,7 @@ function asyncIter<T>(values: T[]): AsyncIterable<T> {
   })()
 }
 
-describe('ServeOptions injection boundary', () => {
+describe('RunOptions injection boundary', () => {
   test('isTty=true hides machine-only output and middleware sees isTty=true', async () => {
     let captured: { isTty?: boolean } = {}
     const stdout: string[] = []
@@ -25,7 +25,7 @@ describe('ServeOptions injection boundary', () => {
       },
     })])
 
-    await cli.serve(['show'], {
+    await run(cli, ['show'], {
       isTty: true,
       stdout: (s) => stdout.push(s),
       stderr: (s) => stderr.push(s),
@@ -48,7 +48,7 @@ describe('ServeOptions injection boundary', () => {
       },
     })])
 
-    await cli.serve(['show'], {
+    await run(cli, ['show'], {
       isTty: false,
       stdout: (s) => stdout.push(s),
     })
@@ -64,7 +64,7 @@ describe('ServeOptions injection boundary', () => {
       run: () => ({ hidden: true }),
     })])
 
-    await cli.serve(['show', '--full-output'], {
+    await run(cli, ['show', '--full-output'], {
       isTty: true,
       stdout: (s) => stdout.push(s),
     })
@@ -81,7 +81,7 @@ describe('ServeOptions injection boundary', () => {
       run: ({ error }) => error({ code: 'NOPE', message: 'failed' }),
     })])
 
-    await cli.serve(['fail'], {
+    await run(cli, ['fail'], {
       isTty: true,
       stdout: (s) => stdout.push(s),
       stderr: (s) => stderr.push(s),
@@ -106,7 +106,7 @@ describe('ServeOptions injection boundary', () => {
       },
     })])
 
-    await cli.serve(['show'], {
+    await run(cli, ['show'], {
       env: { INJECTED_TOKEN: 'value-from-options' },
       isTty: false,
       stdout: () => {},
@@ -121,7 +121,7 @@ describe('ServeOptions injection boundary', () => {
 
     const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
 
-    await cli.serve(['--mcp'], {
+    await run(cli, ['--mcp'], {
       isTty: false,
       stdin: asyncIter([encoder.encode(`${initialize}\n`)]),
       stdout: (s) => stdout.push(s),
@@ -143,7 +143,7 @@ describe('ServeOptions injection boundary', () => {
       yield `${JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'initialize' })}\n`
     }
 
-    await cli.serve(['--mcp'], {
+    await run(cli, ['--mcp'], {
       isTty: false,
       stdin: stringChunks(),
       stdout: (s) => stdout.push(s),
@@ -164,7 +164,7 @@ describe('ServeOptions injection boundary', () => {
       },
     })
 
-    await cli.serve(['--mcp'], {
+    await run(cli, ['--mcp'], {
       isTty: false,
       stdin: stream,
       stdout: (s) => stdout.push(s),
@@ -183,7 +183,7 @@ describe('ServeOptions injection boundary', () => {
     const combined = `${msg1}\n${msg2}\n`
     const mid = Math.floor(combined.length / 2)
 
-    await cli.serve(['--mcp'], {
+    await run(cli, ['--mcp'], {
       isTty: false,
       stdin: asyncIter([encoder.encode(combined.slice(0, mid)), encoder.encode(combined.slice(mid))]),
       stdout: (s) => stdout.push(s),

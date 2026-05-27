@@ -131,11 +131,13 @@ Extend without weakening via `telemetry({ extraSecretKeys: [/.../], extraStringP
 `@liche/telemetry/testing` exports test helpers — subpath import, no runtime dep:
 
 ```ts
+import { defineCli, run } from '@liche/core'
+import { telemetry } from '@liche/telemetry'
 import { memorySink, throwingSink, expectRedacted } from '@liche/telemetry/testing'
 
 const sink = memorySink()
 const cli = defineCli({ extensions: [telemetry({ sinks: [sink], env })] })
-await cli.serve(['some', 'cmd'], { env })
+await run(cli, ['some', 'cmd'], { env })
 expect(sink.events.map((e) => e.type)).toContain('command.completed')
 ```
 

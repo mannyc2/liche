@@ -12,7 +12,7 @@ export function skillsRuntime(options: SkillsRuntimeOptions = {}): CliExtension 
   return defineExtension({
     id: 'liche.skills-runtime',
     globals: [{ expose: 'runtime', flag: 'llms', key: 'llms', type: 'boolean' }],
-    serveHandlers: [
+    terminalHandlers: [
       {
         flagKey: 'llms',
         handle: ({ binaryName, flags, options, state }) => {

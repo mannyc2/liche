@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { outputControls, z } from '../src/index.js'
+import { outputControls, run, z } from '../src/index.js'
 import { testCli, testCommand } from './helpers.js'
 
 function captureRun(argv: string[], options: any, command: { name: string; def: any }) {
@@ -7,7 +7,7 @@ function captureRun(argv: string[], options: any, command: { name: string; def: 
   let err = ''
   let exitCode = 0
   const cli = testCli('app', options ?? {}, [testCommand(command.name, command.def)])
-  const promise = cli.serve(argv, {
+  const promise = run(cli, argv, {
     stdout: (s) => { out += s },
     stderr: (s) => { err += s },
     exit: (code) => { exitCode = code },

@@ -1,3 +1,4 @@
+import { run } from '@liche/core'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -127,7 +128,7 @@ async function runCli(argv: string[]): Promise<{ exitCode: number; stderr: strin
   let exitCode = 0
   let stderr = ''
   let stdout = ''
-  await cli.serve(argv, {
+  await run(cli, argv, {
     exit: (code) => {
       exitCode = code
     },

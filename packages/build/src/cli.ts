@@ -2,7 +2,7 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import { defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
 import { completions, config, files } from '@liche/extensions'
 import { buildBinaries } from './build.js'
 import { compileEntrypoint } from './compile.js'
@@ -172,4 +172,4 @@ export const cli = defineCli({
   version: BUILD_TOOL_VERSION,
 })
 
-if (import.meta.main) await cli.serve(process.argv.slice(2))
+if (import.meta.main) await run(cli, process.argv.slice(2))

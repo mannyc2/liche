@@ -128,9 +128,10 @@ export function renderCompileEntrypoint(generatedFileName = 'liche.generated.ts'
   const specifier = generatedModuleSpecifier(generatedFileName)
   return [
     '#!/usr/bin/env bun',
+    `import { run } from '@liche/core'`,
     `import cli from ${JSON.stringify(specifier)}`,
     '',
-    'await cli.serve(process.argv.slice(2))',
+    'await run(cli, process.argv.slice(2))',
     '',
   ].join('\n')
 }
