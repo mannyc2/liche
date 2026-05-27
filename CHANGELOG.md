@@ -12,6 +12,10 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+## 0.8.1 — 2026-05-27
+
+Partial-publish recovery release. The v0.8.0 publish workflow hit a transient sigstore TLOG `409` mid-stream after publishing 5 of 15 packages (`@liche/core`, `@liche/auth`, `@liche/config`, `@liche/completions`, `@liche/mcp-installer`). 0.8.1 republishes all 15 packages at a fresh version so the suite is once again synchronized on the npm registry. No source changes vs 0.8.0; the 0.8.0 entry below covers everything shipping here.
+
 ## 0.8.0 — 2026-05-27
 
 ### Fixed

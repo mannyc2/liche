@@ -452,7 +452,7 @@ describe('liche-release CLI', () => {
             stdout: `${JSON.stringify({
               manifestVersion: 'liche.v1',
               name: 'shipyard',
-              version: '0.8.0',
+              version: '0.8.1',
               commands: [{ name: 'deployments' }, { name: 'promote' }],
             })}\n`,
           }
@@ -488,7 +488,7 @@ describe('liche-release CLI', () => {
     const buildCall = calls.find((call) => call[0] === 'bun' && call[1] === 'liche-build')
     expect(buildCall).toBeDefined()
     expect(buildCall![3]).toBe(join(dir, 'src/cli.ts'))
-    expect(optionValue(buildCall!, '--release-version')).toBe('0.8.0')
+    expect(optionValue(buildCall!, '--release-version')).toBe('0.8.1')
     expect(optionValue(buildCall!, '--contract-digest').startsWith('sha256:')).toBe(true)
     expect(result.value.generated.manifest).toBe(join(dir, 'dist/generated/liche.command-manifest.json'))
 

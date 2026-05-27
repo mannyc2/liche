@@ -1,6 +1,6 @@
 {
   "name": "@liche/mcp-server",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "license": "MIT",
   "description": "MCP server runtime extension for Liche CLIs.",
@@ -27,7 +27,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.8.0"
+    "@liche/core": "^0.8.1"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
