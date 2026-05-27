@@ -1,4 +1,4 @@
-import type { CliState } from '../types.js'
+import type { CliState, FieldErrorSource } from '../types.js'
 import { execute } from './execute.js'
 import { selectCommand } from '../command/registry.js'
 import { isObject } from '../internal.js'
@@ -47,6 +47,11 @@ export async function fetchCli(name: string, state: CliState, request: Request):
 
   const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await safeJson(request)
   const query = Object.fromEntries(url.searchParams.entries())
+  const bodyEntries = isObject(body) ? body : {}
+  const mergedOptions = { ...query, ...bodyEntries }
+  const optionHints: Record<string, FieldErrorSource> = {}
+  for (const key of Object.keys(query)) optionHints[key] = { kind: 'fetch-query', key }
+  for (const key of Object.keys(bodyEntries)) optionHints[key] = { kind: 'fetch-body', key }
   const wantsStream = (request.headers.get('accept') ?? '').includes('application/x-ndjson')
 
   if (wantsStream) {
@@ -54,7 +59,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
       async start(controller) {
         const encoder = new TextEncoder()
         const result = await execute(name, selected, {
-          argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
+          argvOptions: { args: selected.argv.args, options: mergedOptions },
           displayName: name,
           events: state.events.concat(selected.events),
           env: defaultEnv(),
@@ -64,6 +69,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
           global: {},
           hooks: mergeHooks(state.hooks, selected.hooks),
           inputSources: state.inputSources,
+          inputSourceHints: { options: optionHints },
           isTty: false,
           middlewares: state.middlewares.concat(selected.middlewares),
           onChunk: (chunk) => {
@@ -79,7 +85,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   }
 
   const result = await execute(name, selected, {
-    argvOptions: { args: selected.argv.args, options: { ...query, ...(isObject(body) ? body : {}) } },
+    argvOptions: { args: selected.argv.args, options: mergedOptions },
     displayName: name,
     events: state.events.concat(selected.events),
     env: defaultEnv(),
@@ -89,6 +95,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
     global: {},
     hooks: mergeHooks(state.hooks, selected.hooks),
     inputSources: state.inputSources,
+    inputSourceHints: { options: optionHints },
     isTty: false,
     middlewares: state.middlewares.concat(selected.middlewares),
     version: state.def.version,

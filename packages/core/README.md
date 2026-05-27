@@ -1,6 +1,6 @@
 # @liche/core
 
-Write a command as a typed function. Get a terminal CLI, an HTTP endpoint, and extension-driven agent adapters from it — sharing the same parsing, validation, and result envelope.
+Write a command as a typed function. Get a terminal CLI, an HTTP endpoint, and extension-driven agent adapters from it — sharing the same parsing, validation, and result envelope. `parseInvocation()` exposes that pipeline as a pure function when you need the contract without running the handler.
 
 ```ts
 import { defineCommand, z } from "@liche/core";
@@ -16,30 +16,27 @@ const deploy = defineCommand({
 });
 ```
 
-`defineCli` collects one or more commands into a runnable CLI. With the `agents()` extension installed, that single `cli` projects onto all three transports:
+`defineCli` collects one or more commands into a runnable CLI. The same `cli` projects onto multiple transports:
 
 ```ts
 import { defineCli } from "@liche/core";
-import { agents } from "@liche/extensions";
 
 export const cli = defineCli({
   name: "shipyard",
   version: "0.1.0",
-  extensions: [agents()], // mounts an MCP server route on cli.fetch at /mcp
   commands: [deploy],
 });
 
 if (import.meta.main) await cli.serve();   // terminal
-// or: Bun.serve({ fetch: cli.fetch });    // HTTP + MCP on one handler
+// or: Bun.serve({ fetch: cli.fetch });    // HTTP
 ```
 
-Three ways to reach the same `deploy` command:
+Two ways to reach the same `deploy` command:
 
 - **Terminal** — `shipyard deploy --entrypoint app`. Argv flags become the `options` object.
 - **HTTP** — `POST /deploy` with body `{"entrypoint":"app"}`. URL path selects the command; query string and JSON body merge into `options`.
-- **MCP** — with the `agents()` or `mcpServer()` extension installed, the `deploy` tool appears at the `/mcp` route on `cli.fetch`. JSON-RPC `tools/call` arguments become `options`.
 
-All three run the same `run({ input })` handler, validate against the same Zod schema, and return the same `{ ok, data, error }` envelope.
+Both run the same `run({ input })` handler, validate against the same Zod schema, and return the same `{ ok, data, error }` envelope. Validation failures keep track of where the value entered the pipeline, so diagnostics can point at `--entrypoint`, `?entrypoint=`, or a JSON body field instead of only saying `$.entrypoint`. Additional transports (agent tools, etc.) are added by extensions; see [`@liche/extensions`](../extensions/README.md).
 
 ## Transports
 
@@ -47,7 +44,7 @@ A *transport* is how an invocation reaches your command — what form the input 
 
 - `cli.serve(argv?)` — terminal transport. Reads `Bun.argv.slice(2)` by default, writes stdout/stderr, exits with a status code.
 - `cli.fetch(request)` — HTTP transport with the Web `fetch` shape. Pass it to `Bun.serve({ fetch: cli.fetch })`. URL path selects the command; query string and JSON body become option inputs; `Accept: application/x-ndjson` streams.
-- MCP tools and other agent surfaces project the same command graph through `@liche/extensions` installers.
+- Extension-driven transports live in `@liche/extensions` and other extension packages — they reuse the same command graph through the public adapter surface.
 
 ## Defining commands
 
@@ -105,6 +102,73 @@ defineCommand({
 ```
 
 Available built-ins: `arg.number()`, `arg.int()`, `arg.positiveInt()`, `arg.port()`, `arg.boolean()`. Plain Zod schemas (`z.string()`, `z.enum(...)`, `z.object(...)`, refinements) remain valid; reach for `arg.*` only when a value crosses a string boundary (argv, env, query string, JSON body) and the runtime value is not a string.
+
+### Custom codecs
+
+`arg.fromString()` is the escape hatch for domain types. Define the boundary input schema, the runtime output schema, and a `decode` (async OK):
+
+```ts
+import { arg, defineCommand, z } from "@liche/core";
+
+const url = arg.fromString({
+  input: z.url().meta({ valueLabel: "url" }),
+  output: z.instanceof(URL),
+  surface: "all",
+  decode: (raw) => new URL(raw),
+  encode: (value) => value.toString(),
+});
+
+defineCommand({
+  path: ["fetch"],
+  input: { options: z.object({ target: url }) },
+  run({ input }) {
+    input.options.target; // URL
+  },
+});
+```
+
+`arg.fromString()` defaults to `surface: "cli"` so a codec that reads local files or shells can't accidentally project onto HTTP or an extension transport. Set `surface: "fetch"`, `"all"`, or `{ kind: "extension", transport: "..." }` to opt in; unsupported surfaces return a structured `UNSUPPORTED_SURFACE` error before the handler runs.
+
+## Source-aware validation errors
+
+The same schema failure now tells you where the bad value came from. Given `options: z.object({ port: arg.port() })`:
+
+| Caller                            | `fieldErrors[0].source`                                            |
+| --------------------------------- | ------------------------------------------------------------------ |
+| `myapp start --port 70000`        | `{ kind: "argv", flag: "--port" }`                                 |
+| `myapp start` with `PORT=70000`   | `{ kind: "env", name: "PORT" }`                                    |
+| `GET /start?port=70000`           | `{ kind: "fetch-query", key: "port" }`                             |
+| `POST /start` body `{ port: ... }`| `{ kind: "fetch-body", key: "port" }`                              |
+| Extension tool input              | `{ kind: "extension", transport: "...", key: "port" }`             |
+| Config provider binding           | `{ kind: "provider", provider: "config", path: "server.port" }`    |
+| Positional arg                    | `{ kind: "argv", positional: 0 }`                                  |
+| Direct `dispatch()`/`execute()`   | `{ kind: "programmatic", key: "port" }`                            |
+
+Adapters thread the source automatically — fetch tags query vs body, extension transports tag their own `transport` name, argv records the exact flag form (`-p`, `--port`, `--no-port`). The human renderer uses `source` when present and falls back to path-based inference otherwise, so existing CLIs keep their current error output.
+
+The raw input value never enters `FieldError`. Only safe type labels appear under `received` (`"string"`, `"array"`, `"NaN"`, `"undefined"`, ...), so logging a `ValidationError` won't leak the secret-looking value that triggered it.
+
+## Parse without running
+
+`parseInvocation()` returns everything `dispatch()` would compute *up to* calling the handler — selected command contract, decoded input, source provenance, warnings, resolved format. No stdout, no lifecycle events, no `process.exit`.
+
+```ts
+import { parseInvocation } from "@liche/core";
+
+// Preview what `shipyard deploy --replicas 3` would do, without doing it.
+const preview = await parseInvocation(cli, ["deploy", "--replicas", "3"]);
+
+if (preview.ok) {
+  preview.data.command.name;            // "deploy"
+  preview.data.input.options;           // { replicas: 3 }  (already decoded)
+  preview.data.sources.option("replicas"); // { kind: "argv" }
+  preview.data.warnings;                // deprecation notices, etc.
+} else {
+  preview.error.fieldErrors;            // validation errors carry source too
+}
+```
+
+Useful when a tool server needs the contract before deciding to dispatch, when a UI renders a confirmation step, or when tests want to assert on resolved input without mocking effects.
 
 ## Returning results
 

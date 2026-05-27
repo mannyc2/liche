@@ -125,6 +125,42 @@ describe('mcpMessage — tools/call', () => {
     })
     expect(res.result.isError).toBe(false)
   })
+
+  test('validation failure on options tags FieldError with extension/mcp source', async () => {
+    const cli = testCli('app', [
+      testCommand('deploy', {
+        options: z.object({ replicas: arg.positiveInt() }),
+        run: () => ({}),
+      }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'deploy', arguments: { options: { replicas: -3 } } },
+    })
+    expect(res.result.isError).toBe(true)
+    const envelope = JSON.parse(res.result.content[0].text)
+    expect(envelope.fieldErrors[0].source).toEqual({ kind: 'extension', transport: 'mcp', key: 'replicas' })
+  })
+
+  test('validation failure on args (argsObject) tags FieldError with extension/mcp source', async () => {
+    const cli = testCli('app', [
+      testCommand('count', {
+        args: z.object({ n: arg.positiveInt() }),
+        run: () => ({}),
+      }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'count', arguments: { args: { n: -1 } } },
+    })
+    expect(res.result.isError).toBe(true)
+    const envelope = JSON.parse(res.result.content[0].text)
+    expect(envelope.fieldErrors[0].source).toEqual({ kind: 'extension', transport: 'mcp', key: 'n' })
+  })
 })
 
 describe('mcpMessage — unknown method', () => {

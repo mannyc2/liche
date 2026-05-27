@@ -1,14 +1,18 @@
 import { z } from 'zod'
-import type { Dict, Schema } from '../types.js'
+import type { Dict, FieldError, FieldErrorSource, Schema } from '../types.js'
 import { ValidationError } from '../errors/error.js'
 
 export { z }
+
+const PARSE_PARAMS = { reportInput: true } as const
 
 export function parseSchema<T>(schema: Schema<T> | undefined, input: unknown, fallback: unknown = {}): T | Dict {
   if (!schema) return fallback as Dict
   try {
     const decoder = (schema as any).decode
-    return typeof decoder === 'function' ? decoder.call(schema, input) : schema.parse(input)
+    return typeof decoder === 'function'
+      ? decoder.call(schema, input, PARSE_PARAMS)
+      : schema.parse(input, PARSE_PARAMS)
   } catch (error) {
     throw normalizeZodError(error)
   }
@@ -22,9 +26,9 @@ export async function parseSchemaAsync<T>(
   if (!schema) return fallback as Dict
   try {
     if (typeof (schema as any).decodeAsync === 'function') {
-      return await (schema as any).decodeAsync(input)
+      return await (schema as any).decodeAsync(input, PARSE_PARAMS)
     }
-    return await (schema as any).parseAsync(input)
+    return await (schema as any).parseAsync(input, PARSE_PARAMS)
   } catch (error) {
     throw normalizeZodError(error)
   }
@@ -148,7 +152,7 @@ function normalizeZodError(error: unknown) {
     return new ValidationError({
       message: 'Validation failed',
       fieldErrors: error.issues.map((issue) => {
-        const received = parseReceived(issue.message)
+        const received = receivedFromIssue(issue)
         const missing = issue.code === 'invalid_type' && received === 'undefined'
         return {
           path: issue.path.length ? `$.${issue.path.join('.')}` : '$',
@@ -164,7 +168,48 @@ function normalizeZodError(error: unknown) {
   return error
 }
 
-function parseReceived(message: string): string | undefined {
-  const match = /received (\w+)/.exec(message)
-  return match?.[1]
+function receivedFromIssue(issue: { code?: string }): string | undefined {
+  if (issue.code !== 'invalid_type') return undefined
+  // Prefer any structured `received` Zod may attach (custom codec issues, future Zod versions).
+  const structured = (issue as { received?: unknown }).received
+  if (typeof structured === 'string') return structured
+  if (!('input' in issue)) return 'undefined'
+  return typeofName((issue as { input: unknown }).input)
+}
+
+function typeofName(value: unknown): string {
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'array'
+  if (typeof value === 'number') {
+    if (Number.isNaN(value)) return 'NaN'
+    if (value === Infinity) return 'Infinity'
+    if (value === -Infinity) return '-Infinity'
+  }
+  return typeof value
+}
+
+export function attachFieldSources(
+  error: unknown,
+  sourcesByTopLevelKey: Record<string, FieldErrorSource>,
+): unknown {
+  if (!(error instanceof ValidationError)) return error
+  const rewritten: FieldError[] = error.fieldErrors.map((fe) => {
+    if (fe.source !== undefined) return fe
+    const key = topLevelKey(fe.path)
+    const source = key !== undefined ? sourcesByTopLevelKey[key] : undefined
+    return source ? { ...fe, source } : fe
+  })
+  return new ValidationError({
+    message: error.shortMessage,
+    cause: error.cause instanceof Error ? error.cause : undefined,
+    fieldErrors: rewritten,
+  })
+}
+
+function topLevelKey(path: string): string | undefined {
+  if (path === '$') return ''
+  if (!path.startsWith('$.')) return undefined
+  const rest = path.slice(2)
+  const dot = rest.indexOf('.')
+  return dot === -1 ? rest : rest.slice(0, dot)
 }

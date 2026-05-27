@@ -1,4 +1,4 @@
-import type { CliEvent, CliEventError, CliEventSubscription, CliState, CommandError, Dict, Result } from '@liche/core'
+import type { CliEvent, CliEventError, CliEventSubscription, CliState, CommandError, Dict, FieldErrorSource, Result } from '@liche/core'
 import {
   checkCommandSurface,
   collectCommandContracts,
@@ -137,6 +137,14 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
         type: 'mcp.tool_call.started',
       })
     }
+    const argHints: Record<string, FieldErrorSource> = {}
+    for (const key of Object.keys((input as any).args ?? {})) {
+      argHints[key] = { kind: 'extension', transport: 'mcp', key }
+    }
+    const optionHints: Record<string, FieldErrorSource> = {}
+    for (const key of Object.keys((input as any).options ?? {})) {
+      optionHints[key] = { kind: 'extension', transport: 'mcp', key }
+    }
     const result: Result = selected && command
       ? await execute(binaryName, selected, {
           argvOptions: { args: [], argsObject: input.args ?? {}, options: input.options ?? {} },
@@ -147,6 +155,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
           formatExplicit: true,
           global: {},
           hooks: mergeHooks(state.hooks, selected.hooks),
+          inputSourceHints: { args: argHints, options: optionHints },
           isTty: false,
           middlewares: state.middlewares.concat(selected.middlewares),
           version: state.def.version,

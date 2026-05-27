@@ -27,4 +27,14 @@ bun examples/product-workers/run-generated.ts telemetry --json
 
 `script list` is remote HTTP-backed when a generated config file supplies `apiBaseUrl`; without a file it falls back to the declared schema default.
 
+Generated commands use Core's current invocation pipeline. That means the same Product command definition drives terminal parsing, HTTP transport, command manifests, MCP tool metadata, and structured validation envelopes.
+
+For a quick validation check, pass an invalid port value:
+
+```sh
+bun examples/product-workers/run-generated.ts dev --entrypoint src/index.ts --port nope --json
+```
+
+The JSON envelope includes a `VALIDATION_ERROR` with `fieldErrors[].path: "$.port"`.
+
 `doctor --json` emits one structured supportability report for local install health plus generated Product posture: config fields, remote base URL source, auth posture, static notices, static release metadata, and agent-visible command annotation quality. `release --json` prints the embedded install/update/channel/yank metadata without calling a hosted update service.

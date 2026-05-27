@@ -46,9 +46,9 @@ Landed lanes:
 - `@liche/config`: `config(...)` and `configDoctor()`.
 - `@liche/auth`: `auth()`, auth globals, `resolveAuth`, `resolveContext`, file sessions, OAuth device login, and generated auth command helpers.
 - `@liche/completions`: `completions()` and shell script helpers.
-- `@liche/agents`: `agents()` bundle for MCP, skills, and `--llms`; `llms()` is available separately.
+- `@liche/agents`: `agents()` bundle for MCP, skills, and `--llms`; MCP tools inherit Core validation, source-aware field errors, and `arg.fromString()` surface policy.
 - `@liche/mcp-installer`: `mcpInstaller()` and MCP config writing helpers.
-- `@liche/mcp-server`: `mcpServer()` and MCP runtime handlers.
+- `@liche/mcp-server`: `mcpServer()` and MCP runtime handlers, including `tools/list` filtering and `UNSUPPORTED_SURFACE` enforcement for transport-specific codecs.
 - `@liche/skills-installer`: `skillsInstaller()` and skill writing helpers.
 - `@liche/skills-runtime`: `skillsRuntime()` / `llms()` and live skill manifest rendering.
 - `@liche/telemetry`: `telemetry()`, `jsonlFileSink()`, `httpSink()`, `consoleSink()`, and `noopSink()`.

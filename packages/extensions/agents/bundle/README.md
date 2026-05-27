@@ -17,4 +17,6 @@ defineCli({
 
 The bundled commands are `mcp add` and `skills add` / `skills list`, plus runtime globals `--mcp` and `--llms`. Output flags such as `--json` still come from Core `outputControls()`; help flags still come from Core `help()`.
 
+Because the bundle uses the same Core command contracts as the terminal CLI, agent-facing surfaces inherit strict input parsing, source-aware validation errors, and `arg.fromString()` surface policy. A CLI-only codec stays hidden from MCP `tools/list`; a forced call is rejected with `UNSUPPORTED_SURFACE` before the command handler runs.
+
 If you only want the LLM manifest, install `llms()` directly. If you only want one helper command family, install `@liche/mcp-installer`, `@liche/mcp-server`, `@liche/skills-installer`, or `@liche/skills-runtime` directly and skip this meta-package.

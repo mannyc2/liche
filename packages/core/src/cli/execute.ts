@@ -20,7 +20,7 @@ import { isCommand, isFetch } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
 import { parseSchemaAsync } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
-import { resolveCommandInput } from './input-sources.js'
+import { resolveCommandInput, type InputSourceHints } from './input-sources.js'
 
 export type ExecuteInput = {
   argvOptions: { args: string[]; argsObject?: Dict | undefined; options?: Dict | undefined }
@@ -33,6 +33,7 @@ export type ExecuteInput = {
   global?: GlobalOptions | undefined
   hooks: CliHooks
   inputSources?: readonly InputSourceProvider[] | undefined
+  inputSourceHints?: InputSourceHints | undefined
   isTty?: boolean | undefined
   middlewares: MiddlewareHandler[]
   events: CliEventSubscription[]
@@ -66,6 +67,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       env: input.env as Dict<string | undefined>,
       flags: input.flags ?? {},
       inputSources: input.inputSources ?? [],
+      inputSourceHints: input.inputSourceHints,
       onDeprecation: input.onDeprecation,
       rootVarsSchema: (selected.rootDef as any)?.vars,
       runtime,

@@ -58,6 +58,7 @@ export type {
   FetchRoute,
   FetchRouteInput,
   FieldError,
+  FieldErrorSource,
   Format,
   GlobalFlags,
   GlobalInputDefinition,

@@ -72,7 +72,7 @@ describe('parseSchema', () => {
     }
   })
 
-  test('parses received from issue message verbatim (multi-char word)', () => {
+  test('received label reflects the input type tag (e.g., "boolean")', () => {
     try {
       parseSchema(z.object({ a: z.string() }), { a: true })
       throw new Error('should have thrown')
@@ -96,6 +96,121 @@ describe('parseSchema', () => {
     const schema = z.string()
     ;(schema as any).decode = (input: unknown) => `decoded:${String(input)}`
     expect(parseSchema(schema, 'x' as any)).toBe('decoded:x' as any)
+  })
+
+  test('received is derived from typeof issue.input via reportInput, not a regex', () => {
+    try {
+      parseSchema(z.number(), 'abc')
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBe('string')
+    }
+  })
+
+  test('null input yields received="null" (not "object")', () => {
+    try {
+      parseSchema(z.number(), null)
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBe('null')
+    }
+  })
+
+  test('array input yields received="array" (not "object")', () => {
+    try {
+      parseSchema(z.number(), [1])
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBe('array')
+    }
+  })
+
+  test('non-invalid_type issue (e.g., too_small) omits received', () => {
+    try {
+      parseSchema(z.string().min(3), 'ab')
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBeUndefined()
+    }
+  })
+
+  test('raw input is not copied into FieldError or serialized ValidationError', () => {
+    try {
+      parseSchema(z.object({ token: z.string().min(64) }), { token: 'sk-live-SUPERSECRET-xyz' })
+      throw new Error('should have thrown')
+    } catch (error) {
+      const ve = error as ValidationError
+      const fe = ve.fieldErrors[0]!
+      expect(JSON.stringify(fe)).not.toContain('SUPERSECRET')
+      expect(JSON.stringify(ve.fieldErrors)).not.toContain('SUPERSECRET')
+    }
+  })
+
+  test('raw input is not copied into FieldError at the top level either', () => {
+    try {
+      parseSchema(z.string().min(64), 'sk-live-SUPERSECRET-xyz')
+      throw new Error('should have thrown')
+    } catch (error) {
+      const ve = error as ValidationError
+      expect(JSON.stringify(ve.fieldErrors)).not.toContain('SUPERSECRET')
+    }
+  })
+
+  test('NaN input yields received="NaN" (matches Zod message convention)', () => {
+    try {
+      parseSchema(z.number().finite(), Number.NaN)
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBe('NaN')
+    }
+  })
+
+  test('Infinity input yields received="Infinity"', () => {
+    try {
+      parseSchema(z.number().finite(), Number.POSITIVE_INFINITY)
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBe('Infinity')
+    }
+  })
+
+  test('-Infinity input flows through Zod\'s structured received label', () => {
+    // Zod 4.4.3's finite() check tags both ±Infinity as "Infinity" in
+    // issue.received. We prefer that structured label over our typeof
+    // fallback, so -Infinity reports the same as +Infinity here. The
+    // typeofName('-Infinity') branch in zod.ts is reachable only when no
+    // structured received exists (e.g., non-finite custom codecs).
+    try {
+      parseSchema(z.number().finite(), Number.NEGATIVE_INFINITY)
+      throw new Error('should have thrown')
+    } catch (error) {
+      const fe = (error as ValidationError).fieldErrors[0]!
+      expect(fe.received).toBe('Infinity')
+    }
+  })
+
+  test('prefers structured issue.received string when present', () => {
+    // Hypothetical custom codec issue that explicitly sets received.
+    // Build a ZodError directly to simulate the structured field — verifies
+    // that normalizeZodError trusts a string `received` over typeof inference.
+    const issue: any = { code: 'invalid_type', expected: 'string', received: 'CustomLabel', path: [], message: 'bad', input: 12 }
+    const zerr = new (z as any).ZodError([issue])
+    let caught: unknown
+    try {
+      // Re-throw through parseSchema's normalizer by mocking the decode path.
+      const schema: any = { parse: () => { throw zerr } }
+      parseSchema(schema, 'x' as any)
+    } catch (error) {
+      caught = error
+    }
+    const fe = (caught as ValidationError).fieldErrors[0]!
+    expect(fe.received).toBe('CustomLabel')
   })
 })
 

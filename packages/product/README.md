@@ -6,6 +6,8 @@ This package is published as Bun-only TypeScript source. Use Bun `>= 1.3.0`; the
 
 Use `@liche/product` when one product catalog should drive CLI source, OpenAPI, command manifests, MCP tools, agent docs, user docs, config schema, catalog/discovery artifacts, compile entrypoints, auth/session commands, local diagnostics, telemetry status, and conformance checks.
 
+Generated CLIs still run on `@liche/core`, so generated commands inherit the shared parser, structured result envelope, and transport behavior used by handwritten commands.
+
 ```ts
 import { Auth, Command, Field, Runtime, Shape, defineProduct } from "@liche/product";
 
@@ -59,4 +61,4 @@ liche-product conform ./product.ts --base-url http://localhost:8787 --report .li
 
 Conformance reports redact auth material and keep destructive capabilities opt-in.
 
-Generated CLIs use `@liche/core` for runtime behavior, config, auth/session state, config-owned diagnostics, opt-in telemetry sinks, and HTTP transport. Catalog-generated surfaces remain canonical for Product command manifests, MCP tools, agent docs, and reference docs.
+Generated CLIs use `@liche/core` for runtime behavior, config, auth/session state, config-owned diagnostics, opt-in telemetry sinks, validation envelopes, and HTTP transport. Catalog-generated surfaces remain canonical for Product command manifests, MCP tools, agent docs, and reference docs.

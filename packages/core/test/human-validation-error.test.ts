@@ -121,4 +121,78 @@ describe('formatHumanValidationError', () => {
     expect(lines[0]).toBe('Error: missing required option --name')
     expect(lines[1]).toBe('Error: invalid value for --mode: Expected string')
   })
+
+  test('source argv flag is rendered verbatim (no double prefix)', () => {
+    const { state, selected } = build('build', { options: z.object({ replicas: z.number() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.replicas', message: 'bad', source: { kind: 'argv', flag: '--replicas' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for --replicas: bad')
+  })
+
+  test('source argv positional uses arg name lookup', () => {
+    const { state, selected } = build('go', { args: z.object({ name: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.name', message: 'bad', source: { kind: 'argv', positional: 0 } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for <name>: bad')
+  })
+
+  test('source env renders "environment variable NAME"', () => {
+    const { state, selected } = build('start', { env: z.object({ PORT: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.PORT', message: 'bad', source: { kind: 'env', name: 'PORT' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for environment variable PORT: bad')
+  })
+
+  test('source provider renders provider:path label', () => {
+    const { state, selected } = build('start', { options: z.object({ x: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.x', message: 'bad', source: { kind: 'provider', provider: 'config', path: 'x.y' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for config provider value x.y: bad')
+  })
+
+  test('source fetch-query renders query parameter label', () => {
+    const { state, selected } = build('start', { options: z.object({ port: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.port', message: 'bad', source: { kind: 'fetch-query', key: 'port' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for query parameter ?port=: bad')
+  })
+
+  test('source fetch-body renders body field label', () => {
+    const { state, selected } = build('start', { options: z.object({ port: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.port', message: 'bad', source: { kind: 'fetch-body', key: 'port' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for body field "port": bad')
+  })
+
+  test('source extension renders transport input label', () => {
+    const { state, selected } = build('start', { options: z.object({ port: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.port', message: 'bad', source: { kind: 'extension', transport: 'mcp', key: 'port' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for mcp input "port": bad')
+  })
+
+  test('source programmatic renders input label', () => {
+    const { state, selected } = build('start', { options: z.object({ port: z.string() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.port', message: 'bad', source: { kind: 'programmatic', key: 'port' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for input "port": bad')
+  })
+
+  test('legacy path-based inference still works when source is absent', () => {
+    const { state, selected } = build('build', {
+      options: z.object({ name: z.string() }),
+    })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.name', message: 'bad' },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: invalid value for --name: bad')
+  })
 })

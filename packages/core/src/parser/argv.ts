@@ -1,4 +1,4 @@
-import type { CommandRuntime, Dict, Schema } from '../types.js'
+import type { CommandRuntime, Dict, FieldErrorSource, Schema } from '../types.js'
 import { camel, kebab } from '../internal.js'
 import { ParseError } from '../errors/error.js'
 import { isBooleanSchema, isDeprecated, isObjectSchema, objectShape, parseSchema, parseSchemaAsync } from '../schema/zod.js'
@@ -41,13 +41,20 @@ export function parseCommandOptions(
   definition: CommandRuntime,
   argv: string[],
   seed: Dict = {},
-): { args: string[]; options: Dict; explicitOptions: Set<string>; deprecations: DeprecationWarning[] } {
+): {
+  args: string[]
+  options: Dict
+  explicitOptions: Set<string>
+  deprecations: DeprecationWarning[]
+  optionSources: Map<string, FieldErrorSource>
+} {
   const shape = objectShape(definition.options)
   const aliases = invert(definition.alias ?? {})
   const options: Dict = { ...seed }
   const explicitOptions = new Set(Object.keys(seed))
   const args: string[] = []
   const deprecations: DeprecationWarning[] = []
+  const optionSources = new Map<string, FieldErrorSource>()
   const noteDeprecated = (key: string, flag: string) => {
     if (isDeprecated(shape[key])) deprecations.push({ flag, option: key })
   }
@@ -65,6 +72,7 @@ export function parseCommandOptions(
       assertKnownOption(shape, key, token)
       options[key] = false
       explicitOptions.add(key)
+      optionSources.set(key, { kind: 'argv', flag: token })
       noteDeprecated(key, token)
       continue
     }
@@ -72,11 +80,13 @@ export function parseCommandOptions(
     if (token.startsWith('--')) {
       const [rawKey, equalsValue] = token.slice(2).split(/=(.*)/s)
       const key = matchKey(shape, camel(rawKey!))
-      assertKnownOption(shape, key, `--${rawKey}`)
+      const flag = `--${rawKey}`
+      assertKnownOption(shape, key, flag)
       const isBoolean = isBooleanSchema(shape[key])
       options[key] = valueForOption(isBoolean, equalsValue, () => argv[++index]!)
       explicitOptions.add(key)
-      noteDeprecated(key, `--${rawKey}`)
+      optionSources.set(key, { kind: 'argv', flag })
+      noteDeprecated(key, flag)
       continue
     }
 
@@ -86,6 +96,7 @@ export function parseCommandOptions(
       const isBoolean = isBooleanSchema(shape[key])
       options[key] = isBoolean ? true : argv[++index]
       explicitOptions.add(key)
+      optionSources.set(key, { kind: 'argv', flag: token })
       noteDeprecated(key, token)
       continue
     }
@@ -93,7 +104,7 @@ export function parseCommandOptions(
     args.push(token)
   }
 
-  return { args, options, explicitOptions, deprecations }
+  return { args, options, explicitOptions, deprecations, optionSources }
 }
 
 function valueForOption(isBoolean: boolean, equalsValue: string | undefined, next: () => string): unknown {

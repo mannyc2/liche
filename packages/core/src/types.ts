@@ -91,6 +91,16 @@ export type CtaBlock = {
   description?: string | undefined;
 };
 
+export type FieldErrorSource =
+  | { kind: 'argv'; flag: string }
+  | { kind: 'argv'; positional: number }
+  | { kind: 'env'; name: string }
+  | { kind: 'provider'; provider: string; path: string }
+  | { kind: 'fetch-query'; key: string }
+  | { kind: 'fetch-body'; key: string }
+  | { kind: 'extension'; transport: string; key: string }
+  | { kind: 'programmatic'; key: string };
+
 export type FieldError = {
   path: string;
   message: string;
@@ -98,6 +108,7 @@ export type FieldError = {
   missing?: boolean | undefined;
   expected?: string | undefined;
   received?: string | undefined;
+  source?: FieldErrorSource | undefined;
 };
 
 export type CommandError = {

@@ -26,4 +26,4 @@ defineCli({
 })
 ```
 
-Core resolves declared input-source bindings before option validation and exposes values through `ctx.sources`. This package provides the `config` source provider plus config-specific globals, file loading, and diagnostics.
+Core resolves declared input-source bindings before option validation and exposes values through `ctx.sources`. When a config-provided value fails validation, Core attaches a provider source to the field error so human and JSON renderers can point at the config key rather than a generic object path. This package provides the `config` source provider plus config-specific globals, file loading, and diagnostics.

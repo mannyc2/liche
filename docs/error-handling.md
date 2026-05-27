@@ -82,6 +82,23 @@ The public command-authoring API prefers values and factories:
 
 `CommandError` carries stable `code` / `message`, RFC-9457-shaped fields (`type`, `title`, `status`, `detail`, `instance`), validation fields (`fieldErrors`), and agent recovery fields (`retry_after`, `suggested_fix`, `code_actions`).
 
+### Field error sources
+
+Each `FieldError` may carry an optional `source: FieldErrorSource` identifying where the bad value entered the command pipeline. The seven kinds and their human-renderer labels:
+
+| Source                                           | Label rendered to stderr                          |
+| ------------------------------------------------ | ------------------------------------------------- |
+| `{ kind: 'argv', flag: '--replicas' }`           | `--replicas` (verbatim, no double-prefix)         |
+| `{ kind: 'argv', positional: 0 }`                | `<arg-name>` (from the args schema shape)         |
+| `{ kind: 'env', name: 'PORT' }`                  | `environment variable PORT`                       |
+| `{ kind: 'provider', provider: 'env', path: 'X' }` | `env provider value X`                          |
+| `{ kind: 'fetch-query', key: 'port' }`           | `query parameter ?port=`                          |
+| `{ kind: 'fetch-body', key: 'port' }`            | `body field "port"`                               |
+| `{ kind: 'extension', transport: 'mcp', key: 'x' }` | `mcp input "x"`                                |
+| `{ kind: 'programmatic', key: 'port' }`          | `input "port"`                                    |
+
+Adapters supply source hints (fetch query/body, extension transports like MCP); the argv parser fills in flag form and positional index automatically; the env-source map covers every key declared on a command's env schema so missing-required-env errors still carry the source. The raw input value is never copied into `FieldError` — only the `typeof` name appears under `received`.
+
 Tests may keep importing internals by source path for white-box validation, but that is not evidence that a class belongs in the package-root API.
 
 ## Runtime flow

@@ -14,6 +14,7 @@ These examples are source-checkout examples. Run commands from the repository ro
 - generated diagnostics: `doctor`, `catalog`, `notices`, `telemetry`
 - fixture-server conformance for `script list`
 - generated CLI, OpenAPI, command manifest, MCP tools, agent reference, docs reference, and config schema
+- Core-backed validation envelopes and field paths
 
 ## Product Auth Context
 
@@ -43,10 +44,17 @@ The command resolves credential/context inputs before using the shared core HTTP
 
 - `defineCli()` / `defineCommand()`
 - typed args/options/env
+- source-aware validation for argv flags, positional args, and env
 - CLI-wide globals via `defineGlobal()`
 - middleware state
 - lifecycle events
 - opt-in helper commands from `@liche/extensions`
+
+Try the invalid style case to see the human renderer point at the exact flag:
+
+```sh
+bun examples/core-handwritten/cli.ts summarize README.md --style verbose
+```
 
 ## Release Renderers
 

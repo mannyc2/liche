@@ -1,6 +1,7 @@
 import type {
   CommandRuntime,
   Dict,
+  FieldErrorSource,
   InputSourceProvider,
   InputSourceProvenance,
   OptionValueSource,
@@ -9,8 +10,14 @@ import type {
   SourceInspector,
 } from '../types.js'
 import { ParseError } from '../errors/error.js'
-import { isObjectSchema, objectShape, primitiveKind } from '../schema/zod.js'
+import { attachFieldSources, isObjectSchema, objectShape, primitiveKind } from '../schema/zod.js'
 import { parseArgsAsync, parseCommandOptions, parseObjectAsync } from '../parser/argv.js'
+
+export type InputSourceHints = {
+  args?: Record<string, FieldErrorSource> | undefined
+  options?: Record<string, FieldErrorSource> | undefined
+  env?: Record<string, FieldErrorSource> | undefined
+}
 
 export type ResolveCommandInputOptions = {
   argvOptions: { args: string[]; argsObject?: Dict | undefined; options?: Dict | undefined }
@@ -18,6 +25,7 @@ export type ResolveCommandInputOptions = {
   env: Dict<string | undefined>
   flags: Dict
   inputSources: readonly InputSourceProvider[]
+  inputSourceHints?: InputSourceHints | undefined
   onDeprecation?: ((flag: string, option: string) => void) | undefined
   runtime: CommandRuntime
   rootVarsSchema?: Schema<any> | undefined
@@ -68,11 +76,29 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
 
   const envBag = assembleDeclaredEnv(providers.get('env'), input.runtime.env, input.env)
 
-  const args = input.argvOptions.argsObject !== undefined
-    ? await parseObjectAsync(input.runtime.args, input.argvOptions.argsObject)
-    : await parseArgsAsync(input.runtime.args, argv.args)
-  const env = await parseObjectAsync(input.runtime.env, envBag)
-  const options = await parseObjectAsync(input.runtime.options, rawOptions)
+  const hints = input.inputSourceHints ?? {}
+  const optionsByKey = buildOptionsSourceMap({
+    argvOptionSources: argv.optionSources,
+    seedKeys: Object.keys(input.argvOptions.options ?? {}),
+    providerKeys: Object.keys(input.runtime.sources?.options ?? {}).filter((k) => !argv.explicitOptions.has(k) && rawOptions[k] !== undefined),
+    sourcesByProvider: optionSources,
+    hints: hints.options,
+  })
+  const envByKey = buildEnvSourceMap(input.runtime.env, envBag, hints.env)
+  const argsByKey = buildArgsSourceMap({
+    schema: input.runtime.args,
+    argvArgs: argv.args,
+    argsObject: input.argvOptions.argsObject,
+    hints: hints.args,
+  })
+
+  const args = await runWithSources(argsByKey, () =>
+    input.argvOptions.argsObject !== undefined
+      ? parseObjectAsync(input.runtime.args, input.argvOptions.argsObject)
+      : parseArgsAsync(input.runtime.args, argv.args),
+  )
+  const env = await runWithSources(envByKey, () => parseObjectAsync(input.runtime.env, envBag))
+  const options = await runWithSources(optionsByKey, () => parseObjectAsync(input.runtime.options, rawOptions))
   const vars = await parseObjectAsync(input.rootVarsSchema, {})
 
   return {
@@ -82,6 +108,94 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
     sources: buildSourceInspector(providers, optionSources),
     vars,
   }
+}
+
+async function runWithSources(
+  sourcesByKey: Record<string, FieldErrorSource>,
+  fn: () => Promise<unknown>,
+): Promise<unknown> {
+  try {
+    return await fn()
+  } catch (error) {
+    throw attachFieldSources(error, sourcesByKey)
+  }
+}
+
+function buildOptionsSourceMap(args: {
+  argvOptionSources: Map<string, FieldErrorSource>
+  seedKeys: string[]
+  providerKeys: string[]
+  sourcesByProvider: Map<string, OptionValueSource>
+  hints: Record<string, FieldErrorSource> | undefined
+}): Record<string, FieldErrorSource> {
+  const map: Record<string, FieldErrorSource> = {}
+  // 1. Argv-explicit flags (the parser recorded the flag form).
+  for (const [key, source] of args.argvOptionSources) map[key] = source
+  // 2. Seeded keys from explicit `options` passed in to parseCommandOptions.
+  //    These are synthetic input (e.g., from a programmatic execute() call) —
+  //    they did NOT come from argv flag parsing, so they must not be tagged
+  //    with a fabricated `--key` flag.
+  for (const key of args.seedKeys) {
+    if (args.argvOptionSources.has(key)) continue
+    map[key] = { kind: 'programmatic', key }
+  }
+  // 3. Provider-bound options.
+  for (const key of args.providerKeys) {
+    const opt = args.sourcesByProvider.get(key)
+    if (opt && opt.kind === 'provider') {
+      map[key] = { kind: 'provider', provider: opt.provider, path: opt.path }
+    }
+  }
+  // 4. Adapter-supplied hints (fetch/MCP) override everything.
+  if (args.hints) for (const [key, source] of Object.entries(args.hints)) map[key] = source
+  return map
+}
+
+function buildEnvSourceMap(
+  schema: Schema | undefined,
+  envBag: Dict<unknown>,
+  hints: Record<string, FieldErrorSource> | undefined,
+): Record<string, FieldErrorSource> {
+  const map: Record<string, FieldErrorSource> = {}
+  if (schema) {
+    if (isObjectSchema(schema)) {
+      for (const key of Object.keys(objectShape(schema))) map[key] = { kind: 'env', name: key }
+    } else {
+      for (const key of Object.keys(envBag)) map[key] = { kind: 'env', name: key }
+    }
+  }
+  if (hints) for (const [key, source] of Object.entries(hints)) map[key] = source
+  return map
+}
+
+function buildArgsSourceMap(args: {
+  schema: Schema | undefined
+  argvArgs: string[]
+  argsObject: Dict | undefined
+  hints: Record<string, FieldErrorSource> | undefined
+}): Record<string, FieldErrorSource> {
+  const map: Record<string, FieldErrorSource> = {}
+  if (args.argsObject !== undefined) {
+    // argsObject is synthetic input — keys are never positional argv tokens.
+    // Default each key to programmatic; adapter hints (e.g., MCP extension)
+    // can override below.
+    for (const key of Object.keys(args.argsObject)) {
+      map[key] = { kind: 'programmatic', key }
+    }
+  } else if (args.schema) {
+    if (isObjectSchema(args.schema)) {
+      Object.keys(objectShape(args.schema)).forEach((key, index) => {
+        if (args.argvArgs[index] !== undefined) {
+          map[key] = { kind: 'argv', positional: index }
+        }
+      })
+    } else if (args.argvArgs.length > 0) {
+      // Bare-positional schema decodes values[0] directly; error path is '$'.
+      map[''] = { kind: 'argv', positional: 0 }
+    }
+  }
+  if (args.hints) for (const [key, source] of Object.entries(args.hints)) map[key] = source
+  return map
 }
 
 function assembleDeclaredEnv(
