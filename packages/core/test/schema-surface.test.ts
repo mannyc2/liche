@@ -13,9 +13,9 @@ const CLI: CommandSurface = 'cli'
 const MCP: CommandSurface = { kind: 'extension', transport: 'mcp' }
 const SKILLS: CommandSurface = { kind: 'extension', transport: 'skills' }
 
-const cliOnlyCodec = () => arg.fromString({ output: z.string(), decode: async (s) => s, surface: 'cli' })
-const allCodec = () => arg.fromString({ output: z.string(), decode: async (s) => s, surface: 'all' })
-const mcpOnlyCodec = () => arg.fromString({ output: z.string(), decode: async (s) => s, surface: MCP })
+const cliOnlyCodec = () => arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: 'cli' })
+const allCodec = () => arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: 'all' })
+const mcpOnlyCodec = () => arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: MCP })
 
 describe('checkCommandSurface', () => {
   test('returns ok for a command with no codec fields', () => {
@@ -225,6 +225,74 @@ describe('checkCommandSurface — composite + wrapper recursion', () => {
       ),
     })
     expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('pipe, transform, and preprocess schemas are inspected', () => {
+    for (const schema of [
+      cliOnlyCodec().pipe(z.string()),
+      cliOnlyCodec().transform((value) => value),
+      z.preprocess((value) => value, cliOnlyCodec()),
+    ]) {
+      const entry = commandEntry({
+        options: z.object({ file: schema }),
+      })
+      const result = checkCommandSurface(entry, FETCH)
+      expect(result.ok).toBe(false)
+      if (result.ok) throw new Error('expected fail')
+      expect(result.field).toBe('file')
+    }
+  })
+
+  test('prefault, promise, and lazy schemas are inspected', () => {
+    for (const schema of [
+      cliOnlyCodec().prefault('x'),
+      z.promise(cliOnlyCodec()),
+      z.lazy(() => cliOnlyCodec()),
+    ]) {
+      const entry = commandEntry({
+        options: z.object({ file: schema }),
+      })
+      const result = checkCommandSurface(entry, FETCH)
+      expect(result.ok).toBe(false)
+      if (result.ok) throw new Error('expected fail')
+      expect(result.field).toBe('file')
+    }
+  })
+
+  test('object catchall codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({
+        meta: z.object({}).catchall(cliOnlyCodec()),
+      }),
+    })
+    const result = checkCommandSurface(entry, FETCH)
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('expected fail')
+    expect(result.field).toBe('meta{}')
+  })
+
+  test('record and map key codecs are rejected', () => {
+    for (const schema of [
+      z.record(cliOnlyCodec(), z.string()),
+      z.map(cliOnlyCodec(), z.string()),
+    ]) {
+      const entry = commandEntry({
+        options: z.object({ values: schema }),
+      })
+      const result = checkCommandSurface(entry, FETCH)
+      expect(result.ok).toBe(false)
+      if (result.ok) throw new Error('expected fail')
+      expect(result.field).toBe('values{key}')
+    }
+  })
+
+  test('recursive lazy schemas without codecs do not loop forever', () => {
+    let node: any
+    node = z.lazy(() => z.object({ next: node.optional() }))
+    const entry = commandEntry({
+      options: z.object({ node }),
+    })
+    expect(checkCommandSurface(entry, FETCH)).toEqual({ ok: true })
   })
 
   test('deeply nested composite (object.optional > array > object) is inspected', () => {

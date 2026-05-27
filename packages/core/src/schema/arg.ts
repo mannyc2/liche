@@ -131,7 +131,7 @@ function fromString<I, O>(options: FromStringOptions<I, O>) {
 
 export const arg = { boolean, fromString, int, number, port, positiveInt }
 
-const WRAPPER_KINDS = new Set(['optional', 'default', 'nullable', 'catch', 'readonly'])
+const WRAPPER_KINDS = new Set(['optional', 'default', 'nullable', 'catch', 'readonly', 'prefault', 'promise'])
 
 export function getRuntimeArgMeta(schema: Schema | undefined): RuntimeArgMeta | undefined {
   let current: any = schema

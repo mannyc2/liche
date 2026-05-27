@@ -39,10 +39,19 @@ export function unsupportedSurfaceError(detail: {
   })
 }
 
-const WRAPPER_KINDS = new Set(['optional', 'default', 'nullable', 'catch', 'readonly'])
+const INNER_TYPE_KINDS = new Set(['optional', 'default', 'nullable', 'catch', 'readonly', 'prefault', 'promise'])
 
-function inspectSchema(schema: Schema | undefined, fieldPath: string, surface: CommandSurface): SurfaceCheckResult {
+function inspectSchema(
+  schema: Schema | undefined,
+  fieldPath: string,
+  surface: CommandSurface,
+  seen = new WeakSet<object>(),
+): SurfaceCheckResult {
   if (!schema) return { ok: true }
+  if (typeof schema === 'object') {
+    if (seen.has(schema as object)) return { ok: true }
+    seen.add(schema as object)
+  }
 
   const meta = getRuntimeArgMeta(schema)
   if (meta && !surfaceAllows(meta.surface, surface)) {
@@ -52,51 +61,91 @@ function inspectSchema(schema: Schema | undefined, fieldPath: string, surface: C
   const def = (schema as any)?.def
   const kind: string | undefined = def?.type
 
-  if (kind && WRAPPER_KINDS.has(kind) && def.innerType) {
-    return inspectSchema(def.innerType, fieldPath, surface)
+  if (kind && INNER_TYPE_KINDS.has(kind) && def.innerType) {
+    return inspectSchema(def.innerType, fieldPath, surface, seen)
+  }
+
+  if (kind === 'lazy' && typeof def.getter === 'function') {
+    try {
+      return inspectSchema(def.getter(), fieldPath, surface, seen)
+    } catch {
+      return { ok: true }
+    }
+  }
+
+  if (kind === 'pipe') {
+    if (def.in) {
+      const result = inspectSchema(def.in, fieldPath, surface, seen)
+      if (!result.ok) return result
+    }
+    if (def.out) {
+      const result = inspectSchema(def.out, fieldPath, surface, seen)
+      if (!result.ok) return result
+    }
+    return { ok: true }
   }
 
   if (isObjectSchema(schema)) {
     const shape = objectShape(schema)
     for (const [key, child] of Object.entries(shape)) {
       const childPath = fieldPath === '$' ? key : `${fieldPath}.${key}`
-      const result = inspectSchema(child, childPath, surface)
+      const result = inspectSchema(child, childPath, surface, seen)
+      if (!result.ok) return result
+    }
+    if (def.catchall) {
+      const result = inspectSchema(def.catchall, appendPath(fieldPath, '{}'), surface, seen)
       if (!result.ok) return result
     }
     return { ok: true }
   }
 
   if (kind === 'array' && def.element) {
-    return inspectSchema(def.element, `${fieldPath}[]`, surface)
+    return inspectSchema(def.element, appendPath(fieldPath, '[]'), surface, seen)
   }
 
   if (kind === 'tuple' && Array.isArray(def.items)) {
     for (let index = 0; index < def.items.length; index++) {
-      const result = inspectSchema(def.items[index], `${fieldPath}[${index}]`, surface)
+      const result = inspectSchema(def.items[index], appendPath(fieldPath, `[${index}]`), surface, seen)
       if (!result.ok) return result
     }
     if (def.rest) {
-      const result = inspectSchema(def.rest, `${fieldPath}[]`, surface)
+      const result = inspectSchema(def.rest, appendPath(fieldPath, '[]'), surface, seen)
       if (!result.ok) return result
     }
     return { ok: true }
   }
 
-  if (kind === 'record' && def.valueType) {
-    return inspectSchema(def.valueType, `${fieldPath}{}`, surface)
+  if (kind === 'record') {
+    if (def.keyType) {
+      const result = inspectSchema(def.keyType, appendPath(fieldPath, '{key}'), surface, seen)
+      if (!result.ok) return result
+    }
+    if (def.valueType) {
+      const result = inspectSchema(def.valueType, appendPath(fieldPath, '{}'), surface, seen)
+      if (!result.ok) return result
+    }
+    return { ok: true }
   }
 
-  if (kind === 'map' && def.valueType) {
-    return inspectSchema(def.valueType, `${fieldPath}{}`, surface)
+  if (kind === 'map') {
+    if (def.keyType) {
+      const result = inspectSchema(def.keyType, appendPath(fieldPath, '{key}'), surface, seen)
+      if (!result.ok) return result
+    }
+    if (def.valueType) {
+      const result = inspectSchema(def.valueType, appendPath(fieldPath, '{}'), surface, seen)
+      if (!result.ok) return result
+    }
+    return { ok: true }
   }
 
   if (kind === 'set' && def.valueType) {
-    return inspectSchema(def.valueType, `${fieldPath}[]`, surface)
+    return inspectSchema(def.valueType, appendPath(fieldPath, '[]'), surface, seen)
   }
 
   if (kind === 'union' && Array.isArray(def.options)) {
     for (let index = 0; index < def.options.length; index++) {
-      const result = inspectSchema(def.options[index], `${fieldPath}|${index}`, surface)
+      const result = inspectSchema(def.options[index], `${fieldPath}|${index}`, surface, seen)
       if (!result.ok) return result
     }
     return { ok: true }
@@ -104,11 +153,11 @@ function inspectSchema(schema: Schema | undefined, fieldPath: string, surface: C
 
   if (kind === 'intersection') {
     if (def.left) {
-      const result = inspectSchema(def.left, fieldPath, surface)
+      const result = inspectSchema(def.left, fieldPath, surface, seen)
       if (!result.ok) return result
     }
     if (def.right) {
-      const result = inspectSchema(def.right, fieldPath, surface)
+      const result = inspectSchema(def.right, fieldPath, surface, seen)
       if (!result.ok) return result
     }
     return { ok: true }
@@ -127,4 +176,8 @@ function surfaceAllows(stored: StoredCodecSurface | undefined, request: CommandS
 
 function formatSurface(surface: CommandSurface): string {
   return typeof surface === 'string' ? surface : `extension:${surface.transport}`
+}
+
+function appendPath(fieldPath: string, suffix: string): string {
+  return fieldPath === '$' ? suffix : `${fieldPath}${suffix}`
 }

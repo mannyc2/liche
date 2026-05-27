@@ -177,4 +177,38 @@ describe('cli.fetch UNSUPPORTED_SURFACE enforcement', () => {
     expect(body.error.code).toBe('UNSUPPORTED_SURFACE')
     expect(body.error.details.field).toBe('files[]')
   })
+
+  test('CLI-only codec behind .pipe() rejects fetch before decode', async () => {
+    const cli = testCli('app', [testCommand('upload', {
+      options: z.object({ file: cliOnlyCodec().pipe(z.string()) }),
+      run: () => expectHandlerNeverRuns(),
+    })])
+
+    const response = await cli.fetch(new Request('http://x/upload', {
+      method: 'POST',
+      body: JSON.stringify({ file: 'hi' }),
+      headers: { 'content-type': 'application/json' },
+    }))
+    expect(response.status).toBe(400)
+    const body = await response.json() as any
+    expect(body.error.code).toBe('UNSUPPORTED_SURFACE')
+    expect(body.error.details.field).toBe('file')
+  })
+
+  test('CLI-only codec in object catchall rejects fetch before decode', async () => {
+    const cli = testCli('app', [testCommand('upload', {
+      options: z.object({}).catchall(cliOnlyCodec()),
+      run: () => expectHandlerNeverRuns(),
+    })])
+
+    const response = await cli.fetch(new Request('http://x/upload', {
+      method: 'POST',
+      body: JSON.stringify({ file: 'hi' }),
+      headers: { 'content-type': 'application/json' },
+    }))
+    expect(response.status).toBe(400)
+    const body = await response.json() as any
+    expect(body.error.code).toBe('UNSUPPORTED_SURFACE')
+    expect(body.error.details.field).toBe('{}')
+  })
 })
