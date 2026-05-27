@@ -284,19 +284,12 @@ type CommandEntry = {
   runtime: CommandRuntime;
 };
 
-type FetchEntry = {
-  _fetch: true;
-  basePath?: string;
-  contract: CommandContract;
-  fetch: FetchHandler;
-};
-
 type AliasEntry = {
   _alias: true;
   target: string;
 };
 
-type RuntimeEntry = CommandEntry | FetchEntry;
+type RuntimeEntry = CommandEntry;
 type Entry = RuntimeEntry | GroupEntry | AliasEntry;
 
 type CliState = {
@@ -342,19 +335,12 @@ The runtime command graph is a nested map of `Entry` values:
 
 ```ts
 type Entry = RuntimeEntry | GroupEntry | AliasEntry;
-type RuntimeEntry = CommandEntry | FetchEntry;
+type RuntimeEntry = CommandEntry;
 
 type CommandEntry = {
   _command: true;
   contract: CommandContract;
   runtime: CommandRuntime;
-};
-
-type FetchEntry = {
-  _fetch: true;
-  basePath?: string;
-  contract: CommandContract;
-  fetch: FetchHandler;
 };
 
 type GroupEntry = {
@@ -1231,8 +1217,6 @@ Current behavior:
 ### CLI Authoring
 
 ```ts
-type FetchHandler = (request: Request) => Awaitable<Response>;
-
 type DefineCliOptions = {
   name: string;
   version?: string;
@@ -1279,7 +1263,6 @@ type DeclarativeCommand = {
   policy?: CommandPolicy;
   safety?: CommandSafety;
   middleware?: MiddlewareHandler[];
-  fetch?: FetchHandler;
   run?: (context: {
     ctx: RunContext;
     input: { args: unknown; env: unknown; options: unknown };
@@ -1339,12 +1322,10 @@ type CommandDefinition<
   aliases?: string[];
   args?: A;
   auth?: CommandAuthMetadata;
-  basePath?: string;
   description?: string;
   effects?: CommandEffects;
   env?: E;
   examples?: Example[];
-  fetch?: FetchHandler;
   format?: Format;
   hint?: string;
   middleware?: MiddlewareHandler[];
@@ -1580,7 +1561,7 @@ Research question: is this a real public adapter API, an accidental exposure for
 State-design facts the research output must account for:
 
 - `CliState.commands` and `GroupEntry.commands` are mutable `Map` instances.
-- `CommandRuntime`, `FetchEntry.fetch`, middleware, hooks, input sources, renderers, transforms, and handlers contain functions and are not serializable.
+- `CommandRuntime`, middleware, hooks, input sources, renderers, transforms, and handlers contain functions and are not serializable.
 - `CommandContract`, `CommandManifest`, `HelpModel`, and lifecycle events are the main serializable projections.
 - Alias entries are sibling pointers, not full-path links.
 - Group entries can carry a root runtime plus child commands.

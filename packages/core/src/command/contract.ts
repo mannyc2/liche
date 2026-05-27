@@ -1,5 +1,5 @@
 import type { CommandContract, CommandDefinition, Entry } from '../types.js'
-import { isCommand, isFetch, isGroup } from './guards.js'
+import { isCommand, isGroup } from './guards.js'
 import { commandSchema } from './schema.js'
 
 export function commandContract(
@@ -7,7 +7,7 @@ export function commandContract(
   entry: Entry,
   aliases: readonly string[] = [],
 ): CommandContract | undefined {
-  if (isGroup(entry) || isFetch(entry) || isCommand(entry)) return rebaseContract(entry.contract, name, aliases)
+  if (isGroup(entry) || isCommand(entry)) return rebaseContract(entry.contract, name, aliases)
   return undefined
 }
 

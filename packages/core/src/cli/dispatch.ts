@@ -21,7 +21,7 @@ import { toCommandError } from '../errors/normalize.js'
 import { parseGlobals } from '../parser/index.js'
 import { selectCommand } from '../command/registry.js'
 import { commandContract } from '../command/contract.js'
-import { isCommand, isFetch } from '../command/guards.js'
+import { isCommand } from '../command/guards.js'
 import { execute } from './execute.js'
 import { getCliState } from './create.js'
 import { contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareContext } from './invocation.js'
@@ -309,13 +309,6 @@ export async function parseInvocation(
     return fail(preExecuteCommandError(error)) as ParseInvocationResult
   }
 
-  if (isFetch(selected.entry)) {
-    return fail({
-      code: 'COMMAND_NOT_RUNNABLE',
-      message: 'Fetch entries are not parsable via parseInvocation',
-      exitCode: 1,
-    }) as ParseInvocationResult
-  }
   if (!isCommand(selected.entry)) {
     return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler', exitCode: 1 }) as ParseInvocationResult
   }

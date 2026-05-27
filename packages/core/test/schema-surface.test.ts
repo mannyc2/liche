@@ -97,12 +97,6 @@ describe('checkCommandSurface', () => {
     expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
   })
 
-  test('FetchEntry returns ok regardless of surface (no runtime to inspect)', () => {
-    const entry = { _fetch: true, contract: { name: 'x' } as any, fetch: () => new Response() } as unknown as Entry
-    expect(checkCommandSurface(entry, FETCH)).toEqual({ ok: true })
-    expect(checkCommandSurface(entry, MCP)).toEqual({ ok: true })
-  })
-
   test('GroupEntry returns ok regardless of surface', () => {
     const entry = { commands: new Map() } as unknown as Entry
     expect(checkCommandSurface(entry, FETCH)).toEqual({ ok: true })

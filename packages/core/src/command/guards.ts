@@ -1,4 +1,4 @@
-import type { AliasEntry, CommandEntry, Entry, FetchEntry, GroupEntry, Result } from '../types.js'
+import type { AliasEntry, CommandEntry, Entry, GroupEntry, Result } from '../types.js'
 
 export function isAlias(entry: unknown): entry is AliasEntry {
   return !!entry && typeof entry === 'object' && (entry as any)._alias === true
@@ -10,10 +10,6 @@ export function isGroup(entry: unknown): entry is GroupEntry {
 
 export function isCommand(entry: unknown): entry is CommandEntry {
   return !!entry && typeof entry === 'object' && (entry as any)._command === true
-}
-
-export function isFetch(entry: unknown): entry is FetchEntry {
-  return !!entry && typeof entry === 'object' && (entry as any)._fetch === true
 }
 
 export function isResult(value: unknown): value is Result {

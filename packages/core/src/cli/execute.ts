@@ -15,8 +15,7 @@ import type {
   SelectedCommand,
 } from '../types.js'
 import { fail, isRuntimeResult, LicheError, ok, toCommandError } from '../errors/error.js'
-import { callFetch } from '../fetch/curl.js'
-import { isCommand, isFetch } from '../command/guards.js'
+import { isCommand } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
 import { parseSchemaAsync } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
@@ -49,11 +48,6 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
   await emitCommandEvent(binaryName, input, command, 'command.started')
 
   try {
-    if (isFetch(selected.entry)) {
-      const result = await callFetch(selected.entry, selected.argv.args)
-      await emitResultEvent(binaryName, input, command, startedAt, result)
-      return result
-    }
     if (!isCommand(selected.entry)) {
       throw new LicheError({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler' })
     }

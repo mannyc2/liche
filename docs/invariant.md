@@ -82,7 +82,6 @@ liche/
   examples/
     handwritten-cli/
     generated-cli/
-    fetch-backed-cli/
     remote-backed-cli/
     vite-tanstack-app/
 ```
@@ -278,7 +277,6 @@ The runtime has multiple execution directions. They must be named separately.
 |---|---|---|
 | argv CLI runner | `@liche/core` | `run(cli, argv?)` parses command-line input, executes one selected command, writes output, and exits or returns. It is not an HTTP server. |
 | inbound HTTP handler | `@liche/core` | `.fetch(request)` receives HTTP requests and dispatches them to registered commands. It also exposes core reflection endpoints such as MCP and schema/manifest surfaces for handwritten CLIs. |
-| in-process fetch-backed command | `@liche/core` | A command can delegate to a provided `FetchHandler`. This is an in-process Request/Response bridge, not a hosted backend client. |
 | outbound HTTP operation transport | `@liche/core` | A command can call a configured remote HTTP API, parse the response, validate it against the output schema, and map failures into the standard error envelope. |
 | generated command wiring | `@liche/product` | Generated code wires resource operations and commands into core runtime primitives. It does not own transport semantics. |
 
@@ -371,7 +369,6 @@ Examples must prove the package boundaries:
 |---|---|
 | `examples/handwritten-cli` | Uses only `@liche/core`. |
 | `examples/generated-cli` | Uses `@liche/product` to generate a CLI from schema. |
-| `examples/fetch-backed-cli` | Demonstrates existing inbound/in-process fetch behavior without outbound remote transport confusion. |
 | `examples/remote-backed-cli` | Demonstrates core-owned outbound HTTP operation transport, with and without generated wiring. |
 | `examples/vite-tanstack-app` | Demonstrates capability-first integration for a web app: product schema, API routes, local handlers, generated CLI, conformance against dev server. |
 

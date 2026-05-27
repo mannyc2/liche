@@ -61,24 +61,6 @@ describe('contract: command resolution and execution', () => {
     expect(parseJsonOutput((await runCli(cli, ['admin', 'audit', '--json'])).stdout)).toEqual({ command: 'audit' })
   })
 
-  test('fetch-only command registration proxies requests from the CLI path', async () => {
-    const cli = testCli('app', [testCommand('remote', {
-      basePath: '/api',
-      fetch: async (request) =>
-        Response.json({
-          body: await request.text(),
-          method: request.method,
-          path: new URL(request.url).pathname,
-        }),
-    })])
-
-    const result = await runCli(cli, ['remote', 'users', '-X', 'post', '--data', '{"name":"Ada"}', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({
-      body: '{"name":"Ada"}',
-      method: 'POST',
-      path: '/api/users',
-    })
-  })
 })
 
 describe('contract: args, flags, env, middleware', () => {

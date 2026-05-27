@@ -54,7 +54,6 @@ export type {
   DefineCliOptions,
   Dict,
   Example,
-  FetchHandler,
   FetchRoute,
   FetchRouteInput,
   FieldError,

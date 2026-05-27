@@ -45,7 +45,7 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 
 ### Types — public because authoring/runtime helpers expose them
 
-`ArgDecodeContext`, `ArgIssue`, `Awaitable`, `CliInstance`, `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventSurface`, `CliExtension`, `CliHookRegistration`, `BeforeExecuteHook`, `BuiltInFormat`, `CommandContract`, `CommandError`, `CommandInput`, `CommandSurface`, `Cta`, `CtaBlock`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, `DefineCliOptions`, `DispatchOptions`, `Example`, `FetchHandler`, `FieldError`, `FieldErrorSource`, `Format`, `GlobalFlags`, `GlobalInputDefinition`, `GlobalInputType`, `HelpCommand`, `HelpControlOptions`, `HelpField`, `HelpGlobal`, `HelpModel`, `HelpRenderContext`, `HelpRenderer`, `InferSchema`, `InputSourceBinding`, `InputSourceProvider`, `InputSourceProvenance`, `InputSourceResolveInput`, `MiddlewareContext`, `MiddlewareHandler`, `OptionValueSource`, `OutputControlsOptions`, `OutputPolicy`, `OutputRenderContext`, `OutputRenderer`, `OutputRenderStage`, `ParsedInvocation`, `ParsedInvocationContextPatch`, `ParseInvocationOptions`, `ParseInvocationResult`, `ParseWarning`, `ReflectionControlsOptions`, `ResolvedInputSource`, `Result`, `ResultMeta`, `RunContext`, `Schema`, `TerminalHandler`, `RunOptions`, `SkillDefinition`, `SourceInspector`, `StoredCodecSurface`, `SurfaceCheckResult`, `Usage`, `UsageObject`.
+`ArgDecodeContext`, `ArgIssue`, `Awaitable`, `CliInstance`, `CliEvent`, `CliEventType`, `CliEventTarget`, `CliEventSubscriber`, `CliEventRegistration`, `CliEventError`, `CliEventCommand`, `CliEventCompletion`, `CliEventSurface`, `CliExtension`, `CliHookRegistration`, `BeforeExecuteHook`, `BuiltInFormat`, `CommandContract`, `CommandError`, `CommandInput`, `CommandSurface`, `Cta`, `CtaBlock`, `DeclarativeCommand`, `DeclarativeCommandRunContext`, `DefineCliOptions`, `DispatchOptions`, `Example`, `FieldError`, `FieldErrorSource`, `Format`, `GlobalFlags`, `GlobalInputDefinition`, `GlobalInputType`, `HelpCommand`, `HelpControlOptions`, `HelpField`, `HelpGlobal`, `HelpModel`, `HelpRenderContext`, `HelpRenderer`, `InferSchema`, `InputSourceBinding`, `InputSourceProvider`, `InputSourceProvenance`, `InputSourceResolveInput`, `MiddlewareContext`, `MiddlewareHandler`, `OptionValueSource`, `OutputControlsOptions`, `OutputPolicy`, `OutputRenderContext`, `OutputRenderer`, `OutputRenderStage`, `ParsedInvocation`, `ParsedInvocationContextPatch`, `ParseInvocationOptions`, `ParseInvocationResult`, `ParseWarning`, `ReflectionControlsOptions`, `ResolvedInputSource`, `Result`, `ResultMeta`, `RunContext`, `Schema`, `TerminalHandler`, `RunOptions`, `SkillDefinition`, `SourceInspector`, `StoredCodecSurface`, `SurfaceCheckResult`, `Usage`, `UsageObject`.
 
 ### Auth/session runtime types
 
@@ -91,7 +91,7 @@ Runtime guarantees:
 - Success: `{ ok: true, data, error: null, meta? }`.
 - Failure: `{ ok: false, data: null, error, meta? }`.
 
-Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, fetch-backed commands, `cli.fetch()`, and generated envelope mode) populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs. Handwritten success output remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
+Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, `cli.fetch()`, and generated envelope mode) populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs. Handwritten success output remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
 
 Executor control results are factory-branded, not structurally detected. Command handlers that finish early return `ctx.ok(...)`, `ctx.error(...)`, `ok(...)`, or `fail(...)`. Full result-shaped objects from arbitrary domain data are not treated as control results.
 
@@ -110,7 +110,6 @@ The following are source-path internals. White-box tests may import them from so
 - `Parser` — argv/env/config parsers.
 - `Filter` — formatter filter helpers; `Formatter.pick` is the public path.
 - `Completions` — completion engine; reach through `run(cli)` or `cli.fetch()`.
-- `Fetch` — in-process fetch-command internals. Outbound remote transport is `serializeHttpOperationRequest` and `callHttpOperation`.
 - MCP server execution lives in `@liche/mcp-server`; core exposes only command reflection helpers such as `mcpToolName`.
 - `Schema` namespace — Zod adapter internals. `z` is the public path; `Schema` is reserved as a public type name.
 - `Skill` — skill helpers; use `DefineCliOptions.skill` or `CliInstance` accessors.
@@ -118,7 +117,7 @@ The following are source-path internals. White-box tests may import them from so
 ### Internal source-path imports
 
 - `stateSymbol`, `InternalCli`, `formatHumanValidationError`
-- `SelectedCommand`, `CliState`, `Entry`, `FetchEntry`, `GroupEntry`, `AliasEntry`
+- `SelectedCommand`, `CliState`, `Entry`, `GroupEntry`, `AliasEntry`
 - `renderHelp`
 - `commandScope`, `childCommands`, `completionCommands`, `outputPolicy`
 - command guards

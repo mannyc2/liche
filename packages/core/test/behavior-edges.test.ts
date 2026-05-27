@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { testCli, testCommand } from './helpers.js'
 import { Formatter, z } from '../src/index.js'
-import * as Fetch from '../src/fetch/curl.js'
 import * as Mcp from '@liche/mcp-server'
 import * as Parser from '../src/parser/index.js'
 import * as Schema from '../src/schema/zod.js'
@@ -10,72 +9,9 @@ import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { camel, collectAsync, isAsyncIterable, isObject, kebab } from '../src/internal.js'
 import { handleMcpHttp } from '@liche/mcp-server'
 import { childCommands, collectCommandContracts, commandScope, completionCommands, outputPolicy, selectCommand } from '../src/command/registry.js'
-import { isAlias, isFetch, isGroup, isResult } from '../src/command/guards.js'
+import { isAlias, isGroup, isResult } from '../src/command/guards.js'
 
-describe('fetch command proxy behavior', () => {
-  test('parseCurl preserves method, headers, JSON body, and path segments', () => {
-    const parsed = Fetch.parseCurl(['users', '7', '-X', 'patch', '-H', 'X-Trace: abc:def', '--data', '{"ok":true}'])
-
-    expect(parsed.method).toBe('PATCH')
-    expect(parsed.path).toEqual(['users', '7'])
-    expect(parsed.headers.get('x-trace')).toBe('abc:def')
-    expect(parsed.headers.get('content-type')).toBe('application/json')
-    expect(parsed.body).toBe('{"ok":true}')
-  })
-
-  test('parseCurl accepts curl aliases and trims path, method, body, and header forms', () => {
-    const requestAlias = Fetch.parseCurl(['--request', 'put', '--header', ' X-Name : Ada ', '--body', 'payload'])
-    expect(requestAlias.method).toBe('PUT')
-    expect(requestAlias.body).toBe('payload')
-    expect(requestAlias.headers.get('x-name')).toBe('Ada')
-
-    const methodAlias = Fetch.parseCurl(['--method', 'delete', '-d', '{}'])
-    expect(methodAlias.method).toBe('DELETE')
-
-    const bodyDefaultsPost = Fetch.parseCurl(['-d', '{"created":true}'])
-    expect(bodyDefaultsPost.method).toBe('POST')
-    expect(bodyDefaultsPost.headers.get('content-type')).toBe('application/json')
-  })
-
-  test('callFetch joins base paths and normalizes text and JSON responses', async () => {
-    const seen: string[] = []
-    const json = await Fetch.callFetch(
-      {
-        _fetch: true,
-        basePath: '//v1/',
-        contract: { name: 'remote', path: ['remote'] },
-        fetch: async (request) => {
-          seen.push(`${request.method} ${new URL(request.url).pathname} ${request.headers.get('authorization')}`)
-          return Response.json({ ok: true })
-        },
-      },
-      ['users', '-H', 'Authorization: Bearer token'],
-    )
-
-    expect(seen).toEqual(['GET /v1/users Bearer token'])
-    expect(json).toEqual({ ok: true, data: { ok: true }, error: null })
-
-    const text = await Fetch.callFetch(
-      {
-        _fetch: true,
-        contract: { name: 'remote', path: ['remote'] },
-        fetch: async () => new Response('nope', { status: 418 }),
-      },
-      [],
-    )
-    expect(text).toEqual({ ok: false, data: null, error: { code: 'FETCH_ERROR', message: 'nope', status: 418 } })
-
-    const objectError = await Fetch.callFetch(
-      {
-        _fetch: true,
-        contract: { name: 'remote', path: ['remote'] },
-        fetch: async () => Response.json({ reason: 'bad' }, { status: 400 }),
-      },
-      [],
-    )
-    expect(objectError).toEqual({ ok: false, data: null, error: { code: 'FETCH_ERROR', message: '{"reason":"bad"}', status: 400 } })
-  })
-
+describe('HTTP command dispatch behavior', () => {
   test('fetch ignores request bodies for GET and HEAD', async () => {
     const cli = testCli('api', [testCommand('echo', {
       options: z.object({ message: z.string().default('empty') }),
@@ -206,14 +142,12 @@ describe('format, filter, CTA, and schema behavior', () => {
 // Config loading behavior is now owned by @liche/config; see packages/extensions/config/test/loader.test.ts.
 
 describe('command registry and guards behavior', () => {
-  test('guards distinguish aliases, groups, fetch entries, and result envelopes', () => {
+  test('guards distinguish aliases, groups, and result envelopes', () => {
     expect(isAlias({ _alias: true, target: 'run' })).toBe(true)
     expect(isAlias(undefined)).toBe(false)
     expect(isAlias({ _alias: false, target: 'run' })).toBe(false)
     expect(isGroup({ _group: true, commands: new Map(), middlewares: [], name: 'admin' })).toBe(true)
     expect(isGroup(null)).toBe(false)
-    expect(isFetch({ _fetch: true, fetch: async () => new Response() })).toBe(true)
-    expect(isFetch('fetch')).toBe(false)
     expect(isResult({ ok: true, data: 1, error: null })).toBe(true)
     expect(isResult({ ok: true, data: 1 })).toBe(false)
     expect(isResult({ ok: true })).toBe(false)
@@ -231,7 +165,7 @@ describe('command registry and guards behavior', () => {
         run: () => ({ root: true }),
       }),
       testCommand(['admin', 'audit'], { aliases: ['a'], description: 'audit logs', run: () => ({ ok: true }) }),
-      testCommand(['admin', 'remote'], { fetch: async () => Response.json({ ok: true }) }),
+      testCommand(['admin', 'report'], { run: () => ({ ok: true }) }),
     ])
     const state = (cli as InternalCli)[stateSymbol]
 
@@ -243,7 +177,7 @@ describe('command registry and guards behavior', () => {
     expect(groupScope.description).toBe('admin root')
     expect(childCommands(groupScope).map((command) => [command.name, command.aliases])).toEqual([
       ['audit', ['a']],
-      ['remote', []],
+      ['report', []],
     ])
 
     const selectedAlias = selectCommand(state, ['admin', 'a', 'tail'])
@@ -253,7 +187,7 @@ describe('command registry and guards behavior', () => {
 
     expect(completionCommands(state, ['admin', 'a'])).toEqual(['audit', 'a'])
     expect(completionCommands(state, ['admin', 'audit', 'x'])).toEqual([])
-    expect(collectCommandContracts(state.commands, state.root).map((command) => command.name)).toEqual(['admin', 'admin audit', 'admin remote'])
+    expect(collectCommandContracts(state.commands, state.root).map((command) => command.name)).toEqual(['admin', 'admin audit', 'admin report'])
   })
 })
 

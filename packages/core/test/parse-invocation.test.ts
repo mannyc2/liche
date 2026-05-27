@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { arg, defineCommand, dispatch, parseInvocation, ParseError, z } from '../src/index.js'
+import { arg, dispatch, parseInvocation, ParseError, z } from '../src/index.js'
 import type { CliEvent, ParsedInvocation, ParseInvocationResult } from '../src/index.js'
 import { isRuntimeResult } from '../src/errors/error.js'
 import { testCli, testCommand } from './helpers.js'
@@ -286,45 +286,16 @@ describe('parseInvocation', () => {
         },
       },
     }, [testCommand('lonely', {})])
-    const fetchOnly = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => {
-          throw new ParseError({ message: 'prep failed' })
-        },
-      },
-    }, [defineCommand({
-      path: ['ping'],
-      fetch: async () => new Response('pong'),
-    })])
-
-    for (const { cli, argv } of [
-      { argv: ['lonely'], cli: noRun },
-      { argv: ['ping'], cli: fetchOnly },
-    ]) {
-      const result = await parseInvocation(cli, argv)
-      expect(result.ok).toBe(false)
-      expect(result.ok ? null : result.error.code).toBe('PARSE_ERROR')
-      expect(result.ok ? null : result.error.message).toContain('prep failed')
-    }
+    const result = await parseInvocation(noRun, ['lonely'])
+    expect(result.ok).toBe(false)
+    expect(result.ok ? null : result.error.code).toBe('PARSE_ERROR')
+    expect(result.ok ? null : result.error.message).toContain('prep failed')
   })
 
   test('non-runnable command (no run handler) -> COMMAND_NOT_RUNNABLE', async () => {
     const cli = testCli('app', [testCommand('lonely', {})])
 
     const result = await parseInvocation(cli, ['lonely'])
-    expect(result.ok).toBe(false)
-    expect(result.ok ? null : result.error.code).toBe('COMMAND_NOT_RUNNABLE')
-  })
-
-  test('fetch entry -> COMMAND_NOT_RUNNABLE (decision #11)', async () => {
-    const fetchCmd = defineCommand({
-      path: ['ping'],
-      fetch: async () => new Response('pong'),
-    })
-    const cli = testCli('app', [fetchCmd])
-
-    const result = await parseInvocation(cli, ['ping'])
     expect(result.ok).toBe(false)
     expect(result.ok ? null : result.error.code).toBe('COMMAND_NOT_RUNNABLE')
   })

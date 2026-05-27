@@ -8,7 +8,6 @@ import type {
   CreateOptions,
   DeclarativeCommand,
   DefineCliOptions,
-  FetchEntry,
   GroupEntry,
   Schema,
   RuntimeEntry,
@@ -17,7 +16,7 @@ import type {
   PrepareContextHook,
 } from '../types.js'
 import { commandContractFromDefinition, groupContract } from '../command/contract.js'
-import { isCommand, isFetch } from '../command/guards.js'
+import { isCommand } from '../command/guards.js'
 import { globalRegistryFor } from '../globals/registry.js'
 import { createOutputRendererRegistry } from '../format/index.js'
 import { fetchCli } from './fetch.js'
@@ -32,7 +31,7 @@ export function getCliState(cli: CliInstance): CliState {
 
 function create(definition: CreateOptions & { name: string }): CliInstance {
   const name = definition.name
-  const root = definition.run || definition.fetch ? createRuntimeEntry('(root)', definition) : undefined
+  const root = definition.run ? createRuntimeEntry('(root)', definition) : undefined
   const state: CliState = {
     commands: new Map(),
     def: definition,
@@ -218,7 +217,7 @@ function registerDeclarative(cli: InternalCli, command: DeclarativeCommand): voi
       description: existing.description,
       outputPolicy: existing.outputPolicy,
     })
-    if (definition.run || definition.fetch) existing.root = createRuntimeEntry(leaf, definition)
+    if (definition.run) existing.root = createRuntimeEntry(leaf, definition)
   } else {
     setCommandEntry(parentCommands, leaf, definition)
   }
@@ -293,7 +292,6 @@ function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<st
 
 function groupFromExisting(segment: string, existing: any): GroupEntry {
   if (existing?._alias) throw new Error(`Cannot create command group '${segment}' over an existing alias`)
-  if (isFetch(existing)) throw new Error(`Cannot create command group '${segment}' over an existing fetch command`)
   if (!isCommand(existing)) throw new Error(`Cannot create command group '${segment}' over an unknown entry`)
 
   return {
@@ -327,15 +325,6 @@ function registerDeclarativeAlias(commands: Map<string, any>, targetPath: string
 }
 
 function createRuntimeEntry(name: string, definition: CommandDefinition): RuntimeEntry {
-  if (definition.fetch && !definition.run) {
-    return {
-      _fetch: true,
-      basePath: definition.basePath,
-      contract: commandContractFromDefinition(name, definition),
-      fetch: definition.fetch,
-    } satisfies FetchEntry
-  }
-
   return {
     _command: true,
     contract: commandContractFromDefinition(name, definition),

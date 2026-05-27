@@ -331,7 +331,6 @@ export type CliHooks = {
   prepareContext: PrepareContextHook[];
 };
 
-export type FetchHandler = (request: Request) => Awaitable<Response>;
 export type Example =
   | string
   | {
@@ -426,11 +425,9 @@ export type CommandDefinition<
   alias?: Record<string, string> | undefined;
   aliases?: string[] | undefined;
   args?: A | undefined;
-  basePath?: string | undefined;
   description?: string | undefined;
   env?: E | undefined;
   examples?: Example[] | undefined;
-  fetch?: FetchHandler | undefined;
   format?: Format | undefined;
   formats?: Partial<Record<Format, OutputRenderer["render"]>> | undefined;
   hint?: string | undefined;
@@ -665,15 +662,8 @@ export type CommandEntry = {
   runtime: CommandRuntime;
 };
 
-export type FetchEntry = {
-  _fetch: true;
-  basePath?: string | undefined;
-  contract: CommandContract;
-  fetch: FetchHandler;
-};
-
 export type AliasEntry = { _alias: true; target: string };
-export type RuntimeEntry = CommandEntry | FetchEntry;
+export type RuntimeEntry = CommandEntry;
 export type Entry = RuntimeEntry | GroupEntry | AliasEntry;
 
 export type CliState = {
