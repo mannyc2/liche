@@ -12,6 +12,8 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+## 0.8.0 — 2026-05-27
+
 ### Fixed
 
 - **`@liche/telemetry`: `telemetry status` now resolves invocation and consent from the run-invocation env (`RunOptions.env` / `ctx.sources`) instead of merging ambient process env.** Previously, CI markers in `Bun.env`/`process.env` leaked through `telemetry status` output even when the caller supplied an explicit `env` map to `run(cli, argv, { env })`. Hosts that pass a hermetic env now see deterministic status results.

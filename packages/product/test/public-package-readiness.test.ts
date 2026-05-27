@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
-const PUBLIC_PACKAGE_VERSION = '0.7.0'
+const PUBLIC_PACKAGE_VERSION = '0.8.0'
 const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
