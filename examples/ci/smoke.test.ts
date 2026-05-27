@@ -54,15 +54,19 @@ describe('ci release example', () => {
   test('is a real handwritten CLI, not only a workflow snippet', async () => {
     const list = await runCli(['--config', configPath, 'deployments', 'list', '--json'])
     expect(list.exitCode).toBe(0)
-    expect(JSON.parse(list.stdout)).toEqual([
-      {
-        id: 'dep_123',
-        project: 'web',
-        environment: 'staging',
-        status: 'ready',
-        url: 'https://shipyard.example.com/deployments/dep_123',
-      },
-    ])
+    expect(JSON.parse(list.stdout)).toEqual({
+      ok: true,
+      data: [
+        {
+          id: 'dep_123',
+          project: 'web',
+          environment: 'staging',
+          status: 'ready',
+          url: 'https://shipyard.example.com/deployments/dep_123',
+        },
+      ],
+      error: null,
+    })
 
     const promote = await runCli([
       '--config',
@@ -76,9 +80,13 @@ describe('ci release example', () => {
     ])
     expect(promote.exitCode).toBe(0)
     expect(JSON.parse(promote.stdout)).toEqual({
-      deployment_id: 'dep_123',
-      environment: 'production',
-      url: 'https://shipyard.example.com/deployments/dep_123',
+      ok: true,
+      data: {
+        deployment_id: 'dep_123',
+        environment: 'production',
+        url: 'https://shipyard.example.com/deployments/dep_123',
+      },
+      error: null,
     })
 
     const manifest = await runCli(['--llms', '--json'])

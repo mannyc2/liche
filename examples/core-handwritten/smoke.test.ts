@@ -13,11 +13,15 @@ describe('core-handwritten example', () => {
     })
     expect(result.exitCode).toBe(0)
     expect(JSON.parse(result.stdout)).toEqual({
-      authenticated: true,
-      file: 'README.md',
-      profile: 'work',
-      requestId: 'example-request',
-      summary: 'full summary for README.md',
+      ok: true,
+      data: {
+        authenticated: true,
+        file: 'README.md',
+        profile: 'work',
+        requestId: 'example-request',
+        summary: 'full summary for README.md',
+      },
+      error: null,
     })
     expect(JSON.stringify(observedEvents)).not.toContain('tok_example')
     expect(observedEvents.map((event) => event.type)).toEqual([
@@ -38,7 +42,7 @@ describe('core-handwritten example', () => {
   test('parses boolean options', async () => {
     const result = await runCli(['echo', 'hello', '--shout', '--json'])
     expect(result.exitCode).toBe(0)
-    expect(JSON.parse(result.stdout)).toEqual({ message: 'HELLO' })
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true, data: { message: 'HELLO' }, error: null })
   })
 })
 
