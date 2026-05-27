@@ -206,6 +206,35 @@ describe('mcpMessage — surface enforcement', () => {
     expect(res.result.tools.map((t: any) => t.name)).toEqual(['upload'])
   })
 
+  test('tools/list excludes commands with CLI-only codec inside a wrapped object', async () => {
+    const cli = testCli('app', [
+      testCommand('upload', {
+        options: z.object({
+          outer: z.object({
+            file: arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'cli' }),
+          }).optional(),
+        }),
+        run: () => { throw new Error('handler should not run') },
+      }),
+      testCommand('ping', { run: () => ({ pong: true }) }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'tools/list'))
+    expect(res.result.tools.map((t: any) => t.name)).toEqual(['ping'])
+  })
+
+  test('tools/list excludes commands with CLI-only codec inside z.array()', async () => {
+    const cli = testCli('app', [
+      testCommand('batch', {
+        options: z.object({
+          files: z.array(arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'cli' })),
+        }),
+        run: () => { throw new Error('handler should not run') },
+      }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'tools/list'))
+    expect(res.result.tools).toEqual([])
+  })
+
   test('tools/call succeeds for extension:mcp codec', async () => {
     const cli = testCli('app', [
       testCommand('upload', {

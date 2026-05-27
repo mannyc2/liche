@@ -9,7 +9,7 @@ export { defaultHelpRenderer } from './help/render.js'
 export { arg } from './schema/arg.js'
 export { checkCommandSurface } from './schema/surface.js'
 export type { CommandSurface, SurfaceCheckResult } from './schema/surface.js'
-export type { StoredCodecSurface } from './schema/arg.js'
+export type { ArgDecodeContext, ArgIssue, StoredCodecSurface } from './schema/arg.js'
 export { z, parseSchema, parseSchemaAsync } from './schema/zod.js'
 export { ParseError, ValidationError } from './errors/error.js'
 

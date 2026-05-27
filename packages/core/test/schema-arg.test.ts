@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { arg, getRuntimeArgMeta } from '../src/schema/arg.js'
+import { arg, getRuntimeArgMeta, type ArgDecodeContext, type ArgIssue } from '../src/schema/arg.js'
 import { encodeDefault, isBooleanSchema, parseSchema, parseSchemaAsync, toJsonSchema, z } from '../src/schema/zod.js'
 import { ValidationError } from '../src/errors/error.js'
 
@@ -280,6 +280,34 @@ describe('arg.fromString', () => {
     expect(projected).not.toContain('codecKind')
     expect(projected).not.toContain('runtimeOnly')
     expect(projected).not.toContain('"surface"')
+  })
+
+  test('decode ctx is typed: pushing an ArgIssue + returning z.NEVER normalizes via ValidationError', async () => {
+    const codec = arg.fromString({
+      output: z.number(),
+      decode: (raw: string, ctx: ArgDecodeContext<string>): number => {
+        const n = Number(raw)
+        if (Number.isNaN(n)) {
+          const issue: ArgIssue = { code: 'custom', message: `not a number: ${raw}`, input: raw }
+          ctx.issues.push(issue)
+          return z.NEVER as unknown as number
+        }
+        return n
+      },
+    })
+
+    expect(await parseSchemaAsync(codec, '5')).toBe(5)
+
+    let caught: unknown
+    try {
+      await parseSchemaAsync(codec, 'banana')
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(ValidationError)
+    const field = (caught as ValidationError).fieldErrors[0]!
+    expect(field.message).toBe('not a number: banana')
+    expect(field.code).toBe('custom')
   })
 
   test('JSON Schema projection preserves input meta and reflects the input shape', () => {

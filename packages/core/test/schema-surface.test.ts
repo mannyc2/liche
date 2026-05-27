@@ -121,3 +121,130 @@ describe('checkCommandSurface', () => {
     expect(checkCommandSurface(entry, MCP)).toEqual({ ok: true })
   })
 })
+
+describe('checkCommandSurface — composite + wrapper recursion', () => {
+  test('object wrapped in .optional() is still inspected', () => {
+    const entry = commandEntry({
+      options: z.object({ outer: z.object({ file: cliOnlyCodec() }).optional() }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('object wrapped in .default() is still inspected', () => {
+    const entry = commandEntry({
+      options: z.object({ outer: z.object({ file: cliOnlyCodec() }).default({ file: 'x' }) }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('object wrapped in .nullable(), .catch(), .readonly() is still inspected', () => {
+    for (const wrap of [
+      (s: any) => s.nullable(),
+      (s: any) => s.catch({ file: 'x' }),
+      (s: any) => s.readonly(),
+    ]) {
+      const entry = commandEntry({
+        options: z.object({ outer: wrap(z.object({ file: cliOnlyCodec() })) }),
+      })
+      expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+    }
+  })
+
+  test('array element codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({ files: z.array(cliOnlyCodec()) }),
+    })
+    const result = checkCommandSurface(entry, FETCH)
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('expected fail')
+    expect(result.field).toBe('files[]')
+  })
+
+  test('tuple member codec is rejected with index in field path', () => {
+    const entry = commandEntry({
+      options: z.object({ pair: z.tuple([z.string(), cliOnlyCodec()]) }),
+    })
+    const result = checkCommandSurface(entry, FETCH)
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('expected fail')
+    expect(result.field).toBe('pair[1]')
+  })
+
+  test('tuple rest codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({ rest: z.tuple([z.string()], cliOnlyCodec()) }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('record value codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.record(z.string(), cliOnlyCodec()),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('set element codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({ files: z.set(cliOnlyCodec()) }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('map value codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({ files: z.map(z.string(), cliOnlyCodec()) }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('union containing codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({ x: z.union([z.string(), cliOnlyCodec()]) }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('discriminated union variant with codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.object({
+        shape: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('a'), file: cliOnlyCodec() }),
+          z.object({ kind: z.literal('b') }),
+        ]),
+      }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('intersection branch containing codec is rejected', () => {
+    const entry = commandEntry({
+      options: z.intersection(
+        z.object({ a: z.string() }),
+        z.object({ file: cliOnlyCodec() }),
+      ),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('deeply nested composite (object.optional > array > object) is inspected', () => {
+    const entry = commandEntry({
+      options: z.object({
+        batch: z.object({ files: z.array(z.object({ src: cliOnlyCodec() })) }).optional(),
+      }),
+    })
+    expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
+  })
+
+  test('composite without any codec still passes', () => {
+    const entry = commandEntry({
+      options: z.object({
+        files: z.array(z.string()).optional(),
+        meta: z.record(z.string(), z.number()),
+        shape: z.union([z.string(), z.number()]),
+      }),
+    })
+    expect(checkCommandSurface(entry, FETCH)).toEqual({ ok: true })
+    expect(checkCommandSurface(entry, MCP)).toEqual({ ok: true })
+  })
+})

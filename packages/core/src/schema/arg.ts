@@ -79,11 +79,34 @@ function boolean() {
   return schema.register(runtimeArgMeta, { codecKind: 'arg.boolean' })
 }
 
+/**
+ * Issue shape that can be appended to `ArgDecodeContext.issues` to surface a
+ * structured validation failure from an `arg.fromString` decoder. Append the
+ * issue and return `z.NEVER` to abort decoding; `parseSchemaAsync` then
+ * normalizes the result through `ValidationError`.
+ */
+export type ArgIssue = {
+  code?: string
+  message: string
+  path?: ReadonlyArray<string | number>
+  input?: unknown
+}
+
+/**
+ * Context passed to an `arg.fromString` decoder. `issues` is mutable: pushing
+ * an entry signals a validation failure. Arbitrary thrown errors from the
+ * decoder are operational failures, not normalized validation errors.
+ */
+export type ArgDecodeContext<I = unknown> = {
+  value: I
+  issues: ArgIssue[]
+}
+
 type FromStringOptions<I, O> = {
   input?: z.ZodType<I, any>
   output: z.ZodType<O, any>
   surface?: StoredCodecSurface
-  decode: (raw: I, payload: unknown) => O | Promise<O>
+  decode: (raw: I, ctx: ArgDecodeContext<I>) => O | Promise<O>
   encode?: (value: O) => I
 }
 
@@ -96,7 +119,7 @@ function fromString<I, O>(options: FromStringOptions<I, O>) {
   const encode = (options.encode ?? (throwingEncoder as (value: O) => I)) as (value: O) => I
   const surface: StoredCodecSurface = options.surface ?? 'cli'
   const schema = z.codec(inputSchema, options.output, {
-    decode: options.decode,
+    decode: options.decode as (raw: I, ctx: unknown) => O | Promise<O>,
     encode,
   })
   return schema.register(runtimeArgMeta, {

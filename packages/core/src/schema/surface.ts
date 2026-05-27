@@ -39,12 +39,21 @@ export function unsupportedSurfaceError(detail: {
   })
 }
 
+const WRAPPER_KINDS = new Set(['optional', 'default', 'nullable', 'catch', 'readonly'])
+
 function inspectSchema(schema: Schema | undefined, fieldPath: string, surface: CommandSurface): SurfaceCheckResult {
   if (!schema) return { ok: true }
 
   const meta = getRuntimeArgMeta(schema)
   if (meta && !surfaceAllows(meta.surface, surface)) {
     return { ok: false, field: fieldPath, codecKind: meta.codecKind, surface }
+  }
+
+  const def = (schema as any)?.def
+  const kind: string | undefined = def?.type
+
+  if (kind && WRAPPER_KINDS.has(kind) && def.innerType) {
+    return inspectSchema(def.innerType, fieldPath, surface)
   }
 
   if (isObjectSchema(schema)) {
@@ -54,6 +63,55 @@ function inspectSchema(schema: Schema | undefined, fieldPath: string, surface: C
       const result = inspectSchema(child, childPath, surface)
       if (!result.ok) return result
     }
+    return { ok: true }
+  }
+
+  if (kind === 'array' && def.element) {
+    return inspectSchema(def.element, `${fieldPath}[]`, surface)
+  }
+
+  if (kind === 'tuple' && Array.isArray(def.items)) {
+    for (let index = 0; index < def.items.length; index++) {
+      const result = inspectSchema(def.items[index], `${fieldPath}[${index}]`, surface)
+      if (!result.ok) return result
+    }
+    if (def.rest) {
+      const result = inspectSchema(def.rest, `${fieldPath}[]`, surface)
+      if (!result.ok) return result
+    }
+    return { ok: true }
+  }
+
+  if (kind === 'record' && def.valueType) {
+    return inspectSchema(def.valueType, `${fieldPath}{}`, surface)
+  }
+
+  if (kind === 'map' && def.valueType) {
+    return inspectSchema(def.valueType, `${fieldPath}{}`, surface)
+  }
+
+  if (kind === 'set' && def.valueType) {
+    return inspectSchema(def.valueType, `${fieldPath}[]`, surface)
+  }
+
+  if (kind === 'union' && Array.isArray(def.options)) {
+    for (let index = 0; index < def.options.length; index++) {
+      const result = inspectSchema(def.options[index], `${fieldPath}|${index}`, surface)
+      if (!result.ok) return result
+    }
+    return { ok: true }
+  }
+
+  if (kind === 'intersection') {
+    if (def.left) {
+      const result = inspectSchema(def.left, fieldPath, surface)
+      if (!result.ok) return result
+    }
+    if (def.right) {
+      const result = inspectSchema(def.right, fieldPath, surface)
+      if (!result.ok) return result
+    }
+    return { ok: true }
   }
 
   return { ok: true }

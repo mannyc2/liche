@@ -141,4 +141,40 @@ describe('cli.fetch UNSUPPORTED_SURFACE enforcement', () => {
     const body = await response.json() as any
     expect(body.error.code).toBe('UNSUPPORTED_SURFACE')
   })
+
+  test('CLI-only codec inside a .optional() wrapper rejects fetch', async () => {
+    const cli = testCli('app', [testCommand('upload', {
+      options: z.object({
+        outer: z.object({ file: cliOnlyCodec() }).optional(),
+      }),
+      run: () => expectHandlerNeverRuns(),
+    })])
+
+    const response = await cli.fetch(new Request('http://x/upload', {
+      method: 'POST',
+      body: JSON.stringify({ outer: { file: 'hi' } }),
+      headers: { 'content-type': 'application/json' },
+    }))
+    expect(response.status).toBe(400)
+    const body = await response.json() as any
+    expect(body.error.code).toBe('UNSUPPORTED_SURFACE')
+    expect(body.error.details.field).toBe('outer.file')
+  })
+
+  test('CLI-only codec inside z.array() rejects fetch', async () => {
+    const cli = testCli('app', [testCommand('upload', {
+      options: z.object({ files: z.array(cliOnlyCodec()) }),
+      run: () => expectHandlerNeverRuns(),
+    })])
+
+    const response = await cli.fetch(new Request('http://x/upload', {
+      method: 'POST',
+      body: JSON.stringify({ files: ['a', 'b'] }),
+      headers: { 'content-type': 'application/json' },
+    }))
+    expect(response.status).toBe(400)
+    const body = await response.json() as any
+    expect(body.error.code).toBe('UNSUPPORTED_SURFACE')
+    expect(body.error.details.field).toBe('files[]')
+  })
 })

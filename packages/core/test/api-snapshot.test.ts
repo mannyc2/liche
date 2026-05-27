@@ -4,6 +4,8 @@ import * as Api from '../src/index.js'
 // Type-only imports: tsc fails if any of these drop from the public index.
 // Keep this list in sync with the value snapshot below and with docs/api-boundary.md.
 import type {
+  ArgDecodeContext,
+  ArgIssue,
   Awaitable,
   BeforeExecuteHook,
   BuiltInFormat,
@@ -100,6 +102,8 @@ import type {
 } from '../src/index.js'
 
 export type _PublicTypeBag = [
+  ArgDecodeContext,
+  ArgIssue,
   Awaitable<unknown>,
   BeforeExecuteHook,
   BuiltInFormat,
