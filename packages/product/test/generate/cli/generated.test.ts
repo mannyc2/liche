@@ -410,8 +410,12 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(release.data.install.map((entry: { manager: string }) => entry.manager)).toEqual(['bun', 'npm'])
     expect(release.data.yankedVersions[0].version).toBe('0.9.0')
 
-    const savedCi = process.env.CI
-    delete process.env.CI
+    const ciKeys = ['CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'] as const
+    const savedCi: Record<string, string | undefined> = {}
+    for (const key of ciKeys) {
+      savedCi[key] = process.env[key]
+      delete process.env[key]
+    }
     try {
       const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
         env: {
@@ -426,7 +430,9 @@ describe('generated CLI — runtime parity with handwritten', () => {
         invocation: 'cli',
       })
     } finally {
-      if (savedCi !== undefined) process.env.CI = savedCi
+      for (const key of ciKeys) {
+        if (savedCi[key] !== undefined) process.env[key] = savedCi[key]
+      }
     }
   })
 
