@@ -183,7 +183,7 @@ One auth provider per product. Auth is declared at the product level, not per ca
 
 ## Core runtime API
 
-Core (`@liche/core`) exposes the redaction/transport primitives — `SecretString`, `TokenSourceSpec`, `AuthProviderRuntime`, `AuthCredential`, etc. The auth runtime itself — `resolveAuth`, `resolveContext`, session stores, OAuth device flows, and the `InvocationKind` discriminator that gates interactive auth flows — lives in `@liche/auth`, the only consumer that actually branches on those values. Generated code may wrap either in product-specific helpers, but does not import private core subpaths.
+Core (`@liche/core`) exposes the redaction/transport primitives — `SecretString`, `TokenSourceSpec`, `AuthProviderRuntime`, `AuthCredential`, etc. The auth runtime itself — `resolveAuth`, `resolveContext`, session stores, OAuth device flows, and the `InvocationKind` discriminator that gates interactive auth flows — lives in `@liche/auth`. `@liche/telemetry` carries an equivalent local `Invocation` policy for telemetry consent and `telemetry status` so it can detect surface without depending on `@liche/auth`; the two implementations duplicate the small `cli|ci|agent|mcp` rule deliberately. Generated code may wrap either runtime in product-specific helpers, but does not import private core subpaths.
 
 ```ts
 export type SecretString = {
@@ -520,7 +520,7 @@ const credential = await resolveAuth({
   required: true,
   requiredScopes: ["deployments.write"],
   profile: ctx.global.profile,
-  invocation: ctx.invocation,
+  invocation: detectInvocation(ctx),
   nonInteractive: ctx.global.nonInteractive,
   env: ctx.env,
   sessionStore,

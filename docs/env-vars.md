@@ -103,7 +103,7 @@ Credential resolution order and generated flags are defined in `docs/auth-sessio
 
 ## Telemetry env vars
 
-`@liche/telemetry` is **opt-in by default** — no events fire until consent is set. Seven env vars govern resolution; a kill at any level wins, an enable at any level requires no higher-level disable. Generated from `packages/extensions/telemetry/src/internal/consent.ts`.
+`@liche/telemetry` is **opt-in by default** — no events fire until consent is set. The env vars below govern consent resolution and invocation detection; consent resolution is generated from `packages/extensions/telemetry/src/internal/consent.ts`, invocation detection lives in `packages/extensions/telemetry/src/index.ts`.
 
 | Name | Purpose | Required | Values |
 |---|---|---|---|
@@ -112,10 +112,11 @@ Credential resolution order and generated flags are defined in `docs/auth-sessio
 | `DO_NOT_TRACK` | Universal opt-out (consoledonottrack.com) | no | non-empty and not `0` → kills, overrides per-CLI enable |
 | `LICHE_TELEMETRY_CLI` | Per-invocation override for `cli` | no | same vocabulary |
 | `LICHE_TELEMETRY_CI` | Per-invocation override for `ci` (default off) | no | same vocabulary |
-| `LICHE_TELEMETRY_AGENT` | Per-invocation override for `agent` (default off; catches `cli.fetch()`) | no | same vocabulary |
-| `LICHE_TELEMETRY_MCP` | Per-invocation override for `mcp` (default off) | no | same vocabulary |
+| `LICHE_TELEMETRY_AGENT` | Per-invocation override for `agent` (default off; only applies when the wrapping lane declares `LICHE_INVOCATION=agent`) | no | same vocabulary |
+| `LICHE_TELEMETRY_MCP` | Per-invocation override for `mcp` (default off; only applies when the wrapping lane declares `LICHE_INVOCATION=mcp`) | no | same vocabulary |
 | `LICHE_TELEMETRY_DEBUG` | When `stderr`, installs a console sink alongside any configured sinks (prints redacted wire events without sending) | no | `stderr` enables; other values ignored |
+| `LICHE_INVOCATION` | Declare the invocation surface explicitly. Wins over CI-marker fallback. Required for `agent`/`mcp` — there is no auto-detection for those surfaces; the wrapping host (MCP server, agent runner, in-process `cli.fetch()` caller) must set this on the env it passes in | no | `cli`, `ci`, `agent`, `mcp` — any other value falls back to CI-marker detection |
 
-Precedence (top wins): `DO_NOT_TRACK` → `LICHE_TELEMETRY` → `${CLI}_TELEMETRY` → `LICHE_TELEMETRY_<INVOCATION>`. Any value outside the documented vocabulary is treated as "unset" → disabled.
+Precedence for consent (top wins): `DO_NOT_TRACK` → `LICHE_TELEMETRY` → `${CLI}_TELEMETRY` → `LICHE_TELEMETRY_<INVOCATION>`. Any value outside the documented vocabulary is treated as "unset" → disabled. `LICHE_INVOCATION` is upstream of consent: it selects which `LICHE_TELEMETRY_<INV>` switch applies and which invocation is reported by `telemetry status`. `telemetry status` reads invocation from `RunOptions.env`/`ctx.sources`; the lifecycle event dispatcher reads it from `TelemetryOptions.env` (the env source configured at extension-install time).
 
 Telemetry env vars do not participate in `input.sources` or schema-declared `env` — they are read by the extension itself. They are **not** redacted in command output because they are not secrets; the redaction policy applies to event payloads, not to the consent signal.

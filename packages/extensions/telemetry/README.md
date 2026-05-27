@@ -43,7 +43,17 @@ Value vocabulary: `1|true|yes|on` enables, `0|false|off|no|''` disables. Anythin
 
 ### Invocation defaults
 
-Even with consent set, only `invocation: 'cli'` is enabled by default. CI runners, in-process `cli.fetch()` calls (`invocation: 'agent'`), and MCP server invocations are **disabled** unless explicitly opted in via `LICHE_TELEMETRY_<INV>=1` or `telemetry({ invocations: [...] })`. This caps the volume amplification problem LLM agent loops produce.
+Even with consent set, only `invocation: 'cli'` is enabled by default. CI runners are detected automatically via CI env markers and require `LICHE_TELEMETRY_CI=1` or `telemetry({ invocations: [...] })` to opt in. Agent and MCP surfaces are **not** auto-detected: the wrapping lane (e.g. the host running `cli.fetch()`, the MCP server) must explicitly declare itself by setting `LICHE_INVOCATION=agent` or `LICHE_INVOCATION=mcp` on the run env so consent gating applies. Without that declaration, an in-process `cli.fetch()` call resolves as `'cli'` and emits under whatever CLI-level consent is set. The combined effect — declared surface plus the per-invocation switch — is what caps the volume amplification problem LLM agent loops produce.
+
+#### Detecting invocation
+
+`telemetry` derives the current invocation from env, in this order:
+
+1. `LICHE_INVOCATION=cli|ci|agent|mcp` — a declared invocation wins. Set this when wrapping a CLI as an MCP tool, calling it from an agent loop, or stubbing CI for tests.
+2. Standard CI markers (`CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, `CIRCLECI`, `BUILDKITE`, `TF_BUILD`) → `'ci'`.
+3. Otherwise → `'cli'`.
+
+`'agent'` and `'mcp'` are **not** derivable from env alone — the wrapping host must set `LICHE_INVOCATION` so telemetry can gate consent for those surfaces correctly. The `telemetry status` subcommand reads invocation through the run-invocation env (`ctx.sources`), so `run(cli, argv, { env })` is the source of truth and ambient `process.env` does not leak in.
 
 ### Subcommands
 
@@ -98,7 +108,7 @@ Useful in tests.
 
 `command.started`, `command.completed`, `command.failed`, `validation.failed`, `parse.failed`, `command.not_found`, `hook.failed`. Switch to `'all-commands'`, `'errors-only'`, `'all'`, or a custom `CliEventType[]` via `telemetry({ events })`.
 
-**Fields collected per event** (after redaction): `type`, `occurredAt`, `cli.{name, version}`, `invocation`, `agent`, `format`, `formatExplicit`, `command.{id, path}`, `surface.{kind, name}`, `durationMs`, `exitCode`, `result`, `error.{code, exitCode, fieldErrorCount, retryable, status}`, `completion.{shell, suggestionCount}`, `mcp.{method, toolCount}`, plus the telemetry envelope: `telemetry.{schemaVersion, sessionId, runId, sdk.{name, version}, runtime.{name, version, platform, arch}}`.
+**Fields collected per event** (after redaction): `type`, `occurredAt`, `cli.{name, version}`, `format`, `formatExplicit`, `isTty`, `command.{id, path}`, `surface.{kind, name}`, `durationMs`, `exitCode`, `result`, `error.{code, exitCode, fieldErrorCount, retryable, status}`, `completion.{shell, suggestionCount}`, optional `attributes` (extension-provided metadata bag), plus the telemetry envelope: `telemetry.{schemaVersion, sessionId, runId, sdk.{name, version}, runtime.{name, version, platform, arch}}`. Wire events do not carry an `invocation` field — invocation is used internally for consent gating but is not exported per-event.
 
 **Not collected**: anonymous machine ID, user names, file paths beyond what core puts on the event, command-line argument values, secret-shaped fields (see Redaction).
 

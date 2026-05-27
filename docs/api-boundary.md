@@ -51,7 +51,7 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 
 `SecretString` remains a core redaction primitive because outbound transports and extensions both need a value that cannot accidentally reveal itself. Auth workflow types such as `AuthProviderRuntime`, `AuthCredential`, `ContextRuntime`, `TokenSourceSpec`, `AuthCommandRuntime`, `AuthIdentityProbeInput`, `EnvTokenSourceSpec`, `SessionTokenSourceSpec`, `OAuthDeviceRuntime`, and `IdentityRuntime` live in `@liche/auth`.
 
-`InvocationKind` (the `'cli' | 'ci' | 'agent' | 'mcp'` discriminator) was moved out of core. It now lives in `@liche/auth` because auth is the only consumer that actually branches on the value.
+`InvocationKind` (the `'cli' | 'ci' | 'agent' | 'mcp'` discriminator) was moved out of core. The auth-specific type and its `detectInvocation(ctx)` helper live in `@liche/auth`. `@liche/telemetry` independently implements the same `cli|ci|agent|mcp` policy for consent gating and `telemetry status` — it does not import from `@liche/auth`, and the duplication is intentional so neither extension carries a hidden dependency on the other. If a third in-tree consumer appears, promote the helper to a neutral layer (e.g. `@liche/core`) rather than chaining extension-to-extension imports.
 
 Workflow helpers (`resolveAuth`, `resolveContext`, `applyAuth`, `credentialHttpAuth`, `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`) live in `@liche/auth`, not core. Command-level auth metadata is a Product/adapter concern, not a core `CommandContract` field.
 

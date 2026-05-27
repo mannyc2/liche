@@ -210,28 +210,17 @@ describe('product-workers example', () => {
     expect(JSON.parse(release.stdout).data.yankedVersions[0].version).toBe('0.1.0')
 
     const telemetryFile = join(outDir, 'telemetry.jsonl')
-    const ciKeys = ['CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'] as const
-    const savedCi: Record<string, string | undefined> = {}
-    for (const key of ciKeys) {
-      savedCi[key] = process.env[key]
-      delete process.env[key]
-    }
-    try {
-      const telemetryStatus = await runGenerated(cli, ['telemetry', 'status', '--json'], {
-        WORKERS_TELEMETRY: '1',
-        WORKERS_TELEMETRY_FILE: telemetryFile,
-      })
-      expect(JSON.parse(telemetryStatus.stdout).data).toMatchObject({
-        enabled: true,
-        reason: 'cli-enabled',
-        source: 'WORKERS_TELEMETRY',
-        invocation: 'cli',
-      })
-    } finally {
-      for (const key of ciKeys) {
-        if (savedCi[key] !== undefined) process.env[key] = savedCi[key]
-      }
-    }
+    const telemetryStatus = await runGenerated(cli, ['telemetry', 'status', '--json'], {
+      LICHE_INVOCATION: 'cli',
+      WORKERS_TELEMETRY: '1',
+      WORKERS_TELEMETRY_FILE: telemetryFile,
+    })
+    expect(JSON.parse(telemetryStatus.stdout).data).toMatchObject({
+      enabled: true,
+      reason: 'cli-enabled',
+      source: 'WORKERS_TELEMETRY',
+      invocation: 'cli',
+    })
 
     const savedTelemetry = {
       LICHE_TELEMETRY_CI: process.env.LICHE_TELEMETRY_CI,

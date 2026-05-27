@@ -12,6 +12,11 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+### Fixed
+
+- **`@liche/telemetry`: `telemetry status` now resolves invocation and consent from the run-invocation env (`RunOptions.env` / `ctx.sources`) instead of merging ambient process env.** Previously, CI markers in `Bun.env`/`process.env` leaked through `telemetry status` output even when the caller supplied an explicit `env` map to `run(cli, argv, { env })`. Hosts that pass a hermetic env now see deterministic status results.
+- **`@liche/telemetry`: invocation detector honors `LICHE_INVOCATION=cli|ci|agent|mcp`.** A declared invocation value wins over CI-marker fallback, matching `@liche/auth`'s detection policy. `telemetry status` reads it from the run-invocation env (`RunOptions.env`); the lifecycle event subscriber reads it from `TelemetryOptions.env` (the env source configured at extension-install time), so a host that wants `agent`/`mcp` event gating must set `LICHE_INVOCATION` on whichever env source the surface uses. Lifecycle subscribers honoring per-run `RunOptions.env` remains a deferred follow-up. CI-marker fallback is unchanged.
+
 ### Changed (breaking)
 
 - **`@liche/core`: machine formats always emit the full `Result` envelope.** `--json`, `--format json`, `--format jsonl`, and `--format yaml` now return `{ ok, data, error, meta? }` for every CLI — handwritten and generated. Bare `data` under `--json` is gone. Domain renderers (`md`, `csv`, custom `commandFormatRenderers` and extension renderers) continue to receive bare `data`/`error`. `--filter-output` against a machine format rewrites the envelope's `data` field and preserves `ok`/`error`/`meta`; against a domain format it filters bare data. Streaming under `--format jsonl` now writes one `{ type: 'chunk', data }` line per yield **plus a trailing envelope line**, matching `cli.fetch()` NDJSON.

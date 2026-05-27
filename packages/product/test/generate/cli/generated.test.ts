@@ -410,30 +410,19 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(release.data.install.map((entry: { manager: string }) => entry.manager)).toEqual(['bun', 'npm'])
     expect(release.data.yankedVersions[0].version).toBe('0.9.0')
 
-    const ciKeys = ['CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'] as const
-    const savedCi: Record<string, string | undefined> = {}
-    for (const key of ciKeys) {
-      savedCi[key] = process.env[key]
-      delete process.env[key]
-    }
-    try {
-      const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
-        env: {
-          WORKERS_TELEMETRY: '1',
-          WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
-        },
-      })).stdout)
-      expect(telemetryStatus.data).toMatchObject({
-        enabled: true,
-        reason: 'cli-enabled',
-        source: 'WORKERS_TELEMETRY',
-        invocation: 'cli',
-      })
-    } finally {
-      for (const key of ciKeys) {
-        if (savedCi[key] !== undefined) process.env[key] = savedCi[key]
-      }
-    }
+    const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
+      env: {
+        LICHE_INVOCATION: 'cli',
+        WORKERS_TELEMETRY: '1',
+        WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
+      },
+    })).stdout)
+    expect(telemetryStatus.data).toMatchObject({
+      enabled: true,
+      reason: 'cli-enabled',
+      source: 'WORKERS_TELEMETRY',
+      invocation: 'cli',
+    })
   })
 
   test('generated telemetry sink is opt-in and writes local JSONL when enabled', async () => {

@@ -1,5 +1,5 @@
 import { defineCommand, defineExtension, z } from '@liche/core'
-import type { CliEvent, CliEventSubscriber, CliEventType, CliExtension } from '@liche/core'
+import type { CliEvent, CliEventSubscriber, CliEventType, CliExtension, SourceInspector } from '@liche/core'
 import { createRedactionPolicy, type StringRule } from './internal/redact.js'
 import { createValidator, type WireEvent } from './internal/schema.js'
 import { resolveConsent, type Invocation } from './internal/consent.js'
@@ -91,14 +91,24 @@ function readEnv(options: TelemetryOptions): TelemetryEnv {
   return (typeof Bun !== 'undefined' ? Bun.env : process.env) as TelemetryEnv
 }
 
+const CI_ENV_KEYS = ['CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'] as const
+
+function isTruthyEnv(v: unknown): boolean {
+  return typeof v === 'string' && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
+}
+
+function detectInvocationFrom(read: (key: string) => unknown): Invocation {
+  const declared = read('LICHE_INVOCATION')
+  if (declared === 'cli' || declared === 'ci' || declared === 'agent' || declared === 'mcp') return declared
+  return CI_ENV_KEYS.some((key) => isTruthyEnv(read(key))) ? 'ci' : 'cli'
+}
+
 function detectInvocation(env: TelemetryEnv): Invocation {
-  const value = env['CI']
-  if (value !== undefined && value !== '' && value !== '0' && value.toLowerCase() !== 'false') return 'ci'
-  if (['GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'].some((key) => {
-    const v = env[key]
-    return v !== undefined && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
-  })) return 'ci'
-  return 'cli'
+  return detectInvocationFrom((key) => env[key])
+}
+
+function detectInvocationFromSources(sources: SourceInspector): Invocation {
+  return detectInvocationFrom((key) => sources.value('env', key))
 }
 
 export function telemetry(options: TelemetryOptions = {}): CliExtension {
@@ -191,7 +201,7 @@ export function telemetry(options: TelemetryOptions = {}): CliExtension {
   return defineExtension({
     id: 'liche.telemetry',
     events: [{ target: '*', subscriber: dispatcher }],
-    commands: buildSubcommands(options, currentEnv),
+    commands: buildSubcommands(options),
   })
 }
 
@@ -201,7 +211,7 @@ const inspectArgs = z.object({})
 const enableDisableArgs = z.object({})
 const passthroughEnv = z.record(z.string(), z.string().optional())
 
-function buildSubcommands(options: TelemetryOptions, currentEnv: () => TelemetryEnv) {
+function buildSubcommands(options: TelemetryOptions) {
   return [
     defineCommand({
       description: 'Show resolved telemetry state for the current environment',
@@ -214,10 +224,9 @@ function buildSubcommands(options: TelemetryOptions, currentEnv: () => Telemetry
         invocation: z.string(),
       }),
       run: ({ ctx, input }) => {
-        const runtimeEnv = { ...currentEnv(), ...(input.env as TelemetryEnv) }
-        const invocation = detectInvocation(runtimeEnv)
+        const invocation = detectInvocationFromSources(ctx.sources)
         const consent = resolveConsent({
-          env: runtimeEnv,
+          env: input.env as TelemetryEnv,
           cliName: ctx.name,
           invocation,
           ...(options.enabledEnvVar !== undefined && { enabledEnvVar: options.enabledEnvVar }),
