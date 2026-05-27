@@ -1,6 +1,6 @@
 {
   "name": "@liche/extensions",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "license": "MIT",
   "description": "Official optional extensions for Liche CLIs.",
@@ -32,17 +32,17 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/agents": "^0.6.0",
-    "@liche/auth": "^0.6.0",
-    "@liche/completions": "^0.6.0",
-    "@liche/config": "^0.6.0",
-    "@liche/core": "^0.6.0",
-    "@liche/mcp-installer": "^0.6.0",
-    "@liche/mcp-server": "^0.6.0",
-    "@liche/skills-installer": "^0.6.0",
-    "@liche/skills-runtime": "^0.6.0",
-    "@liche/telemetry": "^0.6.0",
-    "@liche/tokens": "^0.6.0"
+    "@liche/agents": "^0.7.0",
+    "@liche/auth": "^0.7.0",
+    "@liche/completions": "^0.7.0",
+    "@liche/config": "^0.7.0",
+    "@liche/core": "^0.7.0",
+    "@liche/mcp-installer": "^0.7.0",
+    "@liche/mcp-server": "^0.7.0",
+    "@liche/skills-installer": "^0.7.0",
+    "@liche/skills-runtime": "^0.7.0",
+    "@liche/telemetry": "^0.7.0",
+    "@liche/tokens": "^0.7.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

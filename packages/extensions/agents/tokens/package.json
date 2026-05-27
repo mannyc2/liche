@@ -1,6 +1,6 @@
 {
   "name": "@liche/tokens",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "license": "MIT",
   "description": "Opt-in token-aware output controls (--token-count, --token-limit, --token-offset) for Liche CLIs.",
@@ -27,7 +27,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.6.0",
+    "@liche/core": "^0.7.0",
     "tokenx": "^1.3.0"
   },
   "devDependencies": {

@@ -12,6 +12,68 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+## 0.7.0 — 2026-05-27
+
+### Added
+
+- **`@liche/core`: `arg.*` namespace for strict CLI argument codecs.** `arg.number`, `arg.int`, `arg.positiveInt`, `arg.port`, and `arg.boolean` are Zod codec factories that replace broad `z.coerce.*` at the CLI/env/fetch string boundary. ASCII decimal grammar only (no leading `+`, no leading zeroes, no exponent notation, no `Infinity`/`NaN`, no whitespace); `arg.boolean` accepts only `"true"`/`"false"`/`"1"`/`"0"` plus JSON booleans. JSON Schema projection inherits range/integer constraints on both string-regex and number branches so `--schema`, command manifests, and extension tool schemas describe the boundary input shape with the same constraints the runtime enforces.
+
+  ```ts
+  defineCommand({ args: { port: arg.port(), retries: arg.int().min(0) } })
+  ```
+
+- **`@liche/core`: `arg.fromString({ input?, output, surface?, decode, encode? })`.** Declare CLI-shaped string inputs that decode into custom runtime values (URL, `ReadableStream`, parsed file contents). Optional `surface: 'cli' | 'fetch' | 'all' | { kind: 'extension', transport }` records the transports on which the codec is callable. The decode `ctx` is now properly typed (`ArgDecodeContext<I>`); decoders can `ctx.issues.push(...)` and `return z.NEVER` without casts and the issue flows through `ValidationError`.
+
+- **`@liche/core`: `checkCommandSurface(entry, surface)` predicate.** Public surface-aware adapter API. Returns `{ ok: false, field, codecKind, surface }` on the first rejection so transports can refuse to invoke a command whose runtime codec is not callable on that surface. `cli.fetch` short-circuits to HTTP 400 + `UNSUPPORTED_SURFACE` (both JSON and streaming paths) before the handler runs; `@liche/mcp-server` filters `tools/list` and short-circuits `tools/call` with JSON-RPC `-32602` + `data.code = 'UNSUPPORTED_SURFACE'` carrying `codecKind`/`field`/`surface`. New public types: `CommandSurface`, `StoredCodecSurface`, `SurfaceCheckResult`, `ArgDecodeContext<I>`, `ArgIssue`.
+
+- **`@liche/core`: `parseInvocation` parse-only public API.** Validates argv against a CLI's contracts and returns a structured result (selected command, parsed input, ctx patch) *without* executing the handler. Use it to dry-run, route, or pre-validate before deciding to dispatch.
+
+- **`@liche/core`: async schema parsing for command input and output.** Command-input and output schemas may be async (e.g. `z.string().refine(async (v) => …)`). `parseArgsAsync`/`parseSchemaAsync` await refinements end-to-end through argv parsing, env resolution, HTTP operation transport, and the parse-invocation API.
+
+- **`@liche/core`: source-aware validation surfaces.** Validation errors now carry field provenance (CLI flag, env var, body field) so renderers can point users at where a value actually came from rather than guessing.
+
+### Changed
+
+- **`@liche/core`: `cli.serve` is now `cli.run`** (terminal entrypoint renamed; `src/cli/serve.ts` → `src/cli/terminal.ts`). Top-level `run(cli, argv?, options?)` is published as the effectful CLI entrypoint. Update call sites:
+
+  ```diff
+  - import { serve } from "@liche/core";
+  - await serve(cli, Bun.argv.slice(2));
+  + import { run } from "@liche/core";
+  + await run(cli, Bun.argv.slice(2));
+  ```
+
+- **`@liche/core`: safety and auth primitives moved out of core.** Auth errors, resolve helpers, and types now live in `@liche/auth`. Imports must move:
+
+  ```diff
+  - import { AuthError, resolveAuth, type AuthSession } from "@liche/core";
+  + import { AuthError, resolveAuth, type AuthSession } from "@liche/auth";
+  ```
+
+- **`@liche/core`: `CommandContract.agent` replaced by flat `interactive?: boolean`.** Polarity flips: `agent: false` → `interactive: true`. MCP/skills-runtime filters become `!command.interactive`. Setup/management commands previously marked `agent: false` for hide-from-MCP reasons (telemetry status, config doctor, completions, mcp install, skills add/list) are unmarked and become MCP-visible. Product generator no longer emits `interactive: true` for workflow capabilities.
+
+- **`@liche/core`: `InvocationKind` removed from core.** `RunContext.invocation`, `CliEvent.invocation`, and `ExecuteInput.invocation` are gone. `@liche/auth` keeps a local `InvocationKind` plus a `detectInvocation` helper that reads CI from env via `ctx.sources` and honors `LICHE_INVOCATION` for MCP/agent surfaces.
+
+- **`@liche/core`: `CliEvent.mcp` and `CliEventSurface.kind 'mcp'` removed.** Added `CliEvent.attributes` as a generic extension-metadata bag. `CliEventType` is now open (`(string & {})`) so extensions can publish their own event names.
+
+- **`@liche/core`: synthesized `machine` boolean removed from `RunContext`/`CliEvent`.** No caller read it; every site was a write. Lifecycle carries `isTty` instead — derive machine-output mode from `!isTty || formatExplicit`.
+
+- **`@liche/core`: `OutputPolicy 'agent-only'` renamed to `'machine-only'`.**
+
+- **`@liche/agents`: agents extension now owns MCP/skills command visibility policy.** Product-generated CLIs no longer emit annotations Core never read; visibility decisions live in `@liche/mcp-server` and `@liche/skills-runtime`.
+
+- **`@liche/extensions`: agent helpers regrouped under `extensions/agents/`.** Internal repo layout; no public import path changes for already-published packages.
+
+### Removed
+
+- **`@liche/core`: legacy curl-style fetch command mode.** `defineCommand({ fetch, basePath })` and the `FetchEntry` runtime variant are gone, along with the internal `callFetch`/`parseCurl` curl-argv parser and the exported `FetchHandler` type. Commands that exposed a `(request: Request) => Response` handler invoked via `-X POST -H ... -d ...` argv are replaced by the regular typed-command surface — define `args`/`input` schemas and let the HTTP operation transport (`cli.fetch`) handle Request/Response shaping. The `FetchRoute`/`FetchRouteInput` HTTP-operation API is unaffected.
+
+### Fixed
+
+- **`@liche/core`: surface walker now recurses through wrappers and composites.** `checkCommandSurface` previously inspected only direct codec metadata and `ZodObject` shapes — a CLI-only codec inside `.optional()`/`.default()`/`.nullable()`/`.catch()`/`.readonly()` on an object, or inside `z.array`/`z.tuple`/`z.record`/`z.map`/`z.set`/`z.union`/`z.discriminatedUnion`/`z.intersection`, returned `{ ok: true }` so `cli.fetch` executed the handler and MCP listed/called the command. The walker now unwraps wrappers before the composite check, recurses into every composite shape (including `z.lazy`, `z.pipe`, `z.promise`, record keys, object `catchall`), tracks visited nodes to handle cycles, and builds a structural field path (`[]` arrays/sets, `[i]` tuple positions, `{}` record/map values, `|i` union alternatives, dot-joined object fields).
+
+- **`@liche/core`: `arg.fromString` decoder `ctx` is now typed.** Previously `unknown`, requiring a cast to access `ctx.issues`. New public types `ArgDecodeContext<I>` and `ArgIssue` are locked in the API snapshot.
+
 ## 0.6.0 — 2026-05-26
 
 ### Added

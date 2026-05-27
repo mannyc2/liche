@@ -1,6 +1,6 @@
 {
   "name": "@liche/releases",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "license": "MIT",
   "description": "Release manifests, package renderers, and publisher planning for Liche CLIs.",
@@ -83,8 +83,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@liche/core": "^0.6.0",
-    "@liche/extensions": "^0.6.0",
+    "@liche/core": "^0.7.0",
+    "@liche/extensions": "^0.7.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
