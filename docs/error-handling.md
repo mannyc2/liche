@@ -109,6 +109,18 @@ Arbitrary `{ ok, data, error }` objects are not control results. Factory-created
 - Any non-human failure emits the full envelope so agents and scripts can always read `error`.
 - Human failures may render a concise stderr line, but the underlying result is still a `CommandError`.
 
+## Surface policy
+
+`arg.fromString({ surface })` declares which dispatch transports may invoke a runtime codec. The default `'cli'` makes a codec callable from `cli.serve`/`dispatch` only; opting into `'all'`, `'fetch'`, or `{ kind: 'extension', transport: '<name>' }` widens it.
+
+Adapters call `checkCommandSurface(entry, surface)` before invoking a command. On mismatch:
+
+- `cli.fetch()` returns HTTP 400 with `{ ok: false, error: { code: 'UNSUPPORTED_SURFACE', details: { codecKind, field, surface } } }`. The handler does not run.
+- `@liche/mcp-server` filters `tools/list` to exclude commands containing CLI-only codecs, and short-circuits `tools/call` with JSON-RPC `error.code = -32602` plus `error.data.code = 'UNSUPPORTED_SURFACE'`.
+- `dispatch()` is the programmatic execution lane and is not gated; the adapter calling `dispatch` owns its own surface policy.
+
+The `UNSUPPORTED_SURFACE` `CommandError` carries `details.codecKind` (which `arg.*` factory produced the codec), `details.field` (the offending input path, `'$'` for bare positional), and `details.surface` (the request surface that failed). Use it to surface actionable diagnostics ("this command requires running the CLI binary, not the HTTP endpoint").
+
 ## MCP policy
 
 MCP has its own JSON-RPC envelope. The full CLI `Result` is not nested into MCP content by default:

@@ -6,6 +6,7 @@ import * as Core from '@liche/core'
 // imports) so generated code in @liche/product can only depend on the approved API.
 const FROZEN_PUBLIC_VALUES = [
   'arg',
+  'checkCommandSurface',
   'collectCommandContracts',
   'commandError',
   'createLifecycleEvent',

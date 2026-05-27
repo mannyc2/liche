@@ -1,5 +1,6 @@
 import type { CliEvent, CliEventError, CliEventSubscription, CliState, CommandError, Dict, Result } from '@liche/core'
 import {
+  checkCommandSurface,
   collectCommandContracts,
   createLifecycleEvent,
   emitLifecycleEvent,
@@ -11,6 +12,8 @@ import {
 } from '@liche/core'
 import { jsonSchema, mcpAnnotations, objectSchema } from './annotations.js'
 import { isRecord, jsonRpcError, validateJsonRpc } from './json-rpc.js'
+
+const MCP_SURFACE = { kind: 'extension', transport: 'mcp' } as const
 
 export const MCP_PROTOCOL_VERSION = '2025-11-25'
 
@@ -46,20 +49,25 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
   }
 
   if (message?.method === 'tools/list') {
-    const tools = mcpCommandContracts(state, policy).map((command: any) => ({
-      description: command.description,
-      inputSchema: {
-        additionalProperties: false,
-        properties: {
-          args: objectSchema(command.schema?.args),
-          options: objectSchema(command.schema?.options),
+    const tools = mcpCommandContracts(state, policy)
+      .filter((command: any) => {
+        const entry = selectCommand(state, commandNameToPath(command.name))?.entry
+        return checkCommandSurface(entry, MCP_SURFACE).ok
+      })
+      .map((command: any) => ({
+        description: command.description,
+        inputSchema: {
+          additionalProperties: false,
+          properties: {
+            args: objectSchema(command.schema?.args),
+            options: objectSchema(command.schema?.options),
+          },
+          type: 'object',
         },
-        type: 'object',
-      },
-      name: mcpToolName(command.name),
-      ...(jsonSchema(command.schema?.output) ? { outputSchema: jsonSchema(command.schema?.output) } : undefined),
-      annotations: mcpAnnotations(command),
-    }))
+        name: mcpToolName(command.name),
+        ...(jsonSchema(command.schema?.output) ? { outputSchema: jsonSchema(command.schema?.output) } : undefined),
+        annotations: mcpAnnotations(command),
+      }))
     await emitMcpLifecycle(binaryName, state, state.events, {
       isTty: false,
       format: 'json',
@@ -86,11 +94,37 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
     }
     const { name: toolName, arguments: input = {} } = message.params
     const canonical = mcpCommandContracts(state, policy).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
-    const path = !canonical || canonical === '(root)' ? [] : canonical.split(' ')
+    const path = canonical ? commandNameToPath(canonical) : []
     const selected = canonical ? selectCommand(state, path) : undefined
     const selectedToolName = selected?.path.length ? mcpToolName(selected.path.join(' ')) : '(root)'
     const subscriptions = selected ? state.events.concat(selected.events) : state.events
     const command = selected && selectedToolName === toolName ? eventCommand(selected) : undefined
+    const surfaceCheck = selected ? checkCommandSurface(selected.entry, MCP_SURFACE) : { ok: true as const }
+    if (selected && !surfaceCheck.ok) {
+      await emitMcpLifecycle(binaryName, state, subscriptions, {
+        isTty: false,
+        ...(command ? { command } : undefined),
+        durationMs: 0,
+        error: {
+          code: 'UNSUPPORTED_SURFACE',
+          codecKind: surfaceCheck.codecKind,
+          field: surfaceCheck.field,
+        } as unknown as CliEventError,
+        exitCode: 1,
+        result: 'user_error',
+        format: 'json',
+        formatExplicit: true,
+        attributes: { mcpMethod: 'tools/call' },
+        surface: { kind: 'command' },
+        type: 'mcp.tool_call.failed',
+      })
+      return jsonRpcError(id, -32602, 'Unsupported surface', {
+        code: 'UNSUPPORTED_SURFACE',
+        codecKind: surfaceCheck.codecKind,
+        field: surfaceCheck.field,
+        surface: surfaceCheck.surface,
+      })
+    }
     const startedAt = Date.now()
     if (command) {
       await emitMcpLifecycle(binaryName, state, subscriptions, {
@@ -150,6 +184,10 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
 
 function mcpCommandContracts(state: CliState, policy: McpToolPolicy) {
   return collectCommandContracts(state.commands, state.root).filter((command) => isToolVisible(command, policy))
+}
+
+function commandNameToPath(name: string): string[] {
+  return !name || name === '(root)' ? [] : name.split(' ')
 }
 
 function isToolVisible(command: { interactive?: boolean | undefined; name: string }, policy: McpToolPolicy): boolean {

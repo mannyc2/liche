@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { z } from '@liche/core'
+import { arg, z } from '@liche/core'
 import * as Mcp from '../src/index.js'
 import { stateOf, testCli, testCommand } from './helpers.js'
 
@@ -141,5 +141,91 @@ describe('mcpMessage — unknown method', () => {
     const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
     const res: any = await Mcp.mcpMessage('app', stateOf(cli), { jsonrpc: '2.0', id: 1 })
     expect(res.error.code).toBe(-32600)
+  })
+})
+
+describe('mcpMessage — surface enforcement', () => {
+  function cliWithCliOnlyCodec() {
+    return testCli('app', [
+      testCommand('upload', {
+        options: z.object({
+          file: arg.fromString({ output: z.string(), decode: async (s: string) => s.toUpperCase(), surface: 'cli' }),
+        }),
+        run: () => { throw new Error('handler should not run') },
+      }),
+      testCommand('ping', { run: () => ({ pong: true }) }),
+    ])
+  }
+
+  test('tools/list excludes commands containing a CLI-only codec', async () => {
+    const res: any = await Mcp.mcpMessage('app', stateOf(cliWithCliOnlyCodec()), request(1, 'tools/list'))
+    const names = res.result.tools.map((t: any) => t.name).sort()
+    expect(names).toEqual(['ping'])
+  })
+
+  test('tools/call against a CLI-only codec returns -32602 + UNSUPPORTED_SURFACE in data', async () => {
+    const res: any = await Mcp.mcpMessage('app', stateOf(cliWithCliOnlyCodec()), request(2, 'tools/call', {
+      name: 'upload',
+      arguments: { options: { file: 'hello' } },
+    }))
+    expect(res.error.code).toBe(-32602)
+    expect(res.error.data.code).toBe('UNSUPPORTED_SURFACE')
+    expect(res.error.data.codecKind).toBe('arg.fromString')
+    expect(res.error.data.field).toBe('file')
+    expect(res.error.data.surface).toEqual({ kind: 'extension', transport: 'mcp' })
+    expect(res.result).toBeUndefined()
+  })
+
+  test('tools/list includes commands with extension:mcp surface', async () => {
+    const cli = testCli('app', [
+      testCommand('upload', {
+        options: z.object({
+          file: arg.fromString({
+            output: z.string(),
+            decode: async (s: string) => s,
+            surface: { kind: 'extension', transport: 'mcp' },
+          }),
+        }),
+        run: ({ options }: any) => ({ got: options.file }),
+      }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'tools/list'))
+    expect(res.result.tools.map((t: any) => t.name)).toEqual(['upload'])
+  })
+
+  test('tools/list includes commands with surface "all"', async () => {
+    const cli = testCli('app', [
+      testCommand('upload', {
+        options: z.object({
+          file: arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'all' }),
+        }),
+        run: ({ options }: any) => ({ got: options.file }),
+      }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'tools/list'))
+    expect(res.result.tools.map((t: any) => t.name)).toEqual(['upload'])
+  })
+
+  test('tools/call succeeds for extension:mcp codec', async () => {
+    const cli = testCli('app', [
+      testCommand('upload', {
+        options: z.object({
+          file: arg.fromString({
+            output: z.string(),
+            decode: async (s: string) => s.toUpperCase(),
+            surface: { kind: 'extension', transport: 'mcp' },
+          }),
+        }),
+        run: ({ options }: any) => ({ got: options.file }),
+      }),
+    ])
+    const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(2, 'tools/call', {
+      name: 'upload',
+      arguments: { options: { file: 'hi' } },
+    }))
+    expect(res.error).toBeUndefined()
+    expect(res.result.isError).toBe(false)
+    const content = JSON.parse(res.result.content[0].text)
+    expect(content).toEqual({ got: 'HI' })
   })
 })

@@ -24,6 +24,7 @@ import type {
   CliInstance,
   CommandError,
   CommandInput,
+  CommandSurface,
   Cta,
   CtaBlock,
   DeclarativeCommand,
@@ -92,6 +93,8 @@ import type {
   SerializedHttpRequest,
   SourceInspector,
   SkillDefinition,
+  StoredCodecSurface,
+  SurfaceCheckResult,
   Usage,
   UsageObject,
 } from '../src/index.js'
@@ -117,6 +120,7 @@ export type _PublicTypeBag = [
   CliInstance,
   CommandError,
   CommandInput,
+  CommandSurface,
   Cta,
   CtaBlock,
   DeclarativeCommand,
@@ -185,12 +189,15 @@ export type _PublicTypeBag = [
   SerializedHttpRequest,
   SourceInspector,
   SkillDefinition,
+  StoredCodecSurface,
+  SurfaceCheckResult,
   Usage,
   UsageObject,
 ]
 
 const FROZEN_PUBLIC_VALUES = [
   'arg',
+  'checkCommandSurface',
   'collectCommandContracts',
   'commandError',
   'createLifecycleEvent',

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { arg } from '../src/schema/arg.js'
-import { encodeDefault, isBooleanSchema, parseSchema, toJsonSchema, z } from '../src/schema/zod.js'
+import { arg, getRuntimeArgMeta } from '../src/schema/arg.js'
+import { encodeDefault, isBooleanSchema, parseSchema, parseSchemaAsync, toJsonSchema, z } from '../src/schema/zod.js'
 import { ValidationError } from '../src/errors/error.js'
 
 function expectReject(schema: any, input: unknown): ValidationError {
@@ -191,6 +191,108 @@ describe('arg error shape', () => {
   test('nested in object produces $.field path on rejection', () => {
     const err = expectReject(z.object({ replicas: arg.positiveInt() }), { replicas: '0' })
     expect(err.fieldErrors[0]!.path).toBe('$.replicas')
+  })
+})
+
+describe('arg.fromString', () => {
+  test('decodes a string to a custom runtime value via parseSchemaAsync', async () => {
+    const codec = arg.fromString({
+      input: z.url(),
+      output: z.instanceof(URL),
+      decode: async (s) => new URL(s),
+    })
+    const result = await parseSchemaAsync(codec, 'https://example.com/path')
+    expect((result as URL).toString()).toBe('https://example.com/path')
+  })
+
+  test('input schema validation rejects before decode runs', async () => {
+    let decodeRan = false
+    const codec = arg.fromString({
+      input: z.url(),
+      output: z.instanceof(URL),
+      decode: async (s) => {
+        decodeRan = true
+        return new URL(s)
+      },
+    })
+    let caught: unknown
+    try {
+      await parseSchemaAsync(codec, 'not-a-url')
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(ValidationError)
+    expect(decodeRan).toBe(false)
+  })
+
+  test('encodeDefault returns undefined for runtime-only fromString (no encoder)', () => {
+    const codec = arg.fromString({
+      output: z.string(),
+      decode: async (s: string) => s.toUpperCase(),
+    }).default('hello')
+    expect(encodeDefault(codec)).toBeUndefined()
+  })
+
+  test('encodeDefault renders default when encoder is supplied', () => {
+    const codec = arg.fromString({
+      output: z.string(),
+      decode: async (s: string) => s.toUpperCase(),
+      encode: (value) => value.toLowerCase(),
+    }).default('HELLO')
+    expect(encodeDefault(codec)).toBe('hello')
+  })
+
+  test('registry metadata is read through .optional() and .default() wrappers', () => {
+    expect(getRuntimeArgMeta(arg.port().optional())?.codecKind).toBe('arg.port')
+    expect(getRuntimeArgMeta(arg.int().default(7))?.codecKind).toBe('arg.int')
+    expect(getRuntimeArgMeta(arg.boolean().optional().default(true))?.codecKind).toBe('arg.boolean')
+  })
+
+  test('runtimeOnly is true when encoder is omitted, false when supplied', () => {
+    expect(getRuntimeArgMeta(arg.fromString({ output: z.string(), decode: async (s) => s }))?.runtimeOnly).toBe(true)
+    expect(getRuntimeArgMeta(arg.fromString({
+      output: z.string(),
+      decode: async (s) => s,
+      encode: (v) => v,
+    }))?.runtimeOnly).toBe(false)
+  })
+
+  test('default surface is cli when omitted', () => {
+    expect(getRuntimeArgMeta(arg.fromString({ output: z.string(), decode: async (s) => s }))?.surface).toBe('cli')
+  })
+
+  test('explicit surface is preserved', () => {
+    expect(getRuntimeArgMeta(arg.fromString({ output: z.string(), decode: async (s) => s, surface: 'all' }))?.surface).toBe('all')
+    expect(getRuntimeArgMeta(arg.fromString({
+      output: z.string(),
+      decode: async (s) => s,
+      surface: { kind: 'extension', transport: 'mcp' },
+    }))?.surface).toEqual({ kind: 'extension', transport: 'mcp' })
+  })
+
+  test('registry keys do not leak into JSON Schema projection', () => {
+    const projected = JSON.stringify(toJsonSchema(arg.fromString({
+      input: z.string().meta({ valueLabel: 'file' }),
+      output: z.instanceof(URL),
+      decode: async (s) => new URL(s),
+      surface: 'cli',
+    })))
+    expect(projected).not.toContain('codecKind')
+    expect(projected).not.toContain('runtimeOnly')
+    expect(projected).not.toContain('"surface"')
+  })
+
+  test('JSON Schema projection preserves input meta and reflects the input shape', () => {
+    const projected = toJsonSchema(z.object({
+      file: arg.fromString({
+        input: z.string().meta({ valueLabel: 'file' }),
+        output: z.instanceof(URL),
+        decode: async (s) => new URL(s),
+      }),
+    })) as any
+    const file = projected.properties.file
+    expect(file.type).toBe('string')
+    expect(file.valueLabel).toBe('file')
   })
 })
 

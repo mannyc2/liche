@@ -4,6 +4,8 @@ import { selectCommand } from '../command/registry.js'
 import { isObject } from '../internal.js'
 import { defaultEnv } from './invocation.js'
 import { createLifecycleEvent, emitLifecycleEvent, mergeHooks } from './lifecycle.js'
+import { checkCommandSurface, unsupportedSurfaceError } from '../schema/surface.js'
+import { fail } from '../errors/result.js'
 
 export async function fetchCli(name: string, state: CliState, request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -27,6 +29,20 @@ export async function fetchCli(name: string, state: CliState, request: Request):
       { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No command for ${url.pathname}` } },
       { status: 404 },
     )
+  }
+
+  const surfaceCheck = checkCommandSurface(selected.entry, 'fetch')
+  if (!surfaceCheck.ok) {
+    const error = unsupportedSurfaceError(surfaceCheck)
+    await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
+      isTty: false,
+      error: { code: 'UNSUPPORTED_SURFACE', status: 400 },
+      format: 'json',
+      formatExplicit: true,
+      surface: { kind: 'command' },
+      type: 'command.unsupported_surface',
+    }))
+    return Response.json(fail(error), { status: 400 })
   }
 
   const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await safeJson(request)

@@ -39,6 +39,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'ValidationError',
     'arg',
     'callHttpOperation',
+    'checkCommandSurface',
     'collectCommandContracts',
     'commandError',
     'createLifecycleEvent',

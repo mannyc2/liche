@@ -469,5 +469,24 @@ describe('parseInvocation', () => {
       if (!dispatched.ok) throw new Error(`expected ok, got ${dispatched.error.code}`)
       expect(dispatched.data).toEqual({ port: 8080 })
     })
+
+    test('CLI-only arg.fromString codec runs through dispatch (programmatic lane not gated)', async () => {
+      const cli = testCli('app', [
+        testCommand('upload', {
+          options: z.object({
+            file: arg.fromString({
+              output: z.string(),
+              decode: async (s: string) => s.toUpperCase(),
+              surface: 'cli',
+            }),
+          }),
+          run: ({ options }: any) => ({ got: options.file }),
+        }),
+      ])
+
+      const dispatched = await dispatch(cli, ['upload', '--file', 'hello'])
+      if (!dispatched.ok) throw new Error(`expected ok, got ${dispatched.error.code}`)
+      expect(dispatched.data).toEqual({ got: 'HELLO' })
+    })
   })
 })

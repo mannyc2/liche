@@ -13,11 +13,11 @@ export function validateJsonRpc(message: any):
   return { ok: true, id: message['id'], notification: false }
 }
 
-export function jsonRpcError(id: string | number | undefined, code: number, message: string) {
+export function jsonRpcError(id: string | number | undefined, code: number, message: string, data?: unknown) {
   return {
     jsonrpc: '2.0',
     ...(id === undefined ? undefined : { id }),
-    error: { code, message },
+    error: { code, message, ...(data === undefined ? undefined : { data }) },
   }
 }
 
