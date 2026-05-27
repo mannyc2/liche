@@ -410,18 +410,24 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(release.data.install.map((entry: { manager: string }) => entry.manager)).toEqual(['bun', 'npm'])
     expect(release.data.yankedVersions[0].version).toBe('0.9.0')
 
-    const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
-      env: {
-        WORKERS_TELEMETRY: '1',
-        WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
-      },
-    })).stdout)
-    expect(telemetryStatus.data).toMatchObject({
-      enabled: true,
-      reason: 'cli-enabled',
-      source: 'WORKERS_TELEMETRY',
-      invocation: 'cli',
-    })
+    const savedCi = process.env.CI
+    delete process.env.CI
+    try {
+      const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
+        env: {
+          WORKERS_TELEMETRY: '1',
+          WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
+        },
+      })).stdout)
+      expect(telemetryStatus.data).toMatchObject({
+        enabled: true,
+        reason: 'cli-enabled',
+        source: 'WORKERS_TELEMETRY',
+        invocation: 'cli',
+      })
+    } finally {
+      if (savedCi !== undefined) process.env.CI = savedCi
+    }
   })
 
   test('generated telemetry sink is opt-in and writes local JSONL when enabled', async () => {
