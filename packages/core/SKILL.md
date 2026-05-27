@@ -35,7 +35,7 @@ export const cli = defineCli({
   extensions: [
     help(),
     version(),
-    outputControls({ json: true, fullOutput: true }),
+    outputControls({ json: true }),
     reflectionControls({ schema: true }),
     completions(),
     config({
@@ -199,13 +199,13 @@ my-cli mcp add --agent claude-code --json
 my-cli skills add --agent cursor --json
 ```
 
-`mcp add --json` and `skills add --json` emit normal command data:
+`mcp add --json` and `skills add --json` emit the standard envelope:
 
 ```json
-{ "path": "/path/to/file" }
+{ "ok": true, "data": { "path": "/path/to/file" }, "error": null }
 ```
 
-Use `--full-output` when a caller needs the full `{ ok, data, error }` envelope.
+Machine formats (`json`, `jsonl`, `yaml`) always emit the full envelope. Domain renderers (`md`, `csv`, custom) receive bare data.
 
 ## Packaged Skill Content
 

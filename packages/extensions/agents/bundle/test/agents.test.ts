@@ -12,7 +12,7 @@ describe('@liche/agents', () => {
     })
 
     const skillsList = await runCli(cli, ['skills', 'list', '--json'])
-    expect(JSON.parse(skillsList.stdout)).toEqual({ skills: [{ installed: false, name: 'app' }] })
+    expect(JSON.parse(skillsList.stdout).data).toEqual({ skills: [{ installed: false, name: 'app' }] })
 
     const mcpHelp = await runCli(cli, ['mcp', '--help'])
     expect(mcpHelp.stdout).toContain('add  Register MCP server config')

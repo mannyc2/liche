@@ -91,7 +91,6 @@ export function defineCli(definition: DefineCliOptions): CliInstance {
 }
 
 function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, 'extensions'> {
-  assertRemovedRootFields(definition)
   const extensions = definition.extensions ?? []
   const commands = [
     ...(definition.commands ?? []),
@@ -152,13 +151,6 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
 }
 
 export { defineGlobal } from '../globals/definition.js'
-
-function assertRemovedRootFields(definition: DefineCliOptions): void {
-  const input = definition as Record<string, unknown>
-  if (input['builtins'] !== undefined) {
-    throw new Error('defineCli({ builtins }) was removed; install helper commands through extensions')
-  }
-}
 
 function singleExtensionValue(
   key: 'helpRenderer' | 'skill',

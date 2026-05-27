@@ -179,7 +179,7 @@ describe('liche-release CLI', () => {
     ])
 
     expect(result.exitCode).toBe(0)
-    const body = JSON.parse(result.stdout)
+    const body = JSON.parse(result.stdout).data
     expect(body.manifest).toBe(join(outDir, 'manifest.json'))
     expect(body.packageRecords).toBeUndefined()
     expect(body.packageArtifacts).toBeUndefined()
@@ -209,7 +209,7 @@ describe('liche-release CLI', () => {
     ])
 
     expect(result.exitCode).toBe(0)
-    const body = JSON.parse(result.stdout)
+    const body = JSON.parse(result.stdout).data
     expect(body.manifest).toBe(join(outDir, 'manifest.json'))
     const manifest = JSON.parse(readFileSync(body.manifest, 'utf8'))
     expect(manifest.subject.id).toBe('workers')
@@ -230,7 +230,7 @@ describe('liche-release CLI', () => {
     expect(result.exitCode).toBe(0)
     expect(result.stderr).toBe('')
     expect(result.stdout).not.toContain('npm-secret-token')
-    const body = JSON.parse(result.stdout)
+    const body = JSON.parse(result.stdout).data
     expect(body.dryRun).toBe(true)
     expect(body.packagePublish.cleared).toEqual(['npm'])
     expect(body.packagePublish.plan.steps.map((step: { packageId: string }) => step.packageId)).toEqual([
@@ -259,7 +259,7 @@ describe('liche-release CLI', () => {
     ], { env: { HOMEBREW_GITHUB_TOKEN: 'github-token' } })
 
     expect(result.exitCode).toBe(0)
-    const body = JSON.parse(result.stdout)
+    const body = JSON.parse(result.stdout).data
     expect(body.packagePublish.cleared).toEqual(['homebrew'])
     expect(body.packagePublish.plan.steps).toEqual([
       expect.objectContaining({

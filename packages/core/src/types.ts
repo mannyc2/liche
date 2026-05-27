@@ -99,7 +99,8 @@ export type FieldErrorSource =
   | { kind: 'fetch-query'; key: string }
   | { kind: 'fetch-body'; key: string }
   | { kind: 'extension'; transport: string; key: string }
-  | { kind: 'programmatic'; key: string };
+  | { kind: 'programmatic'; key: string }
+  | { kind: 'output' };
 
 export type FieldError = {
   path: string;
@@ -574,7 +575,6 @@ export type GlobalFlags = {
   filterOutput?: string | undefined;
   format?: Format | undefined;
   formatExplicit?: boolean | undefined;
-  fullOutput?: boolean | undefined;
   help?: boolean | undefined;
   json?: boolean | undefined;
   llms?: boolean | undefined;
@@ -599,11 +599,6 @@ export type CreateOptions<
   Out extends Schema<any> | undefined = Schema<any> | undefined,
 > = CommandDefinition<A, E, O, Out> & {
   format?: Format | undefined;
-  generated?:
-    | {
-        machineOutput: "envelope";
-      }
-    | undefined;
   events?: readonly CliEventRegistration[] | undefined;
   fetchRoutes?: readonly FetchRoute[] | undefined;
   helpRenderer?: HelpRenderer | undefined;

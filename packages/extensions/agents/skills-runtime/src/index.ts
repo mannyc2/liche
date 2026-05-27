@@ -1,6 +1,6 @@
 import { Formatter, defineExtension, manifestEnvelope } from '@liche/core'
 import type { CliExtension, Format } from '@liche/core'
-import { skillIndex, skillMarkdown } from './generate.js'
+import { skillIndex } from './generate.js'
 import type { SkillCommandPolicy } from './generate.js'
 
 export type SkillsRuntimeOptions = {
@@ -22,8 +22,7 @@ export function skillsRuntime(options: SkillsRuntimeOptions = {}): CliExtension 
           if (wantsStructured) {
             return out(`${Formatter.format(manifestEnvelope(binaryName, state), outputFormat)}\n`)
           }
-          const value = flags.fullOutput ? skillMarkdown(binaryName, state, commandPolicy) : skillIndex(binaryName, state, commandPolicy)
-          return out(`${Formatter.format(value, 'md')}\n`)
+          return out(`${Formatter.format(skillIndex(binaryName, state, commandPolicy), 'md')}\n`)
         },
       },
     ],

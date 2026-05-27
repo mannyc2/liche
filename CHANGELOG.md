@@ -12,6 +12,24 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+### Changed (breaking)
+
+- **`@liche/core`: machine formats always emit the full `Result` envelope.** `--json`, `--format json`, `--format jsonl`, and `--format yaml` now return `{ ok, data, error, meta? }` for every CLI — handwritten and generated. Bare `data` under `--json` is gone. Domain renderers (`md`, `csv`, custom `commandFormatRenderers` and extension renderers) continue to receive bare `data`/`error`. `--filter-output` against a machine format rewrites the envelope's `data` field and preserves `ok`/`error`/`meta`; against a domain format it filters bare data. Streaming under `--format jsonl` now writes one `{ type: 'chunk', data }` line per yield **plus a trailing envelope line**, matching `cli.fetch()` NDJSON.
+
+- **`@liche/core`: removed `--full-output` global, `OutputControlsOptions.fullOutput`, and `GlobalFlags.fullOutput`.** Its envelope-toggle role is subsumed by the always-envelope rule above; its `machine-only` policy override is now available by passing any machine format (`--json`/`--format json|jsonl|yaml`) — those already flip `formatExplicit` to `true` and bypass the suppression.
+
+- **`@liche/core`: removed `CreateOptions.generated` / `defineCli({ generated: { machineOutput: 'envelope' } })`.** The field is no longer needed; the envelope contract is unconditional.
+
+- **`@liche/core`: invalid JSON request bodies now return HTTP 400 with `INVALID_REQUEST_BODY` envelope.** `cli.fetch()` previously dropped malformed bodies silently and ran the handler with no body. Empty bodies still succeed with command defaults; only non-empty malformed JSON is rejected.
+
+- **`@liche/core`: added `FieldErrorSource` variant `{ kind: 'output' }` for output-validation failures.** The executor now attaches this source on field errors raised by output-schema validation, so human diagnostics render as `command output "$.path"` instead of being misclassified as `--option` or env-variable errors. The path-based label inference fallback in `formatHumanValidationError` is gone; field errors that arrive without a `source` render as a neutral `<path>` argument.
+
+- **`@liche/product`: generated CLIs no longer emit `generated: { machineOutput: 'envelope' }` or `fullOutput: true`.** Regenerate downstream fixtures.
+
+### Removed
+
+- **`@liche/skills-runtime`: `--full-output` no longer toggles full skill markdown.** `--llms` always emits the markdown index. Call `skillMarkdown(name, state)` programmatically for the long-form skill content.
+
 ## 0.7.0 — 2026-05-27
 
 ### Added

@@ -21,23 +21,23 @@ function build(commandName: string, def: any) {
 }
 
 describe('formatHumanValidationError', () => {
-  test('missing required option uses --kebab-case label', () => {
+  test('missing required option uses --kebab-case label from argv source', () => {
     const { state, selected } = build('build', {
       options: z.object({ dryRun: z.boolean() }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.dryRun', message: 'Required', missing: true },
+      { path: '$.dryRun', message: 'Required', missing: true, source: { kind: 'argv', flag: '--dry-run' } },
     ])
     const first = out.split('\n')[0]
     expect(first).toBe('Error: missing required option --dry-run')
   })
 
-  test('missing required environment variable uses bare name (not flag)', () => {
+  test('missing required environment variable uses bare name from env source', () => {
     const { state, selected } = build('token', {
       env: z.object({ TOKEN: z.string() }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.TOKEN', message: 'Required', missing: true },
+      { path: '$.TOKEN', message: 'Required', missing: true, source: { kind: 'env', name: 'TOKEN' } },
     ])
     const first = out.split('\n')[0]
     expect(first).toBe('Error: missing required environment variable TOKEN')
@@ -48,7 +48,7 @@ describe('formatHumanValidationError', () => {
       env: z.object({ TOKEN: z.string() }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.TOKEN', message: 'Expected string' },
+      { path: '$.TOKEN', message: 'Expected string', source: { kind: 'env', name: 'TOKEN' } },
     ])
     const first = out.split('\n')[0]
     expect(first).toBe('Error: invalid value for environment variable TOKEN: Expected string')
@@ -59,13 +59,13 @@ describe('formatHumanValidationError', () => {
       options: z.object({ mode: z.string() }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.mode', message: 'Expected string' },
+      { path: '$.mode', message: 'Expected string', source: { kind: 'argv', flag: '--mode' } },
     ])
     const first = out.split('\n')[0]
     expect(first).toBe('Error: invalid value for --mode: Expected string')
   })
 
-  test('top-level path "$" renders as bare input argument', () => {
+  test('source-less top-level path "$" renders as bare input argument', () => {
     const { state, selected } = build('echo', {})
     const out = formatHumanValidationError('app', state, selected, [
       { path: '$', message: 'Invalid', missing: true },
@@ -74,7 +74,7 @@ describe('formatHumanValidationError', () => {
     expect(first).toBe('Error: missing required argument input')
   })
 
-  test('unknown head renders as <name> argument and strips $.', () => {
+  test('source-less unknown path renders as neutral <name> argument', () => {
     const { state, selected } = build('build', {
       options: z.object({ mode: z.string() }),
     })
@@ -85,12 +85,12 @@ describe('formatHumanValidationError', () => {
     expect(first).toBe('Error: missing required argument <unknown>')
   })
 
-  test('nested option path appends .subkey suffix to flag', () => {
+  test('nested argv flag is rendered verbatim from source', () => {
     const { state, selected } = build('build', {
       options: z.object({ nested: z.object({ child: z.string() }) }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.nested.child', message: 'Required', missing: true },
+      { path: '$.nested.child', message: 'Required', missing: true, source: { kind: 'argv', flag: '--nested.child' } },
     ])
     const first = out.split('\n')[0]
     expect(first).toBe('Error: missing required option --nested.child')
@@ -101,7 +101,7 @@ describe('formatHumanValidationError', () => {
       options: z.object({ name: z.string() }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.name', message: 'Required', missing: true },
+      { path: '$.name', message: 'Required', missing: true, source: { kind: 'argv', flag: '--name' } },
     ])
     const lines = out.split('\n')
     expect(lines[0]).toBe('Error: missing required option --name')
@@ -114,8 +114,8 @@ describe('formatHumanValidationError', () => {
       options: z.object({ name: z.string(), mode: z.string() }),
     })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.name', message: 'Required', missing: true },
-      { path: '$.mode', message: 'Expected string' },
+      { path: '$.name', message: 'Required', missing: true, source: { kind: 'argv', flag: '--name' } },
+      { path: '$.mode', message: 'Expected string', source: { kind: 'argv', flag: '--mode' } },
     ])
     const lines = out.split('\n')
     expect(lines[0]).toBe('Error: missing required option --name')
@@ -186,13 +186,19 @@ describe('formatHumanValidationError', () => {
     expect(out.split('\n')[0]).toBe('Error: invalid value for input "port": bad')
   })
 
-  test('legacy path-based inference still works when source is absent', () => {
-    const { state, selected } = build('build', {
-      options: z.object({ name: z.string() }),
-    })
+  test('source output renders "command output" label with the path', () => {
+    const { state, selected } = build('ship', { output: z.object({ id: z.number() }) })
     const out = formatHumanValidationError('app', state, selected, [
-      { path: '$.name', message: 'bad' },
+      { path: '$.id', message: 'Expected number', source: { kind: 'output' } },
     ])
-    expect(out.split('\n')[0]).toBe('Error: invalid value for --name: bad')
+    expect(out.split('\n')[0]).toBe('Error: invalid value for command output "$.id": Expected number')
+  })
+
+  test('missing required output field renders "command output missing required field"', () => {
+    const { state, selected } = build('ship', { output: z.object({ id: z.number() }) })
+    const out = formatHumanValidationError('app', state, selected, [
+      { path: '$.id', message: 'Required', missing: true, source: { kind: 'output' } },
+    ])
+    expect(out.split('\n')[0]).toBe('Error: command output missing required field "$.id"')
   })
 })

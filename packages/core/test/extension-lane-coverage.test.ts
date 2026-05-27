@@ -44,7 +44,7 @@ describe('extension lane coverage', () => {
 
     const confirmed = await runCli(cli, ['delete', '--non-interactive', '--confirm', '--json'])
     expect(confirmed.exitCode).toBe(0)
-    expect(JSON.parse(confirmed.stdout)).toEqual({ deleted: true })
+    expect(JSON.parse(confirmed.stdout)).toEqual({ ok: true, data: { deleted: true }, error: null })
     expect(middlewareRuns).toEqual(['app'])
   })
 })

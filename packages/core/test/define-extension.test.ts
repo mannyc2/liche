@@ -30,7 +30,7 @@ describe('defineExtension', () => {
     })
     let stdout = ''
     await run(cli, ['ping', '--json'], { stdout: (chunk) => { stdout += chunk } })
-    expect(JSON.parse(stdout)).toEqual({ ok: true })
+    expect(JSON.parse(stdout)).toEqual({ ok: true, data: { ok: true }, error: null })
   })
 
   test('contributes output renderers selected by --format', async () => {
@@ -90,6 +90,6 @@ describe('defineExtension', () => {
     })
     let stdout = ''
     await run(cli, ['ping', '--json'], { stdout: (chunk) => { stdout += chunk } })
-    expect(stdout).toBe('json:{"ok":true}\n')
+    expect(stdout).toBe('json:{"ok":true,"data":{"ok":true},"error":null}\n')
   })
 })

@@ -16,11 +16,9 @@ function captureRun(argv: string[], options: any, command: { name: string; def: 
   return { promise, get out() { return out }, get err() { return err }, get exitCode() { return exitCode } }
 }
 
-describe('envelope mode — generated.machineOutput: "envelope"', () => {
+describe('envelope mode — --json always returns the full envelope', () => {
   test('emits full {ok, data, error, meta} envelope under --json', async () => {
-    const capture = captureRun(['ping', '--json'], {
-      generated: { machineOutput: 'envelope' },
-    }, {
+    const capture = captureRun(['ping', '--json'], undefined, {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
@@ -38,9 +36,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
   })
 
   test('emits full error envelope under --json', async () => {
-    const capture = captureRun(['fail', '--json'], {
-      generated: { machineOutput: 'envelope' },
-    }, {
+    const capture = captureRun(['fail', '--json'], undefined, {
       name: 'fail',
       def: {
         run(ctx: any) {
@@ -65,9 +61,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
   })
 
   test('ctx.ok and ctx.error return control results instead of throwing', async () => {
-    const success = captureRun(['inspect-ok', '--json'], {
-      generated: { machineOutput: 'envelope' },
-    }, {
+    const success = captureRun(['inspect-ok', '--json'], undefined, {
       name: 'inspect-ok',
       def: {
         run(ctx: any) {
@@ -80,9 +74,7 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     await success.promise
     expect(JSON.parse(success.out)).toMatchObject({ ok: true, data: { message: 'pong' }, error: null })
 
-    const failure = captureRun(['inspect-error', '--json'], {
-      generated: { machineOutput: 'envelope' },
-    }, {
+    const failure = captureRun(['inspect-error', '--json'], undefined, {
       name: 'inspect-error',
       def: {
         run(ctx: any) {
@@ -96,19 +88,6 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     expect(JSON.parse(failure.out)).toMatchObject({ ok: false, data: null, error: { code: 'NOPE' } })
   })
 
-  test('handwritten CLI without `generated` returns bare data under --json (compat)', async () => {
-    const capture = captureRun(['ping', '--json'], undefined, {
-      name: 'ping',
-      def: {
-        output: z.object({ message: z.string() }),
-        run(ctx: any) { return ctx.ok({ message: 'pong' }) },
-      },
-    })
-    await capture.promise
-    const parsed = JSON.parse(capture.out)
-    expect(parsed).toEqual({ message: 'pong' })
-  })
-
   test('raw result-shaped handler returns are domain data, not control envelopes', async () => {
     const success = captureRun(['raw-success', '--json'], undefined, {
       name: 'raw-success',
@@ -120,7 +99,11 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     })
     await success.promise
     expect(success.exitCode).toBe(0)
-    expect(JSON.parse(success.out)).toEqual({ ok: true, data: { value: 1 }, error: null })
+    expect(JSON.parse(success.out)).toEqual({
+      ok: true,
+      data: { ok: true, data: { value: 1 }, error: null },
+      error: null,
+    })
 
     const failureShapedData = captureRun(['raw-error', '--json'], undefined, {
       name: 'raw-error',
@@ -133,17 +116,16 @@ describe('envelope mode — generated.machineOutput: "envelope"', () => {
     await failureShapedData.promise
     expect(failureShapedData.exitCode).toBe(0)
     expect(JSON.parse(failureShapedData.out)).toEqual({
-      ok: false,
-      data: null,
-      error: { code: 'DOMAIN_ERROR', message: 'domain data' },
+      ok: true,
+      data: { ok: false, data: null, error: { code: 'DOMAIN_ERROR', message: 'domain data' } },
+      error: null,
     })
   })
 })
 
-describe('generated CLIs install selected output controls explicitly', () => {
-  test('--format json is rejected when generated output controls omit format', async () => {
+describe('output controls — selected globals are installed explicitly', () => {
+  test('--format json is rejected when output controls omit format', async () => {
     const capture = captureRun(['ping', '--format', 'json'], {
-      generated: { machineOutput: 'envelope' },
       testControls: false,
       extensions: [outputControls({ json: true })],
     }, {
@@ -158,7 +140,7 @@ describe('generated CLIs install selected output controls explicitly', () => {
     expect(JSON.parse(capture.out).error.message).toBe('Unknown option: --format')
   })
 
-  test('handwritten CLI still accepts --format json', async () => {
+  test('--format json renders the full envelope by default', async () => {
     const capture = captureRun(['ping', '--format', 'json'], undefined, {
       name: 'ping',
       def: {
@@ -169,13 +151,13 @@ describe('generated CLIs install selected output controls explicitly', () => {
     await capture.promise
     expect(capture.exitCode).toBe(0)
     const parsed = JSON.parse(capture.out)
-    expect(parsed).toEqual({ message: 'pong' })
+    expect(parsed).toMatchObject({ ok: true, data: { message: 'pong' }, error: null })
   })
 })
 
 describe('ResultMeta — arbitrary keys round-trip through ctx.ok', () => {
-  test('non-cta meta keys reach the result envelope under --full-output', async () => {
-    const capture = captureRun(['ping', '--full-output', '--json'], undefined, {
+  test('non-cta meta keys reach the result envelope under --json', async () => {
+    const capture = captureRun(['ping', '--json'], undefined, {
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),

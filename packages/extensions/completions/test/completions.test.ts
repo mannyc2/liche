@@ -24,7 +24,7 @@ describe('@liche/completions', () => {
     expect(zsh.stdout).toContain('compdef _app_complete app')
 
     const fishJson = await runCli(cli, ['completions', 'fish', '--json'])
-    expect(JSON.parse(fishJson.stdout)).toContain('env COMPLETE=fish app -- (commandline -opc)[2..-1]')
+    expect(JSON.parse(fishJson.stdout).data).toContain('env COMPLETE=fish app -- (commandline -opc)[2..-1]')
 
     const badShell = await runCli(cli, ['completions', 'powershell'], { isTty: true })
     expect(badShell.exitCode).toBe(1)

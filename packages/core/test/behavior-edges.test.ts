@@ -25,7 +25,7 @@ describe('HTTP command dispatch behavior', () => {
     expect(headWithBody.status).toBe(200)
   })
 
-  test('fetch envelopes preserve not-found messages, body parsing fallback, and explicit JSON format context', async () => {
+  test('fetch envelopes preserve not-found messages, malformed body rejection, and explicit JSON format context', async () => {
     const cli = testCli('api', [testCommand('ctx', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ format, formatExplicit, options }) => ({ format, formatExplicit, message: options.message }),
@@ -36,7 +36,8 @@ describe('HTTP command dispatch behavior', () => {
     expect(await missing.json()).toEqual({ ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: 'No command for /nope' } })
 
     const invalidBody = await cli.fetch(new Request('http://localhost/ctx?message=query', { body: 'not json', method: 'POST' }))
-    expect(await invalidBody.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'query' }, error: null })
+    expect(invalidBody.status).toBe(400)
+    expect(await invalidBody.json()).toMatchObject({ ok: false, data: null, error: { code: 'INVALID_REQUEST_BODY' } })
 
     const body = await cli.fetch(new Request('http://localhost/ctx', { body: '{"message":"body"}', method: 'POST' }))
     expect(await body.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'body' }, error: null })
@@ -222,9 +223,8 @@ describe('parser globals and internal helpers', () => {
       Parser.parseGlobals([
         '--json',
         '--format=yaml',
-        '--full-output',
         '--filter-output',
-        'data.id',
+        'id',
         '--schema',
         '--token-count',
         '--token-limit=10',
@@ -235,10 +235,9 @@ describe('parser globals and internal helpers', () => {
         'run',
       ], registry),
     ).toEqual({
-      filterOutput: 'data.id',
+      filterOutput: 'id',
       format: 'yaml',
       formatExplicit: true,
-      fullOutput: true,
       help: true,
       json: true,
       rest: ['run'],

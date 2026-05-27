@@ -84,20 +84,21 @@ The public command-authoring API prefers values and factories:
 
 ### Field error sources
 
-Each `FieldError` may carry an optional `source: FieldErrorSource` identifying where the bad value entered the command pipeline. The seven kinds and their human-renderer labels:
+Each `FieldError` may carry an optional `source: FieldErrorSource` identifying where the bad value entered the command pipeline. The nine kinds and their human-renderer labels:
 
-| Source                                           | Label rendered to stderr                          |
-| ------------------------------------------------ | ------------------------------------------------- |
-| `{ kind: 'argv', flag: '--replicas' }`           | `--replicas` (verbatim, no double-prefix)         |
-| `{ kind: 'argv', positional: 0 }`                | `<arg-name>` (from the args schema shape)         |
-| `{ kind: 'env', name: 'PORT' }`                  | `environment variable PORT`                       |
-| `{ kind: 'provider', provider: 'env', path: 'X' }` | `env provider value X`                          |
-| `{ kind: 'fetch-query', key: 'port' }`           | `query parameter ?port=`                          |
-| `{ kind: 'fetch-body', key: 'port' }`            | `body field "port"`                               |
-| `{ kind: 'extension', transport: 'mcp', key: 'x' }` | `mcp input "x"`                                |
-| `{ kind: 'programmatic', key: 'port' }`          | `input "port"`                                    |
+| Source                                           | Label rendered to stderr                                |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `{ kind: 'argv', flag: '--replicas' }`           | `--replicas` (verbatim, no double-prefix)               |
+| `{ kind: 'argv', positional: 0 }`                | `<arg-name>` (from the args schema shape)               |
+| `{ kind: 'env', name: 'PORT' }`                  | `environment variable PORT`                             |
+| `{ kind: 'provider', provider: 'env', path: 'X' }` | `env provider value X`                                |
+| `{ kind: 'fetch-query', key: 'port' }`           | `query parameter ?port=`                                |
+| `{ kind: 'fetch-body', key: 'port' }`            | `body field "port"`                                     |
+| `{ kind: 'extension', transport: 'mcp', key: 'x' }` | `mcp input "x"`                                      |
+| `{ kind: 'programmatic', key: 'port' }`          | `input "port"`                                          |
+| `{ kind: 'output' }`                             | `command output "$.path"` (missing → `command output missing required field "$.path"`) |
 
-Adapters supply source hints (fetch query/body, extension transports like MCP); the argv parser fills in flag form and positional index automatically; the env-source map covers every key declared on a command's env schema so missing-required-env errors still carry the source. The raw input value is never copied into `FieldError` — only the `typeof` name appears under `received`.
+Adapters supply source hints (fetch query/body, extension transports like MCP); the argv parser fills in flag form and positional index automatically; the env-source map covers every key declared on a command's env schema so missing-required-env errors still carry the source. The executor attaches `{ kind: 'output' }` to every field error raised by output-schema validation so a handler that returns the wrong shape is never misrendered as a CLI option error. The raw input value is never copied into `FieldError` — only the `typeof` name appears under `received`.
 
 Tests may keep importing internals by source path for white-box validation, but that is not evidence that a class belongs in the package-root API.
 
@@ -121,9 +122,7 @@ Arbitrary `{ ok, data, error }` objects are not control results. Factory-created
 
 - stdout carries only the requested output format.
 - stderr carries human diagnostics, warnings, progress, prompts, and CTA text.
-- Generated envelope-mode CLIs emit the full envelope for successes and failures under explicit machine output.
-- Handwritten CLIs emit bare success data under `--json` unless `--full-output` is requested.
-- Any non-human failure emits the full envelope so agents and scripts can always read `error`.
+- Machine formats (`json`, `jsonl`, `yaml`) always emit the full envelope for both successes and failures. Domain formats (`md`, `csv`, custom renderers) receive bare `data`/`error`.
 - Human failures may render a concise stderr line, but the underlying result is still a `CommandError`.
 
 ## Surface policy

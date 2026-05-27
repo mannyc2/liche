@@ -43,7 +43,7 @@ describe('@liche/config', () => {
     })
 
     expect(exitCode).toBe(0)
-    expect(JSON.parse(stdout)).toEqual({
+    expect(JSON.parse(stdout).data).toEqual({
       region: 'iad',
       source: { kind: 'provider', provider: 'config', path: 'defaultRegion', source: { kind: 'default' } },
     })

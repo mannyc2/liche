@@ -76,7 +76,7 @@ describe('config extension loader', () => {
       const cli = cliFor(undefined, undefined)
       const result = await runCli(cli, ['run', '--config', path, '--json'])
       expect(result.exitCode).toBe(0)
-      expect(JSON.parse(result.stdout).config).toEqual({ mode })
+      expect(JSON.parse(result.stdout).data.config).toEqual({ mode })
     }
   })
 
@@ -97,7 +97,7 @@ describe('config extension loader', () => {
     const result = await runCli(cli, ['run', '--config', path, '--json'])
 
     expect(result.exitCode).toBe(0)
-    expect(JSON.parse(result.stdout).config).toEqual({
+    expect(JSON.parse(result.stdout).data.config).toEqual({
       url: 'https://example.test/path',
       glob: 'src/**/*.ts',
       literal: 'keep /* this */ and // this',
@@ -127,7 +127,7 @@ describe('config extension loader', () => {
     try {
       const cli = cliFor(['app.json'], undefined, { scopes: { project: true, user: { xdg: true } } })
       const result = await runCli(cli, ['run', '--json'], { env: { XDG_CONFIG_HOME: userRoot } })
-      expect(JSON.parse(result.stdout).config).toEqual({
+      expect(JSON.parse(result.stdout).data.config).toEqual({
         baseUrl: 'https://project.example.test',
         nested: { keep: true, value: 'project' },
       })
@@ -142,7 +142,7 @@ describe('config extension loader', () => {
       z.object({ mode: z.string().default('default') }),
     )
     const result = await runCli(cli, ['run', '--json'])
-    expect(JSON.parse(result.stdout).config).toEqual({ mode: 'default' })
+    expect(JSON.parse(result.stdout).data.config).toEqual({ mode: 'default' })
   })
 
   test('strict config schemas reject unknown keys', async () => {
@@ -178,7 +178,7 @@ describe('config extension loader', () => {
       ],
     })
     const result = await runCli(cli, ['run', '--json'])
-    expect(JSON.parse(result.stdout)).toEqual({
+    expect(JSON.parse(result.stdout).data).toEqual({
       mode: { kind: 'project-file', path },
       nestedValue: { kind: 'project-file', path },
     })
@@ -192,6 +192,6 @@ describe('config extension loader', () => {
       z.object({ mode: z.string().default('default') }),
     )
     const result = await runCli(cli, ['run', '--no-config', '--json'])
-    expect(JSON.parse(result.stdout).config).toEqual({ mode: 'default' })
+    expect(JSON.parse(result.stdout).data.config).toEqual({ mode: 'default' })
   })
 })

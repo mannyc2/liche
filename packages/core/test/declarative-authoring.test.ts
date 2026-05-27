@@ -3,7 +3,7 @@ import { defineCli, defineCommand, help as helpControl, outputControls, reflecti
 import * as Mcp from '@liche/mcp-server'
 import { manifestEnvelope } from '../src/command/registry.js'
 import { renderHelp } from '../src/help/render.js'
-import { parseJsonOutput, runCli, stateOf } from './helpers.js'
+import { parseJsonData, parseJsonOutput, runCli, stateOf } from './helpers.js'
 
 describe('declarative authoring API', () => {
   test('defineCli executes a command from a data-first command graph', async () => {
@@ -25,7 +25,7 @@ describe('declarative authoring API', () => {
     })
 
     const result = await runCli(cli, ['deploy', 'api', '--dry-run', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ dryRun: true, target: 'api' })
+    expect(parseJsonData(result.stdout)).toEqual({ dryRun: true, target: 'api' })
   })
 
   test('defineCli does not expose the legacy command registration builder', () => {
@@ -51,8 +51,8 @@ describe('declarative authoring API', () => {
 
     const direct = await runCli(cli, ['admin', 'audit', '--json'])
     const aliased = await runCli(cli, ['admin', 'a', '--json'])
-    expect(parseJsonOutput(direct.stdout)).toEqual({ ok: true })
-    expect(parseJsonOutput(aliased.stdout)).toEqual({ ok: true })
+    expect(parseJsonData(direct.stdout)).toEqual({ ok: true })
+    expect(parseJsonData(aliased.stdout)).toEqual({ ok: true })
   })
 
   test('single-segment aliases accept bare strings as shorthand for [name]', async () => {
@@ -72,9 +72,9 @@ describe('declarative authoring API', () => {
     const direct = await runCli(cli, ['corpus', 'search', '--json'])
     const bare = await runCli(cli, ['corpus', 'find', '--json'])
     const nested = await runCli(cli, ['corpus', 's', '--json'])
-    expect(parseJsonOutput(direct.stdout)).toEqual({ ok: true })
-    expect(parseJsonOutput(bare.stdout)).toEqual({ ok: true })
-    expect(parseJsonOutput(nested.stdout)).toEqual({ ok: true })
+    expect(parseJsonData(direct.stdout)).toEqual({ ok: true })
+    expect(parseJsonData(bare.stdout)).toEqual({ ok: true })
+    expect(parseJsonData(nested.stdout)).toEqual({ ok: true })
   })
 
   test('per-command formats render the result without affecting --json', async () => {
@@ -99,7 +99,7 @@ describe('declarative authoring API', () => {
     expect(md.stdout.trim()).toBe('- a: 1\n- b: 2')
 
     const json = await runCli(cli, ['report', '--json'])
-    expect(parseJsonOutput(json.stdout)).toEqual({ rows: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] })
+    expect(parseJsonData(json.stdout)).toEqual({ rows: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] })
   })
 
   test('option aliases and group descriptions are declared as command data', async () => {
@@ -123,7 +123,7 @@ describe('declarative authoring API', () => {
     })
 
     const result = await runCli(cli, ['jobs', 'run', '-o', 'dist/out.json', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ output: 'dist/out.json' })
+    expect(parseJsonData(result.stdout)).toEqual({ output: 'dist/out.json' })
 
     const help = await runCli(cli, ['--help'])
     expect(help.stdout).toContain('jobs')

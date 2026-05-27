@@ -47,7 +47,7 @@ describe('env source', () => {
       env: { APP_HOST: 'localhost', APP_PORT: '8080', APP_SECURE: 'true' },
     })
     expect(result.exitCode).toBe(0)
-    expect(JSON.parse(result.stdout)).toEqual({ host: 'localhost', port: 8080, secure: true })
+    expect(JSON.parse(result.stdout).data).toEqual({ host: 'localhost', port: 8080, secure: true })
   })
 
   test('rejects non-finite numeric env vars with a parse error', async () => {
@@ -104,7 +104,7 @@ describe('env source', () => {
         commands: [defineCommand({ path: ['run'], run: ({ ctx }) => ctx.sources.value('config', '') })],
       })
       const result = await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'sfo' } })
-      expect(JSON.parse(result.stdout)).toEqual({ region: 'sfo' })
+      expect(JSON.parse(result.stdout).data).toEqual({ region: 'sfo' })
     } finally {
       rmSync(dir, { force: true, recursive: true })
     }
@@ -130,7 +130,7 @@ describe('env source', () => {
         commands: [defineCommand({ path: ['run'], run: ({ ctx }) => ctx.sources.value('config', '') })],
       })
       const result = await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'sfo' } })
-      expect(JSON.parse(result.stdout)).toEqual({ region: 'iad' })
+      expect(JSON.parse(result.stdout).data).toEqual({ region: 'iad' })
     } finally {
       rmSync(dir, { force: true, recursive: true })
     }
@@ -152,6 +152,6 @@ describe('env source', () => {
       })],
     })
     const result = await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'sfo' } })
-    expect(JSON.parse(result.stdout)).toEqual({ kind: 'env', var: 'APP_' })
+    expect(JSON.parse(result.stdout).data).toEqual({ kind: 'env', var: 'APP_' })
   })
 })

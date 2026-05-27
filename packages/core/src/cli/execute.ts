@@ -17,7 +17,7 @@ import type {
 import { fail, isRuntimeResult, LicheError, ok, toCommandError } from '../errors/error.js'
 import { isCommand } from '../command/guards.js'
 import { collectAsync, isAsyncIterable } from '../internal.js'
-import { parseSchemaAsync } from '../schema/zod.js'
+import { attachOutputSource, parseSchemaAsync } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
 import { resolveCommandInput, type InputSourceHints } from './input-sources.js'
 
@@ -133,7 +133,12 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       await emitResultEvent(binaryName, input, command, startedAt, completed)
       return completed
     }
-    const data = await parseSchemaAsync(runtime.output, result, result)
+    let data: unknown
+    try {
+      data = await parseSchemaAsync(runtime.output, result, result)
+    } catch (outputError) {
+      throw attachOutputSource(outputError)
+    }
     const completed = ok(data)
     await emitResultEvent(binaryName, input, command, startedAt, completed)
     return completed

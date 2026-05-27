@@ -30,7 +30,7 @@ describe('@liche/skills-installer', () => {
       commands: [defineCommand({ path: ['run'], run: () => ({ ok: true }) })],
     })
     const list = await runCli(cli, ['skills', 'list', '--json'])
-    expect(JSON.parse(list.stdout)).toEqual({ skills: [{ installed: false, name: 'app' }] })
+    expect(JSON.parse(list.stdout).data).toEqual({ skills: [{ installed: false, name: 'app' }] })
   })
 
   test('skills add writes configured skill markdown for the selected agent', async () => {
@@ -42,7 +42,7 @@ describe('@liche/skills-installer', () => {
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'cursor', '--json'], { env: { HOME: home } })
     const path = `${home}/.cursor/skills/app/SKILL.md`
-    expect(JSON.parse(result.stdout)).toEqual({ path })
+    expect(JSON.parse(result.stdout).data).toEqual({ path })
     expect(await Bun.file(path).text()).toBe('# app\n\nCustom skill docs.')
   })
 
@@ -55,7 +55,7 @@ describe('@liche/skills-installer', () => {
     process.chdir(cwd)
     const result = await runCli(cli, ['skills', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: home } })
     const path = `${home}/.claude/skills/app/SKILL.md`
-    expect(JSON.parse(result.stdout)).toEqual({ path })
+    expect(JSON.parse(result.stdout).data).toEqual({ path })
     const content = await Bun.file(path).text()
     expect(content).toContain('# app')
     expect(content).toContain('Use the app CLI')

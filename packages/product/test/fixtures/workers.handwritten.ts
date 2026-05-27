@@ -6,11 +6,10 @@ import { deploy, dev } from './impl/wrangler.js'
 const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
-  generated: { machineOutput: 'envelope' },
   extensions: [
     help(),
     version(),
-    outputControls({ json: true, fullOutput: true, filterOutput: true }),
+    outputControls({ json: true, filterOutput: true }),
     reflectionControls({ schema: true }),
     llms(),
     configExtension({

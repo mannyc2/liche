@@ -167,7 +167,7 @@ export async function runTerminalCli(
 
   const policy = outputPolicy(selected) ?? state.def.outputPolicy ?? 'all'
   const transformsBuffering = state.outputTransforms.some((t) => (t.bufferingFlagKeys ?? []).some((key) => Boolean(flags[key])))
-  const streamingEligible = !flags.fullOutput && !flags.filterOutput && !transformsBuffering
+  const streamingEligible = !flags.filterOutput && !transformsBuffering && outputFormat === 'jsonl'
   let streamed = false
   const chunkFormat: Format = outputFormat === 'jsonl' ? 'jsonl' : outputFormat
 
@@ -200,10 +200,14 @@ export async function runTerminalCli(
   })
 
   const exitCode = result.ok ? 0 : Number(result.error.exitCode ?? 1)
-  const envelopeMode = state.def.generated?.machineOutput === 'envelope' && formatExplicit
-  const machineErrorEnvelope = !result.ok && !human
-  let data: unknown = flags.fullOutput || envelopeMode || machineErrorEnvelope ? result : result.ok ? result.data : result.error
-  if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
+  const envelopeFormat = isMachineFormat(outputFormat)
+  let data: unknown
+  if (envelopeFormat) {
+    data = flags.filterOutput && result.ok ? { ...result, data: pick(result.data, flags.filterOutput) } : result
+  } else {
+    data = result.ok ? result.data : result.error
+    if (flags.filterOutput && result.ok) data = pick(data, flags.filterOutput)
+  }
 
   const localRenderer = commandFormatRenderers(selected)?.[outputFormat]
   const rendered = localRenderer
@@ -214,8 +218,8 @@ export async function runTerminalCli(
     text = transform.transform(text, { flags, format: outputFormat, stage: 'result' })
   }
 
-  const suppressStreamedRecap = streamed && result.ok
-  if (!(policy === 'machine-only' && human && result.ok && !flags.fullOutput) && !suppressStreamedRecap) io.out(text.endsWith('\n') ? text : `${text}\n`)
+  const suppressStreamedRecap = streamed && result.ok && outputFormat !== 'jsonl'
+  if (!(policy === 'machine-only' && human && result.ok) && !suppressStreamedRecap) io.out(text.endsWith('\n') ? text : `${text}\n`)
   if (result.meta?.cta) io.err(formatCta(name, result.meta.cta))
   if (!result.ok && human) {
     if (result.error.fieldErrors?.length) {
@@ -235,5 +239,9 @@ async function emitTerminalLifecycle(
   event: Omit<CliEvent, 'cli' | 'occurredAt'>,
 ): Promise<void> {
   await emitLifecycleEvent(subscriptions, createLifecycleEvent(binaryName, state.def.version, event))
+}
+
+function isMachineFormat(format: Format): boolean {
+  return format === 'json' || format === 'jsonl' || format === 'yaml'
 }
 

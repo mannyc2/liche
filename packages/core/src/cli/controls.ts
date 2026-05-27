@@ -10,7 +10,6 @@ export type OutputControlsOptions = {
   filterOutput?: boolean | undefined
   format?: boolean | undefined
   formats?: readonly Format[] | undefined
-  fullOutput?: boolean | undefined
   json?: boolean | undefined
 }
 
@@ -47,9 +46,6 @@ export function outputControls(options?: OutputControlsOptions): CliExtension {
     })
   }
   if (enabled(options, 'json')) globals.push({ expose: 'runtime', flag: 'json', key: 'json', type: 'boolean' })
-  if (enabled(options, 'fullOutput')) {
-    globals.push({ expose: 'runtime', flag: 'full-output', key: 'fullOutput', type: 'boolean' })
-  }
   if (enabled(options, 'filterOutput')) {
     globals.push({ expose: 'runtime', flag: 'filter-output', key: 'filterOutput', type: 'string', valueLabel: 'paths' })
   }

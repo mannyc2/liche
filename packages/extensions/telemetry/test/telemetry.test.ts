@@ -149,7 +149,7 @@ describe('telemetry subcommands', () => {
     const env = { SHIPYARD_TELEMETRY: '1' }
     const cli = buildCli(env)
     const { stdout } = await runSilent(cli, ['telemetry', 'status'], env)
-    const parsed = JSON.parse(stdout)
+    const parsed = JSON.parse(stdout).data
     expect(parsed.enabled).toBe(true)
     expect(parsed.reason).toBe('cli-enabled')
   })
@@ -158,7 +158,7 @@ describe('telemetry subcommands', () => {
     const env = {}
     const cli = buildCli(env)
     const { stdout } = await runSilent(cli, ['telemetry', 'status'], env)
-    const parsed = JSON.parse(stdout)
+    const parsed = JSON.parse(stdout).data
     expect(parsed.enabled).toBe(false)
     expect(parsed.reason).toBe('no-consent')
   })
@@ -167,7 +167,7 @@ describe('telemetry subcommands', () => {
     const env = {}
     const cli = buildCli(env)
     const { stdout } = await runSilent(cli, ['telemetry', 'enable'], env)
-    const parsed = JSON.parse(stdout)
+    const parsed = JSON.parse(stdout).data
     expect(parsed.envVar).toBe('SHIPYARD_TELEMETRY')
     expect(parsed.instructions).toContain('export SHIPYARD_TELEMETRY=1')
   })
@@ -176,7 +176,7 @@ describe('telemetry subcommands', () => {
     const env = {}
     const cli = buildCli(env)
     const { stdout } = await runSilent(cli, ['telemetry', 'disable'], env)
-    const parsed = JSON.parse(stdout)
+    const parsed = JSON.parse(stdout).data
     expect(parsed.instructions).toContain('DO_NOT_TRACK=1')
   })
 
@@ -184,7 +184,7 @@ describe('telemetry subcommands', () => {
     const env = {}
     const cli = buildCli(env)
     const { stdout } = await runSilent(cli, ['telemetry', 'inspect'], env)
-    const parsed = JSON.parse(stdout)
+    const parsed = JSON.parse(stdout).data
     expect(parsed.instructions).toContain('LICHE_TELEMETRY_DEBUG=stderr')
   })
 })

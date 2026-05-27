@@ -26,7 +26,7 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 | `defineCommand` | Canonical command declaration helper for analyzable command metadata plus a handler. |
 | `run` | Top-level effectful CLI entrypoint. Runs `argv ?? Bun.argv.slice(2)` through the terminal runner — writes stdout/stderr and exits the process unless overridden by `RunOptions`. |
 | `dispatch` | Result-returning execution lane for extensions or adapters that drive a command without writing stdout/stderr or calling `process.exit`. Returns the same `Result` envelope `run(cli, argv)` prints under `--json`. |
-| `parseInvocation` | Result-returning parse-only lane. Runs argv parsing, command selection, `prepareContext` hooks, and input decoding with provenance, then returns a `ParsedInvocation` without invoking the handler. Emits no lifecycle events; deprecation findings surface as `warnings` on the result. Returns `Result.fail` with structured codes for `--help` / `--version` / `--schema` / `COMPLETE` / terminal-handler flags (those remain `run`-only), unknown commands (`COMMAND_NOT_FOUND`), and fetch entries (`COMMAND_NOT_RUNNABLE`). |
+| `parseInvocation` | Result-returning parse-only lane. Runs argv parsing, command selection, `prepareContext` hooks, and input decoding with provenance, then returns a `ParsedInvocation` without invoking the handler. Emits no lifecycle events; deprecation findings surface as `warnings` on the result. Returns `Result.fail` with structured codes for `--help` / `--version` / `--schema` / `COMPLETE` / terminal-handler flags (those remain `run`-only), unknown commands (`COMMAND_NOT_FOUND`), and command entries with no `run` (`COMMAND_NOT_RUNNABLE`). |
 | `defineExtension` | Canonical extension declaration helper; validates the extension id and freezes the result. |
 | `defineGlobal` | Canonical global flag declaration helper for reusable parser/help/context metadata. |
 | `defineOutputRenderer` | Canonical output renderer declaration helper for named final-value renderers. |
@@ -91,7 +91,7 @@ Runtime guarantees:
 - Success: `{ ok: true, data, error: null, meta? }`.
 - Failure: `{ ok: false, data: null, error, meta? }`.
 
-Runtime-owned producers (`ctx.ok`, `ctx.error`, output validation, `cli.fetch()`, and generated envelope mode) populate the null branch explicitly. Non-human command failures serialize the full envelope even for handwritten CLIs. Handwritten success output remains bare under `--json` unless the caller requests `--full-output` or the CLI opts into `generated.machineOutput: 'envelope'`.
+Machine formats (`json`, `jsonl`, `yaml`) always emit the full envelope — for every CLI, regardless of TTY or opt-in. Domain formats (`md`, `csv`, custom `commandFormatRenderers` or extension renderers) receive bare `data` on success and bare `error` on failure. `--filter-output` against a machine format rewrites the envelope's `data` field and preserves `ok`/`error`/`meta`; against a domain format it filters the bare data. Streaming under `--format jsonl` writes one `{ type: 'chunk', data }` line per yield plus a trailing envelope line, matching `cli.fetch()` NDJSON.
 
 Executor control results are factory-branded, not structurally detected. Command handlers that finish early return `ctx.ok(...)`, `ctx.error(...)`, `ok(...)`, or `fail(...)`. Full result-shaped objects from arbitrary domain data are not treated as control results.
 

@@ -57,19 +57,20 @@ describe('RunOptions injection boundary', () => {
     expect(stdout.join('')).toContain('"hidden": true')
   })
 
-  test('--full-output overrides machine-only policy regardless of TTY', async () => {
+  test('--json overrides machine-only policy on a TTY', async () => {
     const stdout: string[] = []
     const cli = testCli('app', [testCommand('show', {
       outputPolicy: 'machine-only',
       run: () => ({ hidden: true }),
     })])
 
-    await run(cli, ['show', '--full-output'], {
+    await run(cli, ['show', '--json'], {
       isTty: true,
       stdout: (s) => stdout.push(s),
     })
 
     expect(stdout.join('')).toContain('"ok": true')
+    expect(stdout.join('')).toContain('"hidden": true')
   })
 
   test('error result formats human message when isTty=true and routes exit via options', async () => {

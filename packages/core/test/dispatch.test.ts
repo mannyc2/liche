@@ -34,7 +34,7 @@ describe('dispatch', () => {
     const ran = await runCli(cli, ['echo', 'hello', '--json'])
 
     expect(dispatched.ok).toBe(true)
-    expect(unwrap(dispatched)).toEqual(JSON.parse(ran.stdout.trim()))
+    expect(unwrap(dispatched)).toEqual(JSON.parse(ran.stdout.trim()).data)
   })
 
   test('does not write stdout/stderr and does not exit', async () => {

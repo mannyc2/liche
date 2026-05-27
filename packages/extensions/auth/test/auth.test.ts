@@ -38,7 +38,7 @@ describe('@liche/auth', () => {
     })
 
     expect(exitCode).toBe(0)
-    expect(JSON.parse(stdout)).toEqual({
+    expect(JSON.parse(stdout).data).toEqual({
       noSession: true,
       nonInteractive: true,
       profile: 'work',

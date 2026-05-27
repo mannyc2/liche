@@ -37,7 +37,6 @@ export function renderCli(catalog: Catalog): string[] {
   lines.push(`const cli = defineCli({`)
   lines.push(`  name: ${q(catalog.product.id)},`)
   lines.push(`  version: ${q(catalog.product.version)},`)
-  lines.push(`  generated: { machineOutput: 'envelope' },`)
   const extensions = renderExtensionDeclarations(catalog)
   if (extensions.length > 0) lines.push(`  extensions: [${extensions.join(', ')}],`)
   lines.push(`  commands: [`)
@@ -61,7 +60,7 @@ function renderExtensionDeclarations(catalog: Catalog): string[] {
   const extensions: string[] = [
     'help()',
     'version()',
-    'outputControls({ json: true, fullOutput: true, filterOutput: true })',
+    'outputControls({ json: true, filterOutput: true })',
     'reflectionControls({ schema: true })',
     `llms({ commands: { include: ${agentCommands} } })`,
   ]

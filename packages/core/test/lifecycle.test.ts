@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { middleware, z } from '../src/index.js'
 import type { CliEvent } from '../src/index.js'
 import * as Mcp from '@liche/mcp-server'
-import { parseJsonOutput, runCli, stateOf, testCli, testCommand } from './helpers.js'
+import { parseJsonData, parseJsonOutput, runCli, stateOf, testCli, testCommand } from './helpers.js'
 
 describe('lifecycle events and hooks', () => {
   test('defineCli returns an execution instance without fluent lifecycle mutators', () => {
@@ -34,7 +34,7 @@ describe('lifecycle events and hooks', () => {
     })
 
     expect(result.exitCode).toBe(0)
-    expect(parseJsonOutput(result.stdout)).toEqual({ value: true })
+    expect(parseJsonData(result.stdout)).toEqual({ value: true })
     expect(events.map((event) => event.type)).toEqual([
       'command.selected',
       'command.started',
@@ -65,7 +65,7 @@ describe('lifecycle events and hooks', () => {
     const result = await runCli(cli, ['ok', '--json'])
 
     expect(result.exitCode).toBe(0)
-    expect(parseJsonOutput(result.stdout)).toEqual({ value: true })
+    expect(parseJsonData(result.stdout)).toEqual({ value: true })
     expect(result.stderr).toBe('')
   })
 
@@ -92,7 +92,7 @@ describe('lifecycle events and hooks', () => {
     const result = await runCli(cli, ['trace', '--json'])
 
     expect(result.exitCode).toBe(0)
-    expect(parseJsonOutput(result.stdout)).toEqual({
+    expect(parseJsonData(result.stdout)).toEqual({
       trace: ['hook', 'middleware-before', 'handler', 'middleware-after'],
     })
   })
@@ -115,7 +115,7 @@ describe('lifecycle events and hooks', () => {
     const result = await runCli(cli, ['show', '--json'])
 
     expect(result.exitCode).toBe(0)
-    expect(parseJsonOutput(result.stdout)).toEqual({ fromHook: true })
+    expect(parseJsonData(result.stdout)).toEqual({ fromHook: true })
     expect(events.map((event) => event.type)).toEqual([
       'command.selected',
       'command.started',

@@ -151,14 +151,15 @@ describe('generateCli — command tree shape', () => {
     expect(source).not.toContain(`const dev = Cli.create('dev')`)
   })
 
-  test('root defineCli carries product id+version and explicit generated controls', () => {
+  test('root defineCli carries product id+version and explicit controls', () => {
     const source = generate(workersCatalog())
     expect(source).toContain(`const cli = defineCli({`)
     expect(source).toContain(`  name: 'workers',`)
     expect(source).toContain(`  version: '1.0.0',`)
-    expect(source).toContain(`  generated: { machineOutput: 'envelope' },`)
+    expect(source).not.toContain(`generated: { machineOutput: 'envelope' }`)
     expect(source).toContain(`help()`)
-    expect(source).toContain(`outputControls({ json: true, fullOutput: true, filterOutput: true })`)
+    expect(source).toContain(`outputControls({ json: true, filterOutput: true })`)
+    expect(source).not.toContain(`fullOutput`)
     expect(source).toContain(`reflectionControls({ schema: true })`)
     expect(source).toContain(`llms({ commands: { include: [] } })`)
     expect(source).not.toContain(`tokens()`)
@@ -243,7 +244,7 @@ describe('generateCli — run bodies by execution mode', () => {
     expect(source.match(/from '@liche\/core'/)?.[0]).toBe("from '@liche/core'")
     expect(source).toContain(`import { callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'`)
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
-    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, fullOutput: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`)
+    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`)
     expect(source).toContain(`files: ['p.jsonc'],`)
     expect(source).toContain(`sources: { options: { 'zone': [{ provider: 'config', path: 'defaultZone' }] } },`)
     const purgeBlock = extractCommandBlock(source, 'purge')

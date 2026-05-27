@@ -42,6 +42,14 @@ export function parseJsonOutput(stdout: string): any {
   return JSON.parse(stdout.trim())
 }
 
+export function parseJsonData(stdout: string): any {
+  const envelope = JSON.parse(stdout.trim())
+  if (envelope && typeof envelope === 'object' && 'ok' in envelope && 'data' in envelope) {
+    return envelope.data
+  }
+  return envelope
+}
+
 export function testCommand(path: string | readonly [string, ...string[]], definition: CommandDefinition = {}): DeclarativeCommand {
   const {
     alias,

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { middleware, z } from '../src/index.js'
-import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
+import { parseJsonData, parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { manifestEnvelope, mcpToolName } from '../src/command/registry.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import * as Mcp from '@liche/mcp-server'
@@ -10,7 +10,7 @@ import { skillsRuntime } from '@liche/skills-runtime'
 // All expected behaviors below are quoted in the plan and derived from upstream incur.
 
 describe('parity: streaming async generators', () => {
-  test('each yield writes one stdout line in jsonl mode', async () => {
+  test('each yield writes one stdout line in jsonl mode, followed by the result envelope', async () => {
     const cli = testCli('app', [testCommand('stream', {
       run: async function* () {
         yield { step: 1 }
@@ -20,13 +20,14 @@ describe('parity: streaming async generators', () => {
     })])
 
     const result = await runCli(cli, ['stream', '--format', 'jsonl'])
-    const lines = result.stdout.trim().split('\n')
-    expect(lines.length).toBe(3)
-    expect(lines.map((line) => JSON.parse(line))).toEqual([
+    const lines = result.stdout.trim().split('\n').map((line) => JSON.parse(line))
+    expect(lines.length).toBe(4)
+    expect(lines.slice(0, 3)).toEqual([
       { type: 'chunk', data: { step: 1 } },
       { type: 'chunk', data: { step: 2 } },
       { type: 'chunk', data: { step: 3 } },
     ])
+    expect(lines[3]).toMatchObject({ ok: true, data: [{ step: 1 }, { step: 2 }, { step: 3 }], error: null })
   })
 
   test('NDJSON streaming over fetch when accept header opts in', async () => {
@@ -137,7 +138,7 @@ describe('parity: --json flips formatExplicit on a TTY', () => {
       run: ({ formatExplicit, isTty }) => ({ formatExplicit, isTty }),
     })])
     const result = await runCli(cli, ['show', '--json'], { isTty: true })
-    expect(parseJsonOutput(result.stdout)).toEqual({ formatExplicit: true, isTty: true })
+    expect(parseJsonData(result.stdout)).toEqual({ formatExplicit: true, isTty: true })
   })
 
   test('formatExplicit is false on a TTY without an explicit format flag', async () => {
@@ -253,6 +254,6 @@ describe('parity: vars defaults layering', () => {
         run: ({ var: vars }) => ({ tier: vars['tier'] }),
       })])
     const result = await runCli(cli, ['whoami', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ tier: 'pro' })
+    expect(parseJsonData(result.stdout)).toEqual({ tier: 'pro' })
   })
 })

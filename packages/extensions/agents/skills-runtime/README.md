@@ -2,7 +2,7 @@
 
 Skill manifest runtime extension for `@liche/core` CLIs.
 
-Adds a `--llms` global flag that emits a Markdown skill (or, with `--full-output`, the full skill markdown) describing the CLI to LLM-driven clients. With `--json`/`--format`, emits the structured command manifest envelope instead.
+Adds a `--llms` global flag that emits a Markdown skill index describing the CLI to LLM-driven clients. With `--json`/`--format`, emits the structured command manifest envelope instead. For the full long-form skill markdown, call `skillMarkdown(name, state)` programmatically.
 
 ```ts
 import { defineCli } from '@liche/core'

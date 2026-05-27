@@ -206,6 +206,18 @@ export function attachFieldSources(
   })
 }
 
+export function attachOutputSource(error: unknown): unknown {
+  if (!(error instanceof ValidationError)) return error
+  const rewritten: FieldError[] = error.fieldErrors.map((fe) =>
+    fe.source !== undefined ? fe : { ...fe, source: { kind: 'output' as const } },
+  )
+  return new ValidationError({
+    message: error.shortMessage,
+    cause: error.cause instanceof Error ? error.cause : undefined,
+    fieldErrors: rewritten,
+  })
+}
+
 function topLevelKey(path: string): string | undefined {
   if (path === '$') return ''
   if (!path.startsWith('$.')) return undefined

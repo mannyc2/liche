@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { defineCli, defineCommand, defineGlobal, outputControls, z } from '../src/index.js'
 import { renderHelp } from '../src/help/render.js'
-import { stateOf, runCli, parseJsonOutput } from './helpers.js'
+import { stateOf, runCli, parseJsonData, parseJsonOutput } from './helpers.js'
 import type { CliExtension } from '../src/index.js'
 
 describe('global input definitions', () => {
@@ -37,7 +37,7 @@ describe('global input definitions', () => {
     })
 
     const result = await runCli(cli, ['show', '--profile', 'work', '--non-interactive', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ nonInteractive: true, profile: 'work' })
+    expect(parseJsonData(result.stdout)).toEqual({ nonInteractive: true, profile: 'work' })
 
     const help = renderHelp('app', stateOf(cli), undefined, ['show'])
     expect(help).toContain('--profile <name>')
@@ -62,7 +62,7 @@ describe('global input definitions', () => {
     })
 
     const result = await runCli(cli, ['show', '--tenant=acme', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ tenant: 'acme' })
+    expect(parseJsonData(result.stdout)).toEqual({ tenant: 'acme' })
     expect(renderHelp('app', stateOf(cli), undefined, ['show'])).toContain('--tenant <id>')
   })
 
@@ -83,10 +83,10 @@ describe('global input definitions', () => {
     })
 
     const fallback = await runCli(cli, ['show', '--json'])
-    expect(parseJsonOutput(fallback.stdout)).toEqual({ db: 'twitte.sqlite' })
+    expect(parseJsonData(fallback.stdout)).toEqual({ db: 'twitte.sqlite' })
 
     const explicit = await runCli(cli, ['show', '--db', 'custom.sqlite', '--json'])
-    expect(parseJsonOutput(explicit.stdout)).toEqual({ db: 'custom.sqlite' })
+    expect(parseJsonData(explicit.stdout)).toEqual({ db: 'custom.sqlite' })
 
     const help = renderHelp('app', stateOf(cli), undefined, ['show'])
     expect(help).toContain('--db <path>')
@@ -118,7 +118,6 @@ describe('global input definitions', () => {
   test('core globals are absent unless a control installs them', async () => {
     const cli = defineCli({
       name: 'app',
-      generated: { machineOutput: 'envelope' },
       commands: [
         defineCommand({
           path: ['show'],
@@ -130,7 +129,7 @@ describe('global input definitions', () => {
 
     expect(renderHelp('app', stateOf(cli), undefined, ['show'])).not.toContain('Global Options:')
     const result = await runCli(cli, ['show', '--format', 'yaml'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ format: 'yaml' })
+    expect(parseJsonOutput(result.stdout)).toMatchObject({ ok: true, data: { format: 'yaml' }, error: null })
   })
 })
 

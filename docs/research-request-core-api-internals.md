@@ -1,5 +1,16 @@
 # Standalone research prompt: improve `@liche/core`
 
+> **Stale snapshot.** This document is a historical research prompt and the embedded state inventory has drifted from the current code. The following names/concepts referenced below have since been removed or moved; do not rely on them when reading the snapshot:
+>
+> - `InvocationKind = "cli" | "ci" | "agent" | "mcp"` — moved to `@liche/auth`; not a core concept.
+> - `OutputPolicy = "all" | "agent-only"` — current valid value is `'all' | 'machine-only'`.
+> - "fetch entry" dispatch / fetch entries as a separate registry kind — fetch dispatches commands directly; only `COMMAND_NOT_RUNNABLE` remains for command entries with no `run`.
+> - `generated: { machineOutput: "envelope" }` — deleted; machine formats (`json`/`jsonl`/`yaml`) always emit the full envelope.
+> - `--full-output` / `outputControls({ fullOutput })` — deleted; pass any machine format to override `machine-only` policy.
+> - `defineCli({ builtins })` removed-field guard — deleted; the field was never supported and TypeScript rejects it.
+>
+> Regenerate the snapshot from current code in a follow-up if you need an accurate picture.
+
 You are researching how to improve the API and internals of `@liche/core`, a Bun-native TypeScript CLI runtime, before a public API freeze. You will not have access to the codebase. Treat the snapshot below as the current state of the system and produce a hard-cutover recommendation. Do not propose compatibility shims unless you can prove they are needed before `1.0.0`.
 
 ## Output Expected From You

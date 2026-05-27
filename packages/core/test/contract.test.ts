@@ -3,7 +3,7 @@ import { arg, middleware, z } from '../src/index.js'
 import * as Completions from '../src/completions/index.js'
 import * as Mcp from '@liche/mcp-server'
 import { mcpServer } from '@liche/mcp-server'
-import { parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
+import { parseJsonData, parseJsonOutput, runCli, testCli, testCommand } from './helpers.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 
 describe('contract: command resolution and execution', () => {
@@ -14,7 +14,7 @@ describe('contract: command resolution and execution', () => {
     })
 
     const result = await runCli(cli, ['Ada', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ message: 'hello Ada' })
+    expect(parseJsonData(result.stdout)).toEqual({ message: 'hello Ada' })
   })
 
   test('subcommands take precedence over root commands', async () => {
@@ -27,7 +27,7 @@ describe('contract: command resolution and execution', () => {
     })])
 
     const result = await runCli(cli, ['user', '42', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ command: 'user', path: '42' })
+    expect(parseJsonData(result.stdout)).toEqual({ command: 'user', path: '42' })
   })
 
   test('aliases resolve to the target command', async () => {
@@ -38,7 +38,7 @@ describe('contract: command resolution and execution', () => {
     })])
 
     const result = await runCli(cli, ['i', '123', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ id: 123 })
+    expect(parseJsonData(result.stdout)).toEqual({ id: 123 })
   })
 
   test('nested declarative paths preserve group commands and root-like children', async () => {
@@ -56,9 +56,9 @@ describe('contract: command resolution and execution', () => {
       }),
     ])
 
-    expect(parseJsonOutput((await runCli(cli, ['rooted', '--json'])).stdout)).toEqual({ command: 'rooted' })
-    expect(parseJsonOutput((await runCli(cli, ['admin', '--json'])).stdout)).toEqual({ command: 'admin-root' })
-    expect(parseJsonOutput((await runCli(cli, ['admin', 'audit', '--json'])).stdout)).toEqual({ command: 'audit' })
+    expect(parseJsonData((await runCli(cli, ['rooted', '--json'])).stdout)).toEqual({ command: 'rooted' })
+    expect(parseJsonData((await runCli(cli, ['admin', '--json'])).stdout)).toEqual({ command: 'admin-root' })
+    expect(parseJsonData((await runCli(cli, ['admin', 'audit', '--json'])).stdout)).toEqual({ command: 'audit' })
   })
 
 })
@@ -78,7 +78,7 @@ describe('contract: args, flags, env, middleware', () => {
     })])
 
     const result = await runCli(cli, ['build', 'app', '-c', '2', '--enabled', '--no-cache', '--', '--save-dev', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({
+    expect(parseJsonData(result.stdout)).toEqual({
       args: { literal: '--save-dev', name: 'app' },
       options: { cache: false, count: 2, enabled: true, saveDev: false },
     })
@@ -94,7 +94,7 @@ describe('contract: args, flags, env, middleware', () => {
     })])
 
     const result = await runCli(cli, ['run', '--enabled=false', '--count=0', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ count: 0, enabled: false })
+    expect(parseJsonData(result.stdout)).toEqual({ count: 0, enabled: false })
   })
 
   test('env input source populates option defaults from env (argv > env > default)', async () => {
@@ -106,13 +106,13 @@ describe('contract: args, flags, env, middleware', () => {
       })])
 
     const fromEnv = await runCli(make(), ['run', '--json'], { env: { MYAPP_TOKEN: 'fromenv' } })
-    expect(parseJsonOutput(fromEnv.stdout)).toEqual({ token: 'fromenv' })
+    expect(parseJsonData(fromEnv.stdout)).toEqual({ token: 'fromenv' })
 
     const argvWins = await runCli(make(), ['run', '--token', 'fromargv', '--json'], { env: { MYAPP_TOKEN: 'fromenv' } })
-    expect(parseJsonOutput(argvWins.stdout)).toEqual({ token: 'fromargv' })
+    expect(parseJsonData(argvWins.stdout)).toEqual({ token: 'fromargv' })
 
     const schemaDefault = await runCli(make(), ['run', '--json'], { env: {} })
-    expect(parseJsonOutput(schemaDefault.stdout)).toEqual({ token: 'default' })
+    expect(parseJsonData(schemaDefault.stdout)).toEqual({ token: 'default' })
   })
 
   test('option source provenance distinguishes argv, provider, and schema default', async () => {
@@ -122,11 +122,11 @@ describe('contract: args, flags, env, middleware', () => {
       run: (ctx) => ({ region: ctx.options.region, source: ctx.sources.option('region') }),
     })])
 
-    expect(parseJsonOutput((await runCli(cli, ['run', '--region', 'sfo', '--json'], { env: { APP_REGION: 'dfw' } })).stdout))
+    expect(parseJsonData((await runCli(cli, ['run', '--region', 'sfo', '--json'], { env: { APP_REGION: 'dfw' } })).stdout))
       .toEqual({ region: 'sfo', source: { kind: 'argv' } })
-    expect(parseJsonOutput((await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'dfw' } })).stdout))
+    expect(parseJsonData((await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'dfw' } })).stdout))
       .toEqual({ region: 'dfw', source: { kind: 'provider', provider: 'env', path: 'APP_REGION', source: { kind: 'env', name: 'APP_REGION' } } })
-    expect(parseJsonOutput((await runCli(cli, ['run', '--json'], { env: {} })).stdout))
+    expect(parseJsonData((await runCli(cli, ['run', '--json'], { env: {} })).stdout))
       .toEqual({ region: 'iad', source: { kind: 'default' } })
   })
 
@@ -137,7 +137,7 @@ describe('contract: args, flags, env, middleware', () => {
     })])
 
     const result = await runCli(cli, ['token', '--json'], { env: { TOKEN: 'secret' } })
-    expect(parseJsonOutput(result.stdout)).toEqual({ token: 'secret' })
+    expect(parseJsonData(result.stdout)).toEqual({ token: 'secret' })
   })
 
   test('returns a validation error when required env is missing', async () => {
@@ -174,7 +174,7 @@ describe('contract: args, flags, env, middleware', () => {
       })])
 
     const result = await runCli(cli, ['trace', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ trace: ['before', 'run', 'after'] })
+    expect(parseJsonData(result.stdout)).toEqual({ trace: ['before', 'run', 'after'] })
   })
 })
 
@@ -217,7 +217,7 @@ describe('contract: fetch and schema', () => {
     expect(await invalid.json()).toMatchObject({ ok: false, data: null, error: { code: 'VALIDATION_ERROR' } })
   })
 
-  test('fetch exposes MCP endpoint, HEAD behavior, and invalid JSON fallback', async () => {
+  test('fetch exposes MCP endpoint, HEAD behavior, malformed body rejection, and empty body defaults', async () => {
     const cli = testCli('api', { version: '3.0.0', extensions: [mcpServer()] }, [testCommand('echo', {
       options: z.object({ message: z.string().default('empty') }),
       run: ({ options }) => ({ message: options.message }),
@@ -241,7 +241,22 @@ describe('contract: fetch and schema', () => {
         method: 'POST',
       }),
     )
-    expect(await invalidJson.json()).toEqual({ ok: true, data: { message: 'empty' }, error: null })
+    expect(invalidJson.status).toBe(400)
+    expect(await invalidJson.json()).toMatchObject({
+      ok: false,
+      data: null,
+      error: { code: 'INVALID_REQUEST_BODY', message: 'Request body is not valid JSON' },
+    })
+
+    const emptyBody = await cli.fetch(
+      new Request('http://localhost/echo', {
+        body: '',
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      }),
+    )
+    expect(emptyBody.status).toBe(200)
+    expect(await emptyBody.json()).toEqual({ ok: true, data: { message: 'empty' }, error: null })
   })
 
   test('schema output is generated from Zod, not hand-written fixtures', async () => {
@@ -270,9 +285,21 @@ describe('contract: fetch and schema', () => {
       data: null,
       error: {
         code: 'VALIDATION_ERROR',
-        fieldErrors: [{ path: '$.id' }],
+        fieldErrors: [{ path: '$.id', source: { kind: 'output' } }],
       },
     })
+  })
+
+  test('output validation human label says "command output", not a CLI option', async () => {
+    const cli = testCli('app', [testCommand('ship', {
+      output: z.object({ id: z.number() }),
+      run: () => ({ id: 'not-a-number' }),
+    })])
+
+    const result = await runCli(cli, ['ship'], { isTty: true })
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('Error: invalid value for command output "$.id"')
+    expect(result.stderr).not.toContain('--id')
   })
 
   test('output validation awaits async output codecs and decodes handler results', async () => {
@@ -285,7 +312,7 @@ describe('contract: fetch and schema', () => {
 
     const result = await runCli(cli, ['ship', '--json'])
     expect(result.exitCode).toBe(0)
-    expect(parseJsonOutput(result.stdout)).toEqual({ name: 'ADA' })
+    expect(parseJsonData(result.stdout)).toEqual({ name: 'ADA' })
   })
 
   test('async output validation failures normalize into VALIDATION_ERROR', async () => {
@@ -374,7 +401,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(plain.stdout).toBe('# rendered\n')
 
     const json = await runCli(cli, ['render', '--json'])
-    expect(parseJsonOutput(json.stdout)).toBe('# rendered')
+    expect(parseJsonData(json.stdout)).toBe('# rendered')
   })
 
   test('agent helper commands are not available unless enabled', async () => {
@@ -392,7 +419,7 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(minimalHelp.stdout).not.toContain('skills add')
   })
 
-  test('run handles version, full output, filters, token limits, and CTA metadata', async () => {
+  test('run handles version, envelope output, filters, token limits, and CTA metadata', async () => {
     const cli = testCli('app', { version: '2.0.0' }, [testCommand('deploy', {
       run: ({ ok }) =>
         ok(
@@ -404,8 +431,8 @@ describe('contract: mcp, completions, and token behavior', () => {
     const version = await runCli(cli, ['--version'])
     expect(version.stdout).toBe('2.0.0\n')
 
-    const full = await runCli(cli, ['deploy', '--json', '--full-output'])
-    expect(parseJsonOutput(full.stdout)).toEqual({
+    const envelope = await runCli(cli, ['deploy', '--json'])
+    expect(parseJsonOutput(envelope.stdout)).toEqual({
       data: { nested: { keep: 'yes', skip: 'no' }, status: 'ready' },
       error: null,
       meta: { cta: { commands: [{ command: 'status', options: { verbose: true } }], description: 'Next:' } },
@@ -413,7 +440,12 @@ describe('contract: mcp, completions, and token behavior', () => {
     })
 
     const filtered = await runCli(cli, ['deploy', '--json', '--filter-output', 'nested.keep'])
-    expect(parseJsonOutput(filtered.stdout)).toEqual({ nested: { keep: 'yes' } })
+    expect(parseJsonOutput(filtered.stdout)).toEqual({
+      data: { nested: { keep: 'yes' } },
+      error: null,
+      meta: { cta: { commands: [{ command: 'status', options: { verbose: true } }], description: 'Next:' } },
+      ok: true,
+    })
     expect(filtered.stderr).toBe('Next:\n  app status --verbose\n')
 
     const counted = await runCli(cli, ['deploy', '--json', '--token-count'])
@@ -440,17 +472,14 @@ describe('contract: mcp, completions, and token behavior', () => {
     expect(version.stdout).toBe('0.0.0\n')
   })
 
-  test('run honors machine-only output policy unless full output is requested', async () => {
+  test('run honors machine-only output policy and emits the envelope when --json is selected', async () => {
     const cli = testCli('app', [testCommand('quiet', {
       outputPolicy: 'machine-only',
       run: () => ({ hidden: true }),
     })])
 
-    const normal = await runCli(cli, ['quiet', '--json'])
-    expect(normal.stdout).toBe('{\n  "hidden": true\n}\n')
-
-    const full = await runCli(cli, ['quiet', '--json', '--full-output'])
-    expect(parseJsonOutput(full.stdout)).toEqual({ ok: true, data: { hidden: true }, error: null })
+    const machine = await runCli(cli, ['quiet', '--json'])
+    expect(parseJsonOutput(machine.stdout)).toEqual({ ok: true, data: { hidden: true }, error: null })
   })
 
   test('run normalizes ctx.error exit codes and command-not-runnable errors', async () => {
@@ -524,7 +553,7 @@ describe('contract: arg.boolean parser integration', () => {
 
   test('--yes sets true without consuming next argv token', async () => {
     const result = await runCli(booleanCli(), ['run', '--yes', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: true } })
+    expect(parseJsonData(result.stdout)).toEqual({ args: {}, options: { yes: true } })
   })
 
   test('--yes positional treats positional as positional, not flag value', async () => {
@@ -534,7 +563,7 @@ describe('contract: arg.boolean parser integration', () => {
       run: ({ options, args }: any) => ({ args, options }),
     })])
     const result = await runCli(cli, ['run', '--yes', 'positional', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({
+    expect(parseJsonData(result.stdout)).toEqual({
       args: { name: 'positional' },
       options: { yes: true },
     })
@@ -542,23 +571,23 @@ describe('contract: arg.boolean parser integration', () => {
 
   test('--no-yes sets false', async () => {
     const result = await runCli(booleanCli(), ['run', '--no-yes', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: false } })
+    expect(parseJsonData(result.stdout)).toEqual({ args: {}, options: { yes: false } })
   })
 
   test('--yes=true and --yes=false parse explicit literals', async () => {
     const trueResult = await runCli(booleanCli(), ['run', '--yes=true', '--json'])
-    expect(parseJsonOutput(trueResult.stdout)).toEqual({ args: {}, options: { yes: true } })
+    expect(parseJsonData(trueResult.stdout)).toEqual({ args: {}, options: { yes: true } })
     const falseResult = await runCli(booleanCli(), ['run', '--yes=false', '--json'])
-    expect(parseJsonOutput(falseResult.stdout)).toEqual({ args: {}, options: { yes: false } })
+    expect(parseJsonData(falseResult.stdout)).toEqual({ args: {}, options: { yes: false } })
   })
 
   test('-y alias sets true', async () => {
     const result = await runCli(booleanCli(), ['run', '-y', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: true } })
+    expect(parseJsonData(result.stdout)).toEqual({ args: {}, options: { yes: true } })
   })
 
   test('omitted falls back to default', async () => {
     const result = await runCli(booleanCli(), ['run', '--json'])
-    expect(parseJsonOutput(result.stdout)).toEqual({ args: {}, options: { yes: false } })
+    expect(parseJsonData(result.stdout)).toEqual({ args: {}, options: { yes: false } })
   })
 })

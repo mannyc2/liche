@@ -6,7 +6,7 @@
 
 The baseline `defineCli({ commands })` contract is:
 
-- no implicit `--format`, `--json`, `--schema`, `--llms`, `--help`, `--version`, `--full-output`, `--filter-output`, or token flags
+- no implicit `--format`, `--json`, `--schema`, `--llms`, `--help`, `--version`, `--filter-output`, or token flags
 - no `Global Options:` help section unless a global-contributing extension is installed
 - command options may freely use names such as `format`, `version`, `schema`, and `json`
 - agent-facing helpers are absent unless the author installs `agents()` or a narrower agent extension
@@ -34,7 +34,7 @@ The remaining work is documentation polish and any future model fields users ask
 | `--help`, `-h` | opt-in core `help()` control | absent unless installed |
 | no-args or group fallback help | core command-resolution behavior | still allowed because it does not reserve a flag |
 | `--version` | opt-in core `version()` control | absent unless installed; `version` metadata remains available to contracts/events |
-| `--json`, `--format`, `--full-output`, `--filter-output`, `--token-count`, `--token-limit`, `--token-offset` | opt-in core `outputControls()` control | absent unless installed; commands may still set default `format` |
+| `--json`, `--format`, `--filter-output`, `--token-count`, `--token-limit`, `--token-offset` | opt-in core `outputControls()` control | absent unless installed; commands may still set default `format` |
 | `--schema` | opt-in core `reflectionControls()` control | absent unless installed; generated/Product CLIs install it explicitly when desired |
 | `--llms` | `@liche/agents` | installed by `agents()` by default |
 | `--mcp`, MCP stdio/HTTP handlers | `@liche/agents` via `mcpServer()` | installed by `agents()` by default |

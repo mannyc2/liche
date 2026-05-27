@@ -3,7 +3,7 @@ import { execute } from './execute.js'
 import { selectCommand } from '../command/registry.js'
 import { isObject } from '../internal.js'
 import { defaultEnv } from './invocation.js'
-import { createLifecycleEvent, emitLifecycleEvent, mergeHooks } from './lifecycle.js'
+import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 import { checkCommandSurface, unsupportedSurfaceError } from '../schema/surface.js'
 import { fail } from '../errors/result.js'
 
@@ -45,7 +45,25 @@ export async function fetchCli(name: string, state: CliState, request: Request):
     return Response.json(fail(error), { status: 400 })
   }
 
-  const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await safeJson(request)
+  const parsed = request.method === 'GET' || request.method === 'HEAD' ? { kind: 'empty' as const } : await readBody(request)
+  if (parsed.kind === 'invalid') {
+    await emitLifecycleEvent(state.events.concat(selected.events), createLifecycleEvent(name, state.def.version, {
+      isTty: false,
+      command: eventCommand(selected),
+      error: { code: 'INVALID_REQUEST_BODY', exitCode: 1, status: 400 },
+      exitCode: 1,
+      format: 'json',
+      formatExplicit: true,
+      result: 'user_error',
+      surface: { kind: 'parse' },
+      type: 'parse.failed',
+    }))
+    return Response.json(
+      fail({ code: 'INVALID_REQUEST_BODY', message: 'Request body is not valid JSON', status: 400 }),
+      { status: 400 },
+    )
+  }
+  const body = parsed.kind === 'parsed' ? parsed.value : undefined
   const query = Object.fromEntries(url.searchParams.entries())
   const bodyEntries = isObject(body) ? body : {}
   const mergedOptions = { ...query, ...bodyEntries }
@@ -104,10 +122,17 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   return Response.json(result, { status: result.ok ? 200 : Number(result.error.status ?? 400) })
 }
 
-async function safeJson(request: Request): Promise<unknown> {
+type ParsedBody =
+  | { kind: 'empty' }
+  | { kind: 'parsed'; value: unknown }
+  | { kind: 'invalid' }
+
+async function readBody(request: Request): Promise<ParsedBody> {
+  const raw = await request.text()
+  if (raw.length === 0) return { kind: 'empty' }
   try {
-    return await request.json()
+    return { kind: 'parsed', value: JSON.parse(raw) }
   } catch {
-    return undefined
+    return { kind: 'invalid' }
   }
 }

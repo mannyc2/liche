@@ -28,7 +28,6 @@ Global Options:
   --version
   --format <json|yaml|md|jsonl|csv>
   --json
-  --full-output
   --filter-output <paths>
   --token-count
   --token-limit <n>
@@ -64,7 +63,6 @@ Global Options:
   --version
   --format <json|yaml|md|jsonl|csv>
   --json
-  --full-output
   --filter-output <paths>
   --token-count
   --token-limit <n>
@@ -86,7 +84,6 @@ Global Options:
   --version
   --format <json|yaml|md|jsonl|csv>
   --json
-  --full-output
   --filter-output <paths>
   --token-count
   --token-limit <n>

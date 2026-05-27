@@ -40,7 +40,7 @@ describe('liche-product CLI', () => {
     expect(result.exitCode).toBe(0)
     expect(result.stderr).toBe('')
 
-    const data = JSON.parse(result.stdout)
+    const data = JSON.parse(result.stdout).data
     expect(data).toEqual({
       artifactPaths: {
         'agent-reference': join(dir, 'liche.generated.agent.md'),
@@ -104,7 +104,7 @@ describe('liche-product CLI', () => {
         '--json',
       ])
       expect(result.exitCode).toBe(0)
-      const body = JSON.parse(result.stdout)
+      const body = JSON.parse(result.stdout).data
       expect(body.summary).toEqual({ passed: 1, failed: 0, skipped: 0, total: 1 })
       const report = await Bun.file(reportPath).json()
       expect(report.summary).toEqual(body.summary)
@@ -156,7 +156,7 @@ describe('liche-product CLI', () => {
   test('skills add installs authored liche-product guidance', async () => {
     const result = await runCli(['skills', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
-    const body = JSON.parse(result.stdout)
+    const body = JSON.parse(result.stdout).data
     expect(body).toEqual({ path: join(dir, '.claude/skills/liche-product/SKILL.md') })
     const content = await Bun.file(body.path).text()
     expect(content).toContain('description: Author and maintain liche product schemas')
@@ -167,7 +167,7 @@ describe('liche-product CLI', () => {
   test('mcp add is enabled for liche-product', async () => {
     const result = await runCli(['mcp', 'add', '--agent', 'claude-code', '--json'], { env: { HOME: dir } })
     expect(result.exitCode).toBe(0)
-    const body = JSON.parse(result.stdout)
+    const body = JSON.parse(result.stdout).data
     expect(body).toEqual({ path: join(dir, '.claude.json') })
     const config = await Bun.file(body.path).json()
     expect(config.mcpServers['liche-product']).toEqual({ args: ['--mcp'], command: 'liche-product' })
