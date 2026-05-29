@@ -1,5 +1,5 @@
 import { fstatSync } from 'node:fs'
-import { isatty } from 'node:tty'
+import { isatty, WriteStream } from 'node:tty'
 import type { Dict } from '../types.js'
 
 /**
@@ -23,13 +23,15 @@ export type ColorLevel = 0 | 1 | 2 | 3 // none | ansi16 | ansi256 | truecolor
 
 export type ColorSupport = {
   readonly level: ColorLevel
-  readonly source: 'no-color' | 'force-color' | 'tty' | 'dumb-term' | 'not-a-tty' | 'default'
+  /** Which signal decided the level. */
+  readonly source: 'override' | 'force-color' | 'no-color' | 'tty' | 'not-a-tty'
 }
 
 export type Stdio = {
   readonly stdin: StreamView
   readonly stdout: StreamView
   readonly stderr: StreamView
+  /** Color support for stdout (the primary output sink). */
   readonly color: ColorSupport
   /** Terminal columns (TIOCGWINSZ via process.stdout.columns); undefined when stdout is not a tty. */
   readonly width: number | undefined
@@ -40,7 +42,7 @@ export type Stdio = {
 /** The three stream kinds, for telemetry/events. */
 export type StreamKinds = { stdin: StreamKind; stdout: StreamKind; stderr: StreamKind }
 
-/** Per-stream classification/color/width overrides for tests and programmatic callers. */
+/** Per-stream classification + color/width overrides for tests and programmatic callers. */
 export type StreamOverrides = {
   stdin?: StreamKind | undefined
   stdout?: StreamKind | undefined
@@ -69,17 +71,52 @@ function view(fd: 0 | 1 | 2, override: StreamKind | undefined): StreamView {
   return { fd, kind, isTTY: kind === 'tty' }
 }
 
-function resolveColor(env: Dict<string | undefined>, stdout: StreamView, override: ColorLevel | undefined): ColorSupport {
-  if (override !== undefined) return { level: override, source: 'force-color' }
-  if (env['NO_COLOR'] !== undefined) return { level: 0, source: 'no-color' } // presence wins (convention)
-  const force = env['FORCE_COLOR']
-  if (force !== undefined && force !== '0' && force !== 'false') return { level: 3, source: 'force-color' }
-  if (!stdout.isTTY) return { level: 0, source: 'not-a-tty' } // a non-terminal sink stores escapes verbatim
-  if (env['TERM'] === 'dumb') return { level: 0, source: 'dumb-term' }
-  const ct = env['COLORTERM'] ?? ''
-  if (/truecolor|24bit/i.test(ct)) return { level: 3, source: 'tty' }
-  if (/256/.test(env['TERM'] ?? '')) return { level: 2, source: 'tty' }
-  return { level: 1, source: 'tty' }
+/** Node/Bun getColorDepth bits (1/4/8/24) → our 0-3 level. */
+function colorLevel(bits: number): ColorLevel {
+  return bits >= 24 ? 3 : bits >= 8 ? 2 : bits >= 4 ? 1 : 0
+}
+
+/**
+ * Color support for a stream. The LEVEL is delegated to the runtime's own
+ * detector (`tty.WriteStream#getColorDepth`) so it stays consistent with `bun`'s
+ * coloring and with libraries like picocolors: it parses FORCE_COLOR *by value*
+ * and honors NO_COLOR / COLORTERM / TERM / CI / TERM_PROGRAM. We do NOT
+ * re-implement that table — re-implementing it is how the previous version drifted
+ * (it mapped any truthy FORCE_COLOR to truecolor). An explicit `override` (a future
+ * --color/--no-color policy, or a test) wins.
+ */
+function resolveColor(env: Dict<string | undefined>, stream: StreamView, override: ColorLevel | undefined): ColorSupport {
+  if (override !== undefined) return { level: override, source: 'override' }
+  const probe = (e: Dict<string | undefined>): number => {
+    const getColorDepth = WriteStream.prototype.getColorDepth as
+      | undefined
+      | ((env?: Dict<string | undefined>) => number)
+    return typeof getColorDepth === 'function'
+      ? getColorDepth.call({ fd: stream.fd, isTTY: stream.isTTY }, e)
+      : stream.isTTY
+        ? 4
+        : 1
+  }
+  // FORCE_COLOR forces color regardless of tty or NO_COLOR. getColorDepth parses it
+  // BY VALUE ("1"/""→16, "2"→256, "3"→truecolor) — we delegate that rather than
+  // re-derive it (re-deriving it is how the previous version drifted to truecolor).
+  // It warns to stderr if NO_COLOR is also set, so drop NO_COLOR from the probe.
+  if (env['FORCE_COLOR'] !== undefined) {
+    let e = env
+    if (env['NO_COLOR'] !== undefined) {
+      e = { ...env }
+      delete e['NO_COLOR']
+    }
+    return { level: colorLevel(probe(e)), source: 'force-color' }
+  }
+  // No FORCE_COLOR: NO_COLOR disables (presence wins, per no-color.org), and a
+  // non-terminal sink gets NO color. That isTTY gate is OURS: getColorDepth omits it
+  // (it assumes a real terminal), so delegating blindly would report color for a
+  // piped stdout whenever TERM/COLORTERM is set in the inherited env.
+  if (env['NO_COLOR'] !== undefined) return { level: 0, source: 'no-color' }
+  if (!stream.isTTY) return { level: 0, source: 'not-a-tty' }
+  // A real terminal: delegate depth detection (TERM / COLORTERM / CI / TERM_PROGRAM).
+  return { level: colorLevel(probe(env)), source: 'tty' }
 }
 
 /**
@@ -104,9 +141,12 @@ export function captureStdio(env: Dict<string | undefined>, overrides: StreamOve
 /**
  * Build a Stdio WITHOUT reading real fds — for programmatic callers (dispatch),
  * adapters (fetch/MCP), and tests. The default (no overrides) is fully
- * non-interactive (all pipes). Overrides set the kind per stream, and `isTTY`,
- * `interactive`, and `color` are derived from those kinds (so an explicit
- * `{ stdout: 'tty' }` correctly reports a terminal).
+ * non-interactive (all pipes, no color). Overrides set the kind per stream;
+ * `isTTY`, `interactive`, and `color` are derived from those kinds (so an explicit
+ * `{ stdout: 'tty' }` reports a terminal, and `{ color: 2 }` forces a level). There
+ * is no env here, so color is NOT auto-detected: a bare `{ stdout: 'tty' }` defaults
+ * to level 1, whereas `captureStdio` delegates to the env and may report level 0 for
+ * a terminal lacking TERM/COLORTERM. Pass `color` to force a specific level.
  */
 export function nonInteractiveStdio(overrides: StreamOverrides = {}): Stdio {
   const mk = (fd: 0 | 1 | 2, o: StreamKind | undefined): StreamView => {
@@ -118,7 +158,7 @@ export function nonInteractiveStdio(overrides: StreamOverrides = {}): Stdio {
   const stderr = mk(2, overrides.stderr)
   const color: ColorSupport =
     overrides.color !== undefined
-      ? { level: overrides.color, source: 'force-color' }
+      ? { level: overrides.color, source: 'override' }
       : stdout.isTTY
         ? { level: 1, source: 'tty' }
         : { level: 0, source: 'not-a-tty' }

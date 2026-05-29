@@ -31,6 +31,14 @@ The gap is strictly the I/O side: there is no file-type classification of fd 0/1
 
 Replace the `isTty` boolean with a `Stdio` value: the **facts** about fd 0/1/2, captured once at the boundary, injected through the context. Each field proves one thing.
 
+> **Note (shipped state):** the block below is the original design sketch. The shipped
+> module — `packages/core/src/cli/stdio.ts` — is the source of truth and evolved in two ways
+> this sketch does NOT reflect: (1) `color` is **delegated** to the runtime's
+> `tty.WriteStream#getColorDepth` (the hand-rolled `resolveColor` below mapped any truthy
+> `FORCE_COLOR` to truecolor — a bug), with an `isTTY` gate applied here so a piped stdout
+> reports no color even when `TERM` is set; (2) `ColorSupport.source` is
+> `'override' | 'force-color' | 'no-color' | 'tty' | 'not-a-tty'`.
+
 ```ts
 // packages/core/src/cli/stdio.ts  (NEW)
 import { fstatSync } from 'node:fs'
