@@ -12,6 +12,12 @@ While the suite is pre-`1.0.0`, minor bumps (`0.x.0`) are the breaking-change la
 
 ## Unreleased
 
+### Changed
+
+- **Core (breaking): replaced the overloaded `isTty` boolean with a `Stdio` primitive.** `RunContext.isTty`, `RunOptions.isTty`, `DispatchOptions.isTty`, and `CliEvent.isTty` are removed. Handlers now read `ctx.stdio` — per-stream `fstat` classification (`stdin`/`stdout`/`stderr` → `{ kind, isTTY }` where `kind` is `tty`/`pipe`/`file`/`socket`/`char`/`closed`), plus `color`, `width`, and `interactive` (stdin && stdout are terminals — feasibility, not "a human is present"). Tests/adapters inject `RunOptions.streams` / `DispatchOptions.streams` (`StreamOverrides`); lifecycle events and the telemetry wire schema carry `streams: { stdin, stdout, stderr }` instead of `isTty`. New public exports: `nonInteractiveStdio`, `streamKinds`, and types `Stdio`, `StreamView`, `StreamKind`, `StreamKinds`, `ColorSupport`, `ColorLevel`, `StreamOverrides`. Hard cutover, no compatibility shim. See [docs/stdio-primitive-plan.md](./docs/stdio-primitive-plan.md).
+  - Generated CLIs: auth device-login feasibility now derives from `ctx.stdio.interactive` (stdin **and** stdout are terminals) rather than `ctx.isTty` (stdout only); `--non-interactive` still gates it.
+  - Deferred to a focused follow-up: `EPIPE`-clean-exit on `… | head` and flush-before-exit (needs a Bun-runtime test).
+
 ## 0.8.1 — 2026-05-27
 
 Partial-publish recovery release. The v0.8.0 publish workflow hit a transient sigstore TLOG `409` mid-stream after publishing 5 of 15 packages (`@liche/core`, `@liche/auth`, `@liche/config`, `@liche/completions`, `@liche/mcp-installer`). 0.8.1 republishes all 15 packages at a fresh version so the suite is once again synchronized on the npm registry. No source changes vs 0.8.0; the 0.8.0 entry below covers everything shipping here.

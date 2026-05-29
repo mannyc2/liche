@@ -16,7 +16,7 @@ async function runCli(
   await run(cli, argv, {
     ...options,
     exit: (code) => { exitCode = code },
-    isTty: options.isTty ?? false,
+    streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     stderr: (chunk) => { stderr += chunk },
     stdout: (chunk) => { stdout += chunk },
   })

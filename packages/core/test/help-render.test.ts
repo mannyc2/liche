@@ -405,7 +405,7 @@ describe('help({ renderer })', () => {
       ],
     })
 
-    const result = await runCli(cli, ['deploy'], { isTty: true })
+    const result = await runCli(cli, ['deploy'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toContain('See below for usage.')
     expect(result.stderr).toContain('CUSTOM HELP app deploy')

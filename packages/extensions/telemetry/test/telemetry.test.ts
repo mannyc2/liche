@@ -25,7 +25,7 @@ async function runSilent(cli: ReturnType<typeof defineCli>, argv: string[], env:
   let exitCode = 0
   await run(cli, argv, {
     env,
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     stdout: (s) => {
       stdout += s
     },

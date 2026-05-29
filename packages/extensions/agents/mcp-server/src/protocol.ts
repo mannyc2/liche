@@ -8,12 +8,18 @@ import {
   execute,
   mcpToolName,
   mergeHooks,
+  nonInteractiveStdio,
   selectCommand,
+  streamKinds,
 } from '@liche/core'
 import { jsonSchema, mcpAnnotations, objectSchema } from './annotations.js'
 import { isRecord, jsonRpcError, validateJsonRpc } from './json-rpc.js'
 
 const MCP_SURFACE = { kind: 'extension', transport: 'mcp' } as const
+
+// MCP is never a terminal: fixed non-interactive stdio for events/execute.
+const MCP_STDIO = nonInteractiveStdio()
+const MCP_STREAMS = streamKinds(MCP_STDIO)
 
 export const MCP_PROTOCOL_VERSION = '2025-11-25'
 
@@ -30,7 +36,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
 
   if (message?.method === 'initialize') {
     await emitMcpLifecycle(binaryName, state, state.events, {
-      isTty: false,
+      streams: MCP_STREAMS,
       format: 'json',
       formatExplicit: true,
       attributes: { mcpMethod: 'initialize' },
@@ -69,7 +75,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
         annotations: mcpAnnotations(command),
       }))
     await emitMcpLifecycle(binaryName, state, state.events, {
-      isTty: false,
+      streams: MCP_STREAMS,
       format: 'json',
       formatExplicit: true,
       attributes: { mcpMethod: 'tools/list', mcpToolCount: tools.length },
@@ -102,7 +108,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
     const surfaceCheck = selected ? checkCommandSurface(selected.entry, MCP_SURFACE) : { ok: true as const }
     if (selected && !surfaceCheck.ok) {
       await emitMcpLifecycle(binaryName, state, subscriptions, {
-        isTty: false,
+        streams: MCP_STREAMS,
         ...(command ? { command } : undefined),
         durationMs: 0,
         error: {
@@ -128,7 +134,7 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
     const startedAt = Date.now()
     if (command) {
       await emitMcpLifecycle(binaryName, state, subscriptions, {
-        isTty: false,
+        streams: MCP_STREAMS,
         command,
         format: 'json',
         formatExplicit: true,
@@ -156,14 +162,14 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
           global: {},
           hooks: mergeHooks(state.hooks, selected.hooks),
           inputSourceHints: { args: argHints, options: optionHints },
-          isTty: false,
+          stdio: MCP_STDIO,
           middlewares: state.middlewares.concat(selected.middlewares),
           version: state.def.version,
         })
       : { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }
 
     await emitMcpLifecycle(binaryName, state, subscriptions, {
-      isTty: false,
+      streams: MCP_STREAMS,
       ...(command ? { command } : undefined),
       durationMs: Date.now() - startedAt,
       ...(result.ok ? { exitCode: 0, result: 'success' as const } : {

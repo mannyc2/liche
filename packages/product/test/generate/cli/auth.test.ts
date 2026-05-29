@@ -1,4 +1,4 @@
-import { run, type CliInstance } from '@liche/core'
+import { run, type CliInstance, type StreamKind } from '@liche/core'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -251,7 +251,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
     argv: string[],
     env: Record<string, string | undefined> = {},
     stdin?: AsyncIterable<string>,
-    isTty = false,
+    interactive = false,
   ): Promise<{ stdout: string; exitCode: number }> {
     const mod = (await import(modulePath)) as { default: CliInstance }
     let stdout = ''
@@ -260,7 +260,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       stdout: (s: string) => void
       stderr: (s: string) => void
       exit: (code: number) => void
-      isTty: boolean
+      streams: { stdin: StreamKind; stdout: StreamKind; stderr: StreamKind }
       env?: Record<string, string | undefined>
       stdin?: AsyncIterable<string>
     } = {
@@ -271,7 +271,9 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       exit: (code) => {
         exitCode = code
       },
-      isTty,
+      streams: interactive
+        ? { stdin: 'tty', stdout: 'tty', stderr: 'tty' }
+        : { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       env,
     }
     if (stdin) opts.stdin = stdin

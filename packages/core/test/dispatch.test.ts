@@ -246,14 +246,14 @@ describe('dispatch', () => {
       let captured: { isTty?: boolean } = {}
       const cli = testCli('app', [
         testCommand('go', {
-          run: ({ isTty }) => {
-            captured = { isTty }
+          run: ({ stdio }) => {
+            captured = { isTty: stdio.stdout.isTTY }
             return { ok: true }
           },
         }),
       ])
 
-      await dispatch(cli, ['go'], { isTty: true })
+      await dispatch(cli, ['go'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
       expect(captured.isTty).toBe(true)
     })
 
@@ -261,8 +261,8 @@ describe('dispatch', () => {
       let captured: { isTty?: boolean } = {}
       const cli = testCli('app', [
         testCommand('go', {
-          run: ({ isTty }) => {
-            captured = { isTty }
+          run: ({ stdio }) => {
+            captured = { isTty: stdio.stdout.isTTY }
             return { ok: true }
           },
         }),

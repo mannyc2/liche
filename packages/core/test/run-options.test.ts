@@ -19,14 +19,14 @@ describe('RunOptions injection boundary', () => {
 
     const cli = testCli('app', [testCommand('show', {
       outputPolicy: 'machine-only',
-      run: ({ isTty }) => {
-        captured.isTty = isTty
+      run: ({ stdio }) => {
+        captured.isTty = stdio.stdout.isTTY
         return { hidden: true }
       },
     })])
 
     await run(cli, ['show'], {
-      isTty: true,
+      streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' },
       stdout: (s) => stdout.push(s),
       stderr: (s) => stderr.push(s),
     })
@@ -42,14 +42,14 @@ describe('RunOptions injection boundary', () => {
 
     const cli = testCli('app', [testCommand('show', {
       outputPolicy: 'machine-only',
-      run: ({ isTty }) => {
-        captured.isTty = isTty
+      run: ({ stdio }) => {
+        captured.isTty = stdio.stdout.isTTY
         return { hidden: true }
       },
     })])
 
     await run(cli, ['show'], {
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdout: (s) => stdout.push(s),
     })
 
@@ -65,7 +65,7 @@ describe('RunOptions injection boundary', () => {
     })])
 
     await run(cli, ['show', '--json'], {
-      isTty: true,
+      streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' },
       stdout: (s) => stdout.push(s),
     })
 
@@ -83,7 +83,7 @@ describe('RunOptions injection boundary', () => {
     })])
 
     await run(cli, ['fail'], {
-      isTty: true,
+      streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' },
       stdout: (s) => stdout.push(s),
       stderr: (s) => stderr.push(s),
       exit: (code) => {
@@ -109,7 +109,7 @@ describe('RunOptions injection boundary', () => {
 
     await run(cli, ['show'], {
       env: { INJECTED_TOKEN: 'value-from-options' },
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdout: () => {},
     })
 
@@ -123,7 +123,7 @@ describe('RunOptions injection boundary', () => {
     const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
 
     await run(cli, ['--mcp'], {
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdin: asyncIter([encoder.encode(`${initialize}\n`)]),
       stdout: (s) => stdout.push(s),
     })
@@ -145,7 +145,7 @@ describe('RunOptions injection boundary', () => {
     }
 
     await run(cli, ['--mcp'], {
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdin: stringChunks(),
       stdout: (s) => stdout.push(s),
     })
@@ -166,7 +166,7 @@ describe('RunOptions injection boundary', () => {
     })
 
     await run(cli, ['--mcp'], {
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdin: stream,
       stdout: (s) => stdout.push(s),
     })
@@ -185,7 +185,7 @@ describe('RunOptions injection boundary', () => {
     const mid = Math.floor(combined.length / 2)
 
     await run(cli, ['--mcp'], {
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdin: asyncIter([encoder.encode(combined.slice(0, mid)), encoder.encode(combined.slice(mid))]),
       stdout: (s) => stdout.push(s),
     })

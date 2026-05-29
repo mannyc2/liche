@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Stdio, StreamKinds, StreamOverrides } from "./cli/stdio.js";
 
 export type Dict<T = unknown> = Record<string, T>;
 export type Awaitable<T> = T | Promise<T>;
@@ -223,12 +224,12 @@ export type RunContext<
   format: Format;
   formatExplicit: boolean;
   global: GlobalOptions;
-  isTty: boolean;
   name: string;
   ok(data?: unknown, meta?: ResultMeta): Result;
   options: O;
   set(key: string, value: unknown): void;
   sources: SourceInspector;
+  stdio: Stdio;
   var: V;
 };
 
@@ -285,9 +286,9 @@ export type CliEvent = {
   exitCode?: number | undefined;
   format: Format;
   formatExplicit: boolean;
-  isTty: boolean;
   occurredAt: string;
   result?: "success" | "user_error" | "system_error" | "canceled" | undefined;
+  streams: StreamKinds;
   surface?: CliEventSurface | undefined;
   type: CliEventType;
 };
@@ -680,8 +681,8 @@ export type CliState = {
 export type RunOptions = {
   env?: Record<string, string | undefined> | undefined;
   exit?: ((code: number) => void) | undefined;
-  isTty?: boolean | undefined;
   stderr?: ((s: string) => void) | undefined;
+  streams?: StreamOverrides | undefined;
   stdin?:
     | AsyncIterable<string | Uint8Array>
     | ReadableStream<Uint8Array>

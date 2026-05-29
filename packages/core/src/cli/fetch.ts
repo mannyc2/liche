@@ -6,6 +6,11 @@ import { defaultEnv } from './invocation.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 import { checkCommandSurface, unsupportedSurfaceError } from '../schema/surface.js'
 import { fail } from '../errors/result.js'
+import { nonInteractiveStdio, streamKinds } from './stdio.js'
+
+// A fetch invocation has no terminal: fixed non-interactive stdio for events/execute.
+const FETCH_STDIO = nonInteractiveStdio()
+const FETCH_STREAMS = streamKinds(FETCH_STDIO)
 
 export async function fetchCli(name: string, state: CliState, request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -18,7 +23,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   const selected = selectCommand(state, path)
   if (!selected) {
     await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
-      isTty: false,
+      streams: FETCH_STREAMS,
       error: { code: 'COMMAND_NOT_FOUND', status: 404 },
       format: 'json',
       formatExplicit: true,
@@ -35,7 +40,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   if (!surfaceCheck.ok) {
     const error = unsupportedSurfaceError(surfaceCheck)
     await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
-      isTty: false,
+      streams: FETCH_STREAMS,
       error: { code: 'UNSUPPORTED_SURFACE', status: 400 },
       format: 'json',
       formatExplicit: true,
@@ -48,7 +53,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   const parsed = request.method === 'GET' || request.method === 'HEAD' ? { kind: 'empty' as const } : await readBody(request)
   if (parsed.kind === 'invalid') {
     await emitLifecycleEvent(state.events.concat(selected.events), createLifecycleEvent(name, state.def.version, {
-      isTty: false,
+      streams: FETCH_STREAMS,
       command: eventCommand(selected),
       error: { code: 'INVALID_REQUEST_BODY', exitCode: 1, status: 400 },
       exitCode: 1,
@@ -88,7 +93,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
           hooks: mergeHooks(state.hooks, selected.hooks),
           inputSources: state.inputSources,
           inputSourceHints: { options: optionHints },
-          isTty: false,
+          stdio: FETCH_STDIO,
           middlewares: state.middlewares.concat(selected.middlewares),
           onChunk: (chunk) => {
             controller.enqueue(encoder.encode(`${JSON.stringify({ type: 'chunk', data: chunk })}\n`))
@@ -114,7 +119,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
     hooks: mergeHooks(state.hooks, selected.hooks),
     inputSources: state.inputSources,
     inputSourceHints: { options: optionHints },
-    isTty: false,
+    stdio: FETCH_STDIO,
     middlewares: state.middlewares.concat(selected.middlewares),
     version: state.def.version,
   })

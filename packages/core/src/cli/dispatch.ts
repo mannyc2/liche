@@ -28,11 +28,12 @@ import { contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareC
 import { resolveCommandInput } from './input-sources.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 import { runTerminalCli } from './terminal.js'
+import { nonInteractiveStdio, streamKinds, type StreamKinds, type StreamOverrides } from './stdio.js'
 
 export type DispatchOptions = {
   env?: Dict<string | undefined> | undefined
   format?: Format | undefined
-  isTty?: boolean | undefined
+  streams?: StreamOverrides | undefined
   onChunk?: ((chunk: unknown) => void | Promise<void>) | undefined
 }
 
@@ -53,7 +54,8 @@ export async function dispatch(
   const state = getCliState(cli)
   const name = cli.name
   const env = options.env ?? defaultEnv()
-  const isTty = options.isTty ?? false
+  const stdio = nonInteractiveStdio(options.streams)
+  const streams = streamKinds(stdio)
   const baseResolved = resolveFormat({ explicit: options.format, cliDefault: state.def.format })
   const baseFormat = baseResolved.format
   const baseFormatExplicit = baseResolved.formatExplicit
@@ -64,7 +66,7 @@ export async function dispatch(
   } catch (error) {
     const commandError = preExecuteCommandError(error)
     await emitFailure(state, name, {
-      isTty,
+      streams,
       format: baseFormat,
       formatExplicit: baseFormatExplicit,
       surfaceKind: 'parse',
@@ -86,7 +88,7 @@ export async function dispatch(
     command?: CliEvent['command'],
   ): Promise<Result> => {
     await emitFailure(state, name, {
-      isTty,
+      streams,
       format: outputFormat,
       formatExplicit,
       surfaceKind,
@@ -213,7 +215,7 @@ export async function dispatch(
     global: contextGlobals(flags, state),
     hooks: mergeHooks(state.hooks, selected.hooks),
     inputSources: state.inputSources,
-    isTty,
+    stdio,
     middlewares: state.middlewares.concat(selected.middlewares),
     ...(options.onChunk ? { onChunk: options.onChunk } : undefined),
     version: state.def.version,
@@ -388,7 +390,7 @@ async function emitFailure(
   state: CliState,
   name: string,
   input: {
-    isTty: boolean
+    streams: StreamKinds
     format: Format
     formatExplicit: boolean
     surfaceKind: CliEventSurface['kind']
@@ -403,7 +405,7 @@ async function emitFailure(
     : state.events
   const exitCode = Number(input.error.exitCode ?? 1)
   const event: Omit<CliEvent, 'cli' | 'occurredAt'> = {
-    isTty: input.isTty,
+    streams: input.streams,
     format: input.format,
     formatExplicit: input.formatExplicit,
     surface: { kind: input.surfaceKind },

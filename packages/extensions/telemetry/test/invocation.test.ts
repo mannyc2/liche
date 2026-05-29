@@ -24,7 +24,7 @@ async function runStatus(cli: CliInstance, env: Record<string, string | undefine
   let exitCode = 0
   await run(cli, ['telemetry', 'status', '--json'], {
     env,
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     stdout: (s) => {
       stdout += s
     },
@@ -147,7 +147,7 @@ describe('telemetry event subscriber — invocation detection via TelemetryOptio
     let exitCode = 0
     await run(cli, ['deploy'], {
       env: {},
-      isTty: false,
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdout: () => {},
       stderr: () => {},
       exit: (code) => {
@@ -175,7 +175,7 @@ describe('telemetry event subscriber — invocation detection via TelemetryOptio
       ],
     })
 
-    await run(cli, ['deploy'], { env: {}, isTty: false, stdout: () => {}, stderr: () => {}, exit: () => {} })
+    await run(cli, ['deploy'], { env: {}, streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' }, stdout: () => {}, stderr: () => {}, exit: () => {} })
     expect(sink.events.length).toBeGreaterThan(0)
   })
 })

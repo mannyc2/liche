@@ -3,7 +3,7 @@ import { createValidator, wireEventSchema, type WireEvent } from '../src/interna
 
 function validEvent(overrides: Partial<WireEvent> = {}): WireEvent {
   return {
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     cli: { name: 'shipyard', version: '0.1.0' },
     format: 'json',
     formatExplicit: true,
