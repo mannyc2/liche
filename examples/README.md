@@ -56,6 +56,19 @@ Try the invalid style case to see the human renderer point at the exact flag:
 bun examples/core-handwritten/cli.ts summarize README.md --style verbose
 ```
 
+## Core SQLite Bookmarks
+
+`examples/core-sqlite-bookmarks` shows raw `@liche/core` with `bun:sqlite`:
+
+- middleware owns a real resource — opens a `Database`, runs the schema migration, stashes the handle on `ctx.var.db`, and closes it in `finally`
+- hermetic env: every command declares `BOOKMARKS_DB` in its `env` schema; the middleware reads `ctx.env.BOOKMARKS_DB`, so `run()` is fully driven by injected input
+- `fail({ code, message })` for domain errors (`bookmark.duplicate`, `bookmark.not_found`)
+- `--json` always emits the `{ ok, data, error }` envelope, including on failure
+
+```sh
+BOOKMARKS_DB=/tmp/bookmarks.sqlite bun examples/core-sqlite-bookmarks/cli.ts add https://bun.sh --title Bun --tags runtime,docs --json
+```
+
 ## Release Renderers
 
 `examples/release-renderers` shows `@liche/releases` consuming a build record and a verified final binary path to render package-manager artifacts. It uses a tiny fixture file as the verified binary because renderers verify bytes and stage wrappers; they do not execute the binary.
