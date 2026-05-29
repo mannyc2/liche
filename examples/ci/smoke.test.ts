@@ -140,7 +140,7 @@ async function runCli(argv: string[]): Promise<{ exitCode: number; stderr: strin
     exit: (code) => {
       exitCode = code
     },
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     stderr: (chunk) => {
       stderr += chunk
     },

@@ -124,7 +124,7 @@ async function runGenerated(
     exit: (code) => {
       exitCode = code
     },
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     stderr: (chunk) => {
       stderr += chunk
     },
