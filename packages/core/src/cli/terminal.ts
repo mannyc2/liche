@@ -1,3 +1,4 @@
+import { writeSync } from 'node:fs'
 import type { CliEvent, CliEventSubscription, CliState, Format, RunContext, RunOptions } from '../types.js'
 import { execute } from './execute.js'
 import { captureStdio, streamKinds } from './stdio.js'
@@ -21,9 +22,29 @@ export async function runTerminalCli(
   const env = options.env ?? defaultEnv()
   const stdio = captureStdio(env, options.streams)
   const streams = streamKinds(stdio)
+  // Final/terminal output is written SYNCHRONOUSLY so it fully flushes before any
+  // process.exit (no truncation on the nonzero-exit path), and so a broken pipe
+  // (`… | head`) surfaces as a catchable synchronous EPIPE rather than an unhandled
+  // async crash — at which point we leave cleanly, like a well-behaved Unix tool.
+  // Injected writers (tests/programmatic) bypass this and keep their exact behavior.
+  const writeFinal = (fd: 1 | 2, s: string): void => {
+    try {
+      writeSync(fd, s)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EPIPE') {
+        ;(options.exit ?? process.exit)(0) // reader hung up; nothing left to say
+        return
+      }
+      throw error
+    }
+  }
   const io = {
-    err: options.stderr ?? ((s: string) => void Bun.stderr.write(s)),
-    out: options.stdout ?? ((s: string) => void Bun.stdout.write(s)),
+    err: options.stderr ?? ((s: string) => writeFinal(2, s)),
+    out: options.stdout ?? ((s: string) => writeFinal(1, s)),
+    // Streaming chunks stay async to avoid blocking the event loop mid-run. The
+    // streaming-output broken-pipe case is intentionally NOT covered here (a blocking
+    // per-chunk write would serialize streaming); see docs/stdio-primitive-plan.md.
+    chunk: options.stdout ?? ((s: string) => void Bun.stdout.write(s)),
   }
 
   let flags
@@ -195,7 +216,7 @@ export async function runTerminalCli(
           streamed = true
           const value = outputFormat === 'jsonl' ? { type: 'chunk', data: chunk } : chunk
           const text = renderOutput(value, chunkFormat, state.outputRenderers, { stage: 'chunk' })
-          io.out(text.endsWith('\n') ? text : `${text}\n`)
+          io.chunk(text.endsWith('\n') ? text : `${text}\n`)
         }
       : undefined,
     version: state.def.version,
