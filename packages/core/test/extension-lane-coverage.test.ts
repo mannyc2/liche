@@ -131,7 +131,7 @@ async function runCli(
     stdout(chunk) {
       stdout += chunk
     },
-    isTty: options.isTty ?? false,
+    streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
   return { exitCode, stderr, stdout }
 }

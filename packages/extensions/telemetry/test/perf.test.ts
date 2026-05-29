@@ -6,7 +6,7 @@ const perfTest = process.env['CI'] === 'true' ? test.skip : test
 
 function fixture(): WireEvent {
   return {
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     cli: { name: 'shipyard', version: '0.1.0' },
     command: { id: 'deploy', path: ['deploy'] },
     durationMs: 12,

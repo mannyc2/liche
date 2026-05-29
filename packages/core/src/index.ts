@@ -26,6 +26,9 @@ export { secret } from './auth/secret.js'
 export { callHttpOperation, serializeHttpOperationRequest } from './http/index.js'
 export type { SecretString } from './auth/secret.js'
 
+export { nonInteractiveStdio, streamKinds } from './cli/stdio.js'
+export type { ColorLevel, ColorSupport, Stdio, StreamKind, StreamKinds, StreamOverrides, StreamView } from './cli/stdio.js'
+
 export type {
   Awaitable,
   BeforeExecuteHook,

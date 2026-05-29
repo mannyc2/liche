@@ -216,7 +216,7 @@ export function renderAuthCapability(indent: string, catalog: Catalog, cap: Comm
   } else if (cap.id === 'auth.login') {
     lines.push(`${indent}    const data = await oauthDeviceLogin({`)
     lines.push(...renderAuthRuntimeArgs(`${indent}      `, catalog))
-    lines.push(`${indent}      interactive: ctx.isTty,`)
+    lines.push(`${indent}      interactive: ctx.stdio.interactive,`)
     lines.push(`${indent}      profile,`)
     lines.push(`${indent}      sessionStore,`)
     lines.push(`${indent}    })`)

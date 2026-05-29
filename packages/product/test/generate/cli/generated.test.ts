@@ -56,7 +56,7 @@ async function runCli(
     stdout: (s) => { stdout += s },
     stderr: (s) => { stderr += s },
     exit: (code) => { exitCode = code },
-    isTty: options.isTty ?? false,
+    streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
   return { stdout, stderr, exitCode }
 }

@@ -1,5 +1,6 @@
 import type { CliEvent, CliEventSubscription, CliState, Format, RunContext, RunOptions } from '../types.js'
 import { execute } from './execute.js'
+import { captureStdio, streamKinds } from './stdio.js'
 import { ParseError } from '../errors/error.js'
 import { formatCta, pick, renderOutput } from '../format/index.js'
 import { parseGlobals } from '../parser/index.js'
@@ -17,12 +18,13 @@ export async function runTerminalCli(
   argv: string[],
   options: RunOptions = {},
 ): Promise<void> {
+  const env = options.env ?? defaultEnv()
+  const stdio = captureStdio(env, options.streams)
+  const streams = streamKinds(stdio)
   const io = {
     err: options.stderr ?? ((s: string) => void Bun.stderr.write(s)),
     out: options.stdout ?? ((s: string) => void Bun.stdout.write(s)),
   }
-  const env = options.env ?? defaultEnv()
-  const isTty = options.isTty ?? process.stdout.isTTY === true
 
   let flags
   try {
@@ -30,7 +32,7 @@ export async function runTerminalCli(
   } catch (error) {
     if (error instanceof ParseError) {
       await emitTerminalLifecycle(name, state, state.events, {
-        isTty,
+        streams,
         error: { code: 'PARSE_ERROR', exitCode: 1 },
         exitCode: 1,
         format: state.def.format ?? DEFAULT_FORMAT,
@@ -48,12 +50,12 @@ export async function runTerminalCli(
   const rootResolved = resolveFormat({ flags, cliDefault: state.def.format })
   const rootOutputFormat = rootResolved.format
   const formatExplicit = rootResolved.formatExplicit
-  const human = !flags.formatExplicit && !flags.json && isTty
+  const human = !flags.formatExplicit && !flags.json && stdio.stdout.isTTY
 
   if (env['COMPLETE']) {
     if (!shells.includes(env['COMPLETE'] as any)) {
       await emitTerminalLifecycle(name, state, state.events, {
-        isTty,
+        streams,
         error: { code: 'PARSE_ERROR' },
         format: rootOutputFormat,
         formatExplicit,
@@ -66,7 +68,7 @@ export async function runTerminalCli(
     }
     const suggestions = complete(state, flags.rest, Math.max(flags.rest.length - 1, 0))
     await emitTerminalLifecycle(name, state, state.events, {
-      isTty,
+      streams,
       completion: { shell: env['COMPLETE'], suggestionCount: suggestions.length },
       format: rootOutputFormat,
       formatExplicit,
@@ -78,7 +80,7 @@ export async function runTerminalCli(
 
   if (flags.version) {
     await emitTerminalLifecycle(name, state, state.events, {
-      isTty,
+      streams,
       format: rootOutputFormat,
       formatExplicit,
       surface: { kind: 'version' },
@@ -94,7 +96,7 @@ export async function runTerminalCli(
   const outputFormat = resolveFormat({ flags, selected, cliDefault: state.def.format }).format
   if (!selected && flags.rest.some(isFlagLikeToken)) {
     await emitTerminalLifecycle(name, state, state.events, {
-      isTty,
+      streams,
       error: { code: 'PARSE_ERROR', exitCode: 1 },
       exitCode: 1,
       format: outputFormat,
@@ -110,7 +112,7 @@ export async function runTerminalCli(
   }
   if (!selected && flags.rest.length > 0) {
     await emitTerminalLifecycle(name, state, state.events, {
-      isTty,
+      streams,
       error: { code: 'COMMAND_NOT_FOUND' },
       format: outputFormat,
       formatExplicit,
@@ -120,7 +122,7 @@ export async function runTerminalCli(
   }
   if (flags.help || !selected) {
     await emitTerminalLifecycle(name, state, selected ? state.events.concat(selected.events) : state.events, {
-      isTty,
+      streams,
       ...(selected ? { command: eventCommand(selected) } : undefined),
       format: outputFormat,
       formatExplicit,
@@ -131,7 +133,7 @@ export async function runTerminalCli(
   }
   if (flags.schema) {
     await emitTerminalLifecycle(name, state, state.events.concat(selected.events), {
-      isTty,
+      streams,
       command: eventCommand(selected),
       format: outputFormat,
       formatExplicit,
@@ -148,7 +150,7 @@ export async function runTerminalCli(
   } catch (error) {
     if (error instanceof ParseError) {
       await emitTerminalLifecycle(name, state, state.events.concat(selected.events), {
-        isTty,
+        streams,
         command: eventCommand(selected),
         error: { code: 'PARSE_ERROR', exitCode: 1 },
         exitCode: 1,
@@ -183,10 +185,10 @@ export async function runTerminalCli(
     global: contextGlobals(flags, state),
     hooks: mergeHooks(state.hooks, selected.hooks),
     inputSources: state.inputSources,
-    isTty,
+    stdio,
     middlewares: state.middlewares.concat(selected.middlewares),
     onDeprecation: (flag) => {
-      if (isTty) io.err(`warning: ${flag} is deprecated\n`)
+      if (stdio.stderr.isTTY) io.err(`warning: ${flag} is deprecated\n`)
     },
     onChunk: streamingEligible
       ? (chunk) => {

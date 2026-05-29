@@ -74,10 +74,10 @@ describe('parity: deprecated option metadata', () => {
       run: () => ({ done: true }),
     })])
 
-    const piped = await runCli(cli, ['build', '--legacy', '--json'], { isTty: false })
+    const piped = await runCli(cli, ['build', '--legacy', '--json'], { streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' } })
     expect(piped.stderr).toBe('')
 
-    const tty = await runCli(cli, ['build', '--legacy', '--json'], { isTty: true })
+    const tty = await runCli(cli, ['build', '--legacy', '--json'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
     expect(tty.stderr).toContain('warning: --legacy is deprecated')
   })
 })
@@ -135,9 +135,9 @@ describe('parity: MCP tool naming uses underscores', () => {
 describe('parity: --json flips formatExplicit on a TTY', () => {
   test('formatExplicit is true when --json is passed on a TTY', async () => {
     const cli = testCli('app', [testCommand('show', {
-      run: ({ formatExplicit, isTty }) => ({ formatExplicit, isTty }),
+      run: ({ formatExplicit, stdio }) => ({ formatExplicit, isTty: stdio.stdout.isTTY }),
     })])
-    const result = await runCli(cli, ['show', '--json'], { isTty: true })
+    const result = await runCli(cli, ['show', '--json'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
     expect(parseJsonData(result.stdout)).toEqual({ formatExplicit: true, isTty: true })
   })
 
@@ -145,7 +145,7 @@ describe('parity: --json flips formatExplicit on a TTY', () => {
     const cli = testCli('app', [testCommand('show', {
       run: ({ formatExplicit }) => ({ formatExplicit }),
     })])
-    const result = await runCli(cli, ['show'], { isTty: true })
+    const result = await runCli(cli, ['show'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
     expect(result.stdout).toContain('false')
   })
 })

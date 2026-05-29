@@ -61,6 +61,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'mcpToolName',
     'mergeHooks',
     'middleware',
+    'nonInteractiveStdio',
     'ok',
     'outputControls',
     'parseInvocation',
@@ -71,6 +72,7 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'secret',
     'selectCommand',
     'serializeHttpOperationRequest',
+    'streamKinds',
     'version',
     'z',
   ],
@@ -540,7 +542,7 @@ try {
     stdout: (chunk) => { generatedStdout += chunk },
     stderr: (chunk) => { generatedStderr += chunk },
     exit: (code) => { generatedExitCode = code },
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     env: {},
   })
   if (generatedExitCode !== 0) {

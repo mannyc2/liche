@@ -1,6 +1,7 @@
 import { z, parseSchema } from '@liche/core'
 
 const cliEventTypeSchema = z.string()
+const streamKindSchema = z.enum(['tty', 'pipe', 'file', 'socket', 'char', 'closed'])
 
 export const wireEventSchema = z.object({
   attributes: z.record(z.string(), z.unknown()).optional(),
@@ -20,8 +21,8 @@ export const wireEventSchema = z.object({
   exitCode: z.number().optional(),
   format: z.string(),
   formatExplicit: z.boolean(),
-  isTty: z.boolean(),
   occurredAt: z.string(),
+  streams: z.object({ stdin: streamKindSchema, stdout: streamKindSchema, stderr: streamKindSchema }),
   result: z.enum(['success', 'user_error', 'system_error', 'canceled']).optional(),
   surface: z
     .object({

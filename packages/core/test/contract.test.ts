@@ -296,7 +296,7 @@ describe('contract: fetch and schema', () => {
       run: () => ({ id: 'not-a-number' }),
     })])
 
-    const result = await runCli(cli, ['ship'], { isTty: true })
+    const result = await runCli(cli, ['ship'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toContain('Error: invalid value for command output "$.id"')
     expect(result.stderr).not.toContain('--id')

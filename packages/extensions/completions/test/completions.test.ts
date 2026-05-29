@@ -26,7 +26,7 @@ describe('@liche/completions', () => {
     const fishJson = await runCli(cli, ['completions', 'fish', '--json'])
     expect(JSON.parse(fishJson.stdout).data).toContain('env COMPLETE=fish app -- (commandline -opc)[2..-1]')
 
-    const badShell = await runCli(cli, ['completions', 'powershell'], { isTty: true })
+    const badShell = await runCli(cli, ['completions', 'powershell'], { streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' } })
     expect(badShell.exitCode).toBe(1)
     expect(badShell.stderr).toContain('invalid value for <shell>')
   })
@@ -64,7 +64,7 @@ async function runCli(
     exit(code) { exitCode = code },
     stderr(chunk) { stderr += chunk },
     stdout(chunk) { stdout += chunk },
-    isTty: options.isTty ?? false,
+    streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
   return { exitCode, stderr, stdout }
 }

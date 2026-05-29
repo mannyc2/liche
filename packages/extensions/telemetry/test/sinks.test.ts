@@ -11,7 +11,7 @@ import type { WireEvent } from '../src/internal/schema.js'
 
 function event(overrides: Partial<WireEvent> = {}): WireEvent {
   return {
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     cli: { name: 'shipyard', version: '0.1.0' },
     format: 'json',
     formatExplicit: true,

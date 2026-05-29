@@ -20,6 +20,7 @@ import { collectAsync, isAsyncIterable } from '../internal.js'
 import { attachOutputSource, parseSchemaAsync } from '../schema/zod.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand } from './lifecycle.js'
 import { resolveCommandInput, type InputSourceHints } from './input-sources.js'
+import { streamKinds, type Stdio } from './stdio.js'
 
 export type ExecuteInput = {
   argvOptions: { args: string[]; argsObject?: Dict | undefined; options?: Dict | undefined }
@@ -33,7 +34,7 @@ export type ExecuteInput = {
   hooks: CliHooks
   inputSources?: readonly InputSourceProvider[] | undefined
   inputSourceHints?: InputSourceHints | undefined
-  isTty?: boolean | undefined
+  stdio: Stdio
   middlewares: MiddlewareHandler[]
   events: CliEventSubscription[]
   onChunk?: ((chunk: unknown) => void | Promise<void>) | undefined
@@ -77,7 +78,6 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       format: input.format,
       formatExplicit: input.formatExplicit,
       global: input.global ?? {},
-      isTty: input.isTty ?? false,
       name: binaryName,
       ok(data, meta) {
         return ok(data, meta)
@@ -87,6 +87,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
         ;(this.var as Dict)[key] = value
       },
       sources: resolved.sources,
+      stdio: input.stdio,
       var: resolved.vars as Dict,
     }
 
@@ -175,7 +176,7 @@ async function emitCommandEvent(
   extra: Partial<CliEvent> = {},
 ): Promise<void> {
   await emitLifecycleEvent(input.events, createLifecycleEvent(binaryName, input.version, {
-    isTty: input.isTty ?? false,
+    streams: streamKinds(input.stdio),
     command,
     format: input.format,
     formatExplicit: input.formatExplicit,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { arg, dispatch, z } from '../src/index.js'
+import { arg, dispatch, nonInteractiveStdio, z } from '../src/index.js'
 import type { FieldError, Result } from '../src/index.js'
 import { testCli, testCommand } from './helpers.js'
 import { attachFieldSources } from '../src/schema/zod.js'
@@ -122,6 +122,7 @@ describe('FieldError.source — programmatic via execute', () => {
       global: {},
       hooks: state.hooks,
       middlewares: state.middlewares,
+      stdio: nonInteractiveStdio(),
     })
     const fe = failureFieldError(result)
     expect(fe.source).toEqual({ kind: 'programmatic', key: 'port' })
@@ -139,6 +140,7 @@ describe('FieldError.source — programmatic via execute', () => {
       global: {},
       hooks: state.hooks,
       middlewares: state.middlewares,
+      stdio: nonInteractiveStdio(),
     })
     const fe = failureFieldError(result)
     expect(fe.source).toEqual({ kind: 'programmatic', key: 'replicas' })
@@ -168,6 +170,7 @@ describe('FieldError.source — programmatic via execute', () => {
       global: {},
       hooks: state.hooks,
       middlewares: state.middlewares,
+      stdio: nonInteractiveStdio(),
     })
     const fe = failureFieldError(result)
     expect(fe.source).toEqual({ kind: 'programmatic', key: 'port' })
@@ -193,6 +196,7 @@ describe('FieldError.source — programmatic via execute', () => {
       global: {},
       hooks: state.hooks,
       middlewares: state.middlewares,
+      stdio: nonInteractiveStdio(),
     })
     const fe = failureFieldError(result)
     expect(fe.source).toEqual({ kind: 'programmatic', key: 'name' })

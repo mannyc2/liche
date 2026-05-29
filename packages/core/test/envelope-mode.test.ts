@@ -11,7 +11,7 @@ function captureRun(argv: string[], options: any, command: { name: string; def: 
     stdout: (s) => { out += s },
     stderr: (s) => { err += s },
     exit: (code) => { exitCode = code },
-    isTty: false,
+    streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
   return { promise, get out() { return out }, get err() { return err }, get exitCode() { return exitCode } }
 }
