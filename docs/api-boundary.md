@@ -43,7 +43,6 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 | `ok`, `fail`, `commandError` | Object-first result/error factories for command-authored outcomes. |
 | `nonInteractiveStdio`, `streamKinds` | Stdio primitive helpers: `nonInteractiveStdio()` builds a non-terminal `Stdio` for programmatic/adapter execution; `streamKinds(stdio)` projects it to the `{ stdin, stdout, stderr }` kinds carried on lifecycle events. |
 | `secret` | Redaction primitive for values that should not stringify or inspect as raw secrets. |
-| `serializeHttpOperationRequest`, `callHttpOperation` | Outbound HTTP operation transport primitives. |
 
 ### Types — public because authoring/runtime helpers expose them
 
@@ -57,9 +56,11 @@ The public surface is locked by `packages/core/test/api-snapshot.test.ts` (sourc
 
 Workflow helpers (`resolveAuth`, `resolveContext`, `applyAuth`, `credentialHttpAuth`, `createFileSessionStore`, `authWhoami`, `authSwitch`, `logoutAuthSession`, `oauthDeviceLogin`) live in `@liche/auth`, not core. Command-level auth metadata is a Product/adapter concern, not a core `CommandContract` field.
 
-### HTTP transport types
+### HTTP transport (moved to `@liche/http`)
 
-`RuntimeValue`, `HttpAuth`, `HttpMethod`, `HttpFetch`, `HttpOperationBind`, `HttpOperationRequestSpec`, `SerializedHttpRequest`, `HttpOperationCall`, `RemoteErrorDetails`.
+Outbound HTTP transport is **no longer part of `@liche/core`** — it lives in the `@liche/http` package (`packages/extensions/http`). The values `callHttpOperation` and `serializeHttpOperationRequest`, and the types `RuntimeValue`, `HttpAuth`, `HttpMethod`, `HttpFetch`, `HttpOperationBind`, `HttpOperationRequestSpec`, `SerializedHttpRequest`, `HttpOperationCall`, `RemoteErrorDetails` are all exported from `@liche/http`.
+
+Generated CLIs that wrap a remote API import `callHttpOperation` from `@liche/http`. The dependency is one-way: `@liche/http` depends on `@liche/core` (for `LicheError`, `ValidationError`, `parseSchemaAsync`, `Schema`, `CommandError`), never the reverse.
 
 ### Input-source primitive
 

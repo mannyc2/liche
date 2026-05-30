@@ -12,6 +12,7 @@ const AUTH_CHALLENGE_TIMEOUT_MS = 5 * 60 * 1000
 
 const PUBLIC_PACKAGES = [
   '@liche/core',
+  '@liche/http',
   '@liche/auth',
   '@liche/completions',
   '@liche/config',

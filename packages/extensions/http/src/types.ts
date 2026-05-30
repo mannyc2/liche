@@ -1,4 +1,4 @@
-import type { CommandError, Schema } from '../types.js'
+import type { CommandError, Schema } from '@liche/core'
 
 export type RuntimeValue =
   | { envVar: string; literal?: string | undefined }

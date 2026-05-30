@@ -1,4 +1,5 @@
-import type { HttpFetch, Schema } from '@liche/core'
+import type { Schema } from '@liche/core'
+import type { HttpFetch } from '@liche/http'
 import type { Capability, NormalizedHttpSpec } from '../catalog/types.js'
 
 export type ConformanceCase = {

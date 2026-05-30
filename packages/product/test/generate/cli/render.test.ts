@@ -84,7 +84,8 @@ describe('generateCli — imports', () => {
     const coreImports = [...source.matchAll(/from '@liche\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(importLine?.[1]).toBe('defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(source).toContain(`import { callHttpOperation } from '@liche/http'`)
   })
 
   test('local and hybrid-workflow handlers are imported from ./impl/<module>.js, grouped per module', () => {
@@ -242,8 +243,9 @@ describe('generateCli — run bodies by execution mode', () => {
     const source = generate(cat)
     expect(source.match(/from '@liche\/core'/)?.[0]).toBe("from '@liche/core'")
     expect(source).toContain(
-      `import { callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'`,
+      `import { defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'`,
     )
+    expect(source).toContain(`import { callHttpOperation } from '@liche/http'`)
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
     expect(source).toContain(
       `extensions: [outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`,

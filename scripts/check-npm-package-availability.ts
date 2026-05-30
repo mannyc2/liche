@@ -1,5 +1,6 @@
 const PUBLIC_PACKAGES = [
   '@liche/core',
+  '@liche/http',
   '@liche/auth',
   '@liche/completions',
   '@liche/config',

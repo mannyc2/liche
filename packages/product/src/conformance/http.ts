@@ -1,5 +1,7 @@
-import { serializeHttpOperationRequest, z } from '@liche/core'
-import type { HttpOperationBind, HttpOperationRequestSpec, Schema } from '@liche/core'
+import { z } from '@liche/core'
+import type { Schema } from '@liche/core'
+import { serializeHttpOperationRequest } from '@liche/http'
+import type { HttpOperationBind, HttpOperationRequestSpec } from '@liche/http'
 import { resolveListShape } from '../catalog/shape.js'
 import type {
   Capability,

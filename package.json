@@ -37,6 +37,7 @@
     "@liche/config": "workspace:*",
     "@liche/core": "workspace:*",
     "@liche/extensions": "workspace:*",
+    "@liche/http": "workspace:*",
     "@liche/mcp-installer": "workspace:*",
     "@liche/mcp-server": "workspace:*",
     "@liche/product": "workspace:*",

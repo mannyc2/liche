@@ -1,6 +1,6 @@
-import { LicheError } from '../errors/error.js'
+import { LicheError } from '@liche/core'
 import { asError, remoteError, safeUrl } from './errors.js'
-import type { CommandError } from '../types.js'
+import type { CommandError } from '@liche/core'
 import type { HttpOperationCall, SerializedHttpRequest } from './types.js'
 
 export function mapStatusError<TInput extends Record<string, unknown>, TOutput>(

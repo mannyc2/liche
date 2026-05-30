@@ -256,7 +256,7 @@ Before adding rewrite tests:
 
 ### Remote transport
 
-Current status: `@liche/core` exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/core/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the core primitive layer. Generated Product wiring calls the shared transport for literal, env, and config-backed remote base URLs; Product linting and generation fail for HTTP-backed capabilities without `remote.baseUrl`.
+Current status: `@liche/http` exports `serializeHttpOperationRequest` and `callHttpOperation`. `packages/extensions/http/test/http-operation.test.ts` covers `REMOTE-001` through `REMOTE-009`, plus `REMOTE-015` and `REMOTE-016`, at the transport primitive layer. Generated Product wiring calls the shared transport for literal, env, and config-backed remote base URLs; Product linting and generation fail for HTTP-backed capabilities without `remote.baseUrl`.
 
 | ID | Requirement | Source | Test shape | Oracle | Known-bad implementation caught |
 |---|---|---|---|---|---|

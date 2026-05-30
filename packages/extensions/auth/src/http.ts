@@ -1,4 +1,4 @@
-import type { HttpAuth } from '@liche/core'
+import type { HttpAuth } from '@liche/http'
 import { authInvalid, authPermissionDenied } from './errors.js'
 import type { AuthCredential } from './types.js'
 

@@ -245,9 +245,9 @@ Handwritten CLIs may continue to use richer formatting and arbitrary command nam
 
 ## Remote transport ownership
 
-Outbound HTTP operation transport is core runtime behavior.
+Outbound HTTP operation transport is a runtime primitive in the `@liche/http` package (it depends on `@liche/core`, never the reverse).
 
-`@liche/core` exports `serializeHttpOperationRequest` and `callHttpOperation` primitives that handwritten and generated CLIs both call. `@liche/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. Config-backed values use the config extension on Core's input-source primitive; HTTP-backed capabilities without a product remote base URL fail linting and generation.
+`@liche/http` exports `serializeHttpOperationRequest` and `callHttpOperation` primitives that handwritten and generated CLIs both call. `@liche/product` generates wiring that calls those primitives when a Product declares `remote.baseUrl` through a literal, env var, or config field. Config-backed values use the config extension on Core's input-source primitive; HTTP-backed capabilities without a product remote base URL fail linting and generation.
 
 The transport primitive owns:
 
@@ -335,7 +335,8 @@ Generated command code is plain TypeScript that imports `@liche/core` and declar
 // generatorVersion: <version>
 // do not edit by hand
 
-import { callHttpOperation, defineCli, defineCommand, z } from "@liche/core";
+import { defineCli, defineCommand, z } from "@liche/core";
+import { callHttpOperation } from "@liche/http";
 
 export const cli = defineCli({
   name: "workers",

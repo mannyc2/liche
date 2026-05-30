@@ -10,6 +10,7 @@ const BUN_ENGINE = '>=1.3.0'
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core', bin: undefined },
+  { name: '@liche/http', dir: 'packages/extensions/http', bin: undefined },
   { name: '@liche/extensions', dir: 'packages/extensions', bin: undefined },
   { name: '@liche/agents', dir: 'packages/extensions/agents/bundle', bin: undefined },
   { name: '@liche/auth', dir: 'packages/extensions/auth', bin: undefined },
@@ -38,7 +39,6 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'ValidationError',
     'arg',
     'buildHelpModel',
-    'callHttpOperation',
     'checkCommandSurface',
     'collectCommandContracts',
     'commandError',
@@ -70,10 +70,10 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'run',
     'secret',
     'selectCommand',
-    'serializeHttpOperationRequest',
     'streamKinds',
     'z',
   ],
+  '@liche/http': ['callHttpOperation', 'serializeHttpOperationRequest'],
   '@liche/extensions': [
     'agents',
     'applyAuth',
