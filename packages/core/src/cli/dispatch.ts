@@ -29,6 +29,7 @@ import { resolveCommandInput } from './input-sources.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 import { runTerminalCli } from './terminal.js'
 import { nonInteractiveStdio, streamKinds, type StreamKinds, type StreamOverrides } from './stdio.js'
+import { matchedTerminalFlag } from './terminal-handlers.js'
 
 export type DispatchOptions = {
   env?: Dict<string | undefined> | undefined
@@ -111,51 +112,13 @@ export async function dispatch(
       'parse.failed',
     )
   }
-  if (flags.version) {
+  const terminalFlag = matchedTerminalFlag(flags, state)
+  if (terminalFlag) {
     return reject(
-      {
-        code: 'PARSE_ERROR',
-        message: '--version is only available through run, not dispatch',
-        exitCode: 1,
-      },
+      { code: 'PARSE_ERROR', message: `--${terminalFlag} is only available through run, not dispatch`, exitCode: 1 },
       'parse',
       'parse.failed',
     )
-  }
-  if (flags.help) {
-    return reject(
-      {
-        code: 'PARSE_ERROR',
-        message: '--help is only available through run, not dispatch',
-        exitCode: 1,
-      },
-      'parse',
-      'parse.failed',
-    )
-  }
-  if (flags.schema) {
-    return reject(
-      {
-        code: 'PARSE_ERROR',
-        message: '--schema is only available through run, not dispatch',
-        exitCode: 1,
-      },
-      'parse',
-      'parse.failed',
-    )
-  }
-  for (const handler of state.terminalHandlers) {
-    if (flags[handler.flagKey]) {
-      return reject(
-        {
-          code: 'PARSE_ERROR',
-          message: `--${handler.flagKey} is only available through run, not dispatch`,
-          exitCode: 1,
-        },
-        'parse',
-        'parse.failed',
-      )
-    }
   }
 
   const selected = selectCommand(state, flags.rest)
@@ -249,35 +212,13 @@ export async function parseInvocation(
       exitCode: 1,
     }) as ParseInvocationResult
   }
-  if (flags.version) {
+  const terminalFlag = matchedTerminalFlag(flags, state)
+  if (terminalFlag) {
     return fail({
       code: 'PARSE_ERROR',
-      message: '--version is only available through run, not parseInvocation',
+      message: `--${terminalFlag} is only available through run, not parseInvocation`,
       exitCode: 1,
     }) as ParseInvocationResult
-  }
-  if (flags.help) {
-    return fail({
-      code: 'PARSE_ERROR',
-      message: '--help is only available through run, not parseInvocation',
-      exitCode: 1,
-    }) as ParseInvocationResult
-  }
-  if (flags.schema) {
-    return fail({
-      code: 'PARSE_ERROR',
-      message: '--schema is only available through run, not parseInvocation',
-      exitCode: 1,
-    }) as ParseInvocationResult
-  }
-  for (const handler of state.terminalHandlers) {
-    if (flags[handler.flagKey]) {
-      return fail({
-        code: 'PARSE_ERROR',
-        message: `--${handler.flagKey} is only available through run, not parseInvocation`,
-        exitCode: 1,
-      }) as ParseInvocationResult
-    }
   }
 
   const selected = selectCommand(state, flags.rest)

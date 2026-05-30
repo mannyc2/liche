@@ -270,7 +270,7 @@ export type CliEventError = {
   status?: number | undefined;
 };
 export type CliEventSurface = {
-  kind: "command" | "completion" | "help" | "parse" | "schema" | "version";
+  kind: "command" | "completion" | "parse" | "terminal";
   name?: string | undefined;
 };
 export type CliEvent = {
@@ -535,15 +535,47 @@ export type CliExtension = {
   skill?: SkillDefinition | undefined;
 };
 
+/** EPIPE-safe writer for a terminal handler's final output (dogfoods the runner's own writes). */
+export type TerminalIo = {
+  out: (text: string) => void;
+  err: (text: string) => void;
+};
+
+/** Public projection of the selected command for terminal handlers — never leaks the internal entry. */
+export type TerminalCommandInfo = {
+  path: readonly string[];
+  /** Undefined for a selected-but-contract-less command; `path`/defined-ness still mark selection. */
+  contract?: CommandContract | undefined;
+};
+
 export type TerminalHandlerInput = {
   binaryName: string;
   flags: GlobalFlags;
   options: RunOptions;
   state: CliState;
+  /** The selected command (undefined for command-agnostic handlers, or when none resolved). */
+  selected: TerminalCommandInfo | undefined;
+  /** Resolved output format (e.g. to render a schema in the requested format). */
+  format: Format;
+  /** EPIPE-safe terminal writer; prefer over options.stdout for final output. */
+  io: TerminalIo;
 };
 
 export type TerminalHandler = {
   flagKey: string;
+  /**
+   * Command-AGNOSTIC (false/omitted): runs before command selection and ignores trailing
+   * argv (so `cli --version --x` still prints version). Command-AWARE (true): runs after
+   * selection and the unknown-option / command-not-found checks.
+   */
+  commandAware?: boolean | undefined;
+  /**
+   * Lifecycle event the runner emits before `handle`. `type` is the event name (a known
+   * CliEventType or a custom string); `surface` is carried as `{ kind: 'terminal', name: <surface> }`.
+   */
+  event?: { type: CliEventType; surface: string } | undefined;
+  /** Defaults to `Boolean(flags[flagKey])`; widen for fallbacks (e.g. help matching no command). */
+  matches?: ((flags: GlobalFlags, selected: TerminalCommandInfo | undefined) => boolean) | undefined;
   handle: (input: TerminalHandlerInput) => Promise<void> | void;
 };
 

@@ -124,6 +124,13 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...(definition.terminalHandlers ?? []),
     ...extensions.flatMap((extension) => [...(extension.terminalHandlers ?? [])]),
   ]
+  const seenTerminalFlags = new Set<string>()
+  for (const handler of terminalHandlers) {
+    if (seenTerminalFlags.has(handler.flagKey)) {
+      throw new Error(`Duplicate terminal handler flag: --${handler.flagKey}`)
+    }
+    seenTerminalFlags.add(handler.flagKey)
+  }
   const fetchRoutes = [
     ...(definition.fetchRoutes ?? []),
     ...extensions.flatMap((extension) => [...(extension.fetchRoutes ?? [])]),

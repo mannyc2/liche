@@ -26,7 +26,7 @@ export const wireEventSchema = z.object({
   result: z.enum(['success', 'user_error', 'system_error', 'canceled']).optional(),
   surface: z
     .object({
-      kind: z.enum(['command', 'completion', 'help', 'parse', 'schema', 'version']),
+      kind: z.enum(['command', 'completion', 'parse', 'terminal']),
       name: z.string().optional(),
     })
     .optional(),
