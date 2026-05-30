@@ -30,11 +30,13 @@ const cli = defineCli({
       input: {
         options: z.object({}),
       },
-      output: z.array(z.object({
-        created_at: z.string().optional(),
-        id: z.string(),
-        name: z.string(),
-      })),
+      output: z.array(
+        z.object({
+          created_at: z.string().optional(),
+          id: z.string(),
+          name: z.string(),
+        }),
+      ),
       async run({ ctx }) {
         const remoteBaseUrl = ctx.sources.value('config', 'apiBaseUrl')
         if (typeof remoteBaseUrl !== 'string' || remoteBaseUrl.length === 0) {
@@ -52,13 +54,15 @@ const cli = defineCli({
           method: 'GET',
           path: '',
           bind: { body: false },
-          input: ctx.options as Record<string, unknown>,
+          input: ctx.options,
           inputFields: [],
-          output: z.array(z.object({
-            created_at: z.string().optional(),
-            id: z.string(),
-            name: z.string(),
-          })),
+          output: z.array(
+            z.object({
+              created_at: z.string().optional(),
+              id: z.string(),
+              name: z.string(),
+            }),
+          ),
           env: ctx.env as Record<string, string | undefined>,
         })
         const source = ctx.sources.source('config', 'apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'

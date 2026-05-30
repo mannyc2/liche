@@ -26,7 +26,7 @@ export function githubActionsOidcEnv(env: EnvRecord): OidcExchangeEnv | undefine
       url.searchParams.set('audience', audience)
       const response = await fetch(url, { headers: { Authorization: `Bearer ${requestToken}` } })
       if (!response.ok) return { ok: false, reason: `GitHub OIDC token request failed with ${response.status}` }
-      const body = await response.json() as { value?: unknown; token?: unknown }
+      const body = (await response.json()) as { value?: unknown; token?: unknown }
       const token = typeof body.value === 'string' ? body.value : body.token
       return typeof token === 'string' && token.length > 0
         ? { ok: true, token }

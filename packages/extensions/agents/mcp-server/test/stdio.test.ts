@@ -35,10 +35,7 @@ describe('serveMcp', () => {
 
   test('skips blank lines (does not emit empty responses)', async () => {
     const cli = testCli('app', [testCommand('run', { run: () => ({}) })])
-    const out = await runMcp(
-      cli,
-      '\n\n  \n' + JSON.stringify(request(5, 'initialize')) + '\n\n',
-    )
+    const out = await runMcp(cli, '\n\n  \n' + JSON.stringify(request(5, 'initialize')) + '\n\n')
     const lines = out.trim().split('\n').filter(Boolean)
     expect(lines.length).toBe(1)
     expect(JSON.parse(lines[0]!).id).toBe(5)
@@ -51,7 +48,10 @@ describe('serveMcp', () => {
       JSON.stringify(request(1, 'initialize')) + '\n',
       JSON.stringify(request(2, 'tools/list')) + '\n',
     )
-    const responses = out.trim().split('\n').map((l) => JSON.parse(l))
+    const responses = out
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l))
     expect(responses.map((r) => r.id)).toEqual([1, 2])
   })
 

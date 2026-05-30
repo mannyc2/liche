@@ -1,12 +1,7 @@
 import type { NormalizedField } from '../schema/field.js'
 import type { EffectKind } from '../command/types.js'
 import type { JsonSchemaNode } from '../types.js'
-import type {
-  NormalizedOpsSpec,
-  ProductNotice,
-  ProductPackageManager,
-  ProductReleaseSpec,
-} from '../ops/types.js'
+import type { NormalizedOpsSpec, ProductNotice, ProductPackageManager, ProductReleaseSpec } from '../ops/types.js'
 
 export type NormalizedHttpBind = {
   path: string[]
@@ -176,17 +171,19 @@ export type NormalizedVocabulary = {
   aliases: Record<string, string>
 }
 
-export type NormalizedTokenSource = {
-  kind: 'env'
-  envVar: string
-  mode: 'any' | 'ci'
-  label?: string
-  scopes?: string[]
-} | {
-  kind: 'session'
-  profiles: boolean
-  refresh: boolean
-}
+export type NormalizedTokenSource =
+  | {
+      kind: 'env'
+      envVar: string
+      mode: 'any' | 'ci'
+      label?: string
+      scopes?: string[]
+    }
+  | {
+      kind: 'session'
+      profiles: boolean
+      refresh: boolean
+    }
 
 export type NormalizedAuthCommands = {
   login?: string

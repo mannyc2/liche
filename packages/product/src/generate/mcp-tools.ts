@@ -62,10 +62,7 @@ function mcpHintAnnotations(cap: Capability): Record<string, boolean> {
   const destructive = cap.policy?.dangerous === true || effectKind === 'delete' || effectKind === 'auth-session-delete'
   const idempotent = cap.effects?.idempotent ?? readOnly
   const openWorld =
-    hasHttpTransport(cap) ||
-    cap.requires.auth ||
-    cap.requires.contexts.length > 0 ||
-    effectKind === 'exec'
+    hasHttpTransport(cap) || cap.requires.auth || cap.requires.contexts.length > 0 || effectKind === 'exec'
 
   return {
     destructiveHint: destructive,
@@ -76,7 +73,5 @@ function mcpHintAnnotations(cap: Capability): Record<string, boolean> {
 }
 
 function hasHttpTransport(cap: Capability): boolean {
-  return cap.kind === 'resource-operation'
-    ? cap.http !== undefined
-    : cap.execution.mode === 'remote-http'
+  return cap.kind === 'resource-operation' ? cap.http !== undefined : cap.execution.mode === 'remote-http'
 }

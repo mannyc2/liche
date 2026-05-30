@@ -15,12 +15,7 @@ import {
   stripLeadingVersionPrefix,
 } from './ship-phases.js'
 import type { ShipSource } from './ship-phases.js'
-import {
-  defaultCliCommandRunner,
-  envRecord,
-  fileExists,
-  releaseConfig,
-} from './types.js'
+import { defaultCliCommandRunner, envRecord, fileExists, releaseConfig } from './types.js'
 import type { CliCommandRunner, CommandResult, ReleaseCommandContext } from './types.js'
 
 export type ShipReleaseInput = {
@@ -48,12 +43,14 @@ async function shipSource(input: {
   }
 }
 
-export async function shipRelease(input: ShipReleaseInput): Promise<CommandResult<{
-  build: { record: string }
-  generated: { compileEntrypoint: string; manifest: string }
-  package: PackageCommandOutput
-  publish: PublishCommandOutput
-}>> {
+export async function shipRelease(input: ShipReleaseInput): Promise<
+  CommandResult<{
+    build: { record: string }
+    generated: { compileEntrypoint: string; manifest: string }
+    package: PackageCommandOutput
+    publish: PublishCommandOutput
+  }>
+> {
   const runner = input.runner ?? defaultCliCommandRunner
   const generatedOut = resolve(input.cwd, SHIP_DEFAULTS.generatedOut)
   const buildOut = resolve(input.cwd, SHIP_DEFAULTS.buildOut)
@@ -67,9 +64,9 @@ export async function shipRelease(input: ShipReleaseInput): Promise<CommandResul
   const describedVersion = versionFromRef
     ? undefined
     : await optionalCommandOutput(runner, ['git', 'describe', '--tags', '--abbrev=0'], {
-      cwd: input.cwd,
-      env: input.env,
-    })
+        cwd: input.cwd,
+        env: input.env,
+      })
   const sourceVersion = source.value.releaseVersion
   const releaseVersion = versionFromRef ?? stripLeadingVersionPrefix(describedVersion ?? sourceVersion ?? '')
   if (releaseVersion.length === 0) {
@@ -81,8 +78,9 @@ export async function shipRelease(input: ShipReleaseInput): Promise<CommandResul
       },
     }
   }
-  const commit = input.env['GITHUB_SHA']
-    ?? (await optionalCommandOutput(runner, ['git', 'rev-parse', 'HEAD'], { cwd: input.cwd, env: input.env }))
+  const commit =
+    input.env['GITHUB_SHA'] ??
+    (await optionalCommandOutput(runner, ['git', 'rev-parse', 'HEAD'], { cwd: input.cwd, env: input.env }))
 
   if (!commit) {
     return {
@@ -148,9 +146,7 @@ export async function shipRelease(input: ShipReleaseInput): Promise<CommandResul
   }
 }
 
-export async function runShipCommand(
-  ctx: ReleaseCommandContext<unknown, { dryRun: boolean }>,
-): Promise<unknown> {
+export async function runShipCommand(ctx: ReleaseCommandContext<unknown, { dryRun: boolean }>): Promise<unknown> {
   const result = await shipRelease({
     config: releaseConfig(ctx),
     cwd: process.cwd(),

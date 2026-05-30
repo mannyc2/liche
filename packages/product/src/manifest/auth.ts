@@ -44,15 +44,17 @@ function buildAuthEntry(auth: NormalizedAuth, contexts: NormalizedContext[]): Au
     ...(auth.commands ? { commands: auth.commands } : undefined),
     envVars: envSources.map((s) => ({ name: s.envVar, purpose, mode: s.mode })),
     contexts: contextEntries,
-    ...(hasSession ? {
-      sessionStorage: {
-        used: true,
-        profiles: auth.session?.profiles === true,
-        storesAccessTokens: true,
-        storesRefreshTokens: false,
-        keychainRequired: false,
-      },
-    } : undefined),
+    ...(hasSession
+      ? {
+          sessionStorage: {
+            used: true,
+            profiles: auth.session?.profiles === true,
+            storesAccessTokens: true,
+            storesRefreshTokens: false,
+            keychainRequired: false,
+          },
+        }
+      : undefined),
     requiredRuntimeCapabilities: runtime,
   }
 }

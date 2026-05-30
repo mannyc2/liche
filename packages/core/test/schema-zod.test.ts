@@ -64,7 +64,10 @@ describe('parseSchema', () => {
 
   test('omits "expected" on fieldError when Zod issue has no expected', () => {
     try {
-      parseSchema(z.string().refine(() => false, 'custom'), 'x')
+      parseSchema(
+        z.string().refine(() => false, 'custom'),
+        'x',
+      )
       throw new Error('should have thrown')
     } catch (error) {
       const fe = (error as ValidationError).fieldErrors[0]!
@@ -95,7 +98,7 @@ describe('parseSchema', () => {
   test('uses decoder when schema exposes one', () => {
     const schema = z.string()
     ;(schema as any).decode = (input: unknown) => `decoded:${String(input)}`
-    expect(parseSchema(schema, 'x' as any)).toBe('decoded:x' as any)
+    expect(parseSchema(schema, 'x' as any)).toBe('decoded:x')
   })
 
   test('received is derived from typeof issue.input via reportInput, not a regex', () => {
@@ -180,7 +183,7 @@ describe('parseSchema', () => {
     }
   })
 
-  test('-Infinity input flows through Zod\'s structured received label', () => {
+  test("-Infinity input flows through Zod's structured received label", () => {
     // Zod 4.4.3's finite() check tags both ±Infinity as "Infinity" in
     // issue.received. We prefer that structured label over our typeof
     // fallback, so -Infinity reports the same as +Infinity here. The
@@ -199,12 +202,23 @@ describe('parseSchema', () => {
     // Hypothetical custom codec issue that explicitly sets received.
     // Build a ZodError directly to simulate the structured field — verifies
     // that normalizeZodError trusts a string `received` over typeof inference.
-    const issue: any = { code: 'invalid_type', expected: 'string', received: 'CustomLabel', path: [], message: 'bad', input: 12 }
+    const issue: any = {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'CustomLabel',
+      path: [],
+      message: 'bad',
+      input: 12,
+    }
     const zerr = new (z as any).ZodError([issue])
     let caught: unknown
     try {
       // Re-throw through parseSchema's normalizer by mocking the decode path.
-      const schema: any = { parse: () => { throw zerr } }
+      const schema: any = {
+        parse: () => {
+          throw zerr
+        },
+      }
       parseSchema(schema, 'x' as any)
     } catch (error) {
       caught = error
@@ -227,7 +241,7 @@ describe('parseSchemaAsync', () => {
 
   test('resolves an async transform', async () => {
     const schema = z.string().transform(async (s) => `async:${s}`)
-    expect(await parseSchemaAsync(schema, 'x')).toBe('async:x' as any)
+    expect(await parseSchemaAsync(schema, 'x')).toBe('async:x')
   })
 
   test('resolves a codec with async decode', async () => {
@@ -235,7 +249,7 @@ describe('parseSchemaAsync', () => {
       decode: async (s) => Number(s),
       encode: (n) => String(n),
     })
-    expect(await parseSchemaAsync(schema, '42')).toBe(42 as any)
+    expect(await parseSchemaAsync(schema, '42')).toBe(42)
   })
 
   test('normalizes async validation errors into ValidationError', async () => {

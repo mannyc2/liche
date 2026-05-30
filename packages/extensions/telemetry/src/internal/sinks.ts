@@ -36,10 +36,12 @@ export type ConsoleSinkOptions = {
 }
 
 export function consoleSink(options: ConsoleSinkOptions = {}): TelemetrySink {
-  const write = options.write ?? ((text: string) => {
-    const target = options.stream === 'stdout' ? process.stdout : process.stderr
-    target.write(text)
-  })
+  const write =
+    options.write ??
+    ((text: string) => {
+      const target = options.stream === 'stdout' ? process.stdout : process.stderr
+      target.write(text)
+    })
   return {
     name: 'console',
     emit(event) {
@@ -51,7 +53,12 @@ export function consoleSink(options: ConsoleSinkOptions = {}): TelemetrySink {
 // ─── noop sink ──────────────────────────────────────────────────────────────────
 
 export function noopSink(): TelemetrySink {
-  return { name: 'noop', emit() { /* no-op */ } }
+  return {
+    name: 'noop',
+    emit() {
+      /* no-op */
+    },
+  }
 }
 
 // ─── HTTP sink ──────────────────────────────────────────────────────────────────
@@ -191,7 +198,10 @@ function toOtlpLogs(events: ReadonlyArray<WireEvent>): unknown {
         resource,
         scopeLogs: [
           {
-            scope: { name: sample?.telemetry.sdk.name ?? '@liche/telemetry', version: sample?.telemetry.sdk.version ?? '0.0.0' },
+            scope: {
+              name: sample?.telemetry.sdk.name ?? '@liche/telemetry',
+              version: sample?.telemetry.sdk.version ?? '0.0.0',
+            },
             logRecords: events.map((e) => ({
               timeUnixNano: String(Date.parse(e.occurredAt) * 1_000_000),
               severityText: e.result === 'success' ? 'INFO' : e.type.endsWith('failed') ? 'ERROR' : 'INFO',
@@ -223,7 +233,10 @@ export type WrappedSink = TelemetrySink & {
   readonly stats: () => WrappedSinkStats
 }
 
-export function wrapSink(sink: TelemetrySink, options: { threshold?: number; onError?: (sinkName: string, error: unknown) => void } = {}): WrappedSink {
+export function wrapSink(
+  sink: TelemetrySink,
+  options: { threshold?: number; onError?: (sinkName: string, error: unknown) => void } = {},
+): WrappedSink {
   const threshold = options.threshold ?? 3
   const onError = options.onError ?? (() => {})
   let consecutiveFailures = 0

@@ -235,6 +235,7 @@ const FROZEN_PUBLIC_VALUES = [
   'parseInvocation',
   'parseSchema',
   'parseSchemaAsync',
+  'LicheError',
   'ParseError',
   'reflectionControls',
   'run',

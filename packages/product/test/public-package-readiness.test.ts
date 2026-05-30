@@ -27,14 +27,13 @@ const PUBLIC_PACKAGES = [
 ] as const
 
 function expectedPackageFiles(packageName: string): string[] {
-  return packageName === '@liche/core'
-    ? ['src', 'README.md', 'SKILL.md', 'LICENSE']
-    : ['src', 'README.md', 'LICENSE']
+  return packageName === '@liche/core' ? ['src', 'README.md', 'SKILL.md', 'LICENSE'] : ['src', 'README.md', 'LICENSE']
 }
 
 const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
   '@liche/core': [
     'Formatter',
+    'LicheError',
     'ParseError',
     'ValidationError',
     'arg',
@@ -248,11 +247,12 @@ function run(cmd: string, args: string[], cwd: string): string {
     })
   } catch (error) {
     const e = error as { stderr?: Buffer | string; stdout?: Buffer | string }
-    throw new Error([
-      `$ ${cmd} ${args.join(' ')}`,
-      e.stdout ? String(e.stdout) : '',
-      e.stderr ? String(e.stderr) : '',
-    ].filter(Boolean).join('\n'))
+    throw new Error(
+      [`$ ${cmd} ${args.join(' ')}`, e.stdout ? String(e.stdout) : '', e.stderr ? String(e.stderr) : '']
+        .filter(Boolean)
+        .join('\n'),
+      { cause: error },
+    )
   }
 }
 
@@ -332,20 +332,25 @@ describe('public package readiness', () => {
         expect(entries.some((entry) => entry.startsWith('package/docs/'))).toBe(false)
       }
 
-      writeFileSync(join(consumerDir, 'package.json'), `${JSON.stringify({
-        name: 'liche-public-consumer',
-        private: true,
-        type: 'module',
-        dependencies: Object.fromEntries(
-          PUBLIC_PACKAGES.map((pkg) => [pkg.name, `file:${tarballs[pkg.name]}`]),
-        ),
-        overrides: Object.fromEntries(
-          PUBLIC_PACKAGES.map((pkg) => [pkg.name, `file:${tarballs[pkg.name]}`]),
-        ),
-      }, null, 2)}\n`)
+      writeFileSync(
+        join(consumerDir, 'package.json'),
+        `${JSON.stringify(
+          {
+            name: 'liche-public-consumer',
+            private: true,
+            type: 'module',
+            dependencies: Object.fromEntries(PUBLIC_PACKAGES.map((pkg) => [pkg.name, `file:${tarballs[pkg.name]}`])),
+            overrides: Object.fromEntries(PUBLIC_PACKAGES.map((pkg) => [pkg.name, `file:${tarballs[pkg.name]}`])),
+          },
+          null,
+          2,
+        )}\n`,
+      )
       run('bun', ['install'], consumerDir)
 
-      writeFileSync(join(consumerDir, 'smoke.ts'), `
+      writeFileSync(
+        join(consumerDir, 'smoke.ts'),
+        `
 import * as Core from '@liche/core'
 import * as Extensions from '@liche/extensions'
 import * as Agents from '@liche/agents'
@@ -598,7 +603,8 @@ if (refs.some((value) => value === undefined || value === null)) {
 if (!parsed.ok || !plan.compileFlagsDigest || !generated.includes("defineCli")) {
   throw new Error('public package runtime smoke failed')
 }
-`)
+`,
+      )
       run('bun', ['smoke.ts'], consumerDir)
 
       for (const pkg of PUBLIC_PACKAGES) {

@@ -15,7 +15,10 @@ export function stateOf(cli: CliInstance) {
   return getCliState(cli)
 }
 
-export function testCommand(path: string | readonly [string, ...string[]], definition: CmdDef = {}): DeclarativeCommand {
+export function testCommand(
+  path: string | readonly [string, ...string[]],
+  definition: CmdDef = {},
+): DeclarativeCommand {
   const { alias, aliases, args, env, options, run, ...contract } = definition
   return defineCommand({
     ...contract,
@@ -27,7 +30,7 @@ export function testCommand(path: string | readonly [string, ...string[]], defin
       ...(options ? { options } : undefined),
     },
     path: Array.isArray(path) ? path : [path],
-    ...(run ? { run: (context: any) => run(context.ctx as any) } : undefined),
+    ...(run ? { run: (context: any) => run(context.ctx) } : undefined),
   } as any)
 }
 
@@ -39,7 +42,7 @@ export function testCli(
   const commands = Array.isArray(definitionOrCommands) ? definitionOrCommands : maybeCommands
   const definition = Array.isArray(definitionOrCommands) ? {} : definitionOrCommands
   if (typeof nameOrDefinition === 'string') {
-    return defineCli({ ...definition, commands, name: nameOrDefinition } as any)
+    return defineCli({ ...definition, commands, name: nameOrDefinition })
   }
   return defineCli({ ...nameOrDefinition, commands } as any)
 }

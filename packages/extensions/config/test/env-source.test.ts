@@ -12,9 +12,15 @@ async function runCli(cli: CliInstance, argv: string[], options: Omit<RunOptions
   let exitCode = 0
   await run(cli, argv, {
     ...options,
-    exit(code) { exitCode = code },
-    stderr(chunk) { stderr += chunk },
-    stdout(chunk) { stdout += chunk },
+    exit(code) {
+      exitCode = code
+    },
+    stderr(chunk) {
+      stderr += chunk
+    },
+    stdout(chunk) {
+      stdout += chunk
+    },
   })
   return { exitCode, stdout, stderr }
 }
@@ -38,10 +44,12 @@ describe('env source', () => {
           sources: [env({ prefix: 'APP_' })],
         }),
       ],
-      commands: [defineCommand({
-        path: ['run'],
-        run: ({ ctx }) => ctx.sources.value('config', ''),
-      })],
+      commands: [
+        defineCommand({
+          path: ['run'],
+          run: ({ ctx }) => ctx.sources.value('config', ''),
+        }),
+      ],
     })
     const result = await runCli(cli, ['run', '--json'], {
       env: { APP_HOST: 'localhost', APP_PORT: '8080', APP_SECURE: 'true' },
@@ -95,10 +103,7 @@ describe('env source', () => {
           outputControls({ json: true }),
           config({
             schema: z.object({ region: z.string() }),
-            sources: [
-              files({ files: [path] }),
-              env({ prefix: 'APP_' }),
-            ],
+            sources: [files({ files: [path] }), env({ prefix: 'APP_' })],
           }),
         ],
         commands: [defineCommand({ path: ['run'], run: ({ ctx }) => ctx.sources.value('config', '') })],
@@ -121,10 +126,7 @@ describe('env source', () => {
           outputControls({ json: true }),
           config({
             schema: z.object({ region: z.string() }),
-            sources: [
-              env({ prefix: 'APP_' }),
-              files({ files: [path] }),
-            ],
+            sources: [env({ prefix: 'APP_' }), files({ files: [path] })],
           }),
         ],
         commands: [defineCommand({ path: ['run'], run: ({ ctx }) => ctx.sources.value('config', '') })],
@@ -146,10 +148,12 @@ describe('env source', () => {
           sources: [env({ prefix: 'APP_' })],
         }),
       ],
-      commands: [defineCommand({
-        path: ['run'],
-        run: ({ ctx }) => ctx.sources.source('config', 'region'),
-      })],
+      commands: [
+        defineCommand({
+          path: ['run'],
+          run: ({ ctx }) => ctx.sources.source('config', 'region'),
+        }),
+      ],
     })
     const result = await runCli(cli, ['run', '--json'], { env: { APP_REGION: 'sfo' } })
     expect(JSON.parse(result.stdout).data).toEqual({ kind: 'env', var: 'APP_' })

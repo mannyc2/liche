@@ -63,7 +63,17 @@ describe('string-pattern rules', () => {
 
 describe('field-name redaction (key match)', () => {
   test('top-level secret-shaped keys collapse value', () => {
-    expect(r({ token: 'plain', authorization: 'plain', apiKey: 'plain', api_key: 'plain', password: 'plain', secret: 'plain', privateKey: 'plain' })).toEqual({
+    expect(
+      r({
+        token: 'plain',
+        authorization: 'plain',
+        apiKey: 'plain',
+        api_key: 'plain',
+        password: 'plain',
+        secret: 'plain',
+        privateKey: 'plain',
+      }),
+    ).toEqual({
       token: '[redacted]',
       authorization: '[redacted]',
       apiKey: '[redacted]',

@@ -1,16 +1,10 @@
-import type {
-  CreateOptions,
-  GlobalInputDefinition,
-  NormalizedGlobalInputDefinition,
-} from '../types.js'
+import type { CreateOptions, GlobalInputDefinition, NormalizedGlobalInputDefinition } from '../types.js'
 import { normalizeGlobalInput } from './definition.js'
 
 export type RuntimeGlobalInput = NormalizedGlobalInputDefinition
 
 export function globalRegistryFor(definition: CreateOptions): readonly RuntimeGlobalInput[] {
-  return assertUniqueGlobals([
-    ...normalizeGlobalInputs(definition.globals ?? []),
-  ])
+  return assertUniqueGlobals([...normalizeGlobalInputs(definition.globals ?? [])])
 }
 
 function normalizeGlobalInputs(globals: readonly GlobalInputDefinition[]): RuntimeGlobalInput[] {

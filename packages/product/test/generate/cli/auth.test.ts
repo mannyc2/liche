@@ -2,7 +2,18 @@ import { run, type CliInstance, type StreamKind } from '@liche/core'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Auth, Command, createConfig, Field, Runtime, Shape, canonicalDigest, defineProduct, generateCli, normalizeProduct } from '../../../src/index.js'
+import {
+  Auth,
+  Command,
+  createConfig,
+  Field,
+  Runtime,
+  Shape,
+  canonicalDigest,
+  defineProduct,
+  generateCli,
+  normalizeProduct,
+} from '../../../src/index.js'
 import type { RuntimeProduct } from '../../../src/index.js'
 import workersAuthProduct from '../../fixtures/workers-auth.product.js'
 import workersProduct from '../../fixtures/workers.product.js'
@@ -95,10 +106,14 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
     expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z')
     expect(source).toContain(`import { llms } from '@liche/agents'`)
-    expect(source).toContain(`import { auth as authExtension, createFileSessionStore, credentialHttpAuth, detectInvocation, resolveAuth, resolveContext } from '@liche/auth'`)
+    expect(source).toContain(
+      `import { auth as authExtension, createFileSessionStore, credentialHttpAuth, detectInvocation, resolveAuth, resolveContext } from '@liche/auth'`,
+    )
     expect(source).toContain(`import { mcpServer } from '@liche/mcp-server'`)
     expect(source).toContain(`import { tokens } from '@liche/tokens'`)
-    expect(source).toContain(`extensions: [outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: ['purge'] } }), tokens(), authExtension(), mcpServer({ tools: { include: ['purge'] } })],`)
+    expect(source).toContain(
+      `extensions: [outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: ['purge'] } }), tokens(), authExtension(), mcpServer({ tools: { include: ['purge'] } })],`,
+    )
     expect(source).not.toContain(`globals: [`)
   })
 
@@ -124,7 +139,9 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
 
   test('declared context flag is injected as an optional string option so env fallback can resolve it', () => {
     const source = generate(workersAuthProduct)
-    expect(source).toMatch(/defineCommand\(\{[\s\S]*?path: \['purge'\],[\s\S]*?options: z\.object\(\{[\s\S]*?'org': z\.string\(\)\.optional\(\)/)
+    expect(source).toMatch(
+      /defineCommand\(\{[\s\S]*?path: \['purge'\],[\s\S]*?options: z\.object\(\{[\s\S]*?'org': z\.string\(\)\.optional\(\)/,
+    )
   })
 
   test('command env schema includes only the auth and context env vars needed by the capability', () => {
@@ -146,7 +163,9 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('const headers = new Headers()')
     expect(source).toContain(`const data = await callHttpOperation({`)
     expect(source).toContain(`baseUrl: { envVar: 'ACME_API_BASE_URL' },`)
-    expect(source).toContain(`auth: credential ? credentialHttpAuth(credential, { requiredPermissions: ['cache:write'] }) : { kind: 'none' },`)
+    expect(source).toContain(
+      `auth: credential ? credentialHttpAuth(credential, { requiredPermissions: ['cache:write'] }) : { kind: 'none' },`,
+    )
     expect(source).not.toContain(`code: 'REMOTE_NOT_IMPLEMENTED'`)
   })
 
@@ -312,7 +331,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       expect(stdout).not.toContain('AUTH_MISSING')
       expect(stdout).not.toContain('tok-runtime')
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
@@ -334,7 +353,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       expect(stdout).not.toContain('VALIDATION_ERROR')
       expect(stdout).not.toContain('AUTH_CONTEXT_REQUIRED')
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
@@ -366,12 +385,15 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
       expect(stdout).not.toContain('AUTH_MISSING')
       expect(stdout).not.toContain('ci-token')
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
   test('401 and 403 responses map through generated resolved-auth semantics without leaking tokens', async () => {
-    for (const [status, code] of [[401, 'AUTH_INVALID'], [403, 'AUTH_PERMISSION_DENIED']] as const) {
+    for (const [status, code] of [
+      [401, 'AUTH_INVALID'],
+      [403, 'AUTH_PERMISSION_DENIED'],
+    ] as const) {
       const server = Bun.serve({
         port: 0,
         fetch() {
@@ -387,7 +409,7 @@ describe('generated CLI runtime — auth fixture executes resolveAuth/resolveCon
         expect(stdout).toContain(code)
         expect(stdout).not.toContain('tok-runtime')
       } finally {
-        server.stop(true)
+        await server.stop(true)
       }
     }
   })

@@ -143,12 +143,13 @@ function discoveryArtifact(catalog: Catalog): Record<string, unknown> {
     configFiles: catalog.config?.files ?? [],
     ops: {
       doctor: catalog.ops.doctor !== false,
-      telemetry: catalog.ops.telemetry !== false
-        ? {
-            enabledEnvVar: catalog.ops.telemetry.enabledEnvVar,
-            fileEnvVar: catalog.ops.telemetry.fileEnvVar,
-          }
-        : false,
+      telemetry:
+        catalog.ops.telemetry !== false
+          ? {
+              enabledEnvVar: catalog.ops.telemetry.enabledEnvVar,
+              fileEnvVar: catalog.ops.telemetry.fileEnvVar,
+            }
+          : false,
       notices: {
         updates: catalog.ops.notices.updates.length,
         channels: catalog.ops.notices.channels.length,
@@ -167,13 +168,14 @@ function releaseDiscovery(catalog: Catalog): Record<string, unknown> | false {
     channel: release.channel ?? 'stable',
     latestVersion: release.latestVersion ?? release.version,
     installManagers: release.install?.map((entry) => entry.manager).sort() ?? [],
-    packages: release.packages?.map((entry) => ({
-      ecosystem: entry.ecosystem,
-      kind: entry.kind,
-      name: entry.name,
-      version: entry.version,
-      ...(entry.channel ? { channel: entry.channel } : undefined),
-    })) ?? [],
+    packages:
+      release.packages?.map((entry) => ({
+        ecosystem: entry.ecosystem,
+        kind: entry.kind,
+        name: entry.name,
+        version: entry.version,
+        ...(entry.channel ? { channel: entry.channel } : undefined),
+      })) ?? [],
     yankedVersions: release.yankedVersions?.map((entry) => entry.version).sort() ?? [],
   }
 }

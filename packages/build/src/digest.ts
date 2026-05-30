@@ -8,7 +8,7 @@ export function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize)
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {}
-    const keys = Object.keys(value as Record<string, unknown>).sort()
+    const keys = Object.keys(value).sort()
     for (const key of keys) {
       const v = (value as Record<string, unknown>)[key]
       if (v === undefined) continue

@@ -35,12 +35,7 @@ export type {
 } from './targets.js'
 
 export { buildBinaries } from './build.js'
-export type {
-  BuildBinariesInput,
-  BuildBinariesResult,
-  BuildFailure,
-  BuildFailureCode,
-} from './build.js'
+export type { BuildBinariesInput, BuildBinariesResult, BuildFailure, BuildFailureCode } from './build.js'
 
 export { BuildRecordSchema, parseBuildRecord } from './build-record.js'
 export type {

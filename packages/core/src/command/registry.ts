@@ -77,7 +77,6 @@ export function commandScope(state: CliState, tokens: string[] = []): CommandSco
 
     const canonicalToken = isAlias(rawEntry) ? rawEntry.target : token
     path.push(canonicalToken)
-    entry = resolved
 
     if (!isGroup(resolved)) {
       return {
@@ -99,7 +98,9 @@ export function commandScope(state: CliState, tokens: string[] = []): CommandSco
     aliases: path.length ? [] : [],
     commands,
     description: path.length
-      ? (entry ? commandContract(path.join(' '), entry)?.description : undefined)
+      ? entry
+        ? commandContract(path.join(' '), entry)?.description
+        : undefined
       : state.def.description,
     entry,
     path,
@@ -126,10 +127,9 @@ export function completionCommands(state: CliState, words: string[]): string[] {
   if (scope.commands.size === 0 && scopeWords.length) return []
 
   const children = childCommands(scope)
-  return [
-    ...children.map((command) => command.name),
-    ...children.flatMap((command) => command.aliases ?? []),
-  ].filter((name) => name.startsWith(current))
+  return [...children.map((command) => command.name), ...children.flatMap((command) => command.aliases ?? [])].filter(
+    (name) => name.startsWith(current),
+  )
 }
 
 export function commandFormat(selected: SelectedCommand) {
@@ -163,14 +163,12 @@ export function mcpToolName(name: string): string {
 }
 
 function aliasesFor(commands: Map<string, Entry>, target: string): string[] {
-  return [...commands.entries()]
-    .filter(([, entry]) => isAlias(entry) && entry.target === target)
-    .map(([name]) => name)
+  return [...commands.entries()].filter(([, entry]) => isAlias(entry) && entry.target === target).map(([name]) => name)
 }
 
 export function collectCommandContracts(
   commands: Map<string, Entry>,
-  root?: RuntimeEntry | undefined,
+  root?: RuntimeEntry,
   prefix = '',
 ): CommandContract[] {
   const output: CommandContract[] = root
@@ -193,7 +191,5 @@ export function collectCommandContracts(
 }
 
 function aliasNames(commands: Map<string, Entry>, target: string): string[] {
-  return [...commands.entries()]
-    .filter(([, entry]) => isAlias(entry) && entry.target === target)
-    .map(([name]) => name)
+  return [...commands.entries()].filter(([, entry]) => isAlias(entry) && entry.target === target).map(([name]) => name)
 }

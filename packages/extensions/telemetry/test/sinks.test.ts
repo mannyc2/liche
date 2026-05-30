@@ -1,12 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  consoleSink,
-  httpSink,
-  jsonlFileSink,
-  noopSink,
-  wrapSink,
-  type TelemetrySink,
-} from '../src/internal/sinks.js'
+import { consoleSink, httpSink, jsonlFileSink, noopSink, wrapSink, type TelemetrySink } from '../src/internal/sinks.js'
 import type { WireEvent } from '../src/internal/schema.js'
 
 function event(overrides: Partial<WireEvent> = {}): WireEvent {
@@ -28,7 +21,7 @@ function event(overrides: Partial<WireEvent> = {}): WireEvent {
       runtime: { name: 'bun', version: '1.3.9', platform: 'darwin', arch: 'arm64' },
     },
     ...overrides,
-  } as WireEvent
+  }
 }
 
 describe('jsonlFileSink', () => {
@@ -49,7 +42,7 @@ describe('consoleSink', () => {
   test('emits prefixed JSON line via injected write', () => {
     const out: string[] = []
     const sink = consoleSink({ write: (text) => out.push(text) })
-    sink.emit(event())
+    void sink.emit(event())
     expect(out).toHaveLength(1)
     expect(out[0]!.startsWith('[telemetry] ')).toBe(true)
     expect(JSON.parse(out[0]!.replace(/^\[telemetry\] /, ''))).toMatchObject({ type: 'command.completed' })
@@ -101,29 +94,42 @@ describe('httpSink', () => {
 
   test('5xx retries once with delay', async () => {
     const { calls, fetch: f } = fakeFetch([new Response('', { status: 503 }), new Response('', { status: 200 })])
-    const sink = httpSink({ url: 'https://example.test/ingest', batchSize: 1, fetch: f, retry: { delayMs: 1, maxAttempts: 2 } })
+    const sink = httpSink({
+      url: 'https://example.test/ingest',
+      batchSize: 1,
+      fetch: f,
+      retry: { delayMs: 1, maxAttempts: 2 },
+    })
     await sink.emit(event())
     expect(calls).toHaveLength(2)
   })
 
   test('4xx drops without retry', async () => {
     const { calls, fetch: f } = fakeFetch([new Response('', { status: 400 })])
-    const sink = httpSink({ url: 'https://example.test/ingest', batchSize: 1, fetch: f, retry: { delayMs: 1, maxAttempts: 2 } })
+    const sink = httpSink({
+      url: 'https://example.test/ingest',
+      batchSize: 1,
+      fetch: f,
+      retry: { delayMs: 1, maxAttempts: 2 },
+    })
     await sink.emit(event())
     expect(calls).toHaveLength(1)
   })
 
   test('network error retries once then drops', async () => {
     const { calls, fetch: f } = fakeFetch([new Error('ECONNRESET'), new Error('ECONNRESET')])
-    const sink = httpSink({ url: 'https://example.test/ingest', batchSize: 1, fetch: f, retry: { delayMs: 1, maxAttempts: 2 } })
+    const sink = httpSink({
+      url: 'https://example.test/ingest',
+      batchSize: 1,
+      fetch: f,
+      retry: { delayMs: 1, maxAttempts: 2 },
+    })
     await sink.emit(event())
     expect(calls).toHaveLength(2)
   })
 
   test('429 honors Retry-After and blocks subsequent emits during window', async () => {
-    const { calls, fetch: f } = fakeFetch([
-      new Response('', { status: 429, headers: { 'retry-after': '0.05' } }),
-    ])
+    const { calls, fetch: f } = fakeFetch([new Response('', { status: 429, headers: { 'retry-after': '0.05' } })])
     const sink = httpSink({ url: 'https://example.test/ingest', batchSize: 1, fetch: f })
     await sink.emit(event())
     expect(calls).toHaveLength(1)
@@ -142,7 +148,10 @@ describe('httpSink', () => {
     const body = JSON.parse(String(calls[0]!.init.body))
     expect(body.resourceLogs).toBeDefined()
     expect(body.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue).toBe('command.completed')
-    expect(body.resourceLogs[0].scopeLogs[0].logRecords[0].attributes).toContainEqual({ key: 'cli.result', value: { stringValue: 'success' } })
+    expect(body.resourceLogs[0].scopeLogs[0].logRecords[0].attributes).toContainEqual({
+      key: 'cli.result',
+      value: { stringValue: 'success' },
+    })
   })
 })
 

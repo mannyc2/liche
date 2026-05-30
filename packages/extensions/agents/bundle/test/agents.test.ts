@@ -7,7 +7,10 @@ describe('@liche/agents', () => {
   test('bundles MCP and skill helper commands together', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [outputControls({ json: true }), agents({ command: 'app-cli', skill: { markdown: '# app\n\nAgent docs.' } })],
+      extensions: [
+        outputControls({ json: true }),
+        agents({ command: 'app-cli', skill: { markdown: '# app\n\nAgent docs.' } }),
+      ],
       commands: [defineCommand({ path: ['run'], run: () => ({ ok: true }) })],
     })
 
@@ -43,9 +46,15 @@ async function runCli(
   let exitCode = 0
   await run(cli, argv, {
     ...options,
-    exit(code) { exitCode = code },
-    stderr(chunk) { stderr += chunk },
-    stdout(chunk) { stdout += chunk },
+    exit(code) {
+      exitCode = code
+    },
+    stderr(chunk) {
+      stderr += chunk
+    },
+    stdout(chunk) {
+      stdout += chunk
+    },
     streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
   return { exitCode, stderr, stdout }

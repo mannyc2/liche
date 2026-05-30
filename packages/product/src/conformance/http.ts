@@ -1,9 +1,5 @@
 import { serializeHttpOperationRequest, z } from '@liche/core'
-import type {
-  HttpOperationBind,
-  HttpOperationRequestSpec,
-  Schema,
-} from '@liche/core'
+import type { HttpOperationBind, HttpOperationRequestSpec, Schema } from '@liche/core'
 import { resolveListShape } from '../catalog/shape.js'
 import type {
   Capability,
@@ -14,11 +10,7 @@ import type {
 } from '../catalog/types.js'
 import type { JsonSchemaNode } from '../types.js'
 import { redact } from './redact.js'
-import type {
-  ConformanceCase,
-  ConformanceReportCase,
-  RunnableCapability,
-} from './types.js'
+import type { ConformanceCase, ConformanceReportCase, RunnableCapability } from './types.js'
 
 export function runnableCapabilities(catalog: Catalog): RunnableCapability[] {
   const out: RunnableCapability[] = []
@@ -73,7 +65,8 @@ function transportAuth(
   if (!cap.requires.auth || catalog.auth.kind === 'none') return { kind: 'none' }
   const source = catalog.auth.tokenSources.find((s) => s.kind === 'env')
   if (!source || source.kind !== 'env') return { kind: 'none' }
-  if (catalog.auth.kind === 'apiKey') return { kind: 'apiKey', envVar: source.envVar, header: catalog.auth.header ?? 'x-api-key' }
+  if (catalog.auth.kind === 'apiKey')
+    return { kind: 'apiKey', envVar: source.envVar, header: catalog.auth.header ?? 'x-api-key' }
   return { kind: 'bearer', envVar: source.envVar }
 }
 
@@ -162,7 +155,8 @@ export function compareExpectedRequest(
 ): string | undefined {
   if (!expected) return undefined
   const url = new URL(request.url)
-  if (expected.method.toUpperCase() !== request.method) return `Expected ${expected.method} but serialized ${request.method}.`
+  if (expected.method.toUpperCase() !== request.method)
+    return `Expected ${expected.method} but serialized ${request.method}.`
   if (expected.path !== url.pathname) return `Expected path ${expected.path} but serialized ${url.pathname}.`
   if (expected.query) {
     for (const [key, value] of Object.entries(expected.query)) {
@@ -179,7 +173,9 @@ export function compareExpectedRequest(
   return undefined
 }
 
-export function reportRequest(request: ReturnType<typeof serializeHttpOperationRequest>): NonNullable<ConformanceReportCase['request']> {
+export function reportRequest(
+  request: ReturnType<typeof serializeHttpOperationRequest>,
+): NonNullable<ConformanceReportCase['request']> {
   const out: NonNullable<ConformanceReportCase['request']> = {
     method: request.method,
     url: safeUrl(request.url),

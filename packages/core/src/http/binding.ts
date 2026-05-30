@@ -28,10 +28,15 @@ export function serializeHttpOperationRequest<TInput extends Record<string, unkn
   for (const field of options.bind.path ?? []) {
     const value = input[field]
     if (value === undefined || value === null) {
-      throw remoteError('REMOTE_BIND_MISSING_PATH_PARAM', 'Missing remote path parameter.', {
-        operationId: options.id,
-        method,
-      }, { field })
+      throw remoteError(
+        'REMOTE_BIND_MISSING_PATH_PARAM',
+        'Missing remote path parameter.',
+        {
+          operationId: options.id,
+          method,
+        },
+        { field },
+      )
     }
     path = replacePathParam(path, field, serializeScalar(value, field, options.id))
     markUsed(usedFields, field, 'path', options.id)
@@ -39,10 +44,15 @@ export function serializeHttpOperationRequest<TInput extends Record<string, unkn
 
   const remainingPathParam = path.match(/\{([^}]+)\}/)
   if (remainingPathParam) {
-    throw remoteError('REMOTE_BIND_MISSING_PATH_PARAM', 'Missing remote path parameter.', {
-      operationId: options.id,
-      method,
-    }, { field: remainingPathParam[1] })
+    throw remoteError(
+      'REMOTE_BIND_MISSING_PATH_PARAM',
+      'Missing remote path parameter.',
+      {
+        operationId: options.id,
+        method,
+      },
+      { field: remainingPathParam[1] },
+    )
   }
 
   const url = resolveUrl(baseUrl, path, method, options.id)
@@ -57,10 +67,15 @@ export function serializeHttpOperationRequest<TInput extends Record<string, unkn
   for (const [header, field] of Object.entries(options.bind.headers ?? {})) {
     const normalized = header.toLowerCase()
     if (RESERVED_BOUND_HEADERS.has(normalized)) {
-      throw remoteError('REMOTE_REQUEST_SERIALIZATION', 'Remote request header is reserved.', {
-        operationId: options.id,
-        method,
-      }, { header })
+      throw remoteError(
+        'REMOTE_REQUEST_SERIALIZATION',
+        'Remote request header is reserved.',
+        {
+          operationId: options.id,
+          method,
+        },
+        { header },
+      )
     }
     const value = input[field]
     if (value === undefined) continue
@@ -106,9 +121,15 @@ function resolveBaseUrl(
   try {
     return new URL(raw).toString()
   } catch (error) {
-    throw remoteError('REMOTE_CONFIG_INVALID_BASE_URL', 'Remote base URL is invalid.', {
-      operationId,
-    }, undefined, { cause: asError(error) })
+    throw remoteError(
+      'REMOTE_CONFIG_INVALID_BASE_URL',
+      'Remote base URL is invalid.',
+      {
+        operationId,
+      },
+      undefined,
+      { cause: asError(error) },
+    )
   }
 }
 
@@ -121,9 +142,14 @@ function resolveRuntimeValue(
     const envValue = env[value.envVar]
     if (envValue && envValue.length > 0) return envValue
     if (value.literal !== undefined) return value.literal
-    throw remoteError('REMOTE_CONFIG_MISSING_BASE_URL', 'Remote base URL environment variable is not set.', {
-      operationId,
-    }, { envVar: value.envVar })
+    throw remoteError(
+      'REMOTE_CONFIG_MISSING_BASE_URL',
+      'Remote base URL environment variable is not set.',
+      {
+        operationId,
+      },
+      { envVar: value.envVar },
+    )
   }
   if (value.literal !== undefined) return value.literal
   throw remoteError('REMOTE_CONFIG_MISSING_BASE_URL', 'Remote base URL is required.', { operationId })
@@ -133,10 +159,16 @@ function resolveUrl(baseUrl: string, path: string, method: string, operationId: 
   try {
     return new URL(path, baseUrl)
   } catch (error) {
-    throw remoteError('REMOTE_REQUEST_SERIALIZATION', 'Remote request URL is invalid.', {
-      operationId,
-      method,
-    }, undefined, { cause: asError(error) })
+    throw remoteError(
+      'REMOTE_REQUEST_SERIALIZATION',
+      'Remote request URL is invalid.',
+      {
+        operationId,
+        method,
+      },
+      undefined,
+      { cause: asError(error) },
+    )
   }
 }
 
@@ -157,9 +189,14 @@ function validateBindFields<TInput>(
 
 function assertKnownField(field: string, knownFields: Set<string>, operationId: string | undefined): void {
   if (knownFields.has(field)) return
-  throw remoteError('REMOTE_BIND_UNKNOWN_FIELD', 'Remote request binding references an unknown input field.', {
-    operationId,
-  }, { field })
+  throw remoteError(
+    'REMOTE_BIND_UNKNOWN_FIELD',
+    'Remote request binding references an unknown input field.',
+    {
+      operationId,
+    },
+    { field },
+  )
 }
 
 function replacePathParam(path: string, field: string, value: string): string {
@@ -181,9 +218,14 @@ function serializeScalar(value: unknown, field: string, operationId: string | un
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return String(value)
   }
-  throw remoteError('REMOTE_REQUEST_SERIALIZATION', 'Remote request binding value must be a scalar.', {
-    operationId,
-  }, { field })
+  throw remoteError(
+    'REMOTE_REQUEST_SERIALIZATION',
+    'Remote request binding value must be a scalar.',
+    {
+      operationId,
+    },
+    { field },
+  )
 }
 
 function markUsed(usedFields: Set<string>, field: string, placement: string, operationId: string | undefined): void {
@@ -191,9 +233,14 @@ function markUsed(usedFields: Set<string>, field: string, placement: string, ope
     usedFields.add(field)
     return
   }
-  throw remoteError('REMOTE_BIND_CONFLICT', 'Remote request binding places the same input in multiple locations.', {
-    operationId,
-  }, { field, placement })
+  throw remoteError(
+    'REMOTE_BIND_CONFLICT',
+    'Remote request binding places the same input in multiple locations.',
+    {
+      operationId,
+    },
+    { field, placement },
+  )
 }
 
 function resolveBodyValue<TInput>(
@@ -202,7 +249,7 @@ function resolveBodyValue<TInput>(
   bind: HttpOperationBind<TInput>,
   usedFields: Set<string>,
   operationId: string | undefined,
-): unknown | undefined {
+): unknown {
   if (bind.body === true) {
     const body: Record<string, unknown> = {}
     for (const [field, value] of Object.entries(input)) {
@@ -215,9 +262,14 @@ function resolveBodyValue<TInput>(
     const body: Record<string, unknown> = {}
     for (const field of bind.body) {
       if (usedFields.has(field)) {
-        throw remoteError('REMOTE_BIND_CONFLICT', 'Remote request binding places the same input in multiple locations.', {
-          operationId,
-        }, { field, placement: 'body' })
+        throw remoteError(
+          'REMOTE_BIND_CONFLICT',
+          'Remote request binding places the same input in multiple locations.',
+          {
+            operationId,
+          },
+          { field, placement: 'body' },
+        )
       }
       const value = input[field]
       if (value !== undefined) body[field] = value

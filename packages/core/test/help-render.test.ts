@@ -5,7 +5,8 @@ import { renderHelp } from '../src/help/render.js'
 import { runCli, testCli, testCommand } from './helpers.js'
 
 const stateOf = (cli: any) => (cli as InternalCli)[stateSymbol]
-const cliWith = (name: string, definition: any = {}, root: any = {}) => testCli('app', root, [testCommand(name, definition)])
+const cliWith = (name: string, definition: any = {}, root: any = {}) =>
+  testCli('app', root, [testCommand(name, definition)])
 
 describe('renderHelp — title and usage', () => {
   test('renders bare name when CLI has no description', () => {
@@ -212,9 +213,7 @@ describe('renderHelp — commands listing', () => {
   })
 
   test('aliases appear in parentheses after command description', () => {
-    const cli = testCli('app', [
-      testCommand('build', { aliases: ['b'], description: 'build it', run: () => ({}) }),
-    ])
+    const cli = testCli('app', [testCommand('build', { aliases: ['b'], description: 'build it', run: () => ({}) })])
     const help = renderHelp('app', stateOf(cli))
     expect(help).toMatch(/build\s+build it \(b\)/)
   })
@@ -341,13 +340,14 @@ describe('renderHelp — global sections always present', () => {
 
 describe('defineCli({ help: { renderer } })', () => {
   test('custom renderer handles explicit root help, command help, and fallback help', async () => {
-    const renderer = (model: any, context: any) => [
-      `CUSTOM ${model.name}`,
-      `binary=${context.binaryName}`,
-      `path=${model.path.join('/')}`,
-      `commands=${model.commands.map((command: any) => command.name).join(',')}`,
-      `globals=${model.globals.map((global: any) => global.label).join(',')}`,
-    ].join('\n')
+    const renderer = (model: any, context: any) =>
+      [
+        `CUSTOM ${model.name}`,
+        `binary=${context.binaryName}`,
+        `path=${model.path.join('/')}`,
+        `commands=${model.commands.map((command: any) => command.name).join(',')}`,
+        `globals=${model.globals.map((global: any) => global.label).join(',')}`,
+      ].join('\n')
     const cli = defineCli({
       name: 'app',
       help: { renderer },

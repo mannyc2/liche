@@ -11,10 +11,7 @@ export function commandContract(
   return undefined
 }
 
-export function commandContractFromDefinition(
-  name: string,
-  definition: CommandDefinition,
-): CommandContract {
+export function commandContractFromDefinition(name: string, definition: CommandDefinition): CommandContract {
   return {
     description: definition.description,
     ...(definition.examples ? { examples: definition.examples } : undefined),
@@ -42,11 +39,7 @@ export function groupContract(
   }
 }
 
-function rebaseContract(
-  contract: CommandContract,
-  name: string,
-  aliases: readonly string[],
-): CommandContract {
+function rebaseContract(contract: CommandContract, name: string, aliases: readonly string[]): CommandContract {
   const { aliases: _aliases, name: _name, path: _path, ...rest } = contract
   return {
     ...rest,

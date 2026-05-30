@@ -174,15 +174,18 @@ async function emitCommandEvent(
   type: CliEvent['type'],
   extra: Partial<CliEvent> = {},
 ): Promise<void> {
-  await emitLifecycleEvent(input.events, createLifecycleEvent(binaryName, input.version, {
-    streams: streamKinds(input.stdio),
-    command,
-    format: input.format,
-    formatExplicit: input.formatExplicit,
-    surface: { kind: 'command' },
-    type,
-    ...extra,
-  }))
+  await emitLifecycleEvent(
+    input.events,
+    createLifecycleEvent(binaryName, input.version, {
+      streams: streamKinds(input.stdio),
+      command,
+      format: input.format,
+      formatExplicit: input.formatExplicit,
+      surface: { kind: 'command' },
+      type,
+      ...extra,
+    }),
+  )
 }
 
 async function emitResultEvent(

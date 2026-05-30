@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 import type { Dict, FieldError, FieldErrorSource, Schema } from '../types.js'
 import { ValidationError } from '../errors/error.js'
 
@@ -10,9 +10,7 @@ export function parseSchema<T>(schema: Schema<T> | undefined, input: unknown, fa
   if (!schema) return fallback as Dict
   try {
     const decoder = (schema as any).decode
-    return typeof decoder === 'function'
-      ? decoder.call(schema, input, PARSE_PARAMS)
-      : schema.parse(input, PARSE_PARAMS)
+    return typeof decoder === 'function' ? decoder.call(schema, input, PARSE_PARAMS) : schema.parse(input, PARSE_PARAMS)
   } catch (error) {
     throw normalizeZodError(error)
   }
@@ -48,7 +46,7 @@ export function encodeDefault(schema: Schema | undefined): string | undefined {
   if (value === undefined) return undefined
   try {
     const inner = (schema as any).def?.innerType ?? schema
-    const encoder = (inner as any).encode
+    const encoder = inner.encode
     const encoded = typeof encoder === 'function' ? encoder.call(inner, value) : value
     return typeof encoded === 'string' ? encoded : JSON.stringify(encoded)
   } catch {
@@ -57,12 +55,16 @@ export function encodeDefault(schema: Schema | undefined): string | undefined {
 }
 
 function safeCall(fn: () => unknown): unknown {
-  try { return fn() } catch { return undefined }
+  try {
+    return fn()
+  } catch {
+    return undefined
+  }
 }
 
 export function objectShape(schema: Schema | undefined): Dict<Schema> {
   if (!schema) return {}
-  if (schema instanceof z.ZodObject) return schema.shape as Dict<Schema>
+  if (schema instanceof z.ZodObject) return schema.shape
   return {}
 }
 
@@ -97,7 +99,9 @@ export function meta(schema: Schema | undefined): Dict | undefined {
       try {
         const value = reader.call(current)
         if (value && typeof value === 'object') return value as Dict
-      } catch { /* fall through to inner unwrap */ }
+      } catch {
+        /* fall through to inner unwrap */
+      }
     }
     const inner = unwrapOnce(current)
     if (!inner || inner === current) return undefined
@@ -110,7 +114,11 @@ function unwrapOnce(schema: any): any {
   if (!schema) return undefined
   if (schema.def?.innerType) return schema.def.innerType
   if (typeof schema.unwrap === 'function') {
-    try { return schema.unwrap() } catch { return undefined }
+    try {
+      return schema.unwrap()
+    } catch {
+      return undefined
+    }
   }
   return undefined
 }
@@ -188,10 +196,7 @@ function typeofName(value: unknown): string {
   return typeof value
 }
 
-export function attachFieldSources(
-  error: unknown,
-  sourcesByTopLevelKey: Record<string, FieldErrorSource>,
-): unknown {
+export function attachFieldSources(error: unknown, sourcesByTopLevelKey: Record<string, FieldErrorSource>): unknown {
   if (!(error instanceof ValidationError)) return error
   const rewritten: FieldError[] = error.fieldErrors.map((fe) => {
     if (fe.source !== undefined) return fe

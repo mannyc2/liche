@@ -1,90 +1,145 @@
 import { dirname, join } from 'node:path'
-import { z } from 'zod'
+import * as z from 'zod'
 import type { VerifiedPackageArtifact } from './package/index.js'
-import type { CliReleaseManifest, PackageEcosystem, PackageRecord, ReleaseDistConfig, ReleaseHost } from './manifest/index.js'
+import type {
+  CliReleaseManifest,
+  PackageEcosystem,
+  PackageRecord,
+  ReleaseDistConfig,
+  ReleaseHost,
+} from './manifest/index.js'
 import type { GitRepoTarget, PublisherConfigMap, PublishSelection } from './publishers/index.js'
 import { PACKAGE_ECOSYSTEMS } from './renderers/index.js'
 import type { RendererConfigMap, RendererSelection } from './renderers/index.js'
 
 const GitHubRepository = z.string().regex(/^[^/\s]+\/[^/\s]+$/)
 
-const EcosystemsSchema = z.object({
-  npm: z.object({
-    package: z.string(),
-    scope: z.string().optional(),
-  }).strict().optional(),
-  pypi: z.object({
-    distribution: z.string(),
-  }).strict().optional(),
-  homebrew: z.object({
-    tap: GitHubRepository,
-    formula: z.string().optional(),
-    branch: z.string().optional(),
-  }).strict().optional(),
-  scoop: z.object({
-    bucket: GitHubRepository,
-    manifest: z.string().optional(),
-    branch: z.string().optional(),
-  }).strict().optional(),
-}).strict().default({})
+const EcosystemsSchema = z
+  .object({
+    npm: z
+      .object({
+        package: z.string(),
+        scope: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    pypi: z
+      .object({
+        distribution: z.string(),
+      })
+      .strict()
+      .optional(),
+    homebrew: z
+      .object({
+        tap: GitHubRepository,
+        formula: z.string().optional(),
+        branch: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    scoop: z
+      .object({
+        bucket: GitHubRepository,
+        manifest: z.string().optional(),
+        branch: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .default({})
 
-const PublishersSchema = z.object({
-  npm: z.object({
-    registry: z.string().optional(),
-    tag: z.string().optional(),
-    access: z.enum(['public', 'restricted']).optional(),
-  }).strict().optional(),
-  pypi: z.object({
-    repositoryUrl: z.string().optional(),
-  }).strict().optional(),
-  homebrew: z.object({
-    tap: GitHubRepository.optional(),
-    branch: z.string().optional(),
-    formulaPath: z.string().optional(),
-  }).strict().optional(),
-  scoop: z.object({
-    bucket: GitHubRepository.optional(),
-    branch: z.string().optional(),
-    manifestPath: z.string().optional(),
-  }).strict().optional(),
-  github: z.object({
-    repository: GitHubRepository.optional(),
-    tag: z.string().optional(),
-  }).strict().optional(),
-}).strict().default({})
+const PublishersSchema = z
+  .object({
+    npm: z
+      .object({
+        registry: z.string().optional(),
+        tag: z.string().optional(),
+        access: z.enum(['public', 'restricted']).optional(),
+      })
+      .strict()
+      .optional(),
+    pypi: z
+      .object({
+        repositoryUrl: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    homebrew: z
+      .object({
+        tap: GitHubRepository.optional(),
+        branch: z.string().optional(),
+        formulaPath: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    scoop: z
+      .object({
+        bucket: GitHubRepository.optional(),
+        branch: z.string().optional(),
+        manifestPath: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    github: z
+      .object({
+        repository: GitHubRepository.optional(),
+        tag: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .default({})
 
-const ContractSchema = z.object({
-  kind: z.enum(['product-catalog', 'core-command-manifest']),
-}).strict()
+const ContractSchema = z
+  .object({
+    kind: z.enum(['product-catalog', 'core-command-manifest']),
+  })
+  .strict()
 
-export const ReleasesConfigSchema = z.object({
-  subject: z.object({
-    id: z.string(),
-    name: z.string().optional(),
-    command: z.string().optional(),
-  }).strict().optional(),
-  metadata: z.object({
-    description: z.string(),
-    homepage: z.string().url().optional(),
-    license: z.string().optional(),
-    repository: z.string().optional(),
-  }).strict().optional(),
-  host: z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('github-assets'),
-      repository: GitHubRepository,
-      tag: z.string().optional(),
-    }).strict(),
-    z.object({
-      kind: z.literal('url-template'),
-      template: z.string(),
-    }).strict(),
-  ]).optional(),
-  filenameTemplate: z.string().optional(),
-  contract: ContractSchema.optional(),
-  ecosystems: EcosystemsSchema,
-  publishers: PublishersSchema,
-}).strict()
+export const ReleasesConfigSchema = z
+  .object({
+    subject: z
+      .object({
+        id: z.string(),
+        name: z.string().optional(),
+        command: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    metadata: z
+      .object({
+        description: z.string(),
+        homepage: z.url().optional(),
+        license: z.string().optional(),
+        repository: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    host: z
+      .discriminatedUnion('kind', [
+        z
+          .object({
+            kind: z.literal('github-assets'),
+            repository: GitHubRepository,
+            tag: z.string().optional(),
+          })
+          .strict(),
+        z
+          .object({
+            kind: z.literal('url-template'),
+            template: z.string(),
+          })
+          .strict(),
+      ])
+      .optional(),
+    filenameTemplate: z.string().optional(),
+    contract: ContractSchema.optional(),
+    ecosystems: EcosystemsSchema,
+    publishers: PublishersSchema,
+  })
+  .strict()
 
 export type ReleasesConfig = z.infer<typeof ReleasesConfigSchema>
 export type ReleasesConfigInput = z.input<typeof ReleasesConfigSchema>
@@ -151,14 +206,10 @@ export function rendererConfigFromReleasesConfig(config: ReleasesConfig): Render
     renderers.pypi = { distribution: config.ecosystems.pypi.distribution }
   }
   if (config.ecosystems.homebrew) {
-    renderers.homebrew = config.ecosystems.homebrew.formula
-      ? { formulaName: config.ecosystems.homebrew.formula }
-      : {}
+    renderers.homebrew = config.ecosystems.homebrew.formula ? { formulaName: config.ecosystems.homebrew.formula } : {}
   }
   if (config.ecosystems.scoop) {
-    renderers.scoop = config.ecosystems.scoop.manifest
-      ? { manifestName: config.ecosystems.scoop.manifest }
-      : {}
+    renderers.scoop = config.ecosystems.scoop.manifest ? { manifestName: config.ecosystems.scoop.manifest } : {}
   }
   return Object.keys(renderers).length > 0 ? renderers : undefined
 }
@@ -214,7 +265,10 @@ export function parsePublishSelection(value: string): CliPublishSelection {
   const seen = new Set<string>()
   const packageSelection: PackageEcosystem[] = []
   let github = false
-  for (const part of trimmed.split(',').map((entry) => entry.trim()).filter(Boolean)) {
+  for (const part of trimmed
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)) {
     if (seen.has(part)) throw new Error(`ecosystem '${part}' was selected more than once`)
     seen.add(part)
     if (part === 'github') {
@@ -236,10 +290,7 @@ function artifactPath(manifestPath: string, record: PackageRecord): string {
   return join(root, 'packages', record.ecosystem, artifact.fileName)
 }
 
-export function artifactsFromManifest(
-  manifest: CliReleaseManifest,
-  manifestPath: string,
-): VerifiedPackageArtifact[] {
+export function artifactsFromManifest(manifest: CliReleaseManifest, manifestPath: string): VerifiedPackageArtifact[] {
   return manifest.packages
     .filter((record) => record.artifact !== undefined)
     .map((record) => ({

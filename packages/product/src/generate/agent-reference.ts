@@ -14,10 +14,7 @@ export type GenerateAgentReferenceOptions = {
   surfaceId?: string
 }
 
-export function generateAgentReference(
-  catalog: Catalog,
-  options: GenerateAgentReferenceOptions,
-): string {
+export function generateAgentReference(catalog: Catalog, options: GenerateAgentReferenceOptions): string {
   const lines = [
     `# ${catalog.product.name} agent reference`,
     '',

@@ -8,15 +8,24 @@ import * as Skill from '@liche/skills-runtime'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { camel, collectAsync, isAsyncIterable, isObject, kebab } from '../src/internal.js'
 import { handleMcpHttp } from '@liche/mcp-server'
-import { childCommands, collectCommandContracts, commandScope, completionCommands, outputPolicy, selectCommand } from '../src/command/registry.js'
+import {
+  childCommands,
+  collectCommandContracts,
+  commandScope,
+  completionCommands,
+  outputPolicy,
+  selectCommand,
+} from '../src/command/registry.js'
 import { isAlias, isGroup, isResult } from '../src/command/guards.js'
 
 describe('HTTP command dispatch behavior', () => {
   test('fetch ignores request bodies for GET and HEAD', async () => {
-    const cli = testCli('api', [testCommand('echo', {
-      options: z.object({ message: z.string().default('empty') }),
-      run: ({ options }) => options,
-    })])
+    const cli = testCli('api', [
+      testCommand('echo', {
+        options: z.object({ message: z.string().default('empty') }),
+        run: ({ options }) => options,
+      }),
+    ])
 
     const getWithBody = await cli.fetch(new Request('http://localhost/echo?message=query', { method: 'GET' }))
     expect(await getWithBody.json()).toEqual({ ok: true, data: { message: 'query' }, error: null })
@@ -26,21 +35,33 @@ describe('HTTP command dispatch behavior', () => {
   })
 
   test('fetch envelopes preserve not-found messages, malformed body rejection, and explicit JSON format context', async () => {
-    const cli = testCli('api', [testCommand('ctx', {
-      options: z.object({ message: z.string().default('empty') }),
-      run: ({ format, formatExplicit, options }) => ({ format, formatExplicit, message: options.message }),
-    })])
+    const cli = testCli('api', [
+      testCommand('ctx', {
+        options: z.object({ message: z.string().default('empty') }),
+        run: ({ format, formatExplicit, options }) => ({ format, formatExplicit, message: options.message }),
+      }),
+    ])
 
     const missing = await cli.fetch(new Request('http://localhost/nope'))
     expect(missing.status).toBe(404)
-    expect(await missing.json()).toEqual({ ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: 'No command for /nope' } })
+    expect(await missing.json()).toEqual({
+      ok: false,
+      data: null,
+      error: { code: 'COMMAND_NOT_FOUND', message: 'No command for /nope' },
+    })
 
-    const invalidBody = await cli.fetch(new Request('http://localhost/ctx?message=query', { body: 'not json', method: 'POST' }))
+    const invalidBody = await cli.fetch(
+      new Request('http://localhost/ctx?message=query', { body: 'not json', method: 'POST' }),
+    )
     expect(invalidBody.status).toBe(400)
     expect(await invalidBody.json()).toMatchObject({ ok: false, data: null, error: { code: 'INVALID_REQUEST_BODY' } })
 
     const body = await cli.fetch(new Request('http://localhost/ctx', { body: '{"message":"body"}', method: 'POST' }))
-    expect(await body.json()).toEqual({ ok: true, data: { format: 'json', formatExplicit: true, message: 'body' }, error: null })
+    expect(await body.json()).toEqual({
+      ok: true,
+      data: { format: 'json', formatExplicit: true, message: 'body' },
+      error: null,
+    })
   })
 })
 
@@ -105,7 +126,10 @@ describe('format, filter, CTA, and schema behavior', () => {
     const wrapped = z.string().optional().nullable().describe('wrapped value')
     const schema = z.object({ wrapped })
 
-    expect(Schema.toJsonSchema(schema)).toMatchObject({ type: 'object', properties: { wrapped: { description: 'wrapped value' } } })
+    expect(Schema.toJsonSchema(schema)).toMatchObject({
+      type: 'object',
+      properties: { wrapped: { description: 'wrapped value' } },
+    })
     expect(Schema.objectShape(undefined)).toEqual({})
     expect(Schema.isObjectSchema(schema)).toBe(true)
     expect(Schema.isObjectSchema(wrapped)).toBe(false)
@@ -127,15 +151,26 @@ describe('format, filter, CTA, and schema behavior', () => {
     expect(Formatter.format('plain', 'md')).toBe('plain')
     expect(Formatter.format({ ok: true }, 'md')).toBe('```json\n{\n  "ok": true\n}\n```')
     expect(Formatter.format({ ok: true }, 'yaml')).toBe('ok: true')
-    expect(Formatter.format([{ id: 1, name: 'Ada' }, { id: 2, name: 'Grace' }], 'csv')).toBe('id,name\n1,Ada\n2,Grace')
+    expect(
+      Formatter.format(
+        [
+          { id: 1, name: 'Ada' },
+          { id: 2, name: 'Grace' },
+        ],
+        'csv',
+      ),
+    ).toBe('id,name\n1,Ada\n2,Grace')
   })
 
   test('CSV formatter preserves headers and escapes cells', () => {
     expect(
-      Formatter.format([
-        { id: 1, name: 'Ada, "Countess"', active: true },
-        { id: 2, note: 'line\nbreak', tags: ['math', 'code'] },
-      ], 'csv'),
+      Formatter.format(
+        [
+          { id: 1, name: 'Ada, "Countess"', active: true },
+          { id: 2, note: 'line\nbreak', tags: ['math', 'code'] },
+        ],
+        'csv',
+      ),
     ).toBe('id,name,active,note,tags\n1,"Ada, ""Countess""",true,,\n2,,,"line\nbreak","[""math"",""code""]"')
   })
 })
@@ -188,22 +223,34 @@ describe('command registry and guards behavior', () => {
 
     expect(completionCommands(state, ['admin', 'a'])).toEqual(['audit', 'a'])
     expect(completionCommands(state, ['admin', 'audit', 'x'])).toEqual([])
-    expect(collectCommandContracts(state.commands, state.root).map((command) => command.name)).toEqual(['admin', 'admin audit', 'admin report'])
+    expect(collectCommandContracts(state.commands, state.root).map((command) => command.name)).toEqual([
+      'admin',
+      'admin audit',
+      'admin report',
+    ])
   })
 })
 
 describe('skill rendering behavior', () => {
   test('skill markdown and index preserve frontmatter, descriptions, root commands, and command examples', () => {
-    const cli = testCli('ship', {
-      description: 'release helper',
-      run: () => ({ ok: true }),
-    }, [testCommand('publish', {
-      description: 'publish a release',
-      run: () => ({ ok: true }),
-    })])
+    const cli = testCli(
+      'ship',
+      {
+        description: 'release helper',
+        run: () => ({ ok: true }),
+      },
+      [
+        testCommand('publish', {
+          description: 'publish a release',
+          run: () => ({ ok: true }),
+        }),
+      ],
+    )
     const state = (cli as InternalCli)[stateSymbol]
 
-    expect(Skill.skillIndex('ship', state)).toBe('# ship\nrelease helper\n\n- (root): release helper\n- publish: publish a release')
+    expect(Skill.skillIndex('ship', state)).toBe(
+      '# ship\nrelease helper\n\n- (root): release helper\n- publish: publish a release',
+    )
     expect(Skill.skillMarkdown('ship', state)).toContain('---\nname: ship\ndescription: release helper\n---')
     expect(Skill.skillMarkdown('ship', state)).toContain('# ship\n\nrelease helper\n\n## Commands')
     expect(Skill.skillMarkdown('ship', state)).toContain('### (root)\nrelease helper\n\n`$ ship`')
@@ -220,20 +267,23 @@ describe('parser globals and internal helpers', () => {
   test('parseGlobals recognizes value flags, booleans, and rest args', () => {
     const registry = (testCli('app') as InternalCli)[stateSymbol].globals
     expect(
-      Parser.parseGlobals([
-        '--json',
-        '--format=yaml',
-        '--filter-output',
-        'id',
-        '--schema',
-        '--token-count',
-        '--token-limit=10',
-        '--token-offset',
-        '2',
-        '--version',
-        '-h',
-        'run',
-      ], registry),
+      Parser.parseGlobals(
+        [
+          '--json',
+          '--format=yaml',
+          '--filter-output',
+          'id',
+          '--schema',
+          '--token-count',
+          '--token-limit=10',
+          '--token-offset',
+          '2',
+          '--version',
+          '-h',
+          'run',
+        ],
+        registry,
+      ),
     ).toEqual({
       filterOutput: 'id',
       format: 'yaml',
@@ -301,23 +351,33 @@ describe('parser globals and internal helpers', () => {
 
   test('MCP HTTP handler wraps protocol responses as JSON', async () => {
     const cli = testCli('app', { version: '1.0.0' })
-    const response = await handleMcpHttp('app', (cli as InternalCli)[stateSymbol], new Request('http://localhost/mcp', {
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' }),
-      method: 'POST',
-    }))
+    const response = await handleMcpHttp(
+      'app',
+      (cli as InternalCli)[stateSymbol],
+      new Request('http://localhost/mcp', {
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' }),
+        method: 'POST',
+      }),
+    )
 
     expect(response.headers.get('content-type')).toContain('application/json')
     expect(await response.json()).toMatchObject({ id: 1, result: { serverInfo: { name: 'app', version: '1.0.0' } } })
   })
 
   test('MCP protocol exposes root tools, tool schemas, error content, and missing tool envelopes', async () => {
-    const cli = testCli('app', {
-      description: 'root tool',
-      options: z.object({ shout: z.boolean().default(false) }),
-      run: ({ options }) => ({ shout: options.shout }),
-    }, [testCommand('fail', {
-      run: ({ error }) => error({ code: 'FAIL', message: 'nope' }),
-    })])
+    const cli = testCli(
+      'app',
+      {
+        description: 'root tool',
+        options: z.object({ shout: z.boolean().default(false) }),
+        run: ({ options }) => ({ shout: options.shout }),
+      },
+      [
+        testCommand('fail', {
+          run: ({ error }) => error({ code: 'FAIL', message: 'nope' }),
+        }),
+      ],
+    )
     const state = (cli as InternalCli)[stateSymbol]
 
     const tools = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 1, method: 'tools/list' })) as any
@@ -334,11 +394,21 @@ describe('parser globals and internal helpers', () => {
     })) as any
     expect(rootCall.result).toEqual({ content: [{ text: '{"shout":true}', type: 'text' }], isError: false })
 
-    const failed = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'fail' } })) as any
+    const failed = (await Mcp.mcpMessage('app', state, {
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: { name: 'fail' },
+    })) as any
     expect(failed.result.isError).toBe(true)
     expect(JSON.parse(failed.result.content[0].text)).toMatchObject({ code: 'FAIL', message: 'nope' })
 
-    const missing = (await Mcp.mcpMessage('app', state, { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'missing' } })) as any
+    const missing = (await Mcp.mcpMessage('app', state, {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'tools/call',
+      params: { name: 'missing' },
+    })) as any
     expect(missing.result).toEqual({
       content: [{ text: '{"code":"COMMAND_NOT_FOUND","message":"No tool missing"}', type: 'text' }],
       isError: true,

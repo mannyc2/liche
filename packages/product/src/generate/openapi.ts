@@ -19,10 +19,7 @@ export type GenerateOpenapiOptions = {
 }
 
 export function generateOpenapi(catalog: Catalog, options: GenerateOpenapiOptions): string {
-  const eligible = catalog.capabilities
-    .filter(isOpenapiEligible)
-    .slice()
-    .sort(compareCapabilitiesForOutput)
+  const eligible = catalog.capabilities.filter(isOpenapiEligible).slice().sort(compareCapabilitiesForOutput)
 
   const referencedResources = new Set<string>()
   const paths: Record<string, Record<string, unknown>> = {}
@@ -67,10 +64,7 @@ function isOpenapiEligible(cap: Capability): cap is ResourceOperationCapability 
   return cap.kind === 'resource-operation' && cap.surfaces.openapi === true && cap.http !== undefined
 }
 
-function compareCapabilitiesForOutput(
-  a: ResourceOperationCapability,
-  b: ResourceOperationCapability,
-): number {
+function compareCapabilitiesForOutput(a: ResourceOperationCapability, b: ResourceOperationCapability): number {
   const pa = a.http!.path
   const pb = b.http!.path
   if (pa !== pb) return pa < pb ? -1 : 1
@@ -80,9 +74,7 @@ function compareCapabilitiesForOutput(
 function findResource(catalog: Catalog, resourceId: string): NormalizedResource {
   const resource = catalog.resources.find((r) => r.id === resourceId)
   if (!resource) {
-    throw new Error(
-      `OpenAPI generator cannot locate resource '${resourceId}' referenced by a capability`,
-    )
+    throw new Error(`OpenAPI generator cannot locate resource '${resourceId}' referenced by a capability`)
   }
   return resource
 }
@@ -162,9 +154,7 @@ function renderParameters(cap: ResourceOperationCapability): unknown[] {
     })
   }
 
-  return out.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0)).map(
-    (p) => p.value,
-  )
+  return out.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0)).map((p) => p.value)
 }
 
 function renderRequestBody(cap: ResourceOperationCapability): Record<string, unknown> | undefined {
@@ -225,11 +215,7 @@ function renderResponses(
   }
 }
 
-function projectOutputSchema(
-  catalog: Catalog,
-  shape: NormalizedShape,
-  referencedResources: Set<string>,
-): unknown {
+function projectOutputSchema(catalog: Catalog, shape: NormalizedShape, referencedResources: Set<string>): unknown {
   if (shape.kind === 'object') return shape.jsonSchema
   const resolved = resolveListShape(catalog, shape)
   if (!resolved.ok) {

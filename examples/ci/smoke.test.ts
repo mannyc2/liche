@@ -29,7 +29,7 @@ describe('ci release example', () => {
           ])
         }
         if (url.pathname === '/deployments/dep_123/promote' && request.method === 'POST') {
-          const body = await request.json() as { environment?: string }
+          const body = (await request.json()) as { environment?: string }
           return Response.json({
             deployment_id: 'dep_123',
             environment: body.environment ?? 'staging',
@@ -40,10 +40,17 @@ describe('ci release example', () => {
       },
     })
     configPath = join(tmpDir, 'shipyard.jsonc')
-    writeFileSync(configPath, `${JSON.stringify({
-      apiBaseUrl: server.url.origin,
-      defaultProject: 'web',
-    }, null, 2)}\n`)
+    writeFileSync(
+      configPath,
+      `${JSON.stringify(
+        {
+          apiBaseUrl: server.url.origin,
+          defaultProject: 'web',
+        },
+        null,
+        2,
+      )}\n`,
+    )
   })
 
   afterEach(() => {

@@ -16,8 +16,10 @@ function read(path: string): string {
 }
 
 function codeBlocks(markdown: string): Array<{ lang: string; code: string }> {
-  return [...markdown.matchAll(/```(\w*)\n([\s\S]*?)```/g)]
-    .map((match) => ({ lang: match[1] ?? '', code: match[2] ?? '' }))
+  return [...markdown.matchAll(/```(\w*)\n([\s\S]*?)```/g)].map((match) => ({
+    lang: match[1] ?? '',
+    code: match[2] ?? '',
+  }))
 }
 
 describe('public docs', () => {

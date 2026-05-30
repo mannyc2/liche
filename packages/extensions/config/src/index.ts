@@ -1,11 +1,4 @@
-import {
-  defineCommand,
-  defineExtension,
-  parseSchema,
-  ParseError,
-  ValidationError,
-  z,
-} from '@liche/core'
+import { defineCommand, defineExtension, parseSchema, ParseError, ValidationError, z } from '@liche/core'
 import type {
   Awaitable,
   CliExtension,
@@ -192,15 +185,16 @@ function topLevelShape(schema: Schema<unknown> | undefined): Dict<Schema<unknown
   if (!schema) return undefined
   const unwrapped = unwrap(schema)
   if (!(unwrapped instanceof z.ZodObject)) return undefined
-  return unwrapped.shape as Dict<Schema<unknown>>
+  return unwrapped.shape
 }
 
 const WRAPPER_KINDS = ['optional', 'default', 'nullable', 'catch', 'readonly']
 
 function unwrap(schema: Schema<unknown>): Schema<unknown> {
   let current: any = schema
-  while (current && WRAPPER_KINDS.includes((current as any).type ?? '')) {
-    const inner = current.def?.innerType ?? (typeof current.unwrap === 'function' ? safeCall(() => current.unwrap()) : undefined)
+  while (current && WRAPPER_KINDS.includes(current.type ?? '')) {
+    const inner =
+      current.def?.innerType ?? (typeof current.unwrap === 'function' ? safeCall(() => current.unwrap()) : undefined)
     if (!inner || inner === current) return current
     current = inner
   }
@@ -212,7 +206,11 @@ function schemaKind(schema: Schema<unknown>): string | undefined {
 }
 
 function safeCall<T>(fn: () => T): T | undefined {
-  try { return fn() } catch { return undefined }
+  try {
+    return fn()
+  } catch {
+    return undefined
+  }
 }
 
 export function configDoctor(): CliExtension {

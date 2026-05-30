@@ -111,7 +111,11 @@ function npmPlatformPackageJson(
   return pkg
 }
 
-function npmShim(command: string, version: string, packages: Array<{ name: string; binary: string; target: string }>): string {
+function npmShim(
+  command: string,
+  version: string,
+  packages: Array<{ name: string; binary: string; target: string }>,
+): string {
   return `#!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -214,9 +218,7 @@ async function renderNpm(input: ReleaseRendererInput): Promise<RenderPackageResu
     binary,
     name: npmPlatformPackageName(name, binary),
   }))
-  const optionalDependencies = Object.fromEntries(
-    platformPackages.map((pkg) => [pkg.name, version]),
-  )
+  const optionalDependencies = Object.fromEntries(platformPackages.map((pkg) => [pkg.name, version]))
 
   const packages: PackageRecord[] = []
   const artifacts: Array<{ packageId: string; path: string }> = []

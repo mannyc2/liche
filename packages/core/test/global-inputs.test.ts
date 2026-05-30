@@ -71,7 +71,13 @@ describe('global input definitions', () => {
       name: 'app',
       extensions: [outputControls({ json: true })],
       globals: [
-        defineGlobal({ default: 'twitte.sqlite', description: 'Database path', key: 'db', type: 'string', valueLabel: 'path' }),
+        defineGlobal({
+          default: 'twitte.sqlite',
+          description: 'Database path',
+          key: 'db',
+          type: 'string',
+          valueLabel: 'path',
+        }),
       ],
       commands: [
         defineCommand({

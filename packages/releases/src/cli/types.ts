@@ -1,5 +1,5 @@
 import type { RunContext } from '@liche/core'
-import { z } from 'zod'
+import * as z from 'zod'
 import type { ReleasesConfig } from '../config.js'
 import { PUBLISHER_ENV_NAMES } from '../publishers/index.js'
 import type { EnvRecord } from '../publishers/index.js'
@@ -13,13 +13,13 @@ export type CliCommandRunner = (
   options: { cwd: string; env?: EnvRecord },
 ) => Promise<{ code: number; stdout: string; stderr: string }>
 
-export const PublisherCredentialEnvSchema = z.object({
+export const PublisherCredentialEnvSchema = z.looseObject({
   [PUBLISHER_ENV_NAMES.npm.token]: z.string().optional(),
   [PUBLISHER_ENV_NAMES.pypi.token]: z.string().optional(),
   [PUBLISHER_ENV_NAMES.homebrew.githubToken]: z.string().optional(),
   [PUBLISHER_ENV_NAMES.scoop.githubToken]: z.string().optional(),
   GITHUB_TOKEN: z.string().optional(),
-}).passthrough()
+})
 
 export function releaseConfig(ctx: { sources: { value(provider: string, path: string): unknown } }): ReleasesConfig {
   return ctx.sources.value('config', '') as ReleasesConfig
@@ -34,7 +34,9 @@ export function envRecord(value: unknown): EnvRecord {
   return out
 }
 
-export async function readJsonFile(path: string): Promise<{ ok: true; value: unknown } | { ok: false; message: string }> {
+export async function readJsonFile(
+  path: string,
+): Promise<{ ok: true; value: unknown } | { ok: false; message: string }> {
   try {
     const { readFile } = await import('node:fs/promises')
     return { ok: true, value: JSON.parse(await readFile(path, 'utf8')) }

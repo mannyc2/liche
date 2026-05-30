@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 
 const Sha256 = z.hash('sha256')
 const HttpUrl = z.httpUrl()

@@ -15,10 +15,7 @@ export type GenerateCommandManifestOptions = {
   surfaceId?: string
 }
 
-export function generateCommandManifest(
-  catalog: Catalog,
-  options: GenerateCommandManifestOptions,
-): string {
+export function generateCommandManifest(catalog: Catalog, options: GenerateCommandManifestOptions): string {
   return jsonArtifact({
     manifestVersion: 'liche.command-manifest.v1',
     product: catalog.product,

@@ -5,12 +5,14 @@ import { runCli, testCli, testCommand } from './helpers.js'
 
 describe('golden behavior fixtures', () => {
   test('help output keeps the public command/help shape stable', async () => {
-    const cli = testCli('ship', { description: 'release helper', version: '1.0.0' }, [testCommand('publish', {
-      args: z.object({ tag: z.string().describe('release tag') }),
-      description: 'publish a release',
-      options: z.object({ dryRun: z.boolean().default(false).describe('skip side effects') }),
-      run: () => ({ ok: true }),
-    })])
+    const cli = testCli('ship', { description: 'release helper', version: '1.0.0' }, [
+      testCommand('publish', {
+        args: z.object({ tag: z.string().describe('release tag') }),
+        description: 'publish a release',
+        options: z.object({ dryRun: z.boolean().default(false).describe('skip side effects') }),
+        run: () => ({ ok: true }),
+      }),
+    ])
 
     const result = await runCli(cli, ['publish', '--help'])
     expect(result.stdout).toBe(`ship publish - publish a release
@@ -93,10 +95,12 @@ Global Options:
   })
 
   test('--llms emits a markdown command index by default', async () => {
-    const cli = testCli('ship', { description: 'release helper', extensions: [skillsRuntime()] }, [testCommand('publish', {
-      description: 'publish a release',
-      run: () => ({ ok: true }),
-    })])
+    const cli = testCli('ship', { description: 'release helper', extensions: [skillsRuntime()] }, [
+      testCommand('publish', {
+        description: 'publish a release',
+        run: () => ({ ok: true }),
+      }),
+    ])
 
     const result = await runCli(cli, ['--llms'])
     expect(result.stdout).toBe('# ship\nrelease helper\n\n- publish: publish a release\n')

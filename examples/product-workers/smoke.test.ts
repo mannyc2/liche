@@ -103,9 +103,7 @@ describe('product-workers example', () => {
       port: 0,
       fetch(request) {
         expect(new URL(request.url).pathname).toBe('/')
-        return Response.json([
-          { id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' },
-        ])
+        return Response.json([{ id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' }])
       },
     })
 
@@ -116,9 +114,7 @@ describe('product-workers example', () => {
       expect(list.exitCode).toBe(0)
       expect(JSON.parse(list.stdout)).toMatchObject({
         ok: true,
-        data: [
-          { id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' },
-        ],
+        data: [{ id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' }],
         meta: { execution: { mode: 'remote-http', source: 'config' } },
       })
     } finally {
@@ -131,9 +127,7 @@ describe('product-workers example', () => {
       port: 0,
       fetch(request) {
         expect(new URL(request.url).pathname).toBe('/')
-        return Response.json([
-          { id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' },
-        ])
+        return Response.json([{ id: 'worker-a', name: 'Worker A', created_at: '2026-05-20T00:00:00.000Z' }])
       },
     })
 

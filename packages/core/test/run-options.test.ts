@@ -13,17 +13,19 @@ function asyncIter<T>(values: T[]): AsyncIterable<T> {
 
 describe('RunOptions injection boundary', () => {
   test('isTty=true hides machine-only output and middleware sees isTty=true', async () => {
-    let captured: { isTty?: boolean } = {}
+    const captured: { isTty?: boolean } = {}
     const stdout: string[] = []
     const stderr: string[] = []
 
-    const cli = testCli('app', [testCommand('show', {
-      outputPolicy: 'machine-only',
-      run: ({ stdio }) => {
-        captured.isTty = stdio.stdout.isTTY
-        return { hidden: true }
-      },
-    })])
+    const cli = testCli('app', [
+      testCommand('show', {
+        outputPolicy: 'machine-only',
+        run: ({ stdio }) => {
+          captured.isTty = stdio.stdout.isTTY
+          return { hidden: true }
+        },
+      }),
+    ])
 
     await run(cli, ['show'], {
       streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' },
@@ -37,16 +39,18 @@ describe('RunOptions injection boundary', () => {
   })
 
   test('isTty=false emits structured output for machine-only commands', async () => {
-    let captured: { isTty?: boolean } = {}
+    const captured: { isTty?: boolean } = {}
     const stdout: string[] = []
 
-    const cli = testCli('app', [testCommand('show', {
-      outputPolicy: 'machine-only',
-      run: ({ stdio }) => {
-        captured.isTty = stdio.stdout.isTTY
-        return { hidden: true }
-      },
-    })])
+    const cli = testCli('app', [
+      testCommand('show', {
+        outputPolicy: 'machine-only',
+        run: ({ stdio }) => {
+          captured.isTty = stdio.stdout.isTTY
+          return { hidden: true }
+        },
+      }),
+    ])
 
     await run(cli, ['show'], {
       streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
@@ -59,10 +63,12 @@ describe('RunOptions injection boundary', () => {
 
   test('--json overrides machine-only policy on a TTY', async () => {
     const stdout: string[] = []
-    const cli = testCli('app', [testCommand('show', {
-      outputPolicy: 'machine-only',
-      run: () => ({ hidden: true }),
-    })])
+    const cli = testCli('app', [
+      testCommand('show', {
+        outputPolicy: 'machine-only',
+        run: () => ({ hidden: true }),
+      }),
+    ])
 
     await run(cli, ['show', '--json'], {
       streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' },
@@ -78,9 +84,11 @@ describe('RunOptions injection boundary', () => {
     const stderr: string[] = []
     let exitCode = 0
 
-    const cli = testCli('app', [testCommand('fail', {
-      run: ({ error }) => error({ code: 'NOPE', message: 'failed' }),
-    })])
+    const cli = testCli('app', [
+      testCommand('fail', {
+        run: ({ error }) => error({ code: 'NOPE', message: 'failed' }),
+      }),
+    ])
 
     await run(cli, ['fail'], {
       streams: { stdin: 'tty', stdout: 'tty', stderr: 'tty' },
@@ -98,14 +106,16 @@ describe('RunOptions injection boundary', () => {
 
   test('env option overrides Bun.env without mutating globals', async () => {
     let observed: string | undefined
-    const cli = testCli('app', [testCommand('show', {
-      options: z.object({ token: z.string().default('fallback') }),
-      sources: { options: { token: [{ provider: 'env', path: 'INJECTED_TOKEN' }] } },
-      run: ({ options }) => {
-        observed = options.token
-        return { ok: true }
-      },
-    })])
+    const cli = testCli('app', [
+      testCommand('show', {
+        options: z.object({ token: z.string().default('fallback') }),
+        sources: { options: { token: [{ provider: 'env', path: 'INJECTED_TOKEN' }] } },
+        run: ({ options }) => {
+          observed = options.token
+          return { ok: true }
+        },
+      }),
+    ])
 
     await run(cli, ['show'], {
       env: { INJECTED_TOKEN: 'value-from-options' },
@@ -120,7 +130,9 @@ describe('RunOptions injection boundary', () => {
     const stdout: string[] = []
     const initialize = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })
 
-    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [
+      testCommand('noop', { run: () => ({ ok: true }) }),
+    ])
 
     await run(cli, ['--mcp'], {
       streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
@@ -138,7 +150,9 @@ describe('RunOptions injection boundary', () => {
 
   test('stdin accepts an AsyncIterable<string>', async () => {
     const stdout: string[] = []
-    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [
+      testCommand('noop', { run: () => ({ ok: true }) }),
+    ])
 
     async function* stringChunks() {
       yield `${JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'initialize' })}\n`
@@ -156,7 +170,9 @@ describe('RunOptions injection boundary', () => {
 
   test('stdin accepts a ReadableStream<Uint8Array>', async () => {
     const stdout: string[] = []
-    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [
+      testCommand('noop', { run: () => ({ ok: true }) }),
+    ])
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -177,7 +193,9 @@ describe('RunOptions injection boundary', () => {
 
   test('stdin splits across chunk boundaries', async () => {
     const stdout: string[] = []
-    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [testCommand('noop', { run: () => ({ ok: true }) })])
+    const cli = testCli({ name: 'app', extensions: [mcpServer()] }, [
+      testCommand('noop', { run: () => ({ ok: true }) }),
+    ])
 
     const msg1 = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })
     const msg2 = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' })

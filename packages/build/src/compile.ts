@@ -26,10 +26,7 @@ export type CompileFlagProfile = {
     tsconfig: false
   }
   define: Record<
-    | 'LICHE_BUILD_VERSION'
-    | 'LICHE_CONTRACT_DIGEST'
-    | 'LICHE_SOURCE_COMMIT'
-    | 'LICHE_BUILD_TOOL_VERSION',
+    'LICHE_BUILD_VERSION' | 'LICHE_CONTRACT_DIGEST' | 'LICHE_SOURCE_COMMIT' | 'LICHE_BUILD_TOOL_VERSION',
     string
   >
 }
@@ -62,7 +59,7 @@ export type CompileEntrypointFailure = {
   ok: false
   plan: CompilePlan
   logs: unknown[]
-  error?: unknown
+  error?: Error
 }
 
 export type CompileEntrypointResult = CompileEntrypointSuccess | CompileEntrypointFailure
@@ -156,7 +153,12 @@ export async function compileEntrypoint(
       ok: false,
       plan,
       logs: [],
-      error,
+      // Normalize the caught value to a real Error at the boundary so consumers get a clean type and a
+      // proper toString() (a non-Error throw can't degrade a hint to "[object Object]").
+      error:
+        error instanceof Error
+          ? error
+          : new Error(typeof error === 'string' ? error : (JSON.stringify(error) ?? 'Unknown build error')),
     }
   }
 }

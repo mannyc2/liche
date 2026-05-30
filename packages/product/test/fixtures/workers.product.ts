@@ -26,22 +26,28 @@ export default defineProduct({
       fileEnvVar: 'WORKERS_TELEMETRY_FILE',
     },
     notices: {
-      updates: [{
-        id: 'workers-cli-1.1.0',
-        severity: 'info',
-        message: 'Workers CLI 1.1.0 is available on the stable channel.',
-        since: '2026-05-21',
-      }],
-      channels: [{
-        id: 'workers-next-channel',
-        severity: 'info',
-        message: 'Use the next channel for generated remote command previews.',
-      }],
-      yanks: [{
-        id: 'workers-cli-0.9.0',
-        severity: 'warning',
-        message: 'Workers CLI 0.9.0 was yanked due to a packaging regression.',
-      }],
+      updates: [
+        {
+          id: 'workers-cli-1.1.0',
+          severity: 'info',
+          message: 'Workers CLI 1.1.0 is available on the stable channel.',
+          since: '2026-05-21',
+        },
+      ],
+      channels: [
+        {
+          id: 'workers-next-channel',
+          severity: 'info',
+          message: 'Use the next channel for generated remote command previews.',
+        },
+      ],
+      yanks: [
+        {
+          id: 'workers-cli-0.9.0',
+          severity: 'warning',
+          message: 'Workers CLI 0.9.0 was yanked due to a packaging regression.',
+        },
+      ],
     },
     release: {
       version: '1.0.0',
@@ -56,20 +62,24 @@ export default defineProduct({
         { manager: 'bun', command: 'bun add -g @workers/cli' },
         { manager: 'npm', command: 'npm install -g @workers/cli' },
       ],
-      packages: [{
-        id: 'npm.umbrella',
-        ecosystem: 'npm',
-        kind: 'umbrella',
-        name: '@workers/cli',
-        version: '1.0.0',
-        channel: 'latest',
-      }],
-      yankedVersions: [{
-        id: 'workers-cli-0.9.0',
-        version: '0.9.0',
-        severity: 'warning',
-        message: 'Workers CLI 0.9.0 was yanked due to a packaging regression.',
-      }],
+      packages: [
+        {
+          id: 'npm.umbrella',
+          ecosystem: 'npm',
+          kind: 'umbrella',
+          name: '@workers/cli',
+          version: '1.0.0',
+          channel: 'latest',
+        },
+      ],
+      yankedVersions: [
+        {
+          id: 'workers-cli-0.9.0',
+          version: '0.9.0',
+          severity: 'warning',
+          message: 'Workers CLI 0.9.0 was yanked due to a packaging regression.',
+        },
+      ],
     },
   },
   permissions: {

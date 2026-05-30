@@ -45,13 +45,15 @@ export type SerializedHttpRequest = {
 
 export type HttpFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 
-export type HttpOperationCall<TInput = Record<string, unknown>, TOutput = unknown> =
-  HttpOperationRequestSpec<TInput> & {
-    output: Schema<TOutput>
-    fetch?: HttpFetch | undefined
-    timeoutMs?: number | undefined
-    safeBodyBytes?: number | undefined
-  }
+export type HttpOperationCall<
+  TInput = Record<string, unknown>,
+  TOutput = unknown,
+> = HttpOperationRequestSpec<TInput> & {
+  output: Schema<TOutput>
+  fetch?: HttpFetch | undefined
+  timeoutMs?: number | undefined
+  safeBodyBytes?: number | undefined
+}
 
 export type RemoteErrorDetails = {
   operationId?: string | undefined

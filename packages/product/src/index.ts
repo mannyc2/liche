@@ -54,13 +54,7 @@ export { buildAuthManifest, hashString } from './manifest/index.js'
 export type { AuthManifestEntry, GeneratedSurfaceManifest, ManifestAuth } from './manifest/index.js'
 
 export { Field, FieldBuilder, Shape } from './schema/index.js'
-export type {
-  FieldMutability,
-  FieldType,
-  ListShape,
-  NormalizedField,
-  ObjectShape,
-} from './schema/index.js'
+export type { FieldMutability, FieldType, ListShape, NormalizedField, ObjectShape } from './schema/index.js'
 
 export { Command } from './command/index.js'
 export type {
@@ -86,22 +80,12 @@ export type {
 } from './command/index.js'
 
 export { createConfig } from './config/index.js'
-export type {
-  ConfigScopeSpec,
-  ConfigScopesSpec,
-  ProductConfigDefinition,
-  ProductConfigSpec,
-} from './config/index.js'
+export type { ConfigScopeSpec, ConfigScopesSpec, ProductConfigDefinition, ProductConfigSpec } from './config/index.js'
 
 export { Runtime } from './runtime/index.js'
 export type { ProductRemoteSpec, RuntimeValueSpec } from './runtime/index.js'
 
-export type {
-  ProductNotice,
-  ProductOpsSpec,
-  ProductPackageManager,
-  ProductReleaseSpec,
-} from './ops/index.js'
+export type { ProductNotice, ProductOpsSpec, ProductPackageManager, ProductReleaseSpec } from './ops/index.js'
 
 export { defineProduct } from './product/index.js'
 export type {

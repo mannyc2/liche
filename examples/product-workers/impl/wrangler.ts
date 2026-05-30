@@ -9,11 +9,7 @@ export async function deploy(input: {
   }
 }
 
-export async function dev(input: {
-  entrypoint: string
-  port?: number | undefined
-}): Promise<{ url: string }> {
+export async function dev(input: { entrypoint: string; port?: number | undefined }): Promise<{ url: string }> {
   const port = input.port ?? 8787
   return { url: `http://localhost:${port}?entry=${encodeURIComponent(input.entrypoint)}` }
 }
-

@@ -74,12 +74,12 @@ describe('canonicalDigest', () => {
       auth: Auth.none(),
       commands: {
         deploy: Command.workflow({
-        summary: 'Deploy',
-        handler: 'h.deploy',
-        input: Shape.object({
-          entrypoint: Field.string('Entrypoint'),
-          environment: Field.string('Environment').optional(),
-        }),
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          input: Shape.object({
+            entrypoint: Field.string('Entrypoint'),
+            environment: Field.string('Environment').optional(),
+          }),
         }),
       },
     })
@@ -90,12 +90,12 @@ describe('canonicalDigest', () => {
       auth: Auth.none(),
       commands: {
         deploy: Command.workflow({
-        summary: 'Deploy',
-        handler: 'h.deploy',
-        input: Shape.object({
-          environment: Field.string('Environment').optional(),
-          entrypoint: Field.string('Entrypoint'),
-        }),
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          input: Shape.object({
+            environment: Field.string('Environment').optional(),
+            entrypoint: Field.string('Entrypoint'),
+          }),
         }),
       },
     })
@@ -110,9 +110,9 @@ describe('canonicalDigest', () => {
       auth: Auth.none(),
       commands: {
         deploy: Command.workflow({
-        summary: 'Deploy',
-        handler: 'h.deploy',
-        input: Shape.object({ a: Field.string('a') }),
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          input: Shape.object({ a: Field.string('a') }),
         }),
       },
     })
@@ -123,9 +123,9 @@ describe('canonicalDigest', () => {
       auth: Auth.none(),
       commands: {
         deploy: Command.workflow({
-        summary: 'Deploy',
-        handler: 'h.deploy',
-        input: Shape.object({ b: Field.string('a') }),
+          summary: 'Deploy',
+          handler: 'h.deploy',
+          input: Shape.object({ b: Field.string('a') }),
         }),
       },
     })

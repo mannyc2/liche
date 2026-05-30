@@ -61,7 +61,13 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
       }
       const raw = provider.get(binding.path)
       if (raw === undefined) continue
-      rawOptions[optionName] = coerceSourceValue(optionName, binding.provider, binding.path, optionShape[optionName], raw)
+      rawOptions[optionName] = coerceSourceValue(
+        optionName,
+        binding.provider,
+        binding.path,
+        optionShape[optionName],
+        raw,
+      )
       optionSources.set(optionName, {
         kind: 'provider',
         path: binding.path,
@@ -78,7 +84,9 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
   const optionsByKey = buildOptionsSourceMap({
     argvOptionSources: argv.optionSources,
     seedKeys: Object.keys(input.argvOptions.options ?? {}),
-    providerKeys: Object.keys(input.runtime.sources?.options ?? {}).filter((k) => !argv.explicitOptions.has(k) && rawOptions[k] !== undefined),
+    providerKeys: Object.keys(input.runtime.sources?.options ?? {}).filter(
+      (k) => !argv.explicitOptions.has(k) && rawOptions[k] !== undefined,
+    ),
     sourcesByProvider: optionSources,
     hints: hints.options,
   })
@@ -240,13 +248,17 @@ async function resolveProviders(input: ResolveCommandInputOptions): Promise<Map<
   const providers = new Map<string, ResolvedInputSource>()
   const seen = new Set<string>()
   for (const provider of [envProvider(), ...input.inputSources]) {
-    if (seen.has(provider.id)) throw new ParseError({ message: `Input source provider registered more than once: ${provider.id}` })
+    if (seen.has(provider.id))
+      throw new ParseError({ message: `Input source provider registered more than once: ${provider.id}` })
     seen.add(provider.id)
-    providers.set(provider.id, await provider.resolve({
-      commandPath: input.commandPath,
-      env: input.env,
-      flags: input.flags,
-    }))
+    providers.set(
+      provider.id,
+      await provider.resolve({
+        commandPath: input.commandPath,
+        env: input.env,
+        flags: input.flags,
+      }),
+    )
   }
   return providers
 }

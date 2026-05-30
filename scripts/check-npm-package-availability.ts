@@ -75,7 +75,7 @@ export async function checkNpmPackageAvailability(
       continue
     }
 
-    const body = await response.json() as { 'dist-tags'?: { latest?: string } }
+    const body = (await response.json()) as { 'dist-tags'?: { latest?: string } }
     packages.push({
       name,
       status: 'published',

@@ -7,9 +7,7 @@ export function manifestEqualForSurface(
 ): { ok: true } | { ok: false; reasons: string[] } {
   const reasons: string[] = []
   if (expected.manifestVersion !== actual.manifestVersion) {
-    reasons.push(
-      `manifestVersion changed (was ${actual.manifestVersion}, now ${expected.manifestVersion})`,
-    )
+    reasons.push(`manifestVersion changed (was ${actual.manifestVersion}, now ${expected.manifestVersion})`)
   }
   if (expected.schema.name !== actual.schema.name) {
     reasons.push(`schema name changed (was ${actual.schema.name}, now ${expected.schema.name})`)
@@ -21,9 +19,7 @@ export function manifestEqualForSurface(
     reasons.push(`schema digest changed (was ${actual.schema.digest}, now ${expected.schema.digest})`)
   }
   if (expected.generatorVersion !== actual.generatorVersion) {
-    reasons.push(
-      `generatorVersion changed (was ${actual.generatorVersion}, now ${expected.generatorVersion})`,
-    )
+    reasons.push(`generatorVersion changed (was ${actual.generatorVersion}, now ${expected.generatorVersion})`)
   }
   if (JSON.stringify(expected.auth) !== JSON.stringify(actual.auth)) {
     reasons.push('manifest auth metadata changed')

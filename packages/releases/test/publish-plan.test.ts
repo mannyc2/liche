@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  planReleasePublish,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, planReleasePublish } from '../src/index.js'
 import type {
   CliReleaseManifest,
   CliReleaseManifestInput,
@@ -43,12 +40,7 @@ function parseManifest(): CliReleaseManifest {
   return parsed.data
 }
 
-function pkg(
-  id: string,
-  ecosystem: PackageRecord['ecosystem'],
-  kind: string,
-  name: string,
-): PackageRecord {
+function pkg(id: string, ecosystem: PackageRecord['ecosystem'], kind: string, name: string): PackageRecord {
   return {
     id,
     renderer: ecosystem,
@@ -93,9 +85,30 @@ function fullFixture() {
   ]
   const artifacts: VerifiedPackageArtifact[] = [
     artifact('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers', 'liche-workers-0.1.0.tgz', 1024),
-    artifact('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64', 'liche-workers-linux-x64-0.1.0.tgz', 2048),
-    artifact('npm:@liche/workers-darwin-arm64', 'npm', 'npm-platform', '@liche/workers-darwin-arm64', 'liche-workers-darwin-arm64-0.1.0.tgz', 2048),
-    artifact('npm:@liche/workers-win32-x64', 'npm', 'npm-platform', '@liche/workers-win32-x64', 'liche-workers-win32-x64-0.1.0.tgz', 2048),
+    artifact(
+      'npm:@liche/workers-linux-x64',
+      'npm',
+      'npm-platform',
+      '@liche/workers-linux-x64',
+      'liche-workers-linux-x64-0.1.0.tgz',
+      2048,
+    ),
+    artifact(
+      'npm:@liche/workers-darwin-arm64',
+      'npm',
+      'npm-platform',
+      '@liche/workers-darwin-arm64',
+      'liche-workers-darwin-arm64-0.1.0.tgz',
+      2048,
+    ),
+    artifact(
+      'npm:@liche/workers-win32-x64',
+      'npm',
+      'npm-platform',
+      '@liche/workers-win32-x64',
+      'liche-workers-win32-x64-0.1.0.tgz',
+      2048,
+    ),
     artifact('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers', 'lili_workers-0.1.0-py3-none-any.whl', 4096),
     artifact('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers', 'workers.rb', 512),
     artifact('scoop:workers', 'scoop', 'scoop-manifest', 'workers', 'workers.json', 256),
@@ -162,12 +175,7 @@ describe('planReleasePublish', () => {
 
     const npmSteps = result.plan.steps.filter((step) => step.kind === 'npm-publish')
     expect(npmSteps.length).toBe(4)
-    expect(npmSteps.map((step) => step.role)).toEqual([
-      'platform',
-      'platform',
-      'platform',
-      'umbrella',
-    ])
+    expect(npmSteps.map((step) => step.role)).toEqual(['platform', 'platform', 'platform', 'umbrella'])
     for (const step of npmSteps) {
       if (step.kind !== 'npm-publish') continue
       expect(step.registry).toBe('https://registry.npmjs.org/')

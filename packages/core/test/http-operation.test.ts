@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  callHttpOperation,
-  serializeHttpOperationRequest,
-  z,
-} from '../src/index.js'
+import { callHttpOperation, serializeHttpOperationRequest, z } from '../src/index.js'
 import { LicheError } from '../src/errors/error.js'
 
 function expectLicheError(fn: () => unknown, code: string): LicheError {
@@ -65,66 +61,94 @@ describe('HTTP operation transport', () => {
   })
 
   test('fails missing base URL, invalid base URL, and missing auth with structured errors', () => {
-    const missingBaseUrl = expectLicheError(() => serializeHttpOperationRequest({
-      baseUrl: { envVar: 'ACME_API_URL' },
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-    }), 'REMOTE_CONFIG_MISSING_BASE_URL')
+    const missingBaseUrl = expectLicheError(
+      () =>
+        serializeHttpOperationRequest({
+          baseUrl: { envVar: 'ACME_API_URL' },
+          method: 'GET',
+          path: '/status',
+          bind: {},
+          input: {},
+        }),
+      'REMOTE_CONFIG_MISSING_BASE_URL',
+    )
     expect(missingBaseUrl.suggested_fix).toBe('Set ACME_API_URL to the remote API base URL before retrying.')
 
-    expectLicheError(() => serializeHttpOperationRequest({
-      baseUrl: 'not a url',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-    }), 'REMOTE_CONFIG_INVALID_BASE_URL')
+    expectLicheError(
+      () =>
+        serializeHttpOperationRequest({
+          baseUrl: 'not a url',
+          method: 'GET',
+          path: '/status',
+          bind: {},
+          input: {},
+        }),
+      'REMOTE_CONFIG_INVALID_BASE_URL',
+    )
 
-    expectLicheError(() => serializeHttpOperationRequest({
-      baseUrl: 'https://api.example.test',
-      auth: { kind: 'bearer', envVar: 'ACME_TOKEN' },
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-    }), 'REMOTE_CONFIG_MISSING_AUTH')
+    expectLicheError(
+      () =>
+        serializeHttpOperationRequest({
+          baseUrl: 'https://api.example.test',
+          auth: { kind: 'bearer', envVar: 'ACME_TOKEN' },
+          method: 'GET',
+          path: '/status',
+          bind: {},
+          input: {},
+        }),
+      'REMOTE_CONFIG_MISSING_AUTH',
+    )
   })
 
   test('fails path, unknown field, conflict, and body binding errors before fetch', () => {
-    expectLicheError(() => serializeHttpOperationRequest({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/projects/{projectId}',
-      bind: { path: ['projectId'] },
-      input: { projectId: undefined },
-    }), 'REMOTE_BIND_MISSING_PATH_PARAM')
+    expectLicheError(
+      () =>
+        serializeHttpOperationRequest({
+          baseUrl: 'https://api.example.test',
+          method: 'GET',
+          path: '/projects/{projectId}',
+          bind: { path: ['projectId'] },
+          input: { projectId: undefined },
+        }),
+      'REMOTE_BIND_MISSING_PATH_PARAM',
+    )
 
-    expectLicheError(() => serializeHttpOperationRequest<Record<string, unknown>>({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/projects',
-      inputFields: ['projectId'],
-      bind: { query: ['missing'] },
-      input: { projectId: 'p1' },
-    }), 'REMOTE_BIND_UNKNOWN_FIELD')
+    expectLicheError(
+      () =>
+        serializeHttpOperationRequest<Record<string, unknown>>({
+          baseUrl: 'https://api.example.test',
+          method: 'GET',
+          path: '/projects',
+          inputFields: ['projectId'],
+          bind: { query: ['missing'] },
+          input: { projectId: 'p1' },
+        }),
+      'REMOTE_BIND_UNKNOWN_FIELD',
+    )
 
-    expectLicheError(() => serializeHttpOperationRequest({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/projects/{projectId}',
-      bind: { path: ['projectId'], query: ['projectId'] },
-      input: { projectId: 'p1' },
-    }), 'REMOTE_BIND_CONFLICT')
+    expectLicheError(
+      () =>
+        serializeHttpOperationRequest({
+          baseUrl: 'https://api.example.test',
+          method: 'GET',
+          path: '/projects/{projectId}',
+          bind: { path: ['projectId'], query: ['projectId'] },
+          input: { projectId: 'p1' },
+        }),
+      'REMOTE_BIND_CONFLICT',
+    )
 
-    expectLicheError(() => serializeHttpOperationRequest({
-      baseUrl: 'https://api.example.test',
-      method: 'POST',
-      path: '/projects',
-      bind: {},
-      input: { name: 'demo' },
-    }), 'REMOTE_REQUEST_SERIALIZATION')
+    expectLicheError(
+      () =>
+        serializeHttpOperationRequest({
+          baseUrl: 'https://api.example.test',
+          method: 'POST',
+          path: '/projects',
+          bind: {},
+          input: { name: 'demo' },
+        }),
+      'REMOTE_REQUEST_SERIALIZATION',
+    )
   })
 
   test('calls fetch, parses JSON, and validates output schema', async () => {
@@ -152,58 +176,69 @@ describe('HTTP operation transport', () => {
   })
 
   test('maps network failures and timeouts to retryable remote errors', async () => {
-    const network = await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({ ok: z.boolean() }),
-      fetch: async () => {
-        throw new Error('ECONNRESET')
-      },
-    }), 'REMOTE_NETWORK')
+    const network = await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({ ok: z.boolean() }),
+        fetch: async () => {
+          throw new Error('ECONNRESET')
+        },
+      }),
+      'REMOTE_NETWORK',
+    )
     expect(network.retryable).toBe(true)
     expect(network.retry_after).toBe(5)
     expect(network.suggested_fix).toContain('retry')
 
-    const timeout = await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({ ok: z.boolean() }),
-      timeoutMs: 1,
-      fetch: (_url, init) => new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => {
-          const error = new Error('aborted')
-          error.name = 'AbortError'
-          reject(error)
-        })
+    const timeout = await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({ ok: z.boolean() }),
+        timeoutMs: 1,
+        fetch: (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => {
+              const error = new Error('aborted')
+              error.name = 'AbortError'
+              reject(error)
+            })
+          }),
       }),
-    }), 'REMOTE_TIMEOUT')
+      'REMOTE_TIMEOUT',
+    )
     expect(timeout.retryable).toBe(true)
     expect(timeout.retry_after).toBe(5)
   })
 
   test('maps non-2xx responses to structured HTTP errors with sanitized body preview', async () => {
-    const error = await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      auth: { kind: 'bearer', envVar: 'ACME_TOKEN' },
-      env: { ACME_TOKEN: 'secret-token' },
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({ ok: z.boolean() }),
-      safeBodyBytes: 80,
-      fetch: async () => new Response('token=secret-token and more detail', {
-        status: 500,
-        statusText: 'Internal Server Error',
-        headers: { 'x-request-id': 'req_123' },
+    const error = await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        auth: { kind: 'bearer', envVar: 'ACME_TOKEN' },
+        env: { ACME_TOKEN: 'secret-token' },
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({ ok: z.boolean() }),
+        safeBodyBytes: 80,
+        fetch: async () =>
+          new Response('token=secret-token and more detail', {
+            status: 500,
+            statusText: 'Internal Server Error',
+            headers: { 'x-request-id': 'req_123' },
+          }),
       }),
-    }), 'REMOTE_HTTP_STATUS')
+      'REMOTE_HTTP_STATUS',
+    )
 
     expect(error.details).toMatchObject({
       method: 'GET',
@@ -218,40 +253,48 @@ describe('HTTP operation transport', () => {
   })
 
   test('maps unsupported, malformed, and schema-invalid success bodies', async () => {
-    await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({ ok: z.boolean() }),
-      fetch: async () => new Response('ok', { headers: { 'content-type': 'text/plain' } }),
-    }), 'REMOTE_RESPONSE_UNSUPPORTED_CONTENT_TYPE')
-
-    await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({ ok: z.boolean() }),
-      fetch: async () => new Response('{', { headers: { 'content-type': 'application/json' } }),
-    }), 'REMOTE_RESPONSE_MALFORMED')
-
-    const schema = await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({ ok: z.boolean() }),
-      fetch: async () => new Response(JSON.stringify({ ok: 'yes' }), {
-        headers: { 'content-type': 'application/json' },
+    await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({ ok: z.boolean() }),
+        fetch: async () => new Response('ok', { headers: { 'content-type': 'text/plain' } }),
       }),
-    }), 'REMOTE_RESPONSE_SCHEMA')
-    expect(schema.details?.['validation']).toEqual([
-      expect.objectContaining({ path: '$.ok' }),
-    ])
+      'REMOTE_RESPONSE_UNSUPPORTED_CONTENT_TYPE',
+    )
+
+    await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({ ok: z.boolean() }),
+        fetch: async () => new Response('{', { headers: { 'content-type': 'application/json' } }),
+      }),
+      'REMOTE_RESPONSE_MALFORMED',
+    )
+
+    const schema = await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({ ok: z.boolean() }),
+        fetch: async () =>
+          new Response(JSON.stringify({ ok: 'yes' }), {
+            headers: { 'content-type': 'application/json' },
+          }),
+      }),
+      'REMOTE_RESPONSE_SCHEMA',
+    )
+    expect(schema.details?.['validation']).toEqual([expect.objectContaining({ path: '$.ok' })])
   })
 
   test('awaits async output codec and decodes response body', async () => {
@@ -264,28 +307,33 @@ describe('HTTP operation transport', () => {
       output: z.object({
         name: z.string().transform(async (s) => s.toUpperCase()),
       }),
-      fetch: async () => new Response(JSON.stringify({ name: 'ada' }), {
-        headers: { 'content-type': 'application/json' },
-      }),
+      fetch: async () =>
+        new Response(JSON.stringify({ name: 'ada' }), {
+          headers: { 'content-type': 'application/json' },
+        }),
     })
 
-    expect(result).toEqual({ name: 'ADA' } as any)
+    expect(result).toEqual({ name: 'ADA' })
   })
 
   test('maps async output validation failures to REMOTE_RESPONSE_SCHEMA', async () => {
-    const schema = await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      method: 'GET',
-      path: '/status',
-      bind: {},
-      input: {},
-      output: z.object({
-        name: z.string().refine(async (s) => s.length >= 3, 'too short (async)'),
+    const schema = await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        method: 'GET',
+        path: '/status',
+        bind: {},
+        input: {},
+        output: z.object({
+          name: z.string().refine(async (s) => s.length >= 3, 'too short (async)'),
+        }),
+        fetch: async () =>
+          new Response(JSON.stringify({ name: 'a' }), {
+            headers: { 'content-type': 'application/json' },
+          }),
       }),
-      fetch: async () => new Response(JSON.stringify({ name: 'a' }), {
-        headers: { 'content-type': 'application/json' },
-      }),
-    }), 'REMOTE_RESPONSE_SCHEMA')
+      'REMOTE_RESPONSE_SCHEMA',
+    )
 
     expect(schema.details?.['validation']).toEqual([
       expect.objectContaining({ path: '$.name', message: expect.stringContaining('too short') }),
@@ -293,22 +341,25 @@ describe('HTTP operation transport', () => {
   })
 
   test('maps 401 with resolved auth through caller-provided status errors', async () => {
-    await expectRejectedLicheError(callHttpOperation({
-      baseUrl: 'https://api.example.test',
-      auth: {
-        kind: 'resolved',
-        headers: { authorization: 'Bearer bad-token' },
-        secrets: ['bad-token'],
-        statusErrors: {
-          401: { code: 'AUTH_INVALID', message: 'Authentication rejected by server.', exitCode: 1 },
+    await expectRejectedLicheError(
+      callHttpOperation({
+        baseUrl: 'https://api.example.test',
+        auth: {
+          kind: 'resolved',
+          headers: { authorization: 'Bearer bad-token' },
+          secrets: ['bad-token'],
+          statusErrors: {
+            401: { code: 'AUTH_INVALID', message: 'Authentication rejected by server.', exitCode: 1 },
+          },
         },
-      },
-      method: 'GET',
-      path: '/me',
-      bind: {},
-      input: {},
-      output: z.object({ id: z.string() }),
-      fetch: async () => new Response('unauthorized', { status: 401 }),
-    }), 'AUTH_INVALID')
+        method: 'GET',
+        path: '/me',
+        bind: {},
+        input: {},
+        output: z.object({ id: z.string() }),
+        fetch: async () => new Response('unauthorized', { status: 401 }),
+      }),
+      'AUTH_INVALID',
+    )
   })
 })

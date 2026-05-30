@@ -93,12 +93,14 @@ export type StoredProfile = {
   updatedAt: string
   account?: { id: string; label?: string | undefined } | undefined
   selectedContexts?: Record<string, string> | undefined
-  credential?: {
-    kind: 'bearer' | 'apiKey'
-    accessToken?: AuthCredential['secret'] | undefined
-    expiresAt?: string | undefined
-    scopes?: string[] | undefined
-  } | undefined
+  credential?:
+    | {
+        kind: 'bearer' | 'apiKey'
+        accessToken?: AuthCredential['secret'] | undefined
+        expiresAt?: string | undefined
+        scopes?: string[] | undefined
+      }
+    | undefined
 }
 
 export interface SessionStore {
@@ -150,7 +152,9 @@ export type AuthRuntimeInput = {
   baseUrl?: AuthIdentityProbeInput['baseUrl'] | undefined
   env?: Record<string, string | undefined> | undefined
   fetch?: AuthIdentityProbeInput['fetch'] | undefined
-  global?: { nonInteractive?: boolean | undefined; noSession?: boolean | undefined; profile?: string | undefined } | undefined
+  global?:
+    | { nonInteractive?: boolean | undefined; noSession?: boolean | undefined; profile?: string | undefined }
+    | undefined
   invocation: InvocationKind
   loginCommand?: string | undefined
   productId: string

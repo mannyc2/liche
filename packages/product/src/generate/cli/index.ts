@@ -1,17 +1,8 @@
 import type { Catalog } from '../../catalog/types.js'
 import { renderCli } from './capability.js'
 import { renderImports } from './imports.js'
-import {
-  authRuntimeUsed,
-  contextRuntimeUsed,
-  missingRemoteError,
-  opsRuntimeUsed,
-} from './predicates.js'
-import {
-  renderCatalogConstants,
-  renderProductDoctorHelpers,
-  renderRuntimeConstants,
-} from './runtime.js'
+import { authRuntimeUsed, contextRuntimeUsed, missingRemoteError, opsRuntimeUsed } from './predicates.js'
+import { renderCatalogConstants, renderProductDoctorHelpers, renderRuntimeConstants } from './runtime.js'
 
 export type GenerateOptions = {
   generatorVersion: string
@@ -48,9 +39,7 @@ function assertRemoteTransportReady(catalog: Catalog): void {
   for (const cap of catalog.capabilities) {
     if (cap.kind === 'resource-operation') {
       if (!cap.http) {
-        throw new Error(
-          `Generated CLI cannot render resource operation '${cap.id}' because it has no HTTP transport.`,
-        )
+        throw new Error(`Generated CLI cannot render resource operation '${cap.id}' because it has no HTTP transport.`)
       }
       if (!catalog.remote) throw missingRemoteError(cap.id)
       continue

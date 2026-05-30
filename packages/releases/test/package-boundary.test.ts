@@ -92,11 +92,6 @@ describe('package boundary', () => {
     expect(pypi.pypiRenderer.id).toBe('pypi')
     expect(homebrew.homebrewRenderer.id).toBe('homebrew')
     expect(scoop.scoopRenderer.id).toBe('scoop')
-    expect(Object.keys(all.createDefaultRendererRegistry()).sort()).toEqual([
-      'homebrew',
-      'npm',
-      'pypi',
-      'scoop',
-    ])
+    expect(Object.keys(all.createDefaultRendererRegistry()).sort()).toEqual(['homebrew', 'npm', 'pypi', 'scoop'])
   })
 })

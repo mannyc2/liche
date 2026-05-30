@@ -37,7 +37,12 @@ function packageFilter(): Set<string> | null {
   if (index === -1) return null
   const value = process.argv[index + 1]
   if (!value || value.startsWith('--')) throw new Error('--packages requires a comma-separated package list')
-  return new Set(value.split(',').map((name) => name.trim()).filter(Boolean))
+  return new Set(
+    value
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  )
 }
 
 function runCapture(args: string[]): { ok: boolean; stdout: string; stderr: string } {
@@ -83,10 +88,7 @@ function registryAuthKeys(): Set<string> {
 
 function unquoteNpmrcValue(value: string): string {
   const trimmed = value.trim()
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
     return trimmed.slice(1, -1)
   }
   return trimmed
@@ -131,10 +133,9 @@ function npmAuthToken(): string {
   const envToken = process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN
   if (envToken) return envToken
 
-  const paths = [
-    npmUserConfigPath(),
-    join(homedir(), '.npmrc'),
-  ].filter((path, index, all): path is string => Boolean(path) && all.indexOf(path) === index)
+  const paths = [npmUserConfigPath(), join(homedir(), '.npmrc')].filter(
+    (path, index, all): path is string => Boolean(path) && all.indexOf(path) === index,
+  )
 
   for (const path of paths) {
     const token = authTokenFromNpmrc(path)
@@ -365,7 +366,9 @@ async function addTrustedPublisher(packageName: string, token: string, otp?: str
     }
   })()
 
-  console.log(id ? `${packageName}: trusted publisher configured (${id})` : `${packageName}: trusted publisher configured`)
+  console.log(
+    id ? `${packageName}: trusted publisher configured (${id})` : `${packageName}: trusted publisher configured`,
+  )
 }
 
 async function createTrustedPublisher(packageName: string, token: string, otp?: string): Promise<void> {

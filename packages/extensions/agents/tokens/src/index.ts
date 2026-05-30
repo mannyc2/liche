@@ -19,11 +19,25 @@ export function tokens(options: TokensOptions = {}): CliExtension {
     bufferingFlagKeys.push('tokenCount')
   }
   if (enabled(options, 'limit')) {
-    globals.push({ expose: 'runtime', flag: 'token-limit', key: 'tokenLimit', parse: parseFiniteNumber, type: 'string', valueLabel: 'n' })
+    globals.push({
+      expose: 'runtime',
+      flag: 'token-limit',
+      key: 'tokenLimit',
+      parse: parseFiniteNumber,
+      type: 'string',
+      valueLabel: 'n',
+    })
     bufferingFlagKeys.push('tokenLimit')
   }
   if (enabled(options, 'offset')) {
-    globals.push({ expose: 'runtime', flag: 'token-offset', key: 'tokenOffset', parse: parseFiniteNumber, type: 'string', valueLabel: 'n' })
+    globals.push({
+      expose: 'runtime',
+      flag: 'token-offset',
+      key: 'tokenOffset',
+      parse: parseFiniteNumber,
+      type: 'string',
+      valueLabel: 'n',
+    })
     bufferingFlagKeys.push('tokenOffset')
   }
 

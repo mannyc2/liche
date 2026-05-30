@@ -30,9 +30,9 @@ function workersCatalog(): Catalog {
         },
         operations: {
           list: {
-          summary: 'List Worker scripts',
-          http: { method: 'GET', path: '' },
-          output: Shape.list('script'),
+            summary: 'List Worker scripts',
+            http: { method: 'GET', path: '' },
+            output: Shape.list('script'),
           },
         },
       },
@@ -128,9 +128,7 @@ describe('generateCli — imports', () => {
         dev: Command.local({ summary: 'dev', handler: 'broken' }),
       },
     })
-    expect(() => generate(normalizeProduct(product))).toThrow(
-      /Handler 'broken' must be of the form 'module\.export'/,
-    )
+    expect(() => generate(normalizeProduct(product))).toThrow(/Handler 'broken' must be of the form 'module\.export'/)
   })
 })
 
@@ -243,9 +241,13 @@ describe('generateCli — run bodies by execution mode', () => {
     )
     const source = generate(cat)
     expect(source.match(/from '@liche\/core'/)?.[0]).toBe("from '@liche/core'")
-    expect(source).toContain(`import { callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'`)
+    expect(source).toContain(
+      `import { callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'`,
+    )
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
-    expect(source).toContain(`extensions: [outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`)
+    expect(source).toContain(
+      `extensions: [outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`,
+    )
     expect(source).toContain(`files: ['p.jsonc'],`)
     expect(source).toContain(`sources: { options: { 'zone': [{ provider: 'config', path: 'defaultZone' }] } },`)
     const purgeBlock = extractCommandBlock(source, 'purge')
@@ -253,7 +255,9 @@ describe('generateCli — run bodies by execution mode', () => {
     expect(purgeBlock).toContain(`code: 'REMOTE_CONFIG_MISSING_BASE_URL'`)
     expect(purgeBlock).toContain(`code_actions: [{ title: 'Inspect config', argv: ['config', 'doctor'] }]`)
     expect(purgeBlock).toContain(`suggested_fix: 'Set apiBaseUrl in config before retrying.'`)
-    expect(purgeBlock).toContain(`const remoteBaseUrlSource = ctx.sources.source('config', 'apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'`)
+    expect(purgeBlock).toContain(
+      `const remoteBaseUrlSource = ctx.sources.source('config', 'apiBaseUrl').kind === 'default' ? 'schema-default' : 'config'`,
+    )
     expect(purgeBlock).toContain(`const data = await callHttpOperation({`)
     expect(purgeBlock).toContain(`baseUrl: remoteBaseUrl,`)
     expect(purgeBlock).toContain(`method: 'POST',`)
@@ -304,18 +308,16 @@ describe('generateCli — list output resolution', () => {
           path: '/o',
           operations: {
             list: {
-          summary: 'List',
-          http: { method: 'GET', path: '' },
-          // points at a resource that does not exist in this catalog
-          output: Shape.list('ghost'),
+              summary: 'List',
+              http: { method: 'GET', path: '' },
+              // points at a resource that does not exist in this catalog
+              output: Shape.list('ghost'),
             },
           },
         },
       },
     })
-    expect(() => generate(normalizeProduct(product))).toThrow(
-      /resource 'ghost' is not declared in this catalog/,
-    )
+    expect(() => generate(normalizeProduct(product))).toThrow(/resource 'ghost' is not declared in this catalog/)
   })
 })
 

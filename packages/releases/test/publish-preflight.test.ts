@@ -1,10 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  OIDC_PROVIDERS,
-  planReleasePublish,
-  preflightReleasePublish,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, OIDC_PROVIDERS, planReleasePublish, preflightReleasePublish } from '../src/index.js'
 import type {
   CliReleaseManifest,
   CliReleaseManifestInput,
@@ -50,12 +45,7 @@ function parseManifest(): CliReleaseManifest {
   return parsed.data
 }
 
-function pkg(
-  id: string,
-  ecosystem: PackageRecord['ecosystem'],
-  kind: string,
-  name: string,
-): PackageRecord {
+function pkg(id: string, ecosystem: PackageRecord['ecosystem'], kind: string, name: string): PackageRecord {
   return { id, renderer: ecosystem, ecosystem, kind, name, version: '0.1.0' }
 }
 
@@ -91,7 +81,14 @@ function buildFullPlan(): ReleasePublishPlan {
   ]
   const artifacts: VerifiedPackageArtifact[] = [
     artifact('npm:@liche/workers', 'npm', 'npm-umbrella', '@liche/workers', 'liche-workers-0.1.0.tgz', 1024),
-    artifact('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64', 'liche-workers-linux-x64-0.1.0.tgz', 2048),
+    artifact(
+      'npm:@liche/workers-linux-x64',
+      'npm',
+      'npm-platform',
+      '@liche/workers-linux-x64',
+      'liche-workers-linux-x64-0.1.0.tgz',
+      2048,
+    ),
     artifact('pypi:liche-workers', 'pypi', 'pypi-wheel', 'liche-workers', 'lili_workers-0.1.0-py3-none-any.whl', 4096),
     artifact('homebrew:workers', 'homebrew', 'homebrew-formula', 'workers', 'workers.rb', 512),
     artifact('scoop:workers', 'scoop', 'scoop-manifest', 'workers', 'workers.json', 256),
@@ -168,12 +165,7 @@ describe('preflightReleasePublish', () => {
     const result = preflightReleasePublish({ plan, credentials: {} })
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.failures.map((failure) => failure.publisher)).toEqual([
-      'npm',
-      'pypi',
-      'homebrew',
-      'scoop',
-    ])
+    expect(result.failures.map((failure) => failure.publisher)).toEqual(['npm', 'pypi', 'homebrew', 'scoop'])
     for (const failure of result.failures) {
       expect(failure.code).toBe('CREDENTIAL_MISSING')
     }

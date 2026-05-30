@@ -11,13 +11,19 @@ export function mapStatusError<TInput extends Record<string, unknown>, TOutput>(
   secrets: string[],
   safeBodyBytes: number,
 ): LicheError {
-  if (response.status === 401 && options.auth?.kind === 'resolved' && options.auth.statusErrors?.[401]) return licheStatusError(options.auth.statusErrors[401])
-  if (response.status === 403 && options.auth?.kind === 'resolved' && options.auth.statusErrors?.[403]) return licheStatusError(options.auth.statusErrors[403])
+  if (response.status === 401 && options.auth?.kind === 'resolved' && options.auth.statusErrors?.[401])
+    return licheStatusError(options.auth.statusErrors[401])
+  if (response.status === 403 && options.auth?.kind === 'resolved' && options.auth.statusErrors?.[403])
+    return licheStatusError(options.auth.statusErrors[403])
   return remoteError('REMOTE_HTTP_STATUS', 'Remote server returned an error status.', {
     bodyPreview: safeBodyPreview(text, safeBodyBytes, secrets),
     method: request.method,
     operationId: options.id,
-    requestId: response.headers.get('x-request-id') ?? response.headers.get('request-id') ?? response.headers.get('cf-ray') ?? undefined,
+    requestId:
+      response.headers.get('x-request-id') ??
+      response.headers.get('request-id') ??
+      response.headers.get('cf-ray') ??
+      undefined,
     status: response.status,
     statusText: response.statusText,
     url: safeUrl(request.url),
@@ -51,13 +57,19 @@ export async function readResponseText(
   try {
     return await response.text()
   } catch (error) {
-    throw remoteError('REMOTE_NETWORK', 'Remote response body could not be read.', {
-      operationId,
-      method: request.method,
-      status: response.status,
-      statusText: response.statusText,
-      url: safeUrl(request.url),
-    }, undefined, { cause: asError(error), retryable: true })
+    throw remoteError(
+      'REMOTE_NETWORK',
+      'Remote response body could not be read.',
+      {
+        operationId,
+        method: request.method,
+        status: response.status,
+        statusText: response.statusText,
+        url: safeUrl(request.url),
+      },
+      undefined,
+      { cause: asError(error), retryable: true },
+    )
   }
 }
 
@@ -81,13 +93,19 @@ export function parseResponseBody(
   try {
     return JSON.parse(text)
   } catch (error) {
-    throw remoteError('REMOTE_RESPONSE_MALFORMED', 'Remote response body is not valid JSON.', {
-      operationId,
-      method: request.method,
-      status: response.status,
-      statusText: response.statusText,
-      url: safeUrl(request.url),
-    }, undefined, { cause: asError(error) })
+    throw remoteError(
+      'REMOTE_RESPONSE_MALFORMED',
+      'Remote response body is not valid JSON.',
+      {
+        operationId,
+        method: request.method,
+        status: response.status,
+        statusText: response.statusText,
+        url: safeUrl(request.url),
+      },
+      undefined,
+      { cause: asError(error) },
+    )
   }
 }
 
@@ -108,6 +126,9 @@ function safeBodyPreview(text: string, limit: number, secrets: readonly string[]
     if (secret) preview = preview.split(secret).join('[redacted]')
   }
   preview = preview.replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/g, 'Bearer [redacted]')
-  preview = preview.replace(/(["']?(?:api[_-]?key|token|secret)["']?\s*[:=]\s*["'])[^"',\s]+(["'])?/gi, '$1[redacted]$2')
+  preview = preview.replace(
+    /(["']?(?:api[_-]?key|token|secret)["']?\s*[:=]\s*["'])[^"',\s]+(["'])?/gi,
+    '$1[redacted]$2',
+  )
   return preview
 }

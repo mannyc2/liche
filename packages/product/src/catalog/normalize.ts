@@ -1,24 +1,10 @@
 import { normalizeOpsSpec } from '../ops/types.js'
 import type { ProductScope, RuntimeProduct } from '../product/types.js'
 import type { Vocabulary } from '../schema/vocabulary.js'
-import {
-  normalizeAuth,
-  normalizeAuthCapabilities,
-  normalizeContext,
-  normalizePermissions,
-} from './auth.js'
-import {
-  normalizeBinding,
-  normalizeCommand,
-  normalizeResource,
-  normalizeResourceOperation,
-} from './capabilities.js'
+import { normalizeAuth, normalizeAuthCapabilities, normalizeContext, normalizePermissions } from './auth.js'
+import { normalizeBinding, normalizeCommand, normalizeResource, normalizeResourceOperation } from './capabilities.js'
 import { normalizeConfig, normalizeRemote } from './config.js'
-import type {
-  Catalog,
-  NormalizedProductScope,
-  NormalizedVocabulary,
-} from './types.js'
+import type { Catalog, NormalizedProductScope, NormalizedVocabulary } from './types.js'
 
 export function normalizeProduct(product: RuntimeProduct): Catalog {
   const auth = normalizeAuth(product.authSpec ?? { kind: 'none' })

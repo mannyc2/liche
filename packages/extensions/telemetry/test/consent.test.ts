@@ -14,15 +14,21 @@ describe('precedence — DO_NOT_TRACK kill switch', () => {
   })
 
   test('DO_NOT_TRACK=0 does NOT kill (consoledonottrack.com semantics)', () => {
-    expect(resolveConsent({ ...base, env: { DO_NOT_TRACK: '0', LICHE_TELEMETRY: '1' } })).toMatchObject({ enabled: true })
+    expect(resolveConsent({ ...base, env: { DO_NOT_TRACK: '0', LICHE_TELEMETRY: '1' } })).toMatchObject({
+      enabled: true,
+    })
   })
 
   test('DO_NOT_TRACK="" does NOT kill', () => {
-    expect(resolveConsent({ ...base, env: { DO_NOT_TRACK: '', LICHE_TELEMETRY: '1' } })).toMatchObject({ enabled: true })
+    expect(resolveConsent({ ...base, env: { DO_NOT_TRACK: '', LICHE_TELEMETRY: '1' } })).toMatchObject({
+      enabled: true,
+    })
   })
 
   test('respectDoNotTrack=false ignores DO_NOT_TRACK', () => {
-    expect(resolveConsent({ ...base, respectDoNotTrack: false, env: { DO_NOT_TRACK: '1', LICHE_TELEMETRY: '1' } })).toMatchObject({ enabled: true })
+    expect(
+      resolveConsent({ ...base, respectDoNotTrack: false, env: { DO_NOT_TRACK: '1', LICHE_TELEMETRY: '1' } }),
+    ).toMatchObject({ enabled: true })
   })
 })
 
@@ -147,8 +153,9 @@ describe('value vocabulary', () => {
 
 describe('CLI name normalization', () => {
   test('lowercase + dash → uppercase + underscore', () => {
-    expect(
-      resolveConsent({ env: { 'MY_CLI_TELEMETRY': '1' }, cliName: 'my-cli', invocation: 'cli' }),
-    ).toMatchObject({ enabled: true, reason: 'cli-enabled' })
+    expect(resolveConsent({ env: { MY_CLI_TELEMETRY: '1' }, cliName: 'my-cli', invocation: 'cli' })).toMatchObject({
+      enabled: true,
+      reason: 'cli-enabled',
+    })
   })
 })

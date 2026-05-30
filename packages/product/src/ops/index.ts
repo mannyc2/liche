@@ -1,7 +1,4 @@
-export {
-  DEFAULT_OPS_PACKAGE_MANAGERS,
-  normalizeOpsSpec,
-} from './types.js'
+export { DEFAULT_OPS_PACKAGE_MANAGERS, normalizeOpsSpec } from './types.js'
 export type {
   NormalizedOpsSpec,
   ProductNotice,

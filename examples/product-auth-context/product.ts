@@ -7,18 +7,18 @@ export default defineProduct({
   description: 'Cache operations with bearer auth and org context.',
   remote: { baseUrl: Runtime.env('ACME_API_BASE_URL') },
   auth: Auth.bearer({
-      id: 'acme',
-      sources: [
-        Auth.token.env('ACME_TOKEN', {
-          label: 'Bearer token',
-          scopes: ['cache.write'],
-        }),
-        Auth.token.env('ACME_CI_TOKEN', {
-          label: 'CI bearer token',
-          mode: 'ci',
-          scopes: ['cache.write'],
-        }),
-      ],
+    id: 'acme',
+    sources: [
+      Auth.token.env('ACME_TOKEN', {
+        label: 'Bearer token',
+        scopes: ['cache.write'],
+      }),
+      Auth.token.env('ACME_CI_TOKEN', {
+        label: 'CI bearer token',
+        mode: 'ci',
+        scopes: ['cache.write'],
+      }),
+    ],
   }),
   permissions: {
     'cache:write': Auth.permission.scope('cache.write'),

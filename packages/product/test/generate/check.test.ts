@@ -2,12 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import {
-  canonicalDigest,
-  checkAgainstDir,
-  generateToDir,
-  normalizeProduct,
-} from '../../src/index.js'
+import { canonicalDigest, checkAgainstDir, generateToDir, normalizeProduct } from '../../src/index.js'
 import product from '../fixtures/workers.product.js'
 
 const GEN_FILE = 'liche.generated.ts'
@@ -174,9 +169,7 @@ describe('generate --check drift detection', () => {
     try {
       const b = await generateToDir(product, { outDir: dir2, generatorVersion: '0.0.0', surfaceId: 'cli-alt' })
       expect(a.manifest.surfaces[0]!.inputDigest).toBe(b.manifest.surfaces[0]!.inputDigest)
-      expect(a.manifest.surfaces[0]!.generationOptionsDigest).not.toBe(
-        b.manifest.surfaces[0]!.generationOptionsDigest,
-      )
+      expect(a.manifest.surfaces[0]!.generationOptionsDigest).not.toBe(b.manifest.surfaces[0]!.generationOptionsDigest)
       expect(a.manifest.surfaces[0]!.outputDigest).not.toBe(b.manifest.surfaces[0]!.outputDigest)
     } finally {
       rmSync(dir2, { recursive: true, force: true })

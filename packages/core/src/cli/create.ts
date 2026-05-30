@@ -73,8 +73,15 @@ export function defineCommand<
   return Object.freeze({
     ...definition,
     ...(definition.aliases
-      ? { aliases: Object.freeze(definition.aliases.map((alias) => Object.freeze(typeof alias === 'string' ? [alias] : [...alias]))) }
+      ? {
+          aliases: Object.freeze(
+            definition.aliases.map((alias) => Object.freeze(typeof alias === 'string' ? [alias] : [...alias])),
+          ),
+        }
       : undefined),
+    // Object.freeze([...tuple]) widens to readonly string[]; assert back to the non-empty tuple that
+    // DeclarativeCommand.path requires. no-unnecessary-type-assertion misjudges the spread+freeze widening.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     path: Object.freeze([...definition.path]) as readonly [string, ...string[]],
   })
 }
@@ -114,18 +121,12 @@ function applyExtensions(
     ...(definition.commands ?? []),
     ...extensions.flatMap((extension) => [...(extension.commands ?? [])]),
   ]
-  const events = [
-    ...(definition.events ?? []),
-    ...extensions.flatMap((extension) => [...(extension.events ?? [])]),
-  ]
+  const events = [...(definition.events ?? []), ...extensions.flatMap((extension) => [...(extension.events ?? [])])]
   const middleware = [
     ...(definition.middleware ?? []),
     ...extensions.flatMap((extension) => [...(extension.middleware ?? [])]),
   ]
-  const globals = [
-    ...(definition.globals ?? []),
-    ...extensions.flatMap((extension) => [...(extension.globals ?? [])]),
-  ]
+  const globals = [...(definition.globals ?? []), ...extensions.flatMap((extension) => [...(extension.globals ?? [])])]
   const inputSources = [
     ...(definition.inputSources ?? []),
     ...extensions.flatMap((extension) => [...(extension.inputSources ?? [])]),
@@ -243,19 +244,12 @@ function registerDeclarative(cli: InternalCli, command: DeclarativeCommand): voi
 }
 
 function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefinition {
-  const {
-    aliases: _aliases,
-    input,
-    path: _path,
-    run,
-    summary,
-    ...definition
-  } = command
+  const { aliases: _aliases, input, path: _path, run, summary, ...definition } = command
 
   return {
     ...definition,
     ...(input?.aliases ? { alias: input.aliases } : undefined),
-    ...(definition.description ?? summary ? { description: definition.description ?? summary } : undefined),
+    ...((definition.description ?? summary) ? { description: definition.description ?? summary } : undefined),
     ...(input?.args ? { args: input.args } : undefined),
     ...(input?.env ? { env: input.env } : undefined),
     ...(input?.options ? { options: input.options } : undefined),
@@ -274,7 +268,7 @@ function normalizeDeclarativeCommand(command: DeclarativeCommand): CommandDefini
             }),
         }
       : undefined),
-  } as CommandDefinition
+  }
 }
 
 function ensureCommandParent(commands: Map<string, any>, path: string[]): Map<string, any> {

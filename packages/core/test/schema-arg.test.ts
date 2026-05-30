@@ -226,19 +226,23 @@ describe('arg.fromString', () => {
   })
 
   test('encodeDefault returns undefined for runtime-only fromString (no encoder)', () => {
-    const codec = arg.fromString({
-      output: z.string(),
-      decode: async (s: string) => s.toUpperCase(),
-    }).default('hello')
+    const codec = arg
+      .fromString({
+        output: z.string(),
+        decode: async (s: string) => s.toUpperCase(),
+      })
+      .default('hello')
     expect(encodeDefault(codec)).toBeUndefined()
   })
 
   test('encodeDefault renders default when encoder is supplied', () => {
-    const codec = arg.fromString({
-      output: z.string(),
-      decode: async (s: string) => s.toUpperCase(),
-      encode: (value) => value.toLowerCase(),
-    }).default('HELLO')
+    const codec = arg
+      .fromString({
+        output: z.string(),
+        decode: async (s: string) => s.toUpperCase(),
+        encode: (value) => value.toLowerCase(),
+      })
+      .default('HELLO')
     expect(encodeDefault(codec)).toBe('hello')
   })
 
@@ -250,11 +254,15 @@ describe('arg.fromString', () => {
 
   test('runtimeOnly is true when encoder is omitted, false when supplied', () => {
     expect(getRuntimeArgMeta(arg.fromString({ output: z.string(), decode: async (s) => s }))?.runtimeOnly).toBe(true)
-    expect(getRuntimeArgMeta(arg.fromString({
-      output: z.string(),
-      decode: async (s) => s,
-      encode: (v) => v,
-    }))?.runtimeOnly).toBe(false)
+    expect(
+      getRuntimeArgMeta(
+        arg.fromString({
+          output: z.string(),
+          decode: async (s) => s,
+          encode: (v) => v,
+        }),
+      )?.runtimeOnly,
+    ).toBe(false)
   })
 
   test('default surface is cli when omitted', () => {
@@ -262,21 +270,31 @@ describe('arg.fromString', () => {
   })
 
   test('explicit surface is preserved', () => {
-    expect(getRuntimeArgMeta(arg.fromString({ output: z.string(), decode: async (s) => s, surface: 'all' }))?.surface).toBe('all')
-    expect(getRuntimeArgMeta(arg.fromString({
-      output: z.string(),
-      decode: async (s) => s,
-      surface: { kind: 'extension', transport: 'mcp' },
-    }))?.surface).toEqual({ kind: 'extension', transport: 'mcp' })
+    expect(
+      getRuntimeArgMeta(arg.fromString({ output: z.string(), decode: async (s) => s, surface: 'all' }))?.surface,
+    ).toBe('all')
+    expect(
+      getRuntimeArgMeta(
+        arg.fromString({
+          output: z.string(),
+          decode: async (s) => s,
+          surface: { kind: 'extension', transport: 'mcp' },
+        }),
+      )?.surface,
+    ).toEqual({ kind: 'extension', transport: 'mcp' })
   })
 
   test('registry keys do not leak into JSON Schema projection', () => {
-    const projected = JSON.stringify(toJsonSchema(arg.fromString({
-      input: z.string().meta({ valueLabel: 'file' }),
-      output: z.instanceof(URL),
-      decode: async (s) => new URL(s),
-      surface: 'cli',
-    })))
+    const projected = JSON.stringify(
+      toJsonSchema(
+        arg.fromString({
+          input: z.string().meta({ valueLabel: 'file' }),
+          output: z.instanceof(URL),
+          decode: async (s) => new URL(s),
+          surface: 'cli',
+        }),
+      ),
+    )
     expect(projected).not.toContain('codecKind')
     expect(projected).not.toContain('runtimeOnly')
     expect(projected).not.toContain('"surface"')
@@ -290,7 +308,7 @@ describe('arg.fromString', () => {
         if (Number.isNaN(n)) {
           const issue: ArgIssue = { code: 'custom', message: `not a number: ${raw}`, input: raw }
           ctx.issues.push(issue)
-          return z.NEVER as unknown as number
+          return z.NEVER
         }
         return n
       },
@@ -311,13 +329,15 @@ describe('arg.fromString', () => {
   })
 
   test('JSON Schema projection preserves input meta and reflects the input shape', () => {
-    const projected = toJsonSchema(z.object({
-      file: arg.fromString({
-        input: z.string().meta({ valueLabel: 'file' }),
-        output: z.instanceof(URL),
-        decode: async (s) => new URL(s),
+    const projected = toJsonSchema(
+      z.object({
+        file: arg.fromString({
+          input: z.string().meta({ valueLabel: 'file' }),
+          output: z.instanceof(URL),
+          decode: async (s) => new URL(s),
+        }),
       }),
-    })) as any
+    ) as any
     const file = projected.properties.file
     expect(file.type).toBe('string')
     expect(file.valueLabel).toBe('file')

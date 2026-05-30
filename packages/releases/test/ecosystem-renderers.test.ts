@@ -148,9 +148,7 @@ describe('ecosystem renderers', () => {
 
     const umbrellaDir = join(tmp, 'artifacts', 'npm', 'package-dirs', 'acme-workers')
     const linuxDir = join(tmp, 'artifacts', 'npm', 'package-dirs', 'acme-workers-linux-x64')
-    const umbrellaDirPackageJson = JSON.parse(
-      readFileSync(join(umbrellaDir, 'package.json'), 'utf8'),
-    ) as {
+    const umbrellaDirPackageJson = JSON.parse(readFileSync(join(umbrellaDir, 'package.json'), 'utf8')) as {
       scripts?: unknown
       optionalDependencies: Record<string, string>
       bin: Record<string, string>
@@ -168,12 +166,7 @@ describe('ecosystem renderers', () => {
     }
     expect(umbrellaPackageJson.scripts).toBeUndefined()
     expect(umbrellaPackageJson.bin).toEqual({ workers: './bin/workers.js' })
-    expect(Object.values(umbrellaPackageJson.optionalDependencies)).toEqual([
-      '0.1.0',
-      '0.1.0',
-      '0.1.0',
-      '0.1.0',
-    ])
+    expect(Object.values(umbrellaPackageJson.optionalDependencies)).toEqual(['0.1.0', '0.1.0', '0.1.0', '0.1.0'])
     expect(Buffer.from(umbrellaEntries.get('package/bin/workers.js')!).toString('utf8')).toContain(
       'could not find a compatible packaged binary',
     )
@@ -187,30 +180,32 @@ describe('ecosystem renderers', () => {
     expect(shimRun.exitCode).toBe(1)
     expect(shimRun.stderr.toString()).toContain('Install optional dependencies')
 
-    const linuxDirPackageJson = JSON.parse(
-      readFileSync(join(linuxDir, 'package.json'), 'utf8'),
-    ) as { scripts?: unknown; os: string[]; cpu: string[]; libc: string }
+    const linuxDirPackageJson = JSON.parse(readFileSync(join(linuxDir, 'package.json'), 'utf8')) as {
+      scripts?: unknown
+      os: string[]
+      cpu: string[]
+      libc: string
+    }
     expect(linuxDirPackageJson.scripts).toBeUndefined()
     expect(linuxDirPackageJson.os).toEqual(['linux'])
     expect(linuxDirPackageJson.cpu).toEqual(['x64'])
     expect(linuxDirPackageJson.libc).toBe('glibc')
-    expect(sha256Hex(readFileSync(join(linuxDir, 'bin', 'workers')))).toBe(
-      sha256Hex(binaryBytes['workers-linux-x64']),
-    )
+    expect(sha256Hex(readFileSync(join(linuxDir, 'bin', 'workers')))).toBe(sha256Hex(binaryBytes['workers-linux-x64']))
 
     const linuxEntries = readTarGzEntries(await Bun.file(linuxArtifact.path).bytes())
-    const linuxPackageJson = JSON.parse(
-      Buffer.from(linuxEntries.get('package/package.json')!).toString('utf8'),
-    ) as { scripts?: unknown; os: string[]; cpu: string[]; libc: string }
+    const linuxPackageJson = JSON.parse(Buffer.from(linuxEntries.get('package/package.json')!).toString('utf8')) as {
+      scripts?: unknown
+      os: string[]
+      cpu: string[]
+      libc: string
+    }
     expect(linuxPackageJson.scripts).toBeUndefined()
     expect(linuxPackageJson.os).toEqual(['linux'])
     expect(linuxPackageJson.cpu).toEqual(['x64'])
     expect(linuxPackageJson.libc).toBe('glibc')
     const binaryEntries = [...linuxEntries.keys()].filter((entry) => entry.startsWith('package/bin/'))
     expect(binaryEntries).toEqual(['package/bin/workers'])
-    expect(sha256Hex(linuxEntries.get('package/bin/workers')!)).toBe(
-      sha256Hex(binaryBytes['workers-linux-x64']),
-    )
+    expect(sha256Hex(linuxEntries.get('package/bin/workers')!)).toBe(sha256Hex(binaryBytes['workers-linux-x64']))
   })
 
   test('npm can stage inspectable package directories without packing tarballs', async () => {
@@ -237,9 +232,7 @@ describe('ecosystem renderers', () => {
 
   test('PyPI renders wheels with platform tags, scripts, and RECORD hashes', async () => {
     const result = await renderAll()
-    const muslWheel = result.packageArtifacts.find((artifact) =>
-      artifact.fileName.includes('musllinux_1_2_x86_64'),
-    )
+    const muslWheel = result.packageArtifacts.find((artifact) => artifact.fileName.includes('musllinux_1_2_x86_64'))
     expect(muslWheel).toBeDefined()
     if (!muslWheel) return
 

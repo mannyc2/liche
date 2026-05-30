@@ -15,12 +15,10 @@ afterAll(() => {
 type BunBuildOptions = Parameters<typeof Bun.build>[0]
 type BunBuildOutput = Awaited<ReturnType<typeof Bun.build>>
 
-function compileObject(
-  options: BunBuildOptions,
-): { outfile?: string; target?: string } {
+function compileObject(options: BunBuildOptions): { outfile?: string; target?: string } {
   const compile = options.compile
   if (compile && typeof compile === 'object') {
-    return compile as { outfile?: string; target?: string }
+    return compile
   }
   return {}
 }
@@ -39,7 +37,7 @@ function recordingBuild(captured: BunBuildOptions[], payload: string): BunBuildF
     if (typeof outfile === 'string') {
       await Bun.write(outfile, `${payload}:${target ?? 'unknown'}`)
     }
-    return { success: true, outputs: [], logs: [] } as BunBuildOutput
+    return { success: true, outputs: [], logs: [] }
   }
 }
 
@@ -52,7 +50,7 @@ function failingBuild(forTargets: readonly string[]): BunBuildFn {
     if (typeof outfile === 'string') {
       await Bun.write(outfile, `ok:${target ?? 'unknown'}`)
     }
-    return { success: true, outputs: [], logs: [] } as BunBuildOutput
+    return { success: true, outputs: [], logs: [] }
   }
 }
 
@@ -96,11 +94,7 @@ describe('buildBinaries', () => {
     ])
     expect(result.record.recordVersion).toBe(1)
     expect(result.record.constants).toEqual(constants)
-    expect(result.record.binaries.map((b) => b.id)).toEqual([
-      'darwin-arm64',
-      'linux-x64',
-      'windows-x64',
-    ])
+    expect(result.record.binaries.map((b) => b.id)).toEqual(['darwin-arm64', 'linux-x64', 'windows-x64'])
     const windows = result.record.binaries.find((b) => b.id === 'windows-x64')!
     expect(windows.filename).toBe('cli.exe')
     expect(windows.sha256).toBe(sha256Hex('payload:bun-windows-x64'))
@@ -149,7 +143,7 @@ describe('buildBinaries', () => {
         targets: ['darwin-arm64', 'made-up-target'],
         buildFn: async () => {
           invoked = true
-          return { success: true, outputs: [], logs: [] } as BunBuildOutput
+          return { success: true, outputs: [], logs: [] }
         },
       }),
     )
@@ -205,7 +199,7 @@ describe('buildBinaries', () => {
           const { outfile, target } = compileObject(options)
           if (target) order.push(target)
           if (typeof outfile === 'string') await Bun.write(outfile, `s:${target}`)
-          return { success: true, outputs: [], logs: [] } as BunBuildOutput
+          return { success: true, outputs: [], logs: [] }
         },
       }),
     )

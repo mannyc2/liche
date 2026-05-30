@@ -1,8 +1,4 @@
-import type {
-  CliReleaseManifest,
-  PackageEcosystem,
-  PackageRecord,
-} from '../manifest/index.js'
+import type { CliReleaseManifest, PackageEcosystem, PackageRecord } from '../manifest/index.js'
 import type { VerifiedBinary } from '../package/index.js'
 
 export const PACKAGE_ECOSYSTEMS = ['npm', 'pypi', 'homebrew', 'scoop'] as const
@@ -75,20 +71,13 @@ function configuredRendererIds(registry: RendererRegistry): PackageEcosystem[] {
   return PACKAGE_ECOSYSTEMS.filter((id) => registry[id] !== undefined)
 }
 
-function validationInput(
-  manifest: CliReleaseManifest,
-  config: unknown,
-): ReleaseRendererValidationInput {
+function validationInput(manifest: CliReleaseManifest, config: unknown): ReleaseRendererValidationInput {
   if (config === undefined) return { manifest }
   return { manifest, config }
 }
 
-export function resolveReleaseRenderers(
-  input: ResolveReleaseRenderersInput,
-): ResolveReleaseRenderersResult {
-  const selectedIds = input.selection === 'all'
-    ? configuredRendererIds(input.registry)
-    : [...input.selection]
+export function resolveReleaseRenderers(input: ResolveReleaseRenderersInput): ResolveReleaseRenderersResult {
+  const selectedIds = input.selection === 'all' ? configuredRendererIds(input.registry) : [...input.selection]
   const seen = new Set<string>()
   const failures: RendererSelectionFailure[] = []
   const renderers: ReleaseRenderer[] = []

@@ -36,11 +36,13 @@ export function metadataLines(manifest: CliReleaseManifest): string {
 }
 
 export function safeLowerSegment(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'cli'
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'cli'
+  )
 }
 
 export function commandName(manifest: CliReleaseManifest, config: unknown): string {

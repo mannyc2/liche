@@ -62,26 +62,11 @@ let fixtureCounter = 0
 function buildFixture(): Fixture {
   fixtureCounter += 1
   const tag = fixtureCounter
-  const npmPlatform = writeArtifact(
-    `${tag}-npm-platform.tgz`,
-    `npm platform tarball content ${tag}`,
-  )
-  const npmUmbrella = writeArtifact(
-    `${tag}-npm-umbrella.tgz`,
-    `npm umbrella tarball content ${tag}`,
-  )
-  const pypi = writeArtifact(
-    `${tag}-pypi.whl`,
-    `pypi wheel content ${tag}`,
-  )
-  const homebrew = writeArtifact(
-    `${tag}-homebrew.rb`,
-    `homebrew formula content ${tag}`,
-  )
-  const scoop = writeArtifact(
-    `${tag}-scoop.json`,
-    `scoop manifest content ${tag}`,
-  )
+  const npmPlatform = writeArtifact(`${tag}-npm-platform.tgz`, `npm platform tarball content ${tag}`)
+  const npmUmbrella = writeArtifact(`${tag}-npm-umbrella.tgz`, `npm umbrella tarball content ${tag}`)
+  const pypi = writeArtifact(`${tag}-pypi.whl`, `pypi wheel content ${tag}`)
+  const homebrew = writeArtifact(`${tag}-homebrew.rb`, `homebrew formula content ${tag}`)
+  const scoop = writeArtifact(`${tag}-scoop.json`, `scoop manifest content ${tag}`)
 
   const npmPlatformStep: NpmPublishStep = {
     kind: 'npm-publish',
@@ -178,7 +163,8 @@ function fullCredentials(): PublisherCredentials {
 type CallLog = Array<{ ecosystem: string; packageId: string; bytesLength: number }>
 
 function recordingExecutors(log: CallLog, metadata?: Record<string, unknown>): PublisherExecutorRegistry {
-  const record = (ecosystem: string) =>
+  const record =
+    (ecosystem: string) =>
     (input: { step: { packageId: string }; bytes: Uint8Array }): StepExecutorResult => {
       log.push({ ecosystem, packageId: input.step.packageId, bytesLength: input.bytes.byteLength })
       return metadata !== undefined ? { ok: true, metadata } : { ok: true }
@@ -207,13 +193,7 @@ describe('executeReleasePublish', () => {
     })
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(log.map((entry) => entry.ecosystem)).toEqual([
-      'npm',
-      'npm',
-      'pypi',
-      'homebrew',
-      'scoop',
-    ])
+    expect(log.map((entry) => entry.ecosystem)).toEqual(['npm', 'npm', 'pypi', 'homebrew', 'scoop'])
     expect(log[0]?.bytesLength).toBe(baseFixture.artifacts.npmPlatform.size)
     expect(result.completed.map((receipt) => receipt.step.packageId)).toEqual([
       'npm:@liche/workers-linux-x64',

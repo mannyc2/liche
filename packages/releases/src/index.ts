@@ -23,21 +23,11 @@ export type {
   ReleaseSubject,
 } from './manifest/index.js'
 
-export {
-  ReleasesConfigSchema,
-  defineReleasesConfig,
-} from './config.js'
-export type {
-  ReleasesConfig,
-  ReleasesConfigInput,
-} from './config.js'
+export { ReleasesConfigSchema, defineReleasesConfig } from './config.js'
+export type { ReleasesConfig, ReleasesConfigInput } from './config.js'
 
 export { packageRelease } from './package/index.js'
-export type {
-  PackageReleaseFailure,
-  PackageReleaseInput,
-  PackageReleaseResult,
-} from './package/index.js'
+export type { PackageReleaseFailure, PackageReleaseInput, PackageReleaseResult } from './package/index.js'
 
 export { verifyReleaseBinaries } from './package/verify-binary.js'
 export type {
@@ -59,11 +49,7 @@ export { planReleaseYank } from './yank.js'
 export type { ReleaseYankPlan, YankPackagePlan } from './yank.js'
 
 // Extension API: custom renderers and custom publisher executors plug in here.
-export {
-  PACKAGE_ECOSYSTEMS,
-  isPackageEcosystem,
-  resolveReleaseRenderers,
-} from './renderers/index.js'
+export { PACKAGE_ECOSYSTEMS, isPackageEcosystem, resolveReleaseRenderers } from './renderers/index.js'
 export type {
   ReleaseRenderer,
   ReleaseRendererInput,
@@ -116,11 +102,7 @@ export type {
 } from './publishers/index.js'
 
 // Internal/unstable API: exported for tests and advanced integrations, subject to change.
-export {
-  OIDC_EXECUTOR_FAILURE_CODES,
-  OIDC_PROVIDERS,
-  PUBLISHER_ENV_NAMES,
-} from './publishers/index.js'
+export { OIDC_EXECUTOR_FAILURE_CODES, OIDC_PROVIDERS, PUBLISHER_ENV_NAMES } from './publishers/index.js'
 export type {
   ExecuteFailureCode,
   GitRepoTarget,

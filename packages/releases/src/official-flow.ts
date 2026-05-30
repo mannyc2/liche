@@ -66,10 +66,7 @@ function artifactRecords(
     .sort((a, b) => a.name.localeCompare(b.name) || a.fileName.localeCompare(b.fileName))
 }
 
-function npmPackageDirs(
-  packageRoot: string,
-  packages: readonly PackageRecord[],
-): OfficialFlowNpmPackageDir[] {
+function npmPackageDirs(packageRoot: string, packages: readonly PackageRecord[]): OfficialFlowNpmPackageDir[] {
   return packages
     .filter((record) => record.ecosystem === 'npm')
     .map((record) => ({
@@ -78,18 +75,10 @@ function npmPackageDirs(
       role: npmRole(record),
       path: join(packageRoot, 'npm', 'package-dirs', npmPackageDirName(record.name)),
     }))
-    .sort((a, b) =>
-      a.role === b.role
-        ? a.name.localeCompare(b.name)
-        : a.role === 'platform'
-          ? -1
-          : 1
-    )
+    .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'platform' ? -1 : 1))
 }
 
-export function createOfficialFlowHandoff(
-  input: CreateOfficialFlowHandoffInput,
-): OfficialFlowHandoff {
+export function createOfficialFlowHandoff(input: CreateOfficialFlowHandoffInput): OfficialFlowHandoff {
   const handoff: OfficialFlowHandoff = { handoffVersion: 1 }
 
   const npm = npmPackageDirs(input.packageRoot, input.packages)

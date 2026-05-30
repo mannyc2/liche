@@ -85,13 +85,11 @@ export function capabilityAuthMetadata(catalog: Catalog, cap: Capability): Surfa
 
   const out: SurfaceAuthMetadata = {
     required: cap.requires.auth,
-    status: cap.requires.auth || cap.requires.contexts.length > 0
-      ? 'requires-runtime-resolution'
-      : 'not-required',
+    status: cap.requires.auth || cap.requires.contexts.length > 0 ? 'requires-runtime-resolution' : 'not-required',
   }
   if (cap.requires.auth && catalog.auth.kind !== 'none') {
     out.providerId = catalog.auth.id
-    out.envVars = catalog.auth.tokenSources.flatMap((source) => source.kind === 'env' ? [source.envVar] : [])
+    out.envVars = catalog.auth.tokenSources.flatMap((source) => (source.kind === 'env' ? [source.envVar] : []))
   }
   if (cap.requires.contexts.length > 0) {
     out.contexts = cap.requires.contexts.map((ctxId) => {
@@ -135,16 +133,12 @@ export function shapeToJsonSchema(catalog: Catalog, shape: NormalizedShape): Jso
 }
 
 // Shared OpenAPI/JSON Schema helpers used by multiple per-surface generators.
-export function objectInputProperties(
-  input: NormalizedShape | undefined,
-): Record<string, NormalizedField> {
+export function objectInputProperties(input: NormalizedShape | undefined): Record<string, NormalizedField> {
   if (!input || input.kind !== 'object') return {}
   return input.properties
 }
 
-export function objectFieldsToJsonSchema(
-  fields: Record<string, NormalizedField>,
-): JsonSchemaNode {
+export function objectFieldsToJsonSchema(fields: Record<string, NormalizedField>): JsonSchemaNode {
   const keys = Object.keys(fields).sort()
   const required: string[] = []
   const properties: Record<string, JsonSchemaNode> = {}

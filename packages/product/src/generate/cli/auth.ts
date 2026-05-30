@@ -6,10 +6,7 @@ import type {
   NormalizedContext,
   NormalizedPermission,
 } from '../../catalog/types.js'
-import {
-  neededContexts,
-  needsAuthResolution,
-} from './predicates.js'
+import { neededContexts, needsAuthResolution } from './predicates.js'
 import { q, renderRuntimeValue, renderStringArray } from './render.js'
 
 export function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): string {
@@ -38,7 +35,7 @@ export function renderAuth(auth: Exclude<NormalizedAuth, { kind: 'none' }>): str
 function renderAuthCommands(commands: Exclude<NormalizedAuth, { kind: 'none' }>['commands']): string {
   const entries = Object.entries(commands ?? {})
     .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `${key}: ${q(value as string)}`)
+    .map(([key, value]) => `${key}: ${q(value)}`)
   return `{ ${entries.join(', ')} }`
 }
 
@@ -129,7 +126,12 @@ export function requiredScopesFor(permissions: NormalizedPermission[], cap: Capa
   })
 }
 
-export function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capability, hasHttpTransport: boolean): string[] {
+export function renderAuthPreamble(
+  indent: string,
+  catalog: Catalog,
+  cap: Capability,
+  hasHttpTransport: boolean,
+): string[] {
   const lines: string[] = []
   if (needsAuthResolution(cap)) {
     lines.push(`${indent}const sessionStore = createFileSessionStore()`)
@@ -156,11 +158,17 @@ export function renderAuthPreamble(indent: string, catalog: Catalog, cap: Capabi
   }
   if (neededContexts(cap).length > 0) {
     if (needsAuthResolution(cap)) {
-      lines.push(`${indent}const storedProfile = !ctx.global.noSession && (credential?.source === 'session' || ctx.global.profile)`)
-      lines.push(`${indent}  ? await sessionStore.loadProfile(PRODUCT_ID, AUTH_PROVIDER.id, credential?.profile ?? ctx.global.profile ?? 'default')`)
+      lines.push(
+        `${indent}const storedProfile = !ctx.global.noSession && (credential?.source === 'session' || ctx.global.profile)`,
+      )
+      lines.push(
+        `${indent}  ? await sessionStore.loadProfile(PRODUCT_ID, AUTH_PROVIDER.id, credential?.profile ?? ctx.global.profile ?? 'default')`,
+      )
       lines.push(`${indent}  : undefined`)
     }
-    const required = neededContexts(cap).map((c) => q(c)).join(', ')
+    const required = neededContexts(cap)
+      .map((c) => q(c))
+      .join(', ')
     lines.push(`${indent}const context = await resolveContext({`)
     lines.push(`${indent}  contexts: CONTEXTS,`)
     lines.push(`${indent}  required: [${required}],`)

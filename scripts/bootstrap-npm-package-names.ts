@@ -69,7 +69,7 @@ async function registryStatus(pkg: PublicPackage): Promise<RegistryStatus> {
   })
   if (response.status === 404) return { name: pkg.name, status: 'missing', latest: null }
   if (!response.ok) throw new Error(`${pkg.name}: npm registry returned ${response.status} ${response.statusText}`)
-  const body = await response.json() as { 'dist-tags'?: { latest?: string } }
+  const body = (await response.json()) as { 'dist-tags'?: { latest?: string } }
   return { name: pkg.name, status: 'published', latest: body['dist-tags']?.latest ?? null }
 }
 
@@ -131,7 +131,9 @@ async function main(): Promise<void> {
     return
   }
 
-  console.log(`Bootstrapping ${missingPackages.length} npm package name(s) at ${bootstrapVersion} with tag ${bootstrapTag}:`)
+  console.log(
+    `Bootstrapping ${missingPackages.length} npm package name(s) at ${bootstrapVersion} with tag ${bootstrapTag}:`,
+  )
   for (const pkg of missingPackages) console.log(`- ${pkg.name} (${pkg.dir})`)
 
   if (dryRun) {

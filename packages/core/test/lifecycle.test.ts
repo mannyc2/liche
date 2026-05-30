@@ -17,17 +17,25 @@ describe('lifecycle events and hooks', () => {
 
   test('emits redacted command lifecycle events to observe-only subscribers', async () => {
     const events: CliEvent[] = []
-    const cli = testCli('app', {
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-      version: '1.2.3',
-    }, [testCommand('deploy', {
-        args: z.object({ target: z.string() }),
-        env: z.object({ SECRET_TOKEN: z.string() }),
-        options: z.object({ token: z.string() }),
-        run: () => ({ value: true }),
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+        version: '1.2.3',
+      },
+      [
+        testCommand('deploy', {
+          args: z.object({ target: z.string() }),
+          env: z.object({ SECRET_TOKEN: z.string() }),
+          options: z.object({ token: z.string() }),
+          run: () => ({ value: true }),
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['deploy', 'prod', '--token', 'tok_123', '--json'], {
       env: { SECRET_TOKEN: 'env_secret' },
@@ -35,11 +43,7 @@ describe('lifecycle events and hooks', () => {
 
     expect(result.exitCode).toBe(0)
     expect(parseJsonData(result.stdout)).toEqual({ value: true })
-    expect(events.map((event) => event.type)).toEqual([
-      'command.selected',
-      'command.started',
-      'command.completed',
-    ])
+    expect(events.map((event) => event.type)).toEqual(['command.selected', 'command.started', 'command.completed'])
     expect(events[0]).toMatchObject({
       cli: { name: 'app', version: '1.2.3' },
       command: { id: 'deploy', path: ['deploy'] },
@@ -54,13 +58,24 @@ describe('lifecycle events and hooks', () => {
   })
 
   test('subscriber failures never change command results', async () => {
-    const cli = testCli('app', {
-      events: [{ target: 'command.started', subscriber: () => {
-        throw new Error('sink down')
-      } }],
-    }, [testCommand('ok', {
-        run: () => ({ value: true }),
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          {
+            target: 'command.started',
+            subscriber: () => {
+              throw new Error('sink down')
+            },
+          },
+        ],
+      },
+      [
+        testCommand('ok', {
+          run: () => ({ value: true }),
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['ok', '--json'])
 
@@ -70,24 +85,32 @@ describe('lifecycle events and hooks', () => {
   })
 
   test('beforeExecute hooks run before middleware and handlers', async () => {
-    const cli = testCli('app', {
-      hooks: {
-        beforeExecute: (ctx) => {
-          ctx.set('trace', [])
-          ;(ctx.var['trace'] as string[]).push('hook')
+    const cli = testCli(
+      'app',
+      {
+        hooks: {
+          beforeExecute: (ctx) => {
+            ctx.set('trace', [])
+            ;(ctx.var['trace'] as string[]).push('hook')
+          },
         },
+        middleware: [
+          middleware(async (ctx, next) => {
+            ;(ctx.var['trace'] as string[]).push('middleware-before')
+            await next()
+            ;(ctx.var['trace'] as string[]).push('middleware-after')
+          }),
+        ],
       },
-      middleware: [middleware(async (ctx, next) => {
-        ;(ctx.var['trace'] as string[]).push('middleware-before')
-        await next()
-        ;(ctx.var['trace'] as string[]).push('middleware-after')
-      })],
-    }, [testCommand('trace', {
-      run: ({ var: vars }) => {
-        ;(vars['trace'] as string[]).push('handler')
-        return { trace: vars['trace'] }
-      },
-    })])
+      [
+        testCommand('trace', {
+          run: ({ var: vars }) => {
+            ;(vars['trace'] as string[]).push('handler')
+            return { trace: vars['trace'] }
+          },
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['trace', '--json'])
 
@@ -99,43 +122,54 @@ describe('lifecycle events and hooks', () => {
 
   test('construction-time events and hooks seed the same lifecycle lanes', async () => {
     const events: CliEvent[] = []
-    const cli = testCli({
-      name: 'app',
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-      hooks: {
-        beforeExecute: (ctx) => ctx.set('fromHook', true),
+    const cli = testCli(
+      {
+        name: 'app',
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+        hooks: {
+          beforeExecute: (ctx) => ctx.set('fromHook', true),
+        },
       },
-    }, [testCommand('show', {
-      run: ({ var: vars }) => ({ fromHook: vars['fromHook'] }),
-    })])
+      [
+        testCommand('show', {
+          run: ({ var: vars }) => ({ fromHook: vars['fromHook'] }),
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['show', '--json'])
 
     expect(result.exitCode).toBe(0)
     expect(parseJsonData(result.stdout)).toEqual({ fromHook: true })
-    expect(events.map((event) => event.type)).toEqual([
-      'command.selected',
-      'command.started',
-      'command.completed',
-    ])
+    expect(events.map((event) => event.type)).toEqual(['command.selected', 'command.started', 'command.completed'])
   })
 
   test('hook failures normalize as command failures', async () => {
     const events: CliEvent[] = []
-    const cli = testCli('app', {
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-      hooks: {
-        beforeExecute: (ctx) => {
-          return ctx.error({ code: 'HOOK_FAILED', message: 'policy denied' })
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+        hooks: {
+          beforeExecute: (ctx) => {
+            return ctx.error({ code: 'HOOK_FAILED', message: 'policy denied' })
+          },
         },
       },
-    }, [testCommand('blocked', {
-        run: () => ({ shouldNotRun: true }),
-      })])
+      [
+        testCommand('blocked', {
+          run: () => ({ shouldNotRun: true }),
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['blocked', '--json'])
 
@@ -159,14 +193,22 @@ describe('lifecycle events and hooks', () => {
 
   test('validation failure events omit raw field errors and messages', async () => {
     const events: CliEvent[] = []
-    const cli = testCli('app', {
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-    }, [testCommand('token', {
-        env: z.object({ TOKEN: z.string() }),
-        run: ({ env }) => ({ token: env.TOKEN }),
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+      },
+      [
+        testCommand('token', {
+          env: z.object({ TOKEN: z.string() }),
+          run: ({ env }) => ({ token: env.TOKEN }),
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['token', '--json'], { env: {} })
 
@@ -185,18 +227,26 @@ describe('lifecycle events and hooks', () => {
 
   test('emits local-only lifecycle events for pre-execution surfaces and command events for completions', async () => {
     const events: CliEvent[] = []
-    const cli = testCli('app', {
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-      version: '1.2.3',
-    }, [testCommand('show', {
-        run: () => ({ value: true }),
-      }),
-      testCommand('completions', {
-        args: z.object({ shell: z.string() }),
-        run: () => 'complete script',
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+        version: '1.2.3',
+      },
+      [
+        testCommand('show', {
+          run: () => ({ value: true }),
+        }),
+        testCommand('completions', {
+          args: z.object({ shell: z.string() }),
+          run: () => 'complete script',
+        }),
+      ],
+    )
 
     await runCli(cli, ['show', '--help'])
     await runCli(cli, ['--version'])
@@ -217,20 +267,33 @@ describe('lifecycle events and hooks', () => {
       'command.completed',
     ])
     expect(events.find((event) => event.type === 'schema.generated')?.command).toEqual({ id: 'show', path: ['show'] })
-    expect(events.filter((event) => event.type === 'completion.generated').map((event) => event.completion?.shell)).toEqual(['bash'])
-    expect(events.find((event) => event.type === 'command.completed')?.command).toEqual({ id: 'completions', path: ['completions'] })
+    expect(
+      events.filter((event) => event.type === 'completion.generated').map((event) => event.completion?.shell),
+    ).toEqual(['bash'])
+    expect(events.find((event) => event.type === 'command.completed')?.command).toEqual({
+      id: 'completions',
+      path: ['completions'],
+    })
     expect(JSON.stringify(events)).not.toContain('secret-command-name')
   })
 
   test('parse failure events omit raw global flag values', async () => {
     const events: CliEvent[] = []
-    const cli = testCli('app', {
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-    }, [testCommand('show', {
-        run: () => ({ value: true }),
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+      },
+      [
+        testCommand('show', {
+          run: () => ({ value: true }),
+        }),
+      ],
+    )
 
     const result = await runCli(cli, ['--format', 'secret-format'])
 
@@ -242,15 +305,23 @@ describe('lifecycle events and hooks', () => {
 
   test('MCP lifecycle events omit request arguments and unknown tool names', async () => {
     const events: CliEvent[] = []
-    const cli = testCli('app', {
-      events: [(event) => {
-        events.push(event as CliEvent)
-      }],
-    }, [testCommand('echo', {
-        args: z.object({ secret: z.string().optional() }),
-        options: z.object({ token: z.string().optional() }),
-        run: () => ({ ok: true }),
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+      },
+      [
+        testCommand('echo', {
+          args: z.object({ secret: z.string().optional() }),
+          options: z.object({ token: z.string().optional() }),
+          run: () => ({ ok: true }),
+        }),
+      ],
+    )
 
     await Mcp.mcpMessage('app', stateOf(cli), { jsonrpc: '2.0', id: 1, method: 'initialize' })
     await Mcp.mcpMessage('app', stateOf(cli), { jsonrpc: '2.0', id: 2, method: 'tools/list' })
@@ -303,14 +374,22 @@ describe('lifecycle events and hooks', () => {
       'command.failed',
       'validation.failed',
     ])
-    const cli = testCli('app', {
-      events: [(event) => {
-        localEvents.push(event as CliEvent)
-        if (telemetryAllowlist.has(event.type)) telemetryEvents.push(event as CliEvent)
-      }],
-    }, [testCommand('ok', {
-        run: () => ({ ok: true }),
-      })])
+    const cli = testCli(
+      'app',
+      {
+        events: [
+          (event) => {
+            localEvents.push(event)
+            if (telemetryAllowlist.has(event.type)) telemetryEvents.push(event)
+          },
+        ],
+      },
+      [
+        testCommand('ok', {
+          run: () => ({ ok: true }),
+        }),
+      ],
+    )
 
     await runCli(cli, ['ok', '--help'])
     await runCli(cli, ['ok', '--json'])
@@ -321,9 +400,6 @@ describe('lifecycle events and hooks', () => {
       'command.started',
       'command.completed',
     ])
-    expect(telemetryEvents.map((event) => event.type)).toEqual([
-      'command.started',
-      'command.completed',
-    ])
+    expect(telemetryEvents.map((event) => event.type)).toEqual(['command.started', 'command.completed'])
   })
 })

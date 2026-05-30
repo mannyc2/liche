@@ -60,8 +60,11 @@ const BUN_TARGETS: Record<string, ParsedTarget> = {
 
 const TARGET_FIELDS = ['platform', 'arch', 'libc', 'cpuVariant'] as const
 
-function targetMismatches(binary: BinaryTarget, parsed: ParsedTarget): Partial<Record<typeof TARGET_FIELDS[number], { manifest: unknown; target: unknown }>> {
-  const mismatches: Partial<Record<typeof TARGET_FIELDS[number], { manifest: unknown; target: unknown }>> = {}
+function targetMismatches(
+  binary: BinaryTarget,
+  parsed: ParsedTarget,
+): Partial<Record<(typeof TARGET_FIELDS)[number], { manifest: unknown; target: unknown }>> {
+  const mismatches: Partial<Record<(typeof TARGET_FIELDS)[number], { manifest: unknown; target: unknown }>> = {}
   for (const field of TARGET_FIELDS) {
     if (binary[field] !== parsed[field]) {
       mismatches[field] = { manifest: binary[field], target: parsed[field] }
@@ -108,7 +111,12 @@ function preflightFailures(input: VerifyBinaryInput): BinaryVerificationFailure[
   ]
 }
 
-function bytesFailure(binary: BinaryTarget, path: string, kind: 'read' | 'size' | 'sha256', actual?: { size?: number; sha256?: string }): BinaryVerificationFailure {
+function bytesFailure(
+  binary: BinaryTarget,
+  path: string,
+  kind: 'read' | 'size' | 'sha256',
+  actual?: { size?: number; sha256?: string },
+): BinaryVerificationFailure {
   if (kind === 'read') {
     return {
       binaryId: binary.id,
@@ -151,7 +159,18 @@ export async function verifyReleaseBinaries(input: VerifyBinaryInput): Promise<V
     }
     const result = await verifyBytesAt(path, { sha256: binary.sha256, size: binary.size })
     if (!result.ok) {
-      failures.push(bytesFailure(binary, path, result.kind, result.kind === 'size' ? { size: result.size } : result.kind === 'sha256' ? { sha256: result.sha256 } : undefined))
+      failures.push(
+        bytesFailure(
+          binary,
+          path,
+          result.kind,
+          result.kind === 'size'
+            ? { size: result.size }
+            : result.kind === 'sha256'
+              ? { sha256: result.sha256 }
+              : undefined,
+        ),
+      )
       continue
     }
     verified.push({ binaryId: binary.id, path, sha256: result.sha256, size: result.size })

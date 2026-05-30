@@ -1,11 +1,6 @@
 import { defineCli, defineCommand, outputControls, reflectionControls, run } from '../src/index.js'
 import { tokens } from '@liche/tokens'
-import type {
-  CliExtension,
-  CliInstance,
-  DeclarativeCommand,
-  RunOptions,
-} from '../src/index.js'
+import type { CliExtension, CliInstance, DeclarativeCommand, RunOptions } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import type { CommandDefinition, CreateOptions } from '../src/types.js'
 
@@ -50,17 +45,11 @@ export function parseJsonData(stdout: string): any {
   return envelope
 }
 
-export function testCommand(path: string | readonly [string, ...string[]], definition: CommandDefinition = {}): DeclarativeCommand {
-  const {
-    alias,
-    aliases,
-    args,
-    env,
-    options,
-    run,
-    sources,
-    ...contract
-  } = definition
+export function testCommand(
+  path: string | readonly [string, ...string[]],
+  definition: CommandDefinition = {},
+): DeclarativeCommand {
+  const { alias, aliases, args, env, options, run, sources, ...contract } = definition
   return defineCommand({
     ...contract,
     ...(aliases ? { aliases: aliases.map((item) => [item]) } : undefined),
@@ -72,7 +61,7 @@ export function testCommand(path: string | readonly [string, ...string[]], defin
       ...(sources ? { sources } : undefined),
     },
     path: Array.isArray(path) ? path : [path],
-    ...(run ? { run: (context: any) => run(context.ctx as any) } : undefined),
+    ...(run ? { run: (context: any) => run(context.ctx) } : undefined),
   } as any)
 }
 
@@ -97,12 +86,11 @@ export function testCli(
   maybeCommands: readonly DeclarativeCommand[] = [],
 ): CliInstance {
   const commands = Array.isArray(definitionOrCommands) ? definitionOrCommands : maybeCommands
-  const definition: TestCliDefinition = Array.isArray(definitionOrCommands) ? {} : definitionOrCommands as TestCliDefinition
+  const definition: TestCliDefinition = Array.isArray(definitionOrCommands)
+    ? {}
+    : (definitionOrCommands as TestCliDefinition)
   const { testControls = true, ...definitionWithoutTestControls } = definition
-  const extensions = [
-    ...(testControls ? defaultTestControls : []),
-    ...(definitionWithoutTestControls.extensions ?? []),
-  ]
+  const extensions = [...(testControls ? defaultTestControls : []), ...(definitionWithoutTestControls.extensions ?? [])]
   const finalDefinition = {
     ...builtinDefaults(testControls, definitionWithoutTestControls),
     ...definitionWithoutTestControls,
@@ -112,10 +100,7 @@ export function testCli(
     return defineCli({ ...finalDefinition, commands, name: nameOrDefinition } as any)
   }
   const { testControls: namedTestControls = true, ...namedDefinition } = nameOrDefinition
-  const namedExtensions = [
-    ...(namedTestControls ? defaultTestControls : []),
-    ...(namedDefinition.extensions ?? []),
-  ]
+  const namedExtensions = [...(namedTestControls ? defaultTestControls : []), ...(namedDefinition.extensions ?? [])]
   return defineCli({
     ...builtinDefaults(namedTestControls, namedDefinition),
     ...namedDefinition,

@@ -67,9 +67,7 @@ describe('formatHumanValidationError', () => {
 
   test('source-less top-level path "$" renders as bare input argument', () => {
     const { state, selected } = build('echo', {})
-    const out = formatHumanValidationError('app', state, selected, [
-      { path: '$', message: 'Invalid', missing: true },
-    ])
+    const out = formatHumanValidationError('app', state, selected, [{ path: '$', message: 'Invalid', missing: true }])
     const first = out.split('\n')[0]
     expect(first).toBe('Error: missing required argument input')
   })

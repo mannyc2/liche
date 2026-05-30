@@ -48,7 +48,12 @@ export function skillIndex(name: string, state: CliState, policy: SkillCommandPo
   if (state.def.skill?.index) return state.def.skill.index
 
   const commands = skillCommandContracts(state, policy)
-  return [`# ${name}`, state.def.description ?? '', '', ...commands.map((command) => `- ${command.name}: ${command.description ?? ''}`)].join('\n')
+  return [
+    `# ${name}`,
+    state.def.description ?? '',
+    '',
+    ...commands.map((command) => `- ${command.name}: ${command.description ?? ''}`),
+  ].join('\n')
 }
 
 function skillCommandContracts(state: CliState, policy: SkillCommandPolicy): CommandContract[] {

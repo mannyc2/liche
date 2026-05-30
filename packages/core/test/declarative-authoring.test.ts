@@ -90,7 +90,12 @@ describe('declarative authoring API', () => {
               return data.rows.map((row) => `- ${row.label}: ${row.count}`).join('\n')
             },
           },
-          run: () => ({ rows: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] }),
+          run: () => ({
+            rows: [
+              { label: 'a', count: 1 },
+              { label: 'b', count: 2 },
+            ],
+          }),
         }),
       ],
     })
@@ -99,7 +104,12 @@ describe('declarative authoring API', () => {
     expect(md.stdout.trim()).toBe('- a: 1\n- b: 2')
 
     const json = await runCli(cli, ['report', '--json'])
-    expect(parseJsonData(json.stdout)).toEqual({ rows: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] })
+    expect(parseJsonData(json.stdout)).toEqual({
+      rows: [
+        { label: 'a', count: 1 },
+        { label: 'b', count: 2 },
+      ],
+    })
   })
 
   test('option aliases and group descriptions are declared as command data', async () => {

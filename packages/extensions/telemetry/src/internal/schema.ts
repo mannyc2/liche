@@ -90,12 +90,12 @@ export function createValidator(options: ValidatorOptions = {}): Validator {
 
 function extractFailure(input: unknown, err: unknown): { eventType: string; path: string; message: string } {
   const eventType =
-    input && typeof input === 'object' && 'type' in input && typeof (input as { type: unknown }).type === 'string'
-      ? ((input as { type: string }).type)
+    input && typeof input === 'object' && 'type' in input && typeof input.type === 'string'
+      ? (input as { type: string }).type
       : '<unknown>'
   const fieldErrors =
-    err && typeof err === 'object' && 'fieldErrors' in err && Array.isArray((err as { fieldErrors: unknown }).fieldErrors)
-      ? ((err as { fieldErrors: Array<{ path?: string; message?: string }> }).fieldErrors)
+    err && typeof err === 'object' && 'fieldErrors' in err && Array.isArray(err.fieldErrors)
+      ? (err as { fieldErrors: Array<{ path?: string; message?: string }> }).fieldErrors
       : []
   const first = fieldErrors[0]
   const path = first?.path ?? '$'

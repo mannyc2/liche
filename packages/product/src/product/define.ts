@@ -32,9 +32,7 @@ export function defineProduct(init: ProductDefinition): DefinedProduct {
   return base
 }
 
-function normalizeResourceDefinitions(
-  resources: ProductDefinition['resources'],
-): readonly ProductResource[] {
+function normalizeResourceDefinitions(resources: ProductDefinition['resources']): readonly ProductResource[] {
   if (!resources) return []
   const entries = Array.isArray(resources)
     ? resources.map((resource) => [resource.id, resource] as const)
@@ -59,27 +57,21 @@ function normalizeResourceOperations(
     : Object.entries(operations).map(([verb, spec]) => ({ verb, spec }))
 }
 
-function normalizeCommandDefinitions(
-  commands: ProductDefinition['commands'],
-): readonly ProductCommandEntry[] {
+function normalizeCommandDefinitions(commands: ProductDefinition['commands']): readonly ProductCommandEntry[] {
   if (!commands) return []
   return Array.isArray(commands)
     ? commands.map((command) => ({ id: command.id, spec: command.spec }))
     : Object.entries(commands).map(([id, spec]) => ({ id, spec }))
 }
 
-function normalizeBindingDefinitions(
-  bindings: ProductDefinition['bindings'],
-): readonly BindingSpec[] {
+function normalizeBindingDefinitions(bindings: ProductDefinition['bindings']): readonly BindingSpec[] {
   if (!bindings) return []
   return Array.isArray(bindings)
     ? bindings.map((binding) => ({ ...binding }))
     : Object.entries(bindings).map(([key, binding]) => ({ key, ...binding }))
 }
 
-function normalizeContextDefinitions(
-  contexts: ProductDefinition['contexts'],
-): readonly ProductContextEntry[] {
+function normalizeContextDefinitions(contexts: ProductDefinition['contexts']): readonly ProductContextEntry[] {
   if (!contexts) return []
   return Array.isArray(contexts)
     ? contexts.map((context) => ({ id: context.id, spec: context.spec }))

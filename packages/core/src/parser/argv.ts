@@ -1,7 +1,14 @@
 import type { CommandRuntime, Dict, FieldErrorSource, Schema } from '../types.js'
 import { camel } from '../internal.js'
 import { ParseError } from '../errors/error.js'
-import { isBooleanSchema, isDeprecated, isObjectSchema, objectShape, parseSchema, parseSchemaAsync } from '../schema/zod.js'
+import {
+  isBooleanSchema,
+  isDeprecated,
+  isObjectSchema,
+  objectShape,
+  parseSchema,
+  parseSchemaAsync,
+} from '../schema/zod.js'
 import { flagValue, splitFlag } from './flags.js'
 
 export type DeprecationWarning = { flag: string; option: string }
@@ -91,7 +98,11 @@ export function parseCommandOptions(
       const { name: rawKey, equalsValue } = splitFlag(token.slice(2))
       const flag = `--${rawKey}`
       const key = resolveOption(shape, camel(rawKey), flag)
-      record(key, flag, flagValue(!isBooleanSchema(shape[key]), equalsValue, () => argv[++index]))
+      record(
+        key,
+        flag,
+        flagValue(!isBooleanSchema(shape[key]), equalsValue, () => argv[++index]),
+      )
       continue
     }
 

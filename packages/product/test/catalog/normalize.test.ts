@@ -13,11 +13,7 @@ import {
   normalizeProduct,
   resolveListShape,
 } from '../../src/index.js'
-import type {
-  CommandCapability,
-  ProductDefinition,
-  ResourceOperationCapability,
-} from '../../src/index.js'
+import type { CommandCapability, ProductDefinition, ResourceOperationCapability } from '../../src/index.js'
 
 type ProductOverrides = Omit<ProductDefinition, 'id' | 'name' | 'version'> &
   Partial<Pick<ProductDefinition, 'id' | 'name' | 'version'>>
@@ -67,9 +63,7 @@ function workersProduct() {
         summary: 'Deploy a Worker',
         effects: { kind: 'exec', idempotent: false },
         policy: { dangerous: true, requiresConfirmation: true, conformanceEligible: false },
-        examples: [
-          { command: 'workers deploy --entrypoint src/index.ts --environment preview --json' },
-        ],
+        examples: [{ command: 'workers deploy --entrypoint src/index.ts --environment preview --json' }],
         input: Shape.object({
           entrypoint: Field.string('Entrypoint file'),
           environment: Field.string('Environment').optional(),
@@ -121,9 +115,7 @@ describe('Catalog header', () => {
   })
 
   test('omits undeclared product fields rather than emitting undefined', () => {
-    const catalog = normalizeProduct(
-      testProduct({ id: 'minimal', name: 'Minimal', version: '0.0.1' }),
-    )
+    const catalog = normalizeProduct(testProduct({ id: 'minimal', name: 'Minimal', version: '0.0.1' }))
     expect('description' in catalog.product).toBe(false)
     expect('scope' in catalog.product).toBe(false)
   })
@@ -430,9 +422,7 @@ describe('Product config and remote runtime values', () => {
   })
 
   test('remote base URLs normalize from literal, env, and config sources', () => {
-    const literal = normalizeProduct(
-      testProduct({ remote: { baseUrl: Runtime.literal('https://api.example.test') } }),
-    )
+    const literal = normalizeProduct(testProduct({ remote: { baseUrl: Runtime.literal('https://api.example.test') } }))
     expect(literal.remote).toEqual({
       baseUrl: { kind: 'literal', value: 'https://api.example.test' },
     })
@@ -642,9 +632,7 @@ describe('Auth normalization', () => {
   })
 
   test('product without an auth declaration normalizes to no auth', () => {
-    expect(
-      normalizeProduct(defineProduct({ id: 'leaky', name: 'L', version: '0.1.0' })).auth,
-    ).toEqual({ kind: 'none' })
+    expect(normalizeProduct(defineProduct({ id: 'leaky', name: 'L', version: '0.1.0' })).auth).toEqual({ kind: 'none' })
   })
 })
 
@@ -748,9 +736,7 @@ describe('Capability requires', () => {
         }),
       },
     })
-    expect(() => normalizeProduct(productWithAuthRequirement)).toThrow(
-      /requires auth but product declared Auth\.none/,
-    )
+    expect(() => normalizeProduct(productWithAuthRequirement)).toThrow(/requires auth but product declared Auth\.none/)
   })
 
   test('requires.contexts referencing an undeclared context throws', () => {
@@ -795,9 +781,7 @@ describe('Digest sensitivity to auth and requires', () => {
     const bearerProduct = testProduct({
       auth: Auth.bearer({ id: 'p', sources: [Auth.token.env('P_TOKEN')] }),
     })
-    expect(canonicalDigest(normalizeProduct(noneProduct))).not.toBe(
-      canonicalDigest(normalizeProduct(bearerProduct)),
-    )
+    expect(canonicalDigest(normalizeProduct(noneProduct))).not.toBe(canonicalDigest(normalizeProduct(bearerProduct)))
   })
 
   test('adding a permission to a capability changes the catalog digest', () => {
@@ -836,10 +820,7 @@ describe('Surface manifest auth metadata', () => {
         testProduct({
           auth: Auth.bearer({
             id: 'acme',
-            sources: [
-              Auth.token.env('ACME_TOKEN'),
-              Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' }),
-            ],
+            sources: [Auth.token.env('ACME_TOKEN'), Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' })],
           }),
           contexts: {
             org: Auth.context.env({ select: { flag: 'org', env: 'ACME_ORG_ID' } }),
@@ -915,11 +896,7 @@ describe('resolveListShape', () => {
     expect(result.resource.id).toBe('script')
     expect(result.jsonSchema.type).toBe('array')
     expect(result.jsonSchema.items?.type).toBe('object')
-    expect(Object.keys(result.jsonSchema.items?.properties ?? {})).toEqual([
-      'id',
-      'name',
-      'created_at',
-    ])
+    expect(Object.keys(result.jsonSchema.items?.properties ?? {})).toEqual(['id', 'name', 'created_at'])
   })
 
   test('reports broken resource references rather than throwing or inlining undefined', () => {
@@ -986,9 +963,7 @@ describe('Catalog digest stability', () => {
         },
       },
     })
-    expect(canonicalDigest(normalizeProduct(before))).not.toBe(
-      canonicalDigest(normalizeProduct(after)),
-    )
+    expect(canonicalDigest(normalizeProduct(before))).not.toBe(canonicalDigest(normalizeProduct(after)))
   })
 
   test('digest is unchanged when product is rebuilt with the same shapes (no class-instance identity in IR)', () => {
@@ -1004,8 +979,6 @@ describe('Catalog digest stability', () => {
         },
       })
     }
-    expect(canonicalDigest(normalizeProduct(build()))).toBe(
-      canonicalDigest(normalizeProduct(build())),
-    )
+    expect(canonicalDigest(normalizeProduct(build()))).toBe(canonicalDigest(normalizeProduct(build())))
   })
 })

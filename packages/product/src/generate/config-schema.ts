@@ -12,10 +12,7 @@ export function shouldGenerateConfigSchema(catalog: Catalog): boolean {
   return catalog.bindings.length > 0 || catalog.config !== undefined
 }
 
-export function generateConfigSchema(
-  catalog: Catalog,
-  options: GenerateConfigSchemaOptions,
-): string {
+export function generateConfigSchema(catalog: Catalog, options: GenerateConfigSchemaOptions): string {
   const properties: Record<string, JsonSchemaNode> = {}
   const required = new Set<string>()
   if (catalog.config) {

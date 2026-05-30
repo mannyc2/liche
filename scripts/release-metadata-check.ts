@@ -122,9 +122,7 @@ function collectBinIssues(packageDir: string, bin: unknown): string[] {
 }
 
 function expectedPackageFiles(packageName: string): string[] {
-  return packageName === '@liche/core'
-    ? ['src', 'README.md', 'SKILL.md', 'LICENSE']
-    : ['src', 'README.md', 'LICENSE']
+  return packageName === '@liche/core' ? ['src', 'README.md', 'SKILL.md', 'LICENSE'] : ['src', 'README.md', 'LICENSE']
 }
 
 export function collectReleaseMetadataCheck(): MetadataCheckReport {
@@ -213,7 +211,10 @@ export function collectReleaseMetadataCheck(): MetadataCheckReport {
     checks.push(
       workflow.includes('Check package versions are unpublished')
         ? pass('workflow:unpublished-version-guard', 'publish workflow checks package versions before publish')
-        : fail('workflow:unpublished-version-guard', 'publish workflow must fail before publishing already-published versions'),
+        : fail(
+            'workflow:unpublished-version-guard',
+            'publish workflow must fail before publishing already-published versions',
+          ),
     )
   }
 

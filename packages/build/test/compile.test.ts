@@ -1,10 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  canonicalDigest,
-  compileEntrypoint,
-  createCompilePlan,
-  renderCompileEntrypoint,
-} from '../src/index.js'
+import { canonicalDigest, compileEntrypoint, createCompilePlan, renderCompileEntrypoint } from '../src/index.js'
 import type { BunBuildFn } from '../src/index.js'
 
 type BunBuildOptions = Parameters<typeof Bun.build>[0]
@@ -20,7 +15,7 @@ const constants = {
 function successfulBuild(captured: BunBuildOptions[]): BunBuildFn {
   return async (options) => {
     captured.push(options)
-    return { success: true, outputs: [], logs: [] } as BunBuildOutput
+    return { success: true, outputs: [], logs: [] }
   }
 }
 
@@ -138,8 +133,7 @@ describe('compile profile', () => {
         target: 'bun-linux-x64-baseline',
         constants,
       },
-      async () =>
-        ({ success: false, outputs: [], logs: [{ message: 'bad build' }] } as unknown as BunBuildOutput),
+      async () => ({ success: false, outputs: [], logs: [{ message: 'bad build' }] }) as unknown as BunBuildOutput,
     )
 
     expect(result.ok).toBe(false)

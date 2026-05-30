@@ -1,10 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  parseCliReleaseManifest,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, parseCliReleaseManifest } from '../src/index.js'
 import type { CliReleaseManifest } from '../src/index.js'
 
 const FIXTURE_PATH = join(import.meta.dir, 'fixtures', 'workers.release-manifest.json')
@@ -76,9 +73,7 @@ describe('fixture manifest', () => {
 
   test('includes at least one baseline x64 target', () => {
     const manifest = parseFixture()
-    expect(
-      manifest.binaries.some((b) => b.arch === 'x64' && b.cpuVariant === 'baseline'),
-    ).toBe(true)
+    expect(manifest.binaries.some((b) => b.arch === 'x64' && b.cpuVariant === 'baseline')).toBe(true)
   })
 })
 

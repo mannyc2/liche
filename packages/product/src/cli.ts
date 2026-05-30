@@ -107,15 +107,29 @@ export const cli = defineCli({
         )
 
         if (!result.ok) {
-          const hint = result.logs.length > 0
-            ? result.logs.map((log) => String(log)).join('\n')
-            : result.error === undefined ? undefined : String(result.error)
+          const hint =
+            result.logs.length > 0
+              ? result.logs.map((log) => String(log)).join('\n')
+              : result.error === undefined
+                ? undefined
+                : String(result.error)
           return ctx.error({
             code: 'COMPILE_FAILED',
-            code_actions: [{
-              title: 'Retry compile',
-              argv: ['compile', input.args.product, '--out', input.options.out, '--target', input.options.target, '--commit', input.options.commit],
-            }],
+            code_actions: [
+              {
+                title: 'Retry compile',
+                argv: [
+                  'compile',
+                  input.args.product,
+                  '--out',
+                  input.options.out,
+                  '--target',
+                  input.options.target,
+                  '--commit',
+                  input.options.commit,
+                ],
+              },
+            ],
             message: 'Bun.build failed',
             ...(hint === undefined ? {} : { hint }),
             suggested_fix: 'Fix the Bun.build diagnostics, then rerun compile.',
@@ -164,7 +178,12 @@ export const cli = defineCli({
             code: 'CONFORMANCE_FAILED',
             code_actions: input.options.report
               ? [{ title: 'Inspect conformance report', command: `cat ${input.options.report}` }]
-              : [{ title: 'Write conformance report', argv: ['conform', input.args.product, '--report', 'liche.conformance.json'] }],
+              : [
+                  {
+                    title: 'Write conformance report',
+                    argv: ['conform', input.args.product, '--report', 'liche.conformance.json'],
+                  },
+                ],
             message: `${report.summary.failed} conformance case(s) failed`,
             hint: JSON.stringify(report.summary),
             suggested_fix: input.options.report

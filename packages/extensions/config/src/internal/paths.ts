@@ -43,8 +43,7 @@ export function discoverCandidates(
   }
 
   const userEnabled =
-    scopes?.user === true ||
-    (typeof scopes?.user === 'object' && scopes.user !== null && scopes.user.xdg === true)
+    scopes?.user === true || (typeof scopes?.user === 'object' && scopes.user !== null && scopes.user.xdg === true)
   if (userEnabled) {
     const root = userConfigRoot(env)
     for (const file of files) {

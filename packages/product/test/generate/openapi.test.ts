@@ -28,9 +28,7 @@ function generate(catalog: Catalog, surfaceId = 'openapi'): string {
 describe('generateOpenapi — golden fixture', () => {
   test('matches checked-in workers.generated.openapi.json byte-for-byte', async () => {
     const catalog = normalizeProduct(workersProduct)
-    const golden = await Bun.file(
-      new URL('../fixtures/workers.generated.openapi.json', import.meta.url),
-    ).text()
+    const golden = await Bun.file(new URL('../fixtures/workers.generated.openapi.json', import.meta.url)).text()
     expect(generate(catalog)).toBe(golden)
   })
 
@@ -84,9 +82,7 @@ describe('generateOpenapi — capability filter', () => {
     const paths = Object.keys(doc.paths)
     expect(paths).toEqual(['/workers/scripts'])
     const operationIds = Object.values(doc.paths).flatMap((byMethod) =>
-      Object.values(byMethod as Record<string, { operationId: string }>).map(
-        (op) => op.operationId,
-      ),
+      Object.values(byMethod as Record<string, { operationId: string }>).map((op) => op.operationId),
     )
     expect(operationIds).toEqual(['script.list'])
     expect(Object.keys(doc.components.schemas)).toEqual(['script'])
@@ -181,9 +177,7 @@ describe('generateOpenapi — list output schemas', () => {
         },
       },
     })
-    expect(() => generate(normalizeProduct(product))).toThrow(
-      /resource 'ghost' is not declared in this catalog/,
-    )
+    expect(() => generate(normalizeProduct(product))).toThrow(/resource 'ghost' is not declared in this catalog/)
   })
 })
 
@@ -322,8 +316,7 @@ describe('generateOpenapi — path, query, header, body binding', () => {
       },
     })
     const doc = JSON.parse(generate(normalizeProduct(product)))
-    const props =
-      doc.paths['/things'].post.requestBody.content['application/json'].schema.properties
+    const props = doc.paths['/things'].post.requestBody.content['application/json'].schema.properties
     expect(Object.keys(props)).toEqual(['name'])
   })
 
@@ -358,8 +351,7 @@ describe('generateOpenapi — path, query, header, body binding', () => {
       },
     })
     const doc = JSON.parse(generate(normalizeProduct(product)))
-    const props =
-      doc.paths['/things/{id}'].patch.requestBody.content['application/json'].schema.properties
+    const props = doc.paths['/things/{id}'].patch.requestBody.content['application/json'].schema.properties
     expect(Object.keys(props)).toEqual(['name'])
   })
 })

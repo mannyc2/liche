@@ -50,10 +50,12 @@ export function toCommandError(error: unknown): CommandError {
 }
 
 function isCommandErrorLike(error: unknown): error is CommandError {
-  return !!error
-    && typeof error === 'object'
-    && typeof (error as CommandError).code === 'string'
-    && typeof (error as CommandError).message === 'string'
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    typeof (error as CommandError).code === 'string' &&
+    typeof (error as CommandError).message === 'string'
+  )
 }
 
 function statusFromDetails(details: Record<string, unknown> | undefined): number | undefined {

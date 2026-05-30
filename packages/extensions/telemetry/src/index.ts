@@ -88,7 +88,7 @@ function resolveAllowedTypes(events: TelemetryOptions['events']): ReadonlyArray<
 function readEnv(options: TelemetryOptions): TelemetryEnv {
   if (typeof options.env === 'function') return options.env()
   if (options.env) return options.env
-  return (typeof Bun !== 'undefined' ? Bun.env : process.env) as TelemetryEnv
+  return typeof Bun !== 'undefined' ? Bun.env : process.env
 }
 
 const CI_ENV_KEYS = ['CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'] as const
@@ -147,7 +147,9 @@ export function telemetry(options: TelemetryOptions = {}): CliExtension {
       : []
   const baseSinks: ReadonlyArray<TelemetrySink> = [...(options.sinks ?? []), ...debugSink]
   const wrappedSinks: ReadonlyArray<WrappedSink> = baseSinks.map((s) =>
-    wrapSink(s, { onError: (name, err) => (options.warn ?? defaultWarn)(`[telemetry] sink=${name} error=${describeError(err)}`) }),
+    wrapSink(s, {
+      onError: (name, err) => (options.warn ?? defaultWarn)(`[telemetry] sink=${name} error=${describeError(err)}`),
+    }),
   )
 
   const runtime = {
@@ -226,7 +228,7 @@ function buildSubcommands(options: TelemetryOptions) {
       run: ({ ctx, input }) => {
         const invocation = detectInvocationFromSources(ctx.sources)
         const consent = resolveConsent({
-          env: input.env as TelemetryEnv,
+          env: input.env,
           cliName: ctx.name,
           invocation,
           ...(options.enabledEnvVar !== undefined && { enabledEnvVar: options.enabledEnvVar }),

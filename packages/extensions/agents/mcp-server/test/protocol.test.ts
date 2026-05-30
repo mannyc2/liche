@@ -48,11 +48,13 @@ describe('mcpMessage — initialize', () => {
 
 describe('mcpMessage — tools/list', () => {
   test('inputSchema has type "object" and properties keyed by args+options', async () => {
-    const cli = testCli('app', [testCommand('build', {
-      args: z.object({ name: z.string() }),
-      options: z.object({ dry: z.boolean().default(false) }),
-      run: () => ({}),
-    })])
+    const cli = testCli('app', [
+      testCommand('build', {
+        args: z.object({ name: z.string() }),
+        options: z.object({ dry: z.boolean().default(false) }),
+        run: () => ({}),
+      }),
+    ])
     const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'tools/list'))
     const tool = res.result.tools.find((t: any) => t.name === 'build')!
     expect(tool.inputSchema.type).toBe('object')
@@ -187,7 +189,9 @@ describe('mcpMessage — surface enforcement', () => {
         options: z.object({
           file: arg.fromString({ output: z.string(), decode: async (s: string) => s.toUpperCase(), surface: 'cli' }),
         }),
-        run: () => { throw new Error('handler should not run') },
+        run: () => {
+          throw new Error('handler should not run')
+        },
       }),
       testCommand('ping', { run: () => ({ pong: true }) }),
     ])
@@ -200,10 +204,14 @@ describe('mcpMessage — surface enforcement', () => {
   })
 
   test('tools/call against a CLI-only codec returns -32602 + UNSUPPORTED_SURFACE in data', async () => {
-    const res: any = await Mcp.mcpMessage('app', stateOf(cliWithCliOnlyCodec()), request(2, 'tools/call', {
-      name: 'upload',
-      arguments: { options: { file: 'hello' } },
-    }))
+    const res: any = await Mcp.mcpMessage(
+      'app',
+      stateOf(cliWithCliOnlyCodec()),
+      request(2, 'tools/call', {
+        name: 'upload',
+        arguments: { options: { file: 'hello' } },
+      }),
+    )
     expect(res.error.code).toBe(-32602)
     expect(res.error.data.code).toBe('UNSUPPORTED_SURFACE')
     expect(res.error.data.codecKind).toBe('arg.fromString')
@@ -246,11 +254,15 @@ describe('mcpMessage — surface enforcement', () => {
     const cli = testCli('app', [
       testCommand('upload', {
         options: z.object({
-          outer: z.object({
-            file: arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'cli' }),
-          }).optional(),
+          outer: z
+            .object({
+              file: arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'cli' }),
+            })
+            .optional(),
         }),
-        run: () => { throw new Error('handler should not run') },
+        run: () => {
+          throw new Error('handler should not run')
+        },
       }),
       testCommand('ping', { run: () => ({ pong: true }) }),
     ])
@@ -264,7 +276,9 @@ describe('mcpMessage — surface enforcement', () => {
         options: z.object({
           files: z.array(arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'cli' })),
         }),
-        run: () => { throw new Error('handler should not run') },
+        run: () => {
+          throw new Error('handler should not run')
+        },
       }),
     ])
     const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'tools/list'))
@@ -277,7 +291,9 @@ describe('mcpMessage — surface enforcement', () => {
         options: z.object({
           file: arg.fromString({ output: z.string(), decode: async (s: string) => s, surface: 'cli' }).pipe(z.string()),
         }),
-        run: () => { throw new Error('handler should not run') },
+        run: () => {
+          throw new Error('handler should not run')
+        },
       }),
       testCommand('ping', { run: () => ({ pong: true }) }),
     ])
@@ -298,10 +314,14 @@ describe('mcpMessage — surface enforcement', () => {
         run: ({ options }: any) => ({ got: options.file }),
       }),
     ])
-    const res: any = await Mcp.mcpMessage('app', stateOf(cli), request(2, 'tools/call', {
-      name: 'upload',
-      arguments: { options: { file: 'hi' } },
-    }))
+    const res: any = await Mcp.mcpMessage(
+      'app',
+      stateOf(cli),
+      request(2, 'tools/call', {
+        name: 'upload',
+        arguments: { options: { file: 'hi' } },
+      }),
+    )
     expect(res.error).toBeUndefined()
     expect(res.result.isError).toBe(false)
     const content = JSON.parse(res.result.content[0].text)

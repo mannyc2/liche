@@ -78,12 +78,17 @@ describe('parseInvocation', () => {
 
   test('no lifecycle events fire on success or failure', async () => {
     const events: CliEvent[] = []
-    const cli = testCli({
-      name: 'app',
-      events: [(event) => {
-        events.push(event)
-      }],
-    }, [testCommand('go', { run: () => ({ ok: true }) })])
+    const cli = testCli(
+      {
+        name: 'app',
+        events: [
+          (event) => {
+            events.push(event)
+          },
+        ],
+      },
+      [testCommand('go', { run: () => ({ ok: true }) })],
+    )
 
     await parseInvocation(cli, ['go'])
     await parseInvocation(cli, ['--help'])
@@ -116,10 +121,10 @@ describe('parseInvocation', () => {
       stderrCalls++
       return stderrWrite(chunk)
     }) as typeof Bun.stderr.write
-    process.exit = ((code?: number) => {
+    process.exit = (code?: number) => {
       exitCalled = true
       throw new Error(`unexpected process.exit(${code})`)
-    }) as typeof process.exit
+    }
 
     try {
       await parseInvocation(cli, ['go', '--n', '1'])
@@ -221,14 +226,17 @@ describe('parseInvocation', () => {
   })
 
   test('prepareContext ParseError surfaces as PARSE_ERROR', async () => {
-    const cli = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => {
-          throw new ParseError({ message: 'nope' })
+    const cli = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => {
+            throw new ParseError({ message: 'nope' })
+          },
         },
       },
-    }, [testCommand('go', { run: () => ({ ok: true }) })])
+      [testCommand('go', { run: () => ({ ok: true }) })],
+    )
 
     const result = await parseInvocation(cli, ['go'])
     expect(result.ok).toBe(false)
@@ -237,17 +245,20 @@ describe('parseInvocation', () => {
   })
 
   test('prepareContext overrides reach input + contextOverrides', async () => {
-    const cli = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => ({ patch: { options: { count: 999 } } }),
+    const cli = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => ({ patch: { options: { count: 999 } } }),
+        },
       },
-    }, [
-      testCommand('go', {
-        options: z.object({ count: z.coerce.number().default(1) }),
-        run: () => ({ ok: true }),
-      }),
-    ])
+      [
+        testCommand('go', {
+          options: z.object({ count: z.coerce.number().default(1) }),
+          run: () => ({ ok: true }),
+        }),
+      ],
+    )
 
     const data = unwrap(await parseInvocation(cli, ['go', '--count', '1']))
     expect((data.input.options as { count: number }).count).toBe(999)
@@ -255,18 +266,21 @@ describe('parseInvocation', () => {
   })
 
   test('prepareContext format / formatExplicit / global patches reach top-level fields', async () => {
-    const cli = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => ({
-          patch: {
-            format: 'text',
-            formatExplicit: true,
-            global: { profile: 'staging' },
-          },
-        }),
+    const cli = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => ({
+            patch: {
+              format: 'text',
+              formatExplicit: true,
+              global: { profile: 'staging' },
+            },
+          }),
+        },
       },
-    }, [testCommand('go', { run: () => ({ ok: true }) })])
+      [testCommand('go', { run: () => ({ ok: true }) })],
+    )
 
     const data = unwrap(await parseInvocation(cli, ['go']))
     expect(data.format).toBe('text')
@@ -278,14 +292,17 @@ describe('parseInvocation', () => {
   })
 
   test('prepareContext failure is reported before non-runnable entry checks', async () => {
-    const noRun = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => {
-          throw new ParseError({ message: 'prep failed' })
+    const noRun = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => {
+            throw new ParseError({ message: 'prep failed' })
+          },
         },
       },
-    }, [testCommand('lonely', {})])
+      [testCommand('lonely', {})],
+    )
     const result = await parseInvocation(noRun, ['lonely'])
     expect(result.ok).toBe(false)
     expect(result.ok ? null : result.error.code).toBe('PARSE_ERROR')

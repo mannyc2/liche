@@ -24,14 +24,19 @@ const BUILT_IN_STRING_RULES: ReadonlyArray<StringRule> = [
   { name: 'github-pat-classic', pattern: /\bgh[pousr]_[A-Za-z0-9]{36}\b/g },
   { name: 'aws-akia', pattern: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g },
   { name: 'stripe', pattern: /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{24,}\b/g },
-  { name: 'slack', pattern: /\bxox[abporse]-[A-Za-z0-9-]{10,}\b|\bxoxe\.[A-Za-z0-9-]+\b|\bxapp-[A-Za-z0-9-]+\b|\bxwfp-[A-Za-z0-9-]+\b/g },
+  {
+    name: 'slack',
+    pattern:
+      /\bxox[abporse]-[A-Za-z0-9-]{10,}\b|\bxoxe\.[A-Za-z0-9-]+\b|\bxapp-[A-Za-z0-9-]+\b|\bxwfp-[A-Za-z0-9-]+\b/g,
+  },
   { name: 'google-api', pattern: /\bAIza[A-Za-z0-9_-]{35}\b/g },
   { name: 'openai', pattern: /\bsk-(?:proj-|svcacct-|None-)?[A-Za-z0-9_-]{20,}\b/g },
   { name: 'npm', pattern: /\bnpm_[A-Za-z0-9]{36}\b/g },
   { name: 'jwt', pattern: /\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g },
   {
     name: 'inline-secret-value',
-    pattern: /(["']?(?:api[_-]?key|authorization|password|private[_-]?key|secret|token)["']?\s*[:=]\s*["'])[^"',\s]+(["'])?/gi,
+    pattern:
+      /(["']?(?:api[_-]?key|authorization|password|private[_-]?key|secret|token)["']?\s*[:=]\s*["'])[^"',\s]+(["'])?/gi,
     replace: `$1${SENTINEL}$2`,
   },
 ]
@@ -78,9 +83,7 @@ export function createRedactionPolicy(options: RedactionOptions = {}): Redaction
     return value
   }
 
-  const redact = options.redactor
-    ? (value: unknown): unknown => options.redactor!(walk(value))
-    : walk
+  const redact = options.redactor ? (value: unknown): unknown => options.redactor!(walk(value)) : walk
 
   return {
     ruleNames: Object.freeze([...stringRules.map((r) => r.name), FIELD_NAME_RULE]),

@@ -14,7 +14,7 @@ export function mergeLayer(
   for (const [key, value] of Object.entries(layer)) {
     const path = prefix ? `${prefix}.${key}` : key
     if (isObject(value) && isObject(target[key])) {
-      mergeLayer(target[key] as Dict, sources, value as Dict, source, path)
+      mergeLayer(target[key], sources, value, source, path)
       continue
     }
     target[key] = value
