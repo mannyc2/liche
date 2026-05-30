@@ -56,7 +56,6 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'execute',
     'fail',
     'getCliState',
-    'help',
     'manifest',
     'manifestEnvelope',
     'mcpToolName',
@@ -74,7 +73,6 @@ const EXPECTED_PUBLIC_VALUES: Record<string, string[]> = {
     'selectCommand',
     'serializeHttpOperationRequest',
     'streamKinds',
-    'version',
     'z',
   ],
   '@liche/extensions': [

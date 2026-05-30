@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { arg, defaultHelpRenderer, defineCli, defineCommand, help as helpControl, z } from '../src/index.js'
+import { arg, defaultHelpRenderer, defineCli, defineCommand, z } from '../src/index.js'
 import { stateSymbol, type InternalCli } from '../src/cli/create.js'
 import { renderHelp } from '../src/help/render.js'
 import { runCli, testCli, testCommand } from './helpers.js'
@@ -339,7 +339,7 @@ describe('renderHelp — global sections always present', () => {
   })
 })
 
-describe('help({ renderer })', () => {
+describe('defineCli({ help: { renderer } })', () => {
   test('custom renderer handles explicit root help, command help, and fallback help', async () => {
     const renderer = (model: any, context: any) => [
       `CUSTOM ${model.name}`,
@@ -350,7 +350,7 @@ describe('help({ renderer })', () => {
     ].join('\n')
     const cli = defineCli({
       name: 'app',
-      extensions: [helpControl({ renderer })],
+      help: { renderer },
       commands: [
         defineCommand({
           path: ['run'],
@@ -373,11 +373,9 @@ describe('help({ renderer })', () => {
   test('custom renderer can wrap the public defaultHelpRenderer', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [
-        helpControl({
-          renderer: (model, context) => `${defaultHelpRenderer(model, context)}\nWrapped help.`,
-        }),
-      ],
+      help: {
+        renderer: (model, context) => `${defaultHelpRenderer(model, context)}\nWrapped help.`,
+      },
       commands: [
         defineCommand({
           path: ['run'],
@@ -395,7 +393,7 @@ describe('help({ renderer })', () => {
   test('human validation diagnostics use the configured renderer', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [helpControl({ renderer: (model) => `CUSTOM HELP ${model.name}` })],
+      help: { renderer: (model) => `CUSTOM HELP ${model.name}` },
       commands: [
         defineCommand({
           path: ['deploy'],

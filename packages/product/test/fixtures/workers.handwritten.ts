@@ -1,4 +1,4 @@
-import { callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'
+import { callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'
 import { llms } from '@liche/agents'
 import { config as configExtension, configDoctor, files } from '@liche/config'
 import { deploy, dev } from './impl/wrangler.js'
@@ -7,8 +7,6 @@ const cli = defineCli({
   name: 'workers',
   version: '1.0.0',
   extensions: [
-    help(),
-    version(),
     outputControls({ json: true, filterOutput: true }),
     reflectionControls({ schema: true }),
     llms(),

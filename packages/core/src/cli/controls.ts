@@ -19,7 +19,10 @@ export type ReflectionControlsOptions = {
   schema?: boolean | undefined
 }
 
-export function help(options: HelpControlOptions = {}): CliExtension {
+// Internal: built-in help/version are registered automatically by defineCli (first-class,
+// default-on) through this same public TerminalHandler contract. Not exported from the package
+// root — third parties dogfood the contract directly, they do not call these factories.
+export function coreHelp(options: HelpControlOptions = {}): CliExtension {
   return defineExtension({
     id: 'liche.core.help',
     globals: [{ alias: 'h', expose: 'runtime', flag: 'help', key: 'help', type: 'boolean' }],
@@ -38,7 +41,7 @@ export function help(options: HelpControlOptions = {}): CliExtension {
   })
 }
 
-export function version(): CliExtension {
+export function coreVersion(): CliExtension {
   return defineExtension({
     id: 'liche.core.version',
     globals: [{ expose: 'runtime', flag: 'version', key: 'version', type: 'boolean' }],

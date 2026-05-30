@@ -64,7 +64,6 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       inputSources: input.inputSources ?? [],
       inputSourceHints: input.inputSourceHints,
       onDeprecation: input.onDeprecation,
-      rootVarsSchema: (selected.rootDef as any)?.vars,
       runtime,
     })
 
@@ -88,7 +87,7 @@ export async function execute(binaryName: string, selected: SelectedCommand, inp
       },
       sources: resolved.sources,
       stdio: input.stdio,
-      var: resolved.vars as Dict,
+      var: {},
     }
 
     const context: MiddlewareContext = { ...baseContext, ...overrides }

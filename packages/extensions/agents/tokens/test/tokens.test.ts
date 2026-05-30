@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, help, outputControls, run } from '@liche/core'
+import { defineCli, defineCommand, outputControls, run } from '@liche/core'
 import type { CliInstance, RunOptions } from '@liche/core'
 import { tokenCount, tokenSlice, tokens } from '../src/index.js'
 
@@ -22,7 +22,7 @@ describe('@liche/tokens', () => {
   test('extension registers globals and applies output transform', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [help(), outputControls({ json: true }), tokens()],
+      extensions: [outputControls({ json: true }), tokens()],
       commands: [defineCommand({ path: ['greet'], run: () => ({ ok: true, data: { hello: 'world' } }) })],
     })
 

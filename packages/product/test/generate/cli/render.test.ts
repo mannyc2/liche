@@ -84,7 +84,7 @@ describe('generateCli — imports', () => {
     const coreImports = [...source.matchAll(/from '@liche\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z')
+    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z')
   })
 
   test('local and hybrid-workflow handlers are imported from ./impl/<module>.js, grouped per module', () => {
@@ -157,7 +157,8 @@ describe('generateCli — command tree shape', () => {
     expect(source).toContain(`  name: 'workers',`)
     expect(source).toContain(`  version: '1.0.0',`)
     expect(source).not.toContain(`generated: { machineOutput: 'envelope' }`)
-    expect(source).toContain(`help()`)
+    expect(source).not.toContain(`help()`) // help/version are first-class defaults, not emitted as extensions
+    expect(source).not.toContain(`version()`)
     expect(source).toContain(`outputControls({ json: true, filterOutput: true })`)
     expect(source).not.toContain(`fullOutput`)
     expect(source).toContain(`reflectionControls({ schema: true })`)
@@ -242,9 +243,9 @@ describe('generateCli — run bodies by execution mode', () => {
     )
     const source = generate(cat)
     expect(source.match(/from '@liche\/core'/)?.[0]).toBe("from '@liche/core'")
-    expect(source).toContain(`import { callHttpOperation, defineCli, defineCommand, help, outputControls, reflectionControls, version, z } from '@liche/core'`)
+    expect(source).toContain(`import { callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'`)
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
-    expect(source).toContain(`extensions: [help(), version(), outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`)
+    expect(source).toContain(`extensions: [outputControls({ json: true, filterOutput: true }), reflectionControls({ schema: true }), llms({ commands: { include: [] } }), configExtension({`)
     expect(source).toContain(`files: ['p.jsonc'],`)
     expect(source).toContain(`sources: { options: { 'zone': [{ provider: 'config', path: 'defaultZone' }] } },`)
     const purgeBlock = extractCommandBlock(source, 'purge')

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineCli, defineCommand, help as helpControl, outputControls, run } from '@liche/core'
+import { defineCli, defineCommand, outputControls, run } from '@liche/core'
 import type { CliInstance, RunOptions } from '@liche/core'
 import { skillsInstaller } from '../src/index.js'
 
@@ -64,7 +64,7 @@ describe('@liche/skills-installer', () => {
   test('skills help lists both subcommands', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [helpControl(), skillsInstaller()],
+      extensions: [skillsInstaller()],
       commands: [defineCommand({ path: ['run'], run: () => ({ ok: true }) })],
     })
     const help = await runCli(cli, ['skills', '--help'])

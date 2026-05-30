@@ -73,6 +73,7 @@ describe('lifecycle events and hooks', () => {
     const cli = testCli('app', {
       hooks: {
         beforeExecute: (ctx) => {
+          ctx.set('trace', [])
           ;(ctx.var['trace'] as string[]).push('hook')
         },
       },
@@ -81,7 +82,6 @@ describe('lifecycle events and hooks', () => {
         await next()
         ;(ctx.var['trace'] as string[]).push('middleware-after')
       })],
-      vars: z.object({ trace: z.array(z.string()).default([]) }),
     }, [testCommand('trace', {
       run: ({ var: vars }) => {
         ;(vars['trace'] as string[]).push('handler')
@@ -107,7 +107,6 @@ describe('lifecycle events and hooks', () => {
       hooks: {
         beforeExecute: (ctx) => ctx.set('fromHook', true),
       },
-      vars: z.object({ fromHook: z.boolean().default(false) }),
     }, [testCommand('show', {
       run: ({ var: vars }) => ({ fromHook: vars['fromHook'] }),
     })])

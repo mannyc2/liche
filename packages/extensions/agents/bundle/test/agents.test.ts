@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, help, outputControls, run } from '@liche/core'
+import { defineCli, defineCommand, outputControls, run } from '@liche/core'
 import type { CliInstance, RunOptions } from '@liche/core'
 import { agents } from '../src/index.js'
 
@@ -7,7 +7,7 @@ describe('@liche/agents', () => {
   test('bundles MCP and skill helper commands together', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [help(), outputControls({ json: true }), agents({ command: 'app-cli', skill: { markdown: '# app\n\nAgent docs.' } })],
+      extensions: [outputControls({ json: true }), agents({ command: 'app-cli', skill: { markdown: '# app\n\nAgent docs.' } })],
       commands: [defineCommand({ path: ['run'], run: () => ({ ok: true }) })],
     })
 
@@ -25,7 +25,7 @@ describe('@liche/agents', () => {
   test('omits skill metadata when no skill is provided', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [help(), agents()],
+      extensions: [agents()],
       commands: [defineCommand({ path: ['run'], run: () => ({ ok: true }) })],
     })
     const mcpHelp = await runCli(cli, ['mcp', '--help'])

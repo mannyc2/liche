@@ -28,7 +28,6 @@ export type ResolveCommandInputOptions = {
   inputSourceHints?: InputSourceHints | undefined
   onDeprecation?: ((flag: string, option: string) => void) | undefined
   runtime: CommandRuntime
-  rootVarsSchema?: Schema<any> | undefined
 }
 
 export type ResolvedCommandInput = {
@@ -36,7 +35,6 @@ export type ResolvedCommandInput = {
   env: unknown
   options: unknown
   sources: SourceInspector
-  vars: unknown
 }
 
 const MISSING_SOURCE: InputSourceProvenance = { kind: 'missing' }
@@ -99,14 +97,12 @@ export async function resolveCommandInput(input: ResolveCommandInputOptions): Pr
   )
   const env = await runWithSources(envByKey, () => parseObjectAsync(input.runtime.env, envBag))
   const options = await runWithSources(optionsByKey, () => parseObjectAsync(input.runtime.options, rawOptions))
-  const vars = await parseObjectAsync(input.rootVarsSchema, {})
 
   return {
     args,
     env,
     options,
     sources: buildSourceInspector(providers, optionSources),
-    vars,
   }
 }
 

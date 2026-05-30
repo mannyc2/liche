@@ -33,8 +33,6 @@ export const cli = defineCli({
   version: '0.1.0',
   globals: [profile],
   extensions: [
-    help(),
-    version(),
     outputControls({ json: true }),
     reflectionControls({ schema: true }),
     completions(),
@@ -160,8 +158,7 @@ const withDb = middleware(async (ctx, next) => {
 defineCli({
   // ...
   middleware: [withDb],
-  vars: z.object({ db: z.any().optional() }),
-  commands: [/* handlers read ctx.var.db */],
+  commands: [/* handlers read ctx.var.db (run-context scratch, untyped) */],
 })
 ```
 
@@ -177,7 +174,7 @@ Set `default` to a pre-resolved value (not an argv string). Defaults populate `c
 defineGlobal({ key: 'db', type: 'string', default: 'twitte.sqlite', valueLabel: 'path' })
 ```
 
-Core's standard user-visible flags are opt-in controls: `help()`, `version()`, `outputControls()`, and `reflectionControls()`. `help({ renderer })` customizes explicit help, fallback help, and validation help; wrap `defaultHelpRenderer()` to preserve the standard layout with additions. Output renderers use `defineOutputRenderer()` and `CliExtension.outputRenderers`; expose custom format names with `outputControls({ format: true, formats: [...] })`. Do not assume a minimal `defineCli()` reserves `--help`, `--version`, `--json`, `--format`, `--schema`, or `--llms`.
+Help and version are first-class `defineCli` fields, on by default and registered internally through the public `TerminalHandler` contract: `--help` is always present (`help: false` opts out; `help: { renderer }` customizes explicit/fallback/validation help — wrap `defaultHelpRenderer()` to preserve the standard layout), and `--version` registers whenever a `version` string is set. `outputControls()` and `reflectionControls()` remain opt-in controls for `--json`/`--format` and `--schema`. Output renderers use `defineOutputRenderer()` and `CliExtension.outputRenderers`; expose custom format names with `outputControls({ format: true, formats: [...] })`. A minimal `defineCli()` reserves `--help` (and `--version` with a version string), but not `--json`, `--format`, `--schema`, or `--llms`.
 
 Optional first-party helper commands live in `@liche/extensions`, not core:
 

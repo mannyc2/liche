@@ -25,7 +25,6 @@ const FROZEN_PUBLIC_VALUES = [
   'dispatch',
   'fail',
   'getCliState',
-  'help',
   'manifest',
   'manifestEnvelope',
   'mcpToolName',
@@ -45,7 +44,6 @@ const FROZEN_PUBLIC_VALUES = [
   'secret',
   'streamKinds',
   'ValidationError',
-  'version',
   'z',
 ].sort()
 

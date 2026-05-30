@@ -242,14 +242,13 @@ describe('parity: command hint and usage prefix/suffix', () => {
   })
 })
 
-describe('parity: vars defaults layering', () => {
-  test('middleware set() overrides Zod default vars', async () => {
+describe('parity: middleware-seeded vars', () => {
+  test('middleware set() seeds vars read by the handler', async () => {
     const cli = testCli('app', {
       middleware: [middleware(async (ctx, next) => {
         ctx.set('tier', 'pro')
         await next()
       })],
-      vars: z.object({ tier: z.string().default('free') }),
     }, [testCommand('whoami', {
         run: ({ var: vars }) => ({ tier: vars['tier'] }),
       })])

@@ -180,7 +180,6 @@ export type ParsedInvocationContextPatch = {
   args?: unknown;
   options?: unknown;
   env?: unknown;
-  vars?: unknown;
   sources?: SourceInspector;
   format?: Format;
   formatExplicit?: boolean;
@@ -197,7 +196,6 @@ export type ParsedInvocation = {
     args: unknown;
     options: unknown;
     env: unknown;
-    vars: unknown;
   };
   sources: SourceInspector;
   warnings: ParseWarning[];
@@ -619,9 +617,12 @@ export type GlobalFlags = {
   version?: boolean | undefined;
 };
 
-export type DefineCliOptions = Omit<CreateOptions, "name"> & {
+export type DefineCliOptions = Omit<CreateOptions, "name" | "helpRenderer"> & {
   commands?: readonly DeclarativeCommand[] | undefined;
   extensions?: readonly CliExtension[] | undefined;
+  // Built-in help is first-class and on by default. `false` opts out; an object
+  // customizes the renderer (the single help knob — there is no separate helpRenderer).
+  help?: boolean | { renderer?: HelpRenderer | undefined } | undefined;
   name: string;
 };
 
@@ -651,7 +652,6 @@ export type CreateOptions<
         suggestions?: string[] | undefined;
       }
     | undefined;
-  vars?: Schema<any> | undefined;
   version?: string | undefined;
 };
 
@@ -727,7 +727,6 @@ export type CliInstance = {
   env?: Schema<any> | undefined;
   fetch(request: Request): Promise<Response>;
   name: string;
-  vars?: Schema<any> | undefined;
 };
 
 export type SelectedCommand = {

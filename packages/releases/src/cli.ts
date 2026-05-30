@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, reflectionControls, run, z } from '@liche/core'
 import { completions, config, files } from '@liche/extensions'
 import { runPackageCommand } from './cli/package-command.js'
 import { runPublishCommand } from './cli/publish-command.js'
@@ -44,8 +44,6 @@ export const cli = defineCli({
     }),
   ],
   extensions: [
-    help(),
-    version(),
     outputControls(),
     reflectionControls(),
     completions(),

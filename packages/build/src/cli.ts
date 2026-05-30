@@ -2,7 +2,7 @@
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { mkdir } from 'node:fs/promises'
-import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, reflectionControls, run, z } from '@liche/core'
 import { completions, config, files } from '@liche/extensions'
 import { buildBinaries } from './build.js'
 import { compileEntrypoint } from './compile.js'
@@ -153,8 +153,6 @@ export const cli = defineCli({
     }),
   ],
   extensions: [
-    help(),
-    version(),
     outputControls(),
     reflectionControls(),
     completions(),
