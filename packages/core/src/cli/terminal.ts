@@ -37,13 +37,27 @@ export async function runTerminalCli(
       throw error
     }
   }
+  // Streaming chunks are AWAITED (execute awaits onChunk once per chunk), so they land in
+  // yield order and every chunk fully flushes before the run's eager process.exit. The old
+  // fire-and-forget `void Bun.stdout.write` let concurrent writes to a file sink complete out
+  // of order — the stream arrived scrambled (a race, ~5-in-6 runs). Serializing the awaited
+  // writes is the correct backpressure. A broken pipe (`… | head`) surfaces as a rejected
+  // write, handled exactly like the sync path: the reader hung up, so we leave cleanly.
+  const writeChunk = async (s: string): Promise<void> => {
+    try {
+      await Bun.stdout.write(s)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EPIPE') {
+        ;(options.exit ?? process.exit)(0)
+        return
+      }
+      throw error
+    }
+  }
   const io = {
     err: options.stderr ?? ((s: string) => writeFinal(2, s)),
     out: options.stdout ?? ((s: string) => writeFinal(1, s)),
-    // Streaming chunks stay async to avoid blocking the event loop mid-run. The
-    // streaming-output broken-pipe case is intentionally NOT covered here (a blocking
-    // per-chunk write would serialize streaming); see docs/stdio-primitive-plan.md.
-    chunk: options.stdout ?? ((s: string) => void Bun.stdout.write(s)),
+    chunk: options.stdout ?? writeChunk,
   }
 
   let flags
@@ -217,11 +231,11 @@ export async function runTerminalCli(
       if (stdio.stderr.isTTY) io.err(`warning: ${flag} is deprecated\n`)
     },
     onChunk: streamingEligible
-      ? (chunk) => {
+      ? async (chunk) => {
           streamed = true
           const value = outputFormat === 'jsonl' ? { type: 'chunk', data: chunk } : chunk
           const text = renderOutput(value, chunkFormat, state.outputRenderers, { stage: 'chunk' })
-          io.chunk(text.endsWith('\n') ? text : `${text}\n`)
+          await io.chunk(text.endsWith('\n') ? text : `${text}\n`)
         }
       : undefined,
     version: state.def.version,
