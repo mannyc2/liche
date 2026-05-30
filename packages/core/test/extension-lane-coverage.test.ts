@@ -93,7 +93,6 @@ function appWithExtensions(
 ): CliInstance {
   return defineCli({
     name: 'app',
-    vars: z.object({ commandCount: z.number().default(commands.length) }),
     commands,
     extensions,
   })

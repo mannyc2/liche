@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { dirname, isAbsolute, resolve } from 'node:path'
-import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, reflectionControls, run, z } from '@liche/core'
 import { completions, llms, mcpInstaller, skillsInstaller } from '@liche/extensions'
 import { compileProduct } from './compile.js'
 import type { CompileTarget } from './compile.js'
@@ -177,8 +177,6 @@ export const cli = defineCli({
     }),
   ],
   extensions: [
-    help(),
-    version(),
     outputControls(),
     reflectionControls(),
     llms(),

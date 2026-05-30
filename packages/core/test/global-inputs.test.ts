@@ -118,6 +118,7 @@ describe('global input definitions', () => {
   test('core globals are absent unless a control installs them', async () => {
     const cli = defineCli({
       name: 'app',
+      help: false, // opt out of the default-on help so this CLI installs no globals at all
       commands: [
         defineCommand({
           path: ['show'],

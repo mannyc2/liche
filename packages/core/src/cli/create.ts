@@ -9,6 +9,7 @@ import type {
   DeclarativeCommand,
   DefineCliOptions,
   GroupEntry,
+  HelpRenderer,
   Schema,
   RuntimeEntry,
   BeforeExecuteHook,
@@ -19,6 +20,7 @@ import { commandContractFromDefinition, groupContract } from '../command/contrac
 import { isCommand } from '../command/guards.js'
 import { globalRegistryFor } from '../globals/registry.js'
 import { createOutputRendererRegistry } from '../format/index.js'
+import { coreHelp, coreVersion } from './controls.js'
 import { fetchCli } from './fetch.js'
 import { normalizeEvents, normalizeHooks } from './lifecycle.js'
 
@@ -53,7 +55,6 @@ function create(definition: CreateOptions & { name: string }): CliInstance {
     name,
     description: definition.description,
     env: definition.env,
-    vars: definition.vars,
 
     fetch(request: Request) {
       return fetchCli(name, state, request)
@@ -90,8 +91,25 @@ export function defineCli(definition: DefineCliOptions): CliInstance {
   return cli
 }
 
-function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, 'extensions'> {
-  const extensions = definition.extensions ?? []
+function applyExtensions(
+  definition: DefineCliOptions,
+): Omit<DefineCliOptions, 'extensions' | 'help'> & { helpRenderer?: HelpRenderer | undefined } {
+  const userExtensions = definition.extensions ?? []
+  // Built-in help/version are first-class and on by default, but still flow through the public
+  // TerminalHandler contract (the same path extensions use). A user who registers their own handler
+  // for the flag wins (we skip ours); `help: false` / omitting `version` opts out.
+  const userTerminalFlags = new Set<string>([
+    ...(definition.terminalHandlers ?? []).map((handler) => handler.flagKey),
+    ...userExtensions.flatMap((extension) => (extension.terminalHandlers ?? []).map((handler) => handler.flagKey)),
+  ])
+  const coreExtensions: CliExtension[] = []
+  if (definition.help !== false && !userTerminalFlags.has('help')) {
+    coreExtensions.push(coreHelp(typeof definition.help === 'object' ? definition.help : {}))
+  }
+  if (definition.version != null && definition.version !== '' && !userTerminalFlags.has('version')) {
+    coreExtensions.push(coreVersion())
+  }
+  const extensions = [...coreExtensions, ...userExtensions]
   const commands = [
     ...(definition.commands ?? []),
     ...extensions.flatMap((extension) => [...(extension.commands ?? [])]),
@@ -136,9 +154,9 @@ function applyExtensions(definition: DefineCliOptions): Omit<DefineCliOptions, '
     ...extensions.flatMap((extension) => [...(extension.fetchRoutes ?? [])]),
   ]
   const hooks = mergeHookRegistrations(definition.hooks, ...extensions.map((extension) => extension.hooks))
-  const helpRenderer = singleExtensionValue('helpRenderer', definition.helpRenderer, extensions)
+  const helpRenderer = singleExtensionValue('helpRenderer', undefined, extensions)
   const skill = singleExtensionValue('skill', definition.skill, extensions)
-  const { extensions: _extensions, ...rest } = definition
+  const { extensions: _extensions, help: _help, ...rest } = definition
 
   return {
     ...rest,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { Database } from 'bun:sqlite'
-import { defineCli, defineCommand, fail, help, middleware, outputControls, reflectionControls, run, version, z } from '@liche/core'
+import { defineCli, defineCommand, fail, middleware, outputControls, reflectionControls, run, z } from '@liche/core'
 
 type BookmarkRow = {
   id: number
@@ -76,7 +76,7 @@ export const cli = defineCli({
       db.close()
     }
   })],
-  extensions: [help(), version(), outputControls(), reflectionControls()],
+  extensions: [outputControls(), reflectionControls()],
   commands: [
     defineCommand({
       path: ['add'],
@@ -164,13 +164,9 @@ export const cli = defineCli({
   ],
   description: 'Bookmarks CLI backed by bun:sqlite.',
   name: 'bookmarks',
-  // The handle lives in run-context state. It starts undefined, is set by the
-  // middleware, and is read by handlers via database() — never part of any
-  // command's declared input. This schema is validated at runtime only; the vars
-  // slot is untyped at the ctx.var boundary (see database() above).
-  vars: z.object({
-    db: z.custom<Database>().optional(),
-  }),
+  // The db handle lives in run-context scratch (ctx.var): it starts undefined,
+  // is set by the middleware, and is read by handlers via database() above —
+  // never part of any command's declared input.
   version: '0.1.0',
 })
 

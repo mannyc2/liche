@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { defineCli, defineCommand, help as helpControl, outputControls, reflectionControls, z } from '../src/index.js'
+import { defineCli, defineCommand, outputControls, reflectionControls, z } from '../src/index.js'
 import * as Mcp from '@liche/mcp-server'
 import { manifestEnvelope } from '../src/command/registry.js'
 import { renderHelp } from '../src/help/render.js'
@@ -105,7 +105,7 @@ describe('declarative authoring API', () => {
   test('option aliases and group descriptions are declared as command data', async () => {
     const cli = defineCli({
       name: 'app',
-      extensions: [helpControl(), outputControls({ json: true })],
+      extensions: [outputControls({ json: true })],
       commands: [
         defineCommand({
           path: ['jobs'],

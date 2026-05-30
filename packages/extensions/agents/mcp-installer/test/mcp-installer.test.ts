@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineCli, defineCommand, help, run } from '@liche/core'
+import { defineCli, defineCommand, run } from '@liche/core'
 import type { CliInstance, RunOptions } from '@liche/core'
 import { mcpInstaller } from '../src/index.js'
 
@@ -59,7 +59,7 @@ describe('@liche/mcp-installer', () => {
 function appCli(): CliInstance {
   return defineCli({
     name: 'app',
-    extensions: [help(), mcpInstaller()],
+    extensions: [mcpInstaller()],
     commands: [defineCommand({ path: ['run'], run: () => ({ ok: true }) })],
   })
 }

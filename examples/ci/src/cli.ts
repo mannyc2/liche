@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, reflectionControls, run, z } from '@liche/core'
 import { completions, config, configDoctor, env, files, llms } from '@liche/extensions'
 
 const DeploymentSchema = z.object({
@@ -87,8 +87,6 @@ export const cli = defineCli({
   ],
   description: 'Inspect and promote application deployments.',
   extensions: [
-    help(),
-    version(),
     outputControls(),
     reflectionControls(),
     llms(),

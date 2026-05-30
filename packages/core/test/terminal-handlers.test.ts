@@ -4,11 +4,9 @@ import {
   defineCommand,
   defineExtension,
   dispatch,
-  help,
   parseInvocation,
   reflectionControls,
   run,
-  version,
   z,
 } from '../src/index.js'
 
@@ -27,7 +25,8 @@ const makeCli = () =>
   defineCli({
     name: 'tcli',
     version: '9.9.9',
-    extensions: [help(), version(), reflectionControls(), customControl()],
+    // help + version are first-class defaults now; only opt-in extensions are listed.
+    extensions: [reflectionControls(), customControl()],
     commands: [defineCommand({ path: ['greet'], input: { options: z.object({}) }, async run() { return { hi: true } } })],
   })
 
@@ -72,6 +71,24 @@ describe('terminal-flag unification', () => {
     expect((await runCapture(['greet', '--help'])).out).toContain('greet')
     expect((await runCapture(['greet', '--schema'])).out.length).toBeGreaterThan(0)
     expect((await runCapture(['--custom'])).out).toContain('CUSTOM')
+  })
+
+  test('an empty version string opts out of --version (empty is treated as absent)', async () => {
+    const cli = defineCli({
+      name: 'nover',
+      version: '',
+      commands: [defineCommand({ path: ['greet'], input: { options: z.object({}) }, async run() { return { hi: true } } })],
+    })
+    let code = 0
+    let err = ''
+    await run(cli, ['--version'], {
+      streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
+      stdout: () => {},
+      stderr: (s) => { err += s },
+      exit: (c) => { code = c },
+    })
+    expect(code).toBe(1) // --version is not registered when the version string is empty
+    expect(err).toContain('PARSE_ERROR')
   })
 
   test('command-agnostic terminal flags short-circuit before selection, ignoring trailing junk', async () => {

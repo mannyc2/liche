@@ -58,8 +58,6 @@ function renderExtensionDeclarations(catalog: Catalog): string[] {
       .map((capability) => capability.command.join(' ')),
   )
   const extensions: string[] = [
-    'help()',
-    'version()',
     'outputControls({ json: true, filterOutput: true })',
     'reflectionControls({ schema: true })',
     `llms({ commands: { include: ${agentCommands} } })`,

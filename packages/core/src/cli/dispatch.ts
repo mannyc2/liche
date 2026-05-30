@@ -270,7 +270,6 @@ export async function parseInvocation(
       flags,
       inputSources: state.inputSources,
       onDeprecation: (flag, option) => warnings.push({ kind: 'deprecated-option', flag, option }),
-      rootVarsSchema: (selected.rootDef as { vars?: import('../types.js').Schema<unknown> } | undefined)?.vars,
       runtime,
     })
   } catch (error) {
@@ -282,7 +281,6 @@ export async function parseInvocation(
     args: 'args' in overridePatch ? overridePatch.args : resolvedInput.args,
     options: 'options' in overridePatch ? overridePatch.options : resolvedInput.options,
     env: 'env' in overridePatch ? overridePatch.env : resolvedInput.env,
-    vars: 'vars' in overridePatch ? overridePatch.vars : resolvedInput.vars,
   }
   const mergedSources: SourceInspector = overridePatch.sources ?? resolvedInput.sources
   const baseGlobals = contextGlobals(flags, state)
@@ -310,7 +308,6 @@ function narrowContextPatch(overrides: Partial<RunContext>): ParsedInvocationCon
   if ('args' in overrides) patch.args = overrides.args
   if ('options' in overrides) patch.options = overrides.options
   if ('env' in overrides) patch.env = overrides.env
-  if ('var' in overrides) patch.vars = overrides.var
   if ('sources' in overrides && overrides.sources) patch.sources = overrides.sources as SourceInspector
   if ('format' in overrides && overrides.format) patch.format = overrides.format
   if ('formatExplicit' in overrides && typeof overrides.formatExplicit === 'boolean') {

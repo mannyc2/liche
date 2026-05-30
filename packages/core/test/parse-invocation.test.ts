@@ -366,21 +366,6 @@ describe('parseInvocation', () => {
       expect(dispatched.ok ? dispatched.data : null).toEqual({ token: 'secret:abc' })
     })
 
-    test('async root vars codec decodes before handler', async () => {
-      const cli = testCli({
-        name: 'app',
-        vars: z.object({
-          tag: z.string().default('v0').transform(async (s) => `tag:${s}`),
-        }),
-      }, [testCommand('go', { run: (ctx: any) => ({ tag: ctx.var.tag }) })])
-
-      const parsed = unwrap(await parseInvocation(cli, ['go']))
-      expect((parsed.input.vars as { tag: string }).tag).toBe('tag:v0')
-
-      const dispatched = await dispatch(cli, ['go'])
-      expect(dispatched.ok ? dispatched.data : null).toEqual({ tag: 'tag:v0' })
-    })
-
     test('async validation failure normalizes to VALIDATION_ERROR', async () => {
       const cli = testCli('app', [
         testCommand('go', {

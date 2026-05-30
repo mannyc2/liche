@@ -161,11 +161,11 @@ describe('contract: args, flags, env, middleware', () => {
   test('runs middleware around command handlers and exposes vars', async () => {
     const cli = testCli('app', {
       middleware: [middleware(async (ctx, next) => {
+        ctx.set('trace', [])
         ;(ctx.var['trace'] as string[]).push('before')
         await next()
         ;(ctx.var['trace'] as string[]).push('after')
       })],
-      vars: z.object({ trace: z.array(z.string()).default([]) }),
     }, [testCommand('trace', {
         run: ({ var: vars }) => {
           ;(vars['trace'] as string[]).push('run')

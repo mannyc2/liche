@@ -1,4 +1,4 @@
-import { defineCli, defineCommand, help, outputControls, reflectionControls, run, version } from '../src/index.js'
+import { defineCli, defineCommand, outputControls, reflectionControls, run } from '../src/index.js'
 import { tokens } from '@liche/tokens'
 import type {
   CliExtension,
@@ -82,7 +82,14 @@ type TestCliDefinition = Omit<CreateOptions, 'name'> & {
   testControls?: boolean
 }
 
-const defaultTestControls = [help(), version(), outputControls(), tokens(), reflectionControls()]
+const defaultTestControls = [outputControls(), tokens(), reflectionControls()]
+
+// Built-in help is default-on at the defineCli level; --version registers when a version string is
+// set. Mirror the old built-in bundle: testControls → a default version (so --version stays
+// registered and listed in help; help is free), no testControls → help:false for a minimal CLI.
+function builtinDefaults(testControls: boolean, definition: { version?: string | undefined }) {
+  return testControls ? { version: definition.version ?? '0.0.0' } : { help: false }
+}
 
 export function testCli(
   nameOrDefinition: string | (TestCliDefinition & { name: string }),
@@ -97,6 +104,7 @@ export function testCli(
     ...(definitionWithoutTestControls.extensions ?? []),
   ]
   const finalDefinition = {
+    ...builtinDefaults(testControls, definitionWithoutTestControls),
     ...definitionWithoutTestControls,
     ...(extensions.length ? { extensions } : undefined),
   }
@@ -109,6 +117,7 @@ export function testCli(
     ...(namedDefinition.extensions ?? []),
   ]
   return defineCli({
+    ...builtinDefaults(namedTestControls, namedDefinition),
     ...namedDefinition,
     commands,
     ...(namedExtensions.length ? { extensions: namedExtensions } : undefined),
