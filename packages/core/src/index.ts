@@ -23,7 +23,6 @@ export * as Formatter from './format/index.js'
 export { commandError, fail, ok } from './errors/error.js'
 
 export { secret } from './auth/secret.js'
-export { callHttpOperation, serializeHttpOperationRequest } from './http/index.js'
 export type { SecretString } from './auth/secret.js'
 
 export { nonInteractiveStdio, streamKinds } from './cli/stdio.js'
@@ -116,14 +115,3 @@ export type {
   Usage,
   UsageObject,
 } from './types.js'
-export type {
-  HttpAuth,
-  HttpFetch,
-  HttpMethod,
-  HttpOperationBind,
-  HttpOperationCall,
-  HttpOperationRequestSpec,
-  RemoteErrorDetails,
-  RuntimeValue,
-  SerializedHttpRequest,
-} from './http/index.js'

@@ -109,7 +109,8 @@ describe('generated CLI — boundary discipline', () => {
     const coreImports = [...source.matchAll(/from '@liche\/core'/g)]
     expect(coreImports).toHaveLength(1)
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(importLine?.[1]).toBe('defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(source).toContain(`import { callHttpOperation } from '@liche/http'`)
     expect(source).toContain(`import { llms } from '@liche/agents'`)
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
     expect(source).toContain(`import { jsonlFileSink, telemetry } from '@liche/telemetry'`)

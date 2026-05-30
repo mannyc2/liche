@@ -1,5 +1,4 @@
-import { ValidationError } from '../errors/error.js'
-import { parseSchemaAsync } from '../schema/zod.js'
+import { ValidationError, parseSchemaAsync } from '@liche/core'
 import { serializeHttpOperationRequest } from './binding.js'
 import { asError, isAbortError, remoteError, safeUrl } from './errors.js'
 import { mapStatusError, parseResponseBody, readResponseText } from './response.js'

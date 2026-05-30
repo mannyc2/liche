@@ -1,4 +1,4 @@
-import { LicheError } from '../errors/error.js'
+import { LicheError } from '@liche/core'
 import type { RemoteErrorDetails } from './types.js'
 
 export function remoteError(

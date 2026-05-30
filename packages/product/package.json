@@ -43,6 +43,7 @@
     "@liche/config": "^0.8.1",
     "@liche/core": "^0.8.1",
     "@liche/extensions": "^0.8.1",
+    "@liche/http": "^0.8.1",
     "@liche/mcp-installer": "^0.8.1",
     "@liche/mcp-server": "^0.8.1",
     "@liche/skills-installer": "^0.8.1",

@@ -9,7 +9,8 @@
  * Do not edit by hand. Regenerate via `liche-product generate`.
  */
 
-import { callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'
+import { defineCli, defineCommand, outputControls, reflectionControls, z } from '@liche/core'
+import { callHttpOperation } from '@liche/http'
 import { llms } from '@liche/agents'
 import { config as configExtension, configDoctor, files } from '@liche/config'
 import { jsonlFileSink, telemetry } from '@liche/telemetry'

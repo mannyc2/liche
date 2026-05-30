@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { callHttpOperation, serializeHttpOperationRequest, z } from '../src/index.js'
-import { LicheError } from '../src/errors/error.js'
+import { callHttpOperation, serializeHttpOperationRequest } from '../src/index.js'
+import { LicheError, z } from '@liche/core'
 
 function expectLicheError(fn: () => unknown, code: string): LicheError {
   try {

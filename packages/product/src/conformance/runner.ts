@@ -1,5 +1,5 @@
-import { callHttpOperation, serializeHttpOperationRequest } from '@liche/core'
-import type { HttpFetch, HttpOperationCall } from '@liche/core'
+import { callHttpOperation, serializeHttpOperationRequest } from '@liche/http'
+import type { HttpFetch, HttpOperationCall } from '@liche/http'
 import { canonicalDigest } from '@liche/build'
 import { normalizeProduct } from '../catalog/normalize.js'
 import type { Catalog } from '../catalog/types.js'

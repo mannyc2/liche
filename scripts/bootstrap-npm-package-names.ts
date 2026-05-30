@@ -11,6 +11,7 @@ const DEFAULT_BOOTSTRAP_TAG = 'bootstrap'
 
 const PUBLIC_PACKAGES = [
   { name: '@liche/core', dir: 'packages/core' },
+  { name: '@liche/http', dir: 'packages/extensions/http' },
   { name: '@liche/auth', dir: 'packages/extensions/auth' },
   { name: '@liche/completions', dir: 'packages/extensions/completions' },
   { name: '@liche/config', dir: 'packages/extensions/config' },

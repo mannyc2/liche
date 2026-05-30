@@ -1,6 +1,6 @@
 # HTTP operation transport
 
-`@liche/core` owns outbound HTTP operation transport. Handwritten CLIs and generated CLIs use the same primitives. Generated Product command wiring and server conformance build on top of it.
+`@liche/http` owns outbound HTTP operation transport (it depends on `@liche/core`, never the reverse). Handwritten CLIs and generated CLIs use the same primitives. Generated Product command wiring and server conformance build on top of it.
 
 ## NDJSON streaming for async generators
 
@@ -240,7 +240,8 @@ Auth header values and secret env values do not appear in error details or confo
 ## Handwritten CLI example
 
 ```ts
-import { callHttpOperation, defineCli, defineCommand, z } from "@liche/core";
+import { defineCli, defineCommand, z } from "@liche/core";
+import { callHttpOperation } from "@liche/http";
 
 const input = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),

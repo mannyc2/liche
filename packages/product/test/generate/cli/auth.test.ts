@@ -104,7 +104,8 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
   test('imports HTTP transport, auth primitives, and the auth extension', () => {
     const source = generate(workersAuthProduct)
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(importLine?.[1]).toBe('defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(source).toContain(`import { callHttpOperation } from '@liche/http'`)
     expect(source).toContain(`import { llms } from '@liche/agents'`)
     expect(source).toContain(
       `import { auth as authExtension, createFileSessionStore, credentialHttpAuth, detectInvocation, resolveAuth, resolveContext } from '@liche/auth'`,
@@ -197,7 +198,8 @@ describe('generateCli — auth-bearing fixture (Phase 3D-A) — source assertion
     expect(source).not.toContain('applyAuth')
     expect(source).not.toContain('@liche/auth')
     const importLine = source.match(/import \{ ([^}]+) \} from '@liche\/core'/)
-    expect(importLine?.[1]).toBe('callHttpOperation, defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(importLine?.[1]).toBe('defineCli, defineCommand, outputControls, reflectionControls, z')
+    expect(source).toContain(`import { callHttpOperation } from '@liche/http'`)
     expect(source).toContain(`import { config as configExtension, configDoctor, files } from '@liche/config'`)
     expect(source).toContain(`import { jsonlFileSink, telemetry } from '@liche/telemetry'`)
     expect(source).toContain(`async function runGeneratedLocalDoctor`)

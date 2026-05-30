@@ -1,4 +1,5 @@
-import type { HttpFetch, HttpMethod, RuntimeValue, SecretString } from '@liche/core'
+import type { SecretString } from '@liche/core'
+import type { HttpFetch, HttpMethod, RuntimeValue } from '@liche/http'
 
 export type InvocationKind = 'cli' | 'ci' | 'agent' | 'mcp'
 

@@ -37,8 +37,10 @@ export function collectLocalHandlers(catalog: Catalog): ParsedHandler[] {
 
 export function renderImports(catalog: Catalog): string[] {
   const coreNames = new Set(['defineCli', 'defineCommand', 'outputControls', 'reflectionControls', 'z'])
-  if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) coreNames.add('callHttpOperation')
   const out: string[] = [`import { ${[...coreNames].sort().join(', ')} } from '@liche/core'`]
+  if (catalog.remote && catalog.capabilities.some(hasHttpTransport)) {
+    out.push(`import { callHttpOperation } from '@liche/http'`)
+  }
   out.push(`import { llms } from '@liche/agents'`)
   if (needsTokens(catalog)) {
     out.push(`import { tokens } from '@liche/tokens'`)
