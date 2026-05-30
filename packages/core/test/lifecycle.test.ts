@@ -194,6 +194,7 @@ describe('lifecycle events and hooks', () => {
         run: () => ({ value: true }),
       }),
       testCommand('completions', {
+        args: z.object({ shell: z.string() }),
         run: () => 'complete script',
       })])
 

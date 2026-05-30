@@ -265,9 +265,20 @@ describe('parser globals and internal helpers', () => {
     expect(() => Parser.parseGlobals(['--format'], registry)).toThrow(/Missing value for flag: --format/)
   })
 
-  test('parseGlobals throws ParseError on --format= with empty value', () => {
+  test('parseGlobals treats --format= as an empty value the flag parser rejects (not "missing")', () => {
     const registry = (testCli('app') as InternalCli)[stateSymbol].globals
-    expect(() => Parser.parseGlobals(['--format='], registry)).toThrow(/Missing value for flag: --format/)
+    // Consistent with command options (`--name=` => ""): the `=` value is empty, not absent, so the
+    // format flag's own parse() rejects it instead of the parser short-circuiting on "missing value".
+    expect(() => Parser.parseGlobals(['--format='], registry)).toThrow(/Invalid format/)
+  })
+
+  test('parseGlobals resolves boolean flag =value the same way command options do', () => {
+    const registry = (testCli('app') as InternalCli)[stateSymbol].globals
+    expect(Parser.parseGlobals(['--json'], registry).json).toBe(true)
+    expect(Parser.parseGlobals(['--json=true'], registry).json).toBe(true)
+    expect(Parser.parseGlobals(['--json=false'], registry).json).toBe(false) // was silently dropped before
+    // a non-boolean =value is not claimed as the flag; it falls through to rest
+    expect(Parser.parseGlobals(['--json=banana'], registry).rest).toContain('--json=banana')
   })
 
   test('internal string, object, and async iterable helpers preserve their contracts', async () => {
