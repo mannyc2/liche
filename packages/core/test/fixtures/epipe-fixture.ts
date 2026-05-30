@@ -34,6 +34,21 @@ const cli = defineCli({
         return fail({ code: 'FLOOD_FAIL', message: 'flooded then failed', detail: BLOB })
       },
     }),
+    // Streaming path: an async generator yields large chunks (written via the async
+    // `chunk` writer) then THROWS, which is the only way a streamed run reaches a
+    // nonzero exit (a non-throwing iterable always resolves to ok(collected)). The
+    // eager process.exit(1) then races the un-flushed async chunk writes. Selected
+    // with `--format jsonl` (the only streaming-eligible format).
+    defineCommand({
+      path: ['streamfail'],
+      input: { options: z.object({}) },
+      async *run() {
+        const CHUNK = 'A'.repeat(64_000) // one pipe-buffer-ish per chunk
+        for (let i = 0; i < 32; i++) yield { i, blob: CHUNK } // ~2MB across 32 chunks
+        yield { last: true, mark: MARK }
+        throw new Error('streamed then failed') // → nonzero exit after the chunks are out
+      },
+    }),
   ],
 })
 
