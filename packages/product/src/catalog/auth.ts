@@ -85,16 +85,36 @@ export function normalizeAuthCapabilities(auth: NormalizedAuth, contexts: Normal
   const out: CommandCapability[] = []
   const hasSession = auth.tokenSources.some((source) => source.kind === 'session')
   if (auth.commands.whoami && (auth.identity || hasSession)) {
-    out.push(authCapability('auth.whoami', auth.commands.whoami, 'Show current authentication status', 'auth-session-read', true))
+    out.push(
+      authCapability(
+        'auth.whoami',
+        auth.commands.whoami,
+        'Show current authentication status',
+        'auth-session-read',
+        true,
+      ),
+    )
   }
   if (auth.commands.switch && hasSession && auth.session?.profiles && contexts.length > 0) {
-    out.push(authCapability('auth.switch', auth.commands.switch, 'Switch stored auth context', 'auth-context-write', false))
+    out.push(
+      authCapability('auth.switch', auth.commands.switch, 'Switch stored auth context', 'auth-context-write', false),
+    )
   }
   if (auth.commands.login && auth.kind === 'oauthDevice' && hasSession) {
-    out.push(authCapability('auth.login', auth.commands.login, 'Log in with OAuth device flow', 'auth-session-write', false))
+    out.push(
+      authCapability('auth.login', auth.commands.login, 'Log in with OAuth device flow', 'auth-session-write', false),
+    )
   }
   if (auth.commands.logout && hasSession) {
-    out.push(authCapability('auth.logout', auth.commands.logout, 'Log out of stored auth session', 'auth-session-delete', false))
+    out.push(
+      authCapability(
+        'auth.logout',
+        auth.commands.logout,
+        'Log out of stored auth session',
+        'auth-session-delete',
+        false,
+      ),
+    )
   }
   return out
 }
@@ -134,13 +154,15 @@ function authCapability(
 }
 
 export function normalizePermissions(specs: Readonly<Record<string, PermissionSpec>>): NormalizedPermission[] {
-  return Object.keys(specs).sort().map((id) => {
-    const spec = specs[id]!
-    const out: NormalizedPermission = { id }
-    if (spec.kind === 'scope') out.scope = spec.scope
-    if (spec.description) out.description = spec.description
-    return out
-  })
+  return Object.keys(specs)
+    .sort()
+    .map((id) => {
+      const spec = specs[id]!
+      const out: NormalizedPermission = { id }
+      if (spec.kind === 'scope') out.scope = spec.scope
+      if (spec.description) out.description = spec.description
+      return out
+    })
 }
 
 export function normalizeContext(entry: ProductContextEntry): NormalizedContext {

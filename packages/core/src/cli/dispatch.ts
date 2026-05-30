@@ -38,20 +38,12 @@ export type DispatchOptions = {
   onChunk?: ((chunk: unknown) => void | Promise<void>) | undefined
 }
 
-export async function run(
-  cli: CliInstance,
-  argv?: string[],
-  options: RunOptions = {},
-): Promise<void> {
+export async function run(cli: CliInstance, argv?: string[], options: RunOptions = {}): Promise<void> {
   const state = getCliState(cli)
   return runTerminalCli(cli.name, state, argv ?? Bun.argv.slice(2), options)
 }
 
-export async function dispatch(
-  cli: CliInstance,
-  argv: string[],
-  options: DispatchOptions = {},
-): Promise<Result> {
+export async function dispatch(cli: CliInstance, argv: string[], options: DispatchOptions = {}): Promise<Result> {
   const state = getCliState(cli)
   const name = cli.name
   const env = options.env ?? defaultEnv()
@@ -125,11 +117,7 @@ export async function dispatch(
   if (!selected) {
     if (flags.rest.some(isFlagLikeToken)) {
       const token = flags.rest.find(isFlagLikeToken) ?? flags.rest[0] ?? ''
-      return reject(
-        { code: 'PARSE_ERROR', message: `Unknown option: ${token}`, exitCode: 1 },
-        'parse',
-        'parse.failed',
-      )
+      return reject({ code: 'PARSE_ERROR', message: `Unknown option: ${token}`, exitCode: 1 }, 'parse', 'parse.failed')
     }
     const path = flags.rest.join(' ')
     return reject(
@@ -152,18 +140,13 @@ export async function dispatch(
 
   let contextOverrides: Partial<RunContext>
   try {
-    contextOverrides = await runPrepareContext(
-      [...state.hooks.prepareContext, ...selected.hooks.prepareContext],
-      { name, env, flags },
-    )
+    contextOverrides = await runPrepareContext([...state.hooks.prepareContext, ...selected.hooks.prepareContext], {
+      name,
+      env,
+      flags,
+    })
   } catch (error) {
-    return reject(
-      preExecuteCommandError(error),
-      'parse',
-      'parse.failed',
-      selected.events,
-      eventCommand(selected),
-    )
+    return reject(preExecuteCommandError(error), 'parse', 'parse.failed', selected.events, eventCommand(selected))
   }
 
   return execute(name, selected, {
@@ -244,20 +227,29 @@ export async function parseInvocation(
 
   let contextOverrides: Partial<RunContext>
   try {
-    contextOverrides = await runPrepareContext(
-      [...state.hooks.prepareContext, ...selected.hooks.prepareContext],
-      { name: cli.name, env, flags },
-    )
+    contextOverrides = await runPrepareContext([...state.hooks.prepareContext, ...selected.hooks.prepareContext], {
+      name: cli.name,
+      env,
+      flags,
+    })
   } catch (error) {
     return fail(preExecuteCommandError(error)) as ParseInvocationResult
   }
 
   if (!isCommand(selected.entry)) {
-    return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler', exitCode: 1 }) as ParseInvocationResult
+    return fail({
+      code: 'COMMAND_NOT_RUNNABLE',
+      message: 'Command has no run handler',
+      exitCode: 1,
+    }) as ParseInvocationResult
   }
   const runtime = selected.entry.runtime
   if (!runtime.run) {
-    return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no run handler', exitCode: 1 }) as ParseInvocationResult
+    return fail({
+      code: 'COMMAND_NOT_RUNNABLE',
+      message: 'Command has no run handler',
+      exitCode: 1,
+    }) as ParseInvocationResult
   }
 
   const warnings: ParseWarning[] = []
@@ -287,7 +279,11 @@ export async function parseInvocation(
 
   const contract = commandContract(selected.path.join(' ') || '(root)', selected.entry)
   if (!contract) {
-    return fail({ code: 'COMMAND_NOT_RUNNABLE', message: 'Command has no contract', exitCode: 1 }) as ParseInvocationResult
+    return fail({
+      code: 'COMMAND_NOT_RUNNABLE',
+      message: 'Command has no contract',
+      exitCode: 1,
+    }) as ParseInvocationResult
   }
 
   const data: ParsedInvocation = {
@@ -308,7 +304,7 @@ function narrowContextPatch(overrides: Partial<RunContext>): ParsedInvocationCon
   if ('args' in overrides) patch.args = overrides.args
   if ('options' in overrides) patch.options = overrides.options
   if ('env' in overrides) patch.env = overrides.env
-  if ('sources' in overrides && overrides.sources) patch.sources = overrides.sources as SourceInspector
+  if ('sources' in overrides && overrides.sources) patch.sources = overrides.sources
   if ('format' in overrides && overrides.format) patch.format = overrides.format
   if ('formatExplicit' in overrides && typeof overrides.formatExplicit === 'boolean') {
     patch.formatExplicit = overrides.formatExplicit
@@ -338,9 +334,7 @@ async function emitFailure(
     extraEvents?: readonly CliEventSubscription[]
   },
 ): Promise<void> {
-  const subscriptions = input.extraEvents
-    ? state.events.concat(input.extraEvents)
-    : state.events
+  const subscriptions = input.extraEvents ? state.events.concat(input.extraEvents) : state.events
   const exitCode = Number(input.error.exitCode ?? 1)
   const event: Omit<CliEvent, 'cli' | 'occurredAt'> = {
     streams: input.streams,
@@ -357,8 +351,5 @@ async function emitFailure(
         }
       : { error: { code: input.error.code } }),
   }
-  await emitLifecycleEvent(
-    subscriptions,
-    createLifecycleEvent(name, state.def.version, event),
-  )
+  await emitLifecycleEvent(subscriptions, createLifecycleEvent(name, state.def.version, event))
 }

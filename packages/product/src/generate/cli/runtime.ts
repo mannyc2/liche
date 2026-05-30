@@ -1,12 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Catalog } from '../../catalog/types.js'
-import {
-  authRuntimeUsed,
-  contextRuntimeUsed,
-  opsRuntimeUsed,
-  profileEnvVar,
-} from './predicates.js'
+import { authRuntimeUsed, contextRuntimeUsed, opsRuntimeUsed, profileEnvVar } from './predicates.js'
 import { q, renderStrictObjectSchema, renderStringArray } from './render.js'
 import { renderAuth, renderContexts } from './auth.js'
 
@@ -51,17 +46,13 @@ export function renderConfigExtension(catalog: Catalog): string {
   if (config.files.length > 0) sourceArgs.push(`files: ${renderStringArray(config.files)}`)
   sourceArgs.push(`scopes: ${renderConfigScopes(config.scopes)}`)
   const sources = config.files.length > 0 ? `[files({ ${sourceArgs.join(', ')} })]` : '[]'
-  const fields: string[] = [
-    `schema: ${renderStrictObjectSchema(config.fields, '  ')}`,
-    `sources: ${sources}`,
-  ]
+  const fields: string[] = [`schema: ${renderStrictObjectSchema(config.fields, '  ')}`, `sources: ${sources}`]
   return `configExtension({ ${fields.join(', ')} })`
 }
 
 function renderConfigScopes(scopes: NonNullable<Catalog['config']>['scopes']): string {
-  const project = scopes.project === false
-    ? 'false'
-    : `{ discoverUpwards: ${scopes.project.discoverUpwards ? 'true' : 'false'} }`
+  const project =
+    scopes.project === false ? 'false' : `{ discoverUpwards: ${scopes.project.discoverUpwards ? 'true' : 'false'} }`
   const user = scopes.user === false ? 'false' : `{ xdg: ${scopes.user.xdg ? 'true' : 'false'} }`
   return `{ project: ${project}, user: ${user} }`
 }
@@ -83,7 +74,9 @@ export function doctorEnvVars(catalog: Catalog): string[] {
 export function renderOpsCommands(indent: string, catalog: Catalog): string[] {
   const lines: string[] = []
   if (catalog.ops.enabled && catalog.ops.doctor !== false) {
-    const envFields = doctorEnvVars(catalog).map((envVar) => `${q(envVar)}: z.string().optional()`).join(', ')
+    const envFields = doctorEnvVars(catalog)
+      .map((envVar) => `${q(envVar)}: z.string().optional()`)
+      .join(', ')
     lines.push(`${indent}defineCommand({`)
     lines.push(`${indent}  path: ['doctor'],`)
     lines.push(`${indent}  summary: 'Run local installation and PATH diagnostics.',`)

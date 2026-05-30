@@ -18,12 +18,12 @@ function remoteProduct() {
         },
         operations: {
           list: {
-          summary: 'List scripts',
-          effects: { kind: 'read', idempotent: true },
-          policy: { conformanceEligible: true },
-          examples: [{ command: 'remote-fixture script list --json' }],
-          http: { method: 'GET', path: '/scripts' },
-          output: Shape.list('script'),
+            summary: 'List scripts',
+            effects: { kind: 'read', idempotent: true },
+            policy: { conformanceEligible: true },
+            examples: [{ command: 'remote-fixture script list --json' }],
+            http: { method: 'GET', path: '/scripts' },
+            output: Shape.list('script'),
           },
         },
       },
@@ -89,7 +89,7 @@ describe('product conformance', () => {
         url: `${server.url.origin}/scripts`,
       })
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
@@ -107,17 +107,19 @@ describe('product conformance', () => {
         capability: 'delete',
         env: { REMOTE_FIXTURE_URL: server.url.origin },
         includeDestructive: true,
-        fixtures: [{
-          name: 'delete script',
-          capability: 'delete',
-          input: { id: 'script-1' },
-          expectRequest: { method: 'DELETE', path: '/scripts/script-1' },
-          expectResponse: { body: { deleted: true } },
-        }],
+        fixtures: [
+          {
+            name: 'delete script',
+            capability: 'delete',
+            input: { id: 'script-1' },
+            expectRequest: { method: 'DELETE', path: '/scripts/script-1' },
+            expectResponse: { body: { deleted: true } },
+          },
+        ],
       })
       expect(report.summary).toEqual({ passed: 1, failed: 0, skipped: 0, total: 1 })
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
@@ -134,11 +136,13 @@ describe('product conformance', () => {
           AUTH_FIXTURE_URL: server.url.origin,
           ACME_TOKEN: 'secret-token',
         },
-        fixtures: [{
-          name: 'purge fails',
-          capability: 'purge',
-          input: { zone: 'zone-1', token: 'request-secret-token' },
-        }],
+        fixtures: [
+          {
+            name: 'purge fails',
+            capability: 'purge',
+            input: { zone: 'zone-1', token: 'request-secret-token' },
+          },
+        ],
       })
       expect(report.summary).toEqual({ passed: 0, failed: 1, skipped: 0, total: 1 })
       const text = JSON.stringify(report)
@@ -149,7 +153,7 @@ describe('product conformance', () => {
       expect(report.cases[0]?.request?.bodyPreview).toContain('[redacted]')
       expect(report.cases[0]?.errors[0]?.code).toBe('REMOTE_HTTP_STATUS')
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 })

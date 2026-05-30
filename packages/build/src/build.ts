@@ -5,11 +5,7 @@ import type { BunBuildFn, CompileConstants, CompileEntrypointResult } from './co
 import { compileEntrypoint } from './compile.js'
 import type { RecordedBinary, BuildRecord } from './build-record.js'
 import { resolveTargets } from './targets.js'
-import type {
-  ResolveTargetsFailure,
-  TargetDescriptor,
-  TargetSelection,
-} from './targets.js'
+import type { ResolveTargetsFailure, TargetDescriptor, TargetSelection } from './targets.js'
 
 export type BuildBinariesInput = {
   entrypoint: string
@@ -21,10 +17,7 @@ export type BuildBinariesInput = {
   buildFn?: BunBuildFn
 }
 
-export type BuildFailureCode =
-  | 'TARGET_RESOLUTION_FAILED'
-  | 'COMPILE_FAILED'
-  | 'BINARY_READ_FAILED'
+export type BuildFailureCode = 'TARGET_RESOLUTION_FAILED' | 'COMPILE_FAILED' | 'BINARY_READ_FAILED'
 
 export type BuildFailure = {
   targetId: string | null
@@ -48,7 +41,7 @@ function outfileFor(input: BuildBinariesInput, target: TargetDescriptor): string
 function targetResolutionFailures(failures: readonly ResolveTargetsFailure[]): BuildFailure[] {
   return failures.map((failure) => {
     const result: BuildFailure = {
-      targetId: typeof failure.details?.['id'] === 'string' ? (failure.details['id'] as string) : null,
+      targetId: typeof failure.details?.['id'] === 'string' ? failure.details['id'] : null,
       code: 'TARGET_RESOLUTION_FAILED',
       message: failure.message,
     }
@@ -90,11 +83,12 @@ async function compileOneTarget(
   )
 
   if (!result.ok) {
-    const hint = result.logs.length > 0
-      ? result.logs.map((entry) => String(entry)).join('\n')
-      : result.error === undefined
-        ? ''
-        : String(result.error)
+    const hint =
+      result.logs.length > 0
+        ? result.logs.map((entry) => String(entry)).join('\n')
+        : result.error === undefined
+          ? ''
+          : String(result.error)
     const failure: BuildFailure = {
       targetId: target.id,
       code: 'COMPILE_FAILED',
@@ -151,13 +145,10 @@ export async function buildBinaries(input: BuildBinariesInput): Promise<BuildBin
   await mkdir(input.outDir, { recursive: true })
 
   const parallel = input.parallel ?? true
-  const outcomes: Array<{ ok: true; binary: RecordedBinary } | { ok: false; failure: BuildFailure }> =
-    []
+  const outcomes: Array<{ ok: true; binary: RecordedBinary } | { ok: false; failure: BuildFailure }> = []
 
   if (parallel) {
-    outcomes.push(
-      ...(await Promise.all(resolved.targets.map((target) => compileOneTarget(input, target)))),
-    )
+    outcomes.push(...(await Promise.all(resolved.targets.map((target) => compileOneTarget(input, target)))))
   } else {
     for (const target of resolved.targets) {
       outcomes.push(await compileOneTarget(input, target))

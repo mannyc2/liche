@@ -3,17 +3,17 @@ name: Publish Packages
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Run validation and npm publish --dry-run only"
+        description: 'Run validation and npm publish --dry-run only'
         required: true
-        default: "true"
+        default: 'true'
         type: choice
         options:
-          - "true"
-          - "false"
+          - 'true'
+          - 'false'
 
 permissions:
   contents: read
@@ -29,13 +29,13 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.9"
+          bun-version: '1.3.9'
 
       - name: Ensure npm supports trusted publishing
         run: npm install -g npm@^11.10.0

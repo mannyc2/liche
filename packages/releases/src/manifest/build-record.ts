@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 
 // This schema mirrors the BuildRecord shape emitted by the build package
 // (liche-build build --record). We keep a local copy so this package stays

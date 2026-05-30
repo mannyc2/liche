@@ -289,12 +289,7 @@ async function executeStep(
   if (!executor) {
     return {
       ok: false,
-      failure: failure(
-        stepIndex,
-        step,
-        'EXECUTOR_MISSING',
-        `no executor registered for publisher '${step.ecosystem}'`,
-      ),
+      failure: failure(stepIndex, step, 'EXECUTOR_MISSING', `no executor registered for publisher '${step.ecosystem}'`),
     }
   }
 
@@ -304,46 +299,31 @@ async function executeStep(
   } catch (error) {
     return {
       ok: false,
-      failure: failure(
-        stepIndex,
-        step,
-        'EXECUTOR_FAILED',
-        `executor for '${step.ecosystem}' threw: ${String(error)}`,
-        { error: String(error) },
-      ),
+      failure: failure(stepIndex, step, 'EXECUTOR_FAILED', `executor for '${step.ecosystem}' threw: ${String(error)}`, {
+        error: String(error),
+      }),
     }
   }
 
   if (!result.ok) {
     return {
       ok: false,
-      failure: failure(
-        stepIndex,
-        step,
-        'EXECUTOR_FAILED',
-        result.failure.message,
-        { executorCode: result.failure.code, ...result.failure.details },
-      ),
+      failure: failure(stepIndex, step, 'EXECUTOR_FAILED', result.failure.message, {
+        executorCode: result.failure.code,
+        ...result.failure.details,
+      }),
     }
   }
 
   return { ok: true, receipt: executorReceipt(stepIndex, step, creds, result) }
 }
 
-export async function executeReleasePublish(
-  input: ExecuteReleasePublishInput,
-): Promise<ExecuteReleasePublishResult> {
+export async function executeReleasePublish(input: ExecuteReleasePublishInput): Promise<ExecuteReleasePublishResult> {
   const completed: ExecutorReceipt[] = []
   for (let stepIndex = 0; stepIndex < input.plan.steps.length; stepIndex += 1) {
     const step = input.plan.steps[stepIndex]
     if (!step) continue
-    const stepResult = await executeStep(
-      stepIndex,
-      step,
-      input.credentials,
-      input.executors,
-      input.oidc,
-    )
+    const stepResult = await executeStep(stepIndex, step, input.credentials, input.executors, input.oidc)
     if (!stepResult.ok) {
       return { ok: false, completed, failure: stepResult.failure }
     }

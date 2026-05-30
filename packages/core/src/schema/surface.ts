@@ -49,8 +49,8 @@ function inspectSchema(
 ): SurfaceCheckResult {
   if (!schema) return { ok: true }
   if (typeof schema === 'object') {
-    if (seen.has(schema as object)) return { ok: true }
-    seen.add(schema as object)
+    if (seen.has(schema)) return { ok: true }
+    seen.add(schema)
   }
 
   const meta = getRuntimeArgMeta(schema)

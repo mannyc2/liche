@@ -7,10 +7,7 @@ import { run } from '@liche/core'
 import type { RunOptions } from '@liche/core'
 import { cli } from '../src/cli.js'
 import { shipRelease } from '../src/cli/ship-command.js'
-import type {
-  CliReleaseManifestInput,
-  PackageRecord,
-} from '../src/index.js'
+import type { CliReleaseManifestInput, PackageRecord } from '../src/index.js'
 import type { ReleasesConfig } from '../src/config.js'
 
 async function runCli(
@@ -22,10 +19,16 @@ async function runCli(
   let stdout = ''
   await run(cli, argv, {
     ...options,
-    exit: (code) => { exitCode = code },
+    exit: (code) => {
+      exitCode = code
+    },
     streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
-    stderr: (chunk) => { stderr += chunk },
-    stdout: (chunk) => { stdout += chunk },
+    stderr: (chunk) => {
+      stderr += chunk
+    },
+    stdout: (chunk) => {
+      stdout += chunk
+    },
   })
   return { exitCode, stderr, stdout }
 }
@@ -85,15 +88,17 @@ function pkg(
 }
 
 function writePublishFixture(dir: string, options: { tamperNpmSha?: boolean } = {}) {
-  const npmPlatformArtifact = writeArtifact(join(dir, 'packages/npm/tarballs'), 'workers-linux-x64-0.1.0.tgz', 'npm platform')
+  const npmPlatformArtifact = writeArtifact(
+    join(dir, 'packages/npm/tarballs'),
+    'workers-linux-x64-0.1.0.tgz',
+    'npm platform',
+  )
   const npmUmbrellaArtifact = writeArtifact(join(dir, 'packages/npm/tarballs'), 'workers-0.1.0.tgz', 'npm umbrella')
   const pypiArtifact = writeArtifact(join(dir, 'packages/pypi'), 'workers-0.1.0-py3-none-any.whl', 'pypi wheel')
   const homebrewArtifact = writeArtifact(join(dir, 'packages/homebrew'), 'workers.rb', 'homebrew formula')
 
   const wrongSha = '0'.repeat(64)
-  const npmPlatformVerified = options.tamperNpmSha
-    ? { ...npmPlatformArtifact, sha256: wrongSha }
-    : npmPlatformArtifact
+  const npmPlatformVerified = options.tamperNpmSha ? { ...npmPlatformArtifact, sha256: wrongSha } : npmPlatformArtifact
 
   const packages: PackageRecord[] = [
     pkg('npm:@liche/workers-linux-x64', 'npm', 'npm-platform', '@liche/workers-linux-x64', npmPlatformVerified),
@@ -112,30 +117,37 @@ function writeBuildRecordFixture(dir: string) {
   const binaryPath = join(dir, 'workers')
   writeFileSync(binaryPath, binaryBytes)
   const buildRecordPath = join(dir, 'build-record.json')
-  writeFileSync(buildRecordPath, `${JSON.stringify({
-    recordVersion: 1,
-    entrypoint: '/repo/src/cli.ts',
-    constants: {
-      releaseVersion: '0.1.0',
-      contractDigest: 'sha256:fake-catalog',
-      sourceCommit: '0123456789abcdef0123456789abcdef01234567',
-      buildToolVersion: '0.0.0',
-    },
-    binaries: [
+  writeFileSync(
+    buildRecordPath,
+    `${JSON.stringify(
       {
-        id: 'workers-linux-x64',
-        target: 'bun-linux-x64',
-        platform: 'linux',
-        arch: 'x64',
-        libc: 'glibc',
-        path: binaryPath,
-        filename: 'workers',
-        sha256: sha256Hex(binaryBytes),
-        size: binaryBytes.byteLength,
-        compileFlagsDigest: 'sha256:compile-flags',
+        recordVersion: 1,
+        entrypoint: '/repo/src/cli.ts',
+        constants: {
+          releaseVersion: '0.1.0',
+          contractDigest: 'sha256:fake-catalog',
+          sourceCommit: '0123456789abcdef0123456789abcdef01234567',
+          buildToolVersion: '0.0.0',
+        },
+        binaries: [
+          {
+            id: 'workers-linux-x64',
+            target: 'bun-linux-x64',
+            platform: 'linux',
+            arch: 'x64',
+            libc: 'glibc',
+            path: binaryPath,
+            filename: 'workers',
+            sha256: sha256Hex(binaryBytes),
+            size: binaryBytes.byteLength,
+            compileFlagsDigest: 'sha256:compile-flags',
+          },
+        ],
       },
-    ],
-  }, null, 2)}\n`)
+      null,
+      2,
+    )}\n`,
+  )
   return buildRecordPath
 }
 
@@ -161,22 +173,21 @@ describe('liche-release CLI', () => {
   test('package writes one manifest with embedded package records', async () => {
     const buildRecordPath = writeBuildRecordFixture(dir)
     const configPath = join(dir, 'liche.releases.json')
-    writeFileSync(configPath, `${JSON.stringify({
-      subject: { id: 'workers', name: 'Workers CLI', command: 'workers' },
-      metadata: { description: 'Workers CLI' },
-      host: { kind: 'url-template', template: 'https://example.test/downloads/{filename}' },
-    }, null, 2)}\n`)
+    writeFileSync(
+      configPath,
+      `${JSON.stringify(
+        {
+          subject: { id: 'workers', name: 'Workers CLI', command: 'workers' },
+          metadata: { description: 'Workers CLI' },
+          host: { kind: 'url-template', template: 'https://example.test/downloads/{filename}' },
+        },
+        null,
+        2,
+      )}\n`,
+    )
 
     const outDir = join(dir, 'dist')
-    const result = await runCli([
-      '--config',
-      configPath,
-      'package',
-      buildRecordPath,
-      '--out',
-      outDir,
-      '--json',
-    ])
+    const result = await runCli(['--config', configPath, 'package', buildRecordPath, '--out', outDir, '--json'])
 
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout).data
@@ -192,21 +203,16 @@ describe('liche-release CLI', () => {
     const buildRecordPath = writeBuildRecordFixture(dir)
     const outDir = join(dir, 'dist-config')
     const configPath = join(dir, 'liche.releases.jsonc')
-    writeFileSync(configPath, `{
+    writeFileSync(
+      configPath,
+      `{
       "subject": { "id": "workers", "name": "Workers CLI", "command": "workers" },
       "metadata": { "description": "Workers CLI" },
       "host": { "kind": "url-template", "template": "https://example.test/downloads/{filename}" }
-    }`)
+    }`,
+    )
 
-    const result = await runCli([
-      '--config',
-      configPath,
-      'package',
-      buildRecordPath,
-      '--out',
-      outDir,
-      '--json',
-    ])
+    const result = await runCli(['--config', configPath, 'package', buildRecordPath, '--out', outDir, '--json'])
 
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout).data
@@ -218,14 +224,9 @@ describe('liche-release CLI', () => {
 
   test('publish dry-run plans the selected publisher and does not print credentials', async () => {
     const fixture = writePublishFixture(dir)
-    const result = await runCli([
-      'publish',
-      fixture.manifestPath,
-      '--ecosystems',
-      'npm',
-      '--dry-run',
-      '--json',
-    ], { env: { NPM_TOKEN: 'npm-secret-token' } })
+    const result = await runCli(['publish', fixture.manifestPath, '--ecosystems', 'npm', '--dry-run', '--json'], {
+      env: { NPM_TOKEN: 'npm-secret-token' },
+    })
 
     expect(result.exitCode).toBe(0)
     expect(result.stderr).toBe('')
@@ -242,21 +243,22 @@ describe('liche-release CLI', () => {
   test('publish command consumes explicit createConfig release config', async () => {
     const fixture = writePublishFixture(dir)
     const configPath = join(dir, 'liche.releases.json')
-    writeFileSync(configPath, `${JSON.stringify({
-      ecosystems: {
-        homebrew: { tap: 'liche/homebrew-tap', formula: 'workers' },
-      },
-    }, null, 2)}\n`)
-    const result = await runCli([
-      '--config',
+    writeFileSync(
       configPath,
-      'publish',
-      fixture.manifestPath,
-      '--ecosystems',
-      'homebrew',
-      '--dry-run',
-      '--json',
-    ], { env: { HOMEBREW_GITHUB_TOKEN: 'github-token' } })
+      `${JSON.stringify(
+        {
+          ecosystems: {
+            homebrew: { tap: 'liche/homebrew-tap', formula: 'workers' },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    const result = await runCli(
+      ['--config', configPath, 'publish', fixture.manifestPath, '--ecosystems', 'homebrew', '--dry-run', '--json'],
+      { env: { HOMEBREW_GITHUB_TOKEN: 'github-token' } },
+    )
 
     expect(result.exitCode).toBe(0)
     const body = JSON.parse(result.stdout).data
@@ -272,13 +274,7 @@ describe('liche-release CLI', () => {
 
   test('publish fails preflight when selected publisher credentials are missing', async () => {
     const fixture = writePublishFixture(dir)
-    const result = await runCli([
-      'publish',
-      fixture.manifestPath,
-      '--ecosystems',
-      'pypi',
-      '--json',
-    ], { env: {} })
+    const result = await runCli(['publish', fixture.manifestPath, '--ecosystems', 'pypi', '--json'], { env: {} })
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
@@ -288,13 +284,9 @@ describe('liche-release CLI', () => {
 
   test('publish requires repository config for git-backed publishers', async () => {
     const fixture = writePublishFixture(dir)
-    const result = await runCli([
-      'publish',
-      fixture.manifestPath,
-      '--ecosystems',
-      'homebrew',
-      '--json',
-    ], { env: { HOMEBREW_GITHUB_TOKEN: 'github-token' } })
+    const result = await runCli(['publish', fixture.manifestPath, '--ecosystems', 'homebrew', '--json'], {
+      env: { HOMEBREW_GITHUB_TOKEN: 'github-token' },
+    })
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
@@ -304,13 +296,9 @@ describe('liche-release CLI', () => {
 
   test('publish rechecks artifact bytes before any executor can mutate', async () => {
     const fixture = writePublishFixture(dir, { tamperNpmSha: true })
-    const result = await runCli([
-      'publish',
-      fixture.manifestPath,
-      '--ecosystems',
-      'npm',
-      '--json',
-    ], { env: { NPM_TOKEN: 'npm-token' } })
+    const result = await runCli(['publish', fixture.manifestPath, '--ecosystems', 'npm', '--json'], {
+      env: { NPM_TOKEN: 'npm-token' },
+    })
 
     expect(result.exitCode).toBe(1)
     const body = JSON.parse(result.stdout)
@@ -347,13 +335,20 @@ describe('liche-release CLI', () => {
           const manifestPath = join(out, 'liche.generated.manifest.json')
           const compileEntrypointPath = join(out, 'liche.compile-entry.ts')
           writeFileSync(compileEntrypointPath, '#!/usr/bin/env bun\n')
-          writeFileSync(manifestPath, `${JSON.stringify({
-            manifestVersion: 1,
-            schema: { name: 'workers', version: '0.1.0', digest: 'sha256:catalog' },
-            generatorVersion: '0.0.0',
-            auth: { providers: [] },
-            surfaces: [],
-          }, null, 2)}\n`)
+          writeFileSync(
+            manifestPath,
+            `${JSON.stringify(
+              {
+                manifestVersion: 1,
+                schema: { name: 'workers', version: '0.1.0', digest: 'sha256:catalog' },
+                generatorVersion: '0.0.0',
+                auth: { providers: [] },
+                surfaces: [],
+              },
+              null,
+              2,
+            )}\n`,
+          )
           return {
             code: 0,
             stderr: '',
@@ -367,17 +362,24 @@ describe('liche-release CLI', () => {
         if (argv[0] === 'bun' && argv[1] === 'liche-build') {
           const recordPath = optionValue(argv, '--record')
           mkdirSync(dirname(recordPath), { recursive: true })
-          writeFileSync(recordPath, `${JSON.stringify({
-            recordVersion: 1,
-            entrypoint: argv[3],
-            constants: {
-              releaseVersion: optionValue(argv, '--release-version'),
-              contractDigest: optionValue(argv, '--contract-digest'),
-              sourceCommit: optionValue(argv, '--commit'),
-              buildToolVersion: '0.0.0',
-            },
-            binaries: [],
-          }, null, 2)}\n`)
+          writeFileSync(
+            recordPath,
+            `${JSON.stringify(
+              {
+                recordVersion: 1,
+                entrypoint: argv[3],
+                constants: {
+                  releaseVersion: optionValue(argv, '--release-version'),
+                  contractDigest: optionValue(argv, '--contract-digest'),
+                  sourceCommit: optionValue(argv, '--commit'),
+                  buildToolVersion: '0.0.0',
+                },
+                binaries: [],
+              },
+              null,
+              2,
+            )}\n`,
+          )
           return { code: 0, stderr: '', stdout: '{"record":"dist/build-record.json"}\n' }
         }
         return { code: 1, stderr: `unexpected command: ${argv.join(' ')}`, stdout: '' }
@@ -463,17 +465,24 @@ describe('liche-release CLI', () => {
         if (argv[0] === 'bun' && argv[1] === 'liche-build') {
           const recordPath = optionValue(argv, '--record')
           mkdirSync(dirname(recordPath), { recursive: true })
-          writeFileSync(recordPath, `${JSON.stringify({
-            recordVersion: 1,
-            entrypoint: argv[3],
-            constants: {
-              releaseVersion: optionValue(argv, '--release-version'),
-              contractDigest: optionValue(argv, '--contract-digest'),
-              sourceCommit: optionValue(argv, '--commit'),
-              buildToolVersion: '0.0.0',
-            },
-            binaries: [],
-          }, null, 2)}\n`)
+          writeFileSync(
+            recordPath,
+            `${JSON.stringify(
+              {
+                recordVersion: 1,
+                entrypoint: argv[3],
+                constants: {
+                  releaseVersion: optionValue(argv, '--release-version'),
+                  contractDigest: optionValue(argv, '--contract-digest'),
+                  sourceCommit: optionValue(argv, '--commit'),
+                  buildToolVersion: '0.0.0',
+                },
+                binaries: [],
+              },
+              null,
+              2,
+            )}\n`,
+          )
           return { code: 0, stderr: '', stdout: '{"record":"dist/build-record.json"}\n' }
         }
         return { code: 1, stderr: `unexpected command: ${argv.join(' ')}`, stdout: '' }

@@ -15,16 +15,29 @@ import type {
 } from '../types.js'
 import { isCommand } from '../command/guards.js'
 import { childCommands, commandScope } from '../command/registry.js'
-import { description, encodeDefault, isBooleanSchema, isDeprecated, isOptional, meta, objectShape } from '../schema/zod.js'
+import {
+  description,
+  encodeDefault,
+  isBooleanSchema,
+  isDeprecated,
+  isOptional,
+  meta,
+  objectShape,
+} from '../schema/zod.js'
 import { kebab } from '../internal.js'
 
-export function renderHelp(name: string, state: CliState, selected?: SelectedCommand | undefined, rest: string[] = []): string {
+export function renderHelp(name: string, state: CliState, selected?: SelectedCommand, rest: string[] = []): string {
   const model = buildHelpModel(name, state, selected, rest)
   const context: HelpRenderContext = { binaryName: name, path: model.path }
   return (state.helpRenderer ?? defaultHelpRenderer)(model, context)
 }
 
-export function buildHelpModel(name: string, state: CliState, selected?: SelectedCommand | undefined, rest: string[] = []): HelpModel {
+export function buildHelpModel(
+  name: string,
+  state: CliState,
+  selected?: SelectedCommand,
+  rest: string[] = [],
+): HelpModel {
   const scope = commandScope(state, selected?.path ?? rest)
   const commands = childCommands(scope)
   const contract = scope.entry && 'contract' in scope.entry ? scope.entry.contract : undefined
@@ -72,7 +85,7 @@ export function defaultHelpRenderer(model: HelpModel, _context: HelpRenderContex
   return lines.join('\n')
 }
 
-function title(name: string, descriptionText?: string | undefined): string {
+function title(name: string, descriptionText?: string): string {
   return descriptionText ? `${name} - ${descriptionText}` : name
 }
 
@@ -95,7 +108,11 @@ function argFields(schema: Schema): HelpField[] {
   }))
 }
 
-function optionFields(schema: Schema, aliases: Dict<string> = {}, optionSources: Record<string, readonly InputSourceBinding[]> = {}): HelpField[] {
+function optionFields(
+  schema: Schema,
+  aliases: Dict<string> = {},
+  optionSources: Record<string, readonly InputSourceBinding[]> = {},
+): HelpField[] {
   return Object.entries(objectShape(schema)).map(([key, item]) => {
     const renderedFlag = flag(key, aliases[key])
     const envName = optionSources[key]?.find((source) => source.provider === 'env')?.path
@@ -172,7 +189,10 @@ function exampleLines(scopedName: string, examples: readonly any[]): string[] {
 }
 
 function argLines(args: readonly HelpField[]): string[] {
-  return args.map((arg) => `  ${arg.name.padEnd(22)}  ${arg.description ?? ''}${arg.defaultValue === undefined ? '' : ` (default: ${arg.defaultValue})`}`)
+  return args.map(
+    (arg) =>
+      `  ${arg.name.padEnd(22)}  ${arg.description ?? ''}${arg.defaultValue === undefined ? '' : ` (default: ${arg.defaultValue})`}`,
+  )
 }
 
 function optionLines(options: readonly HelpField[]): string[] {
@@ -183,7 +203,7 @@ function optionLines(options: readonly HelpField[]): string[] {
   })
 }
 
-function flag(key: string, alias?: string | undefined): string {
+function flag(key: string, alias?: string): string {
   const long = key.length === 1 ? `-${key}` : `--${kebab(key)}`
   return `${alias ? `-${alias}, ` : ''}${long}`.padEnd(22)
 }
@@ -219,7 +239,7 @@ function globalLines(globals: readonly HelpGlobal[]): string[] {
   })
 }
 
-function globalFlag(flagName: string, alias?: string | undefined, valueLabel?: string | undefined): string {
+function globalFlag(flagName: string, alias?: string, valueLabel?: string): string {
   const long = `--${flagName}${valueLabel ? ` <${valueLabel}>` : ''}`
   return alias ? `${long}, -${alias}` : long
 }

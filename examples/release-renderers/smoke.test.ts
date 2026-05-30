@@ -44,9 +44,7 @@ describe('release-renderers example', () => {
 
     const result = await packageRelease({
       manifest,
-      binaryPaths: Object.fromEntries(
-        parsed.record.binaries.map((binary) => [binary.id, binary.path]),
-      ),
+      binaryPaths: Object.fromEntries(parsed.record.binaries.map((binary) => [binary.id, binary.path])),
       rendererConfig: {
         npm: { packageName: '@acme/workers' },
       },
@@ -65,10 +63,7 @@ describe('release-renderers example', () => {
         size: 24,
       },
     ])
-    expect(result.packages.map((pkg) => pkg.kind).sort()).toEqual([
-      'npm-platform',
-      'npm-umbrella',
-    ])
+    expect(result.packages.map((pkg) => pkg.kind).sort()).toEqual(['npm-platform', 'npm-umbrella'])
     expect(result.packageArtifacts).toHaveLength(2)
   })
 })

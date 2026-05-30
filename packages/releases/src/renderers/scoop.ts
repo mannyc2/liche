@@ -1,9 +1,5 @@
 import { join } from 'node:path'
-import {
-  packageArtifact,
-  safeLowerSegment,
-  writeArtifact,
-} from './common.js'
+import { packageArtifact, safeLowerSegment, writeArtifact } from './common.js'
 import type { BinaryTarget } from '../manifest/index.js'
 import type { ReleaseRenderer, ReleaseRendererInput, RenderPackageResult } from './index.js'
 

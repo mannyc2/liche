@@ -10,10 +10,7 @@ import type {
   ScoopStepExecutor,
   StepExecutorResult,
 } from './index.js'
-import {
-  audienceForNpmRegistry,
-  npmOidcExchangeUrl,
-} from './index.js'
+import { audienceForNpmRegistry, npmOidcExchangeUrl } from './index.js'
 import type { ResolvedGitRepoTarget } from './plan.js'
 
 type CommandStatus = {
@@ -119,18 +116,21 @@ async function publishGitFile(input: {
   const repoUrl = `https://github.com/${input.target.owner}/${input.target.repo}.git`
   const redactions = [input.token]
   try {
-    let result = await runStepCommand([
-      'git',
-      '-c',
-      gitExtraHeader(input.target, input.token),
-      'clone',
-      '--depth',
-      '1',
-      '--branch',
-      input.target.branch,
-      repoUrl,
-      checkout,
-    ], { redact: redactions, runner: input.runner })
+    let result = await runStepCommand(
+      [
+        'git',
+        '-c',
+        gitExtraHeader(input.target, input.token),
+        'clone',
+        '--depth',
+        '1',
+        '--branch',
+        input.target.branch,
+        repoUrl,
+        checkout,
+      ],
+      { redact: redactions, runner: input.runner },
+    )
     if (!result.ok) return result
 
     const destination = join(checkout, input.targetPath)
@@ -161,19 +161,15 @@ async function publishGitFile(input: {
 
     result = await runStepCommand(['git', 'commit', '-m', input.message], { cwd: checkout, runner: input.runner })
     if (!result.ok) return result
-    return await runStepCommand([
-      'git',
-      '-c',
-      gitExtraHeader(input.target, input.token),
-      'push',
-      'origin',
-      `HEAD:${input.target.branch}`,
-    ], {
-      cwd: checkout,
-      metadata: input.metadata,
-      redact: redactions,
-      runner: input.runner,
-    })
+    return await runStepCommand(
+      ['git', '-c', gitExtraHeader(input.target, input.token), 'push', 'origin', `HEAD:${input.target.branch}`],
+      {
+        cwd: checkout,
+        metadata: input.metadata,
+        redact: redactions,
+        runner: input.runner,
+      },
+    )
   } finally {
     await rm(root, { force: true, recursive: true })
   }
@@ -240,31 +236,34 @@ function pypiExecutor(runner: ReleaseCommandRunner): PypiStepExecutor {
       }
     }
 
-    return runStepCommand([
-      'python',
-      '-m',
-      'twine',
-      'upload',
-      '--non-interactive',
-      '--repository-url',
-      input.step.repositoryUrl,
-      input.step.artifactPath,
-    ], {
-      env: {
-        TWINE_USERNAME: '__token__',
-        TWINE_PASSWORD: input.credentials.token,
-      },
-      metadata: {
-        command: 'python -m twine upload',
-        provenance: {
-          kind: 'pypi',
-          trustedPublisher: false,
-          repositoryUrl: input.step.repositoryUrl,
+    return runStepCommand(
+      [
+        'python',
+        '-m',
+        'twine',
+        'upload',
+        '--non-interactive',
+        '--repository-url',
+        input.step.repositoryUrl,
+        input.step.artifactPath,
+      ],
+      {
+        env: {
+          TWINE_USERNAME: '__token__',
+          TWINE_PASSWORD: input.credentials.token,
         },
+        metadata: {
+          command: 'python -m twine upload',
+          provenance: {
+            kind: 'pypi',
+            trustedPublisher: false,
+            repositoryUrl: input.step.repositoryUrl,
+          },
+        },
+        redact: [input.credentials.token],
+        runner,
       },
-      redact: [input.credentials.token],
-      runner,
-    })
+    )
   }
 }
 
@@ -317,10 +316,16 @@ async function npmPublishToken(
   registry: string,
   packageName: string,
   oidc: Parameters<NonNullable<PublisherExecutorRegistry['npm']>>[0]['oidc'],
-): Promise<{ ok: true; token: string } | { ok: false; failure: { code: string; message: string; details?: Record<string, unknown> } }> {
+): Promise<
+  | { ok: true; token: string }
+  | { ok: false; failure: { code: string; message: string; details?: Record<string, unknown> } }
+> {
   if (credentials.kind === 'token') return { ok: true, token: credentials.token }
   if (!oidc) {
-    return { ok: false, failure: { code: 'OIDC_CONTEXT_MISSING', message: 'npm OIDC publishing needs an OIDC context' } }
+    return {
+      ok: false,
+      failure: { code: 'OIDC_CONTEXT_MISSING', message: 'npm OIDC publishing needs an OIDC context' },
+    }
   }
   const idToken = await oidc.idTokenFetcher(credentials.audience ?? audienceForNpmRegistry(registry))
   if (!idToken.ok) {
@@ -340,9 +345,12 @@ async function npmPublishToken(
       },
     }
   }
-  const body = await response.json() as { token?: unknown }
+  const body = (await response.json()) as { token?: unknown }
   if (typeof body.token !== 'string' || body.token.length === 0) {
-    return { ok: false, failure: { code: 'OIDC_EXCHANGE_FAILED', message: 'npm OIDC exchange response did not include a token' } }
+    return {
+      ok: false,
+      failure: { code: 'OIDC_EXCHANGE_FAILED', message: 'npm OIDC exchange response did not include a token' },
+    }
   }
   return { ok: true, token: body.token }
 }
@@ -361,16 +369,10 @@ export async function publishGithubReleaseAssets(input: {
   ]
   if (input.dryRun) return { ok: true, dryRun: true, assets }
 
-  const result = await commandStatus([
-    'gh',
-    'release',
-    'upload',
-    input.tag,
-    ...assets,
-    '--clobber',
-    '--repo',
-    input.repository,
-  ], { env: { GITHUB_TOKEN: Bun.env['GITHUB_TOKEN'] } })
+  const result = await commandStatus(
+    ['gh', 'release', 'upload', input.tag, ...assets, '--clobber', '--repo', input.repository],
+    { env: { GITHUB_TOKEN: Bun.env['GITHUB_TOKEN'] } },
+  )
   if (result.code === 0) return { ok: true, dryRun: false, assets }
   return {
     ok: false,

@@ -58,10 +58,12 @@ function problemType(code: string): string {
 }
 
 function titleFromCode(code: string): string {
-  return code
-    .toLowerCase()
-    .split('_')
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(' ') || 'Unknown'
+  return (
+    code
+      .toLowerCase()
+      .split('_')
+      .filter(Boolean)
+      .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+      .join(' ') || 'Unknown'
+  )
 }

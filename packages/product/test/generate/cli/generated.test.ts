@@ -53,9 +53,15 @@ async function runCli(
   let exitCode = 0
   await run(cli, argv, {
     ...options,
-    stdout: (s) => { stdout += s },
-    stderr: (s) => { stderr += s },
-    exit: (code) => { exitCode = code },
+    stdout: (s) => {
+      stdout += s
+    },
+    stderr: (s) => {
+      stderr += s
+    },
+    exit: (code) => {
+      exitCode = code
+    },
     streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
   return { stdout, stderr, exitCode }
@@ -73,7 +79,7 @@ async function generateTempCli(product: RuntimeProduct): Promise<{ cli: Generate
   })
   const path = join(dir, 'generated.ts')
   writeFileSync(path, source)
-  const mod = await import(`${path}?t=${Date.now()}-${Math.random()}`) as { default: GeneratedCli }
+  const mod = (await import(`${path}?t=${Date.now()}-${Math.random()}`)) as { default: GeneratedCli }
   return { cli: mod.default, dir }
 }
 
@@ -164,9 +170,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
       port: 0,
       fetch(request) {
         expect(new URL(request.url).pathname).toBe('/')
-        return Response.json([
-          { id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' },
-        ])
+        return Response.json([{ id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' }])
       },
     })
     const dir = mkdtempSync(join(tmpdir(), 'liche-workers-config-'))
@@ -184,7 +188,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
       })
     } finally {
       rmSync(dir, { force: true, recursive: true })
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
@@ -198,21 +202,23 @@ describe('generated CLI — runtime parity with handwritten', () => {
         return Response.json({ ok: true, name: 'Ada' })
       },
     })
-    const generated = await generateTempCli(defineProduct({
-      id: 'literal-remote',
-      name: 'Literal Remote',
-      version: '1.0.0',
-      auth: Auth.none(),
-      remote: { baseUrl: Runtime.literal(server.url.origin) },
-      commands: {
-        ping: Command.remoteHttp({
-          summary: 'Ping',
-          input: Shape.object({ name: Field.string('Name') }),
-          output: Shape.object({ ok: Field.boolean('OK'), name: Field.string('Name') }),
-          http: { method: 'POST', path: '/ping', bind: { body: true } },
-        }),
-      },
-    }))
+    const generated = await generateTempCli(
+      defineProduct({
+        id: 'literal-remote',
+        name: 'Literal Remote',
+        version: '1.0.0',
+        auth: Auth.none(),
+        remote: { baseUrl: Runtime.literal(server.url.origin) },
+        commands: {
+          ping: Command.remoteHttp({
+            summary: 'Ping',
+            input: Shape.object({ name: Field.string('Name') }),
+            output: Shape.object({ ok: Field.boolean('OK'), name: Field.string('Name') }),
+            http: { method: 'POST', path: '/ping', bind: { body: true } },
+          }),
+        },
+      }),
+    )
     try {
       const out = await runCli(generated.cli, ['ping', '--name', 'Ada', '--json'])
       expect(out.exitCode).toBe(0)
@@ -223,7 +229,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
         meta: { execution: { mode: 'remote-http', source: 'schema-default' } },
       })
     } finally {
-      server.stop(true)
+      await server.stop(true)
       rmSync(generated.dir, { force: true, recursive: true })
     }
   })
@@ -237,20 +243,22 @@ describe('generated CLI — runtime parity with handwritten', () => {
         return Response.json({ ready: true })
       },
     })
-    const generated = await generateTempCli(defineProduct({
-      id: 'env-remote',
-      name: 'Env Remote',
-      version: '1.0.0',
-      auth: Auth.none(),
-      remote: { baseUrl: Runtime.env('REMOTE_API_BASE_URL') },
-      commands: {
-        status: Command.remoteHttp({
-          summary: 'Status',
-          output: Shape.object({ ready: Field.boolean('Ready') }),
-          http: { method: 'GET', path: '/status' },
-        }),
-      },
-    }))
+    const generated = await generateTempCli(
+      defineProduct({
+        id: 'env-remote',
+        name: 'Env Remote',
+        version: '1.0.0',
+        auth: Auth.none(),
+        remote: { baseUrl: Runtime.env('REMOTE_API_BASE_URL') },
+        commands: {
+          status: Command.remoteHttp({
+            summary: 'Status',
+            output: Shape.object({ ready: Field.boolean('Ready') }),
+            http: { method: 'GET', path: '/status' },
+          }),
+        },
+      }),
+    )
     try {
       const ok = await runCli(generated.cli, ['status', '--json'], {
         env: { REMOTE_API_BASE_URL: server.url.origin },
@@ -264,7 +272,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
       expect(body.error.code).toBe('REMOTE_CONFIG_MISSING_BASE_URL')
       expect(body.error.suggested_fix).toContain('REMOTE_API_BASE_URL')
     } finally {
-      server.stop(true)
+      await server.stop(true)
       rmSync(generated.dir, { force: true, recursive: true })
     }
   })
@@ -279,22 +287,24 @@ describe('generated CLI — runtime parity with handwritten', () => {
         return Response.json({ error: 'bad token', token: 'secret-token' }, { status: 500 })
       },
     })
-    const generated = await generateTempCli(defineProduct({
-      id: 'auth-remote',
-      name: 'Auth Remote',
-      version: '1.0.0',
-      auth: Auth.bearer({ id: 'acme', sources: [Auth.token.env('ACME_TOKEN')] }),
-      remote: { baseUrl: Runtime.literal(server.url.origin) },
-      commands: {
-        purge: Command.remoteHttp({
-          summary: 'Purge',
-          input: Shape.object({ zone: Field.string('Zone') }),
-          output: Shape.object({ ok: Field.boolean('OK') }),
-          requires: { auth: true },
-          http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'], body: [] } },
-        }),
-      },
-    }))
+    const generated = await generateTempCli(
+      defineProduct({
+        id: 'auth-remote',
+        name: 'Auth Remote',
+        version: '1.0.0',
+        auth: Auth.bearer({ id: 'acme', sources: [Auth.token.env('ACME_TOKEN')] }),
+        remote: { baseUrl: Runtime.literal(server.url.origin) },
+        commands: {
+          purge: Command.remoteHttp({
+            summary: 'Purge',
+            input: Shape.object({ zone: Field.string('Zone') }),
+            output: Shape.object({ ok: Field.boolean('OK') }),
+            requires: { auth: true },
+            http: { method: 'POST', path: '/zones/{zone}/purge', bind: { path: ['zone'], body: [] } },
+          }),
+        },
+      }),
+    )
     try {
       const auth = await runCli(generated.cli, ['purge', '--zone', 'zone-a', '--json'], { env: {} })
       expect(auth.exitCode).toBe(1)
@@ -317,7 +327,7 @@ describe('generated CLI — runtime parity with handwritten', () => {
       expect(schema.exitCode).toBe(1)
       expect(JSON.parse(schema.stdout).error.code).toBe('REMOTE_RESPONSE_SCHEMA')
     } finally {
-      server.stop(true)
+      await server.stop(true)
       rmSync(generated.dir, { force: true, recursive: true })
     }
   })
@@ -410,13 +420,17 @@ describe('generated CLI — runtime parity with handwritten', () => {
     expect(release.data.install.map((entry: { manager: string }) => entry.manager)).toEqual(['bun', 'npm'])
     expect(release.data.yankedVersions[0].version).toBe('0.9.0')
 
-    const telemetryStatus = JSON.parse((await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
-      env: {
-        LICHE_INVOCATION: 'cli',
-        WORKERS_TELEMETRY: '1',
-        WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
-      },
-    })).stdout)
+    const telemetryStatus = JSON.parse(
+      (
+        await runCli(workersGenerated, ['telemetry', 'status', '--json'], {
+          env: {
+            LICHE_INVOCATION: 'cli',
+            WORKERS_TELEMETRY: '1',
+            WORKERS_TELEMETRY_FILE: '/tmp/workers-telemetry.jsonl',
+          },
+        })
+      ).stdout,
+    )
     expect(telemetryStatus.data).toMatchObject({
       enabled: true,
       reason: 'cli-enabled',

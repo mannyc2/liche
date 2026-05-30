@@ -21,7 +21,9 @@ export type ManifestAuth = {
 }
 
 export type GeneratedSurfaceManifest = {
-  manifestVersion: 1
+  // `number`, not the literal `1`: a literal makes `expected !== actual` statically unreachable, which
+  // dead-codes the version-drift check in manifestEqualForSurface (and narrows it to `never`).
+  manifestVersion: number
   schema: {
     name: string
     version: string

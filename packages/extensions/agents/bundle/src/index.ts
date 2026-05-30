@@ -21,10 +21,7 @@ export function agents(options: AgentsOptions = {}): CliExtension {
   const tk = tokens()
   return defineExtension({
     id: 'liche.agents',
-    commands: [
-      ...(installer.commands ?? []),
-      ...(skills.commands ?? []),
-    ],
+    commands: [...(installer.commands ?? []), ...(skills.commands ?? [])],
     fetchRoutes: [...(server.fetchRoutes ?? [])],
     globals: [...(server.globals ?? []), ...(runtime.globals ?? []), ...(tk.globals ?? [])],
     outputTransforms: [...(tk.outputTransforms ?? [])],

@@ -1,15 +1,9 @@
-import { z } from 'zod'
+import * as z from 'zod'
 import type { Schema } from '../types.js'
 
 export type StoredCodecSurface = 'all' | 'cli' | 'fetch' | { kind: 'extension'; transport: string }
 
-export type CodecKind =
-  | 'arg.boolean'
-  | 'arg.fromString'
-  | 'arg.int'
-  | 'arg.number'
-  | 'arg.port'
-  | 'arg.positiveInt'
+export type CodecKind = 'arg.boolean' | 'arg.fromString' | 'arg.int' | 'arg.number' | 'arg.port' | 'arg.positiveInt'
 
 export type RuntimeArgMeta = {
   codecKind: CodecKind
@@ -24,8 +18,8 @@ const INT_RE = /^-?(0|[1-9][0-9]*)$/
 const POS_INT_RE = /^[1-9][0-9]*$/
 
 function number() {
-  const input = z.union([z.string().regex(NUMBER_RE), z.number().finite()])
-  const output = z.number().finite()
+  const input = z.union([z.string().regex(NUMBER_RE), z.number()])
+  const output = z.number()
   const schema = z.codec(input, output, {
     decode: (value) => (typeof value === 'number' ? value : Number(value)),
     encode: (value) => String(value),
@@ -34,8 +28,8 @@ function number() {
 }
 
 function int() {
-  const input = z.union([z.string().regex(INT_RE), z.number().int().safe()])
-  const output = z.number().int().safe()
+  const input = z.union([z.string().regex(INT_RE), z.int().safe()])
+  const output = z.int().safe()
   const schema = z.codec(input, output, {
     decode: (value) => (typeof value === 'number' ? value : Number(value)),
     encode: (value) => String(value),
@@ -44,8 +38,8 @@ function int() {
 }
 
 function positiveInt() {
-  const input = z.union([z.string().regex(POS_INT_RE), z.number().int().positive().safe()])
-  const output = z.number().int().positive().safe()
+  const input = z.union([z.string().regex(POS_INT_RE), z.int().positive().safe()])
+  const output = z.int().positive().safe()
   const schema = z.codec(input, output, {
     decode: (value) => (typeof value === 'number' ? value : Number(value)),
     encode: (value) => String(value),
@@ -54,8 +48,8 @@ function positiveInt() {
 }
 
 function port() {
-  const input = z.union([z.string().regex(POS_INT_RE), z.number().int().min(1).max(65535)])
-  const output = z.number().int().min(1).max(65535)
+  const input = z.union([z.string().regex(POS_INT_RE), z.int().min(1).max(65535)])
+  const output = z.int().min(1).max(65535)
   const schema = z.codec(input, output, {
     decode: (value) => (typeof value === 'number' ? value : Number(value)),
     encode: (value) => String(value),
@@ -64,13 +58,7 @@ function port() {
 }
 
 function boolean() {
-  const input = z.union([
-    z.literal('true'),
-    z.literal('false'),
-    z.literal('1'),
-    z.literal('0'),
-    z.boolean(),
-  ])
+  const input = z.union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0'), z.boolean()])
   const output = z.boolean()
   const schema = z.codec(input, output, {
     decode: (value) => (typeof value === 'boolean' ? value : value === 'true' || value === '1'),
@@ -116,7 +104,7 @@ function throwingEncoder(): never {
 
 function fromString<I, O>(options: FromStringOptions<I, O>) {
   const inputSchema = (options.input ?? z.string()) as z.ZodType<I, any>
-  const encode = (options.encode ?? (throwingEncoder as (value: O) => I)) as (value: O) => I
+  const encode = options.encode ?? throwingEncoder
   const surface: StoredCodecSurface = options.surface ?? 'cli'
   const schema = z.codec(inputSchema, options.output, {
     decode: options.decode as (raw: I, ctx: unknown) => O | Promise<O>,

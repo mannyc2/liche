@@ -7,10 +7,7 @@ import type {
   ResourceOperationCapability,
 } from '../../catalog/types.js'
 import type { JsonSchemaNode } from '../../types.js'
-import {
-  renderAuthCapability,
-  renderAuthPreamble,
-} from './auth.js'
+import { renderAuthCapability, renderAuthPreamble } from './auth.js'
 import { parseHandler } from './imports.js'
 import {
   hasHttpTransport,
@@ -22,14 +19,7 @@ import {
   needsTokens,
   needsAuthResolution,
 } from './predicates.js'
-import {
-  q,
-  renderExamples,
-  renderHttpBind,
-  renderRuntimeValue,
-  renderSchema,
-  renderStringArray,
-} from './render.js'
+import { q, renderExamples, renderHttpBind, renderRuntimeValue, renderSchema, renderStringArray } from './render.js'
 import { renderConfigExtension, renderOpsCommands } from './runtime.js'
 
 export function renderCli(catalog: Catalog): string[] {
@@ -105,7 +95,8 @@ function renderCapability(indent: string, catalog: Catalog, cap: Capability): st
 function renderCapabilityRun(indent: string, catalog: Catalog, cap: Capability): string[] {
   const preamble = renderAuthPreamble(indent, catalog, cap, hasHttpTransport(cap))
   if (cap.kind === 'resource-operation') {
-    if (!cap.http) throw new Error(`Generated CLI cannot render resource operation '${cap.id}' because it has no HTTP transport.`)
+    if (!cap.http)
+      throw new Error(`Generated CLI cannot render resource operation '${cap.id}' because it has no HTTP transport.`)
     if (!catalog.remote) throw missingRemoteError(cap.id)
     return renderRemoteCall(indent, catalog, cap, cap.http, preamble)
   }
@@ -130,9 +121,10 @@ function renderRemoteCall(
   preamble: string[],
 ): string[] {
   const remote = renderRemoteBaseUrlSetup(indent, catalog.remote!.baseUrl)
-  const inputExpr = neededContexts(cap).length > 0
-    ? `{ ...(ctx.options as Record<string, unknown>), ...context }`
-    : `ctx.options as Record<string, unknown>`
+  const inputExpr =
+    neededContexts(cap).length > 0
+      ? `{ ...(ctx.options as Record<string, unknown>), ...context }`
+      : `ctx.options as Record<string, unknown>`
   const authExpr = needsAuthResolution(cap)
     ? `credential ? credentialHttpAuth(credential, { requiredPermissions: ${renderStringArray(cap.requires.permissions)} }) : { kind: 'none' }`
     : `{ kind: 'none' }`

@@ -15,10 +15,16 @@ async function runCli(
   let stdout = ''
   await run(cli, argv, {
     ...options,
-    exit: (code) => { exitCode = code },
+    exit: (code) => {
+      exitCode = code
+    },
     streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
-    stderr: (chunk) => { stderr += chunk },
-    stdout: (chunk) => { stdout += chunk },
+    stderr: (chunk) => {
+      stderr += chunk
+    },
+    stdout: (chunk) => {
+      stdout += chunk
+    },
   })
   return { exitCode, stderr, stdout }
 }
@@ -36,14 +42,17 @@ describe('liche-build CLI config', () => {
 
   test('build command consumes explicit createConfig option bindings', async () => {
     const configPath = join(dir, 'liche-build.jsonc')
-    writeFileSync(configPath, `{
+    writeFileSync(
+      configPath,
+      `{
       // Config backs durable build defaults, not release identity.
       "build": {
         "targets": "made-up-target",
         "out": "${join(dir, 'out')}",
         "parallel": false
       }
-    }`)
+    }`,
+    )
 
     const result = await runCli([
       '--config',

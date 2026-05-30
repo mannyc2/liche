@@ -16,9 +16,14 @@ export function applyTransportAuth(
   }
   const value = env[auth.envVar]
   if (!value) {
-    throw remoteError('REMOTE_CONFIG_MISSING_AUTH', 'Remote auth environment variable is not set.', {
-      operationId,
-    }, { envVar: auth.envVar })
+    throw remoteError(
+      'REMOTE_CONFIG_MISSING_AUTH',
+      'Remote auth environment variable is not set.',
+      {
+        operationId,
+      },
+      { envVar: auth.envVar },
+    )
   }
   secrets.push(value)
   if (auth.kind === 'bearer') {

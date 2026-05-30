@@ -11,10 +11,7 @@ import { captureStdio } from '../src/cli/stdio.js'
 
 const toLevel = (bits: number) => (bits >= 24 ? 3 : bits >= 8 ? 2 : bits >= 4 ? 1 : 0)
 const ttyBits = (env: Record<string, string | undefined>) =>
-  (WriteStream.prototype.getColorDepth as (env?: Record<string, string | undefined>) => number).call(
-    { fd: 1, isTTY: true },
-    env,
-  )
+  WriteStream.prototype.getColorDepth.call({ fd: 1, isTTY: true }, env)
 const color = (env: Record<string, string | undefined>, stdout: 'tty' | 'pipe', overrideColor?: 0 | 1 | 2 | 3) =>
   captureStdio(env, overrideColor === undefined ? { stdout } : { stdout, color: overrideColor }).color
 

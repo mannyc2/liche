@@ -55,9 +55,7 @@ suite('EPIPE / flush-before-exit', () => {
   test('`cli floodfail --json | cat` flushes the full payload before a nonzero exit (pipe sink)', async () => {
     // floodfail → exitCode 1 → process.exit(1) right after the write; cat drains continuously,
     // so a short capture would mean exit dropped buffered bytes.
-    const { out, err } = await bash(
-      `bun "${FIXTURE}" floodfail --json | cat; echo "EXIT:\${PIPESTATUS[0]}" 1>&2`,
-    )
+    const { out, err } = await bash(`bun "${FIXTURE}" floodfail --json | cat; echo "EXIT:\${PIPESTATUS[0]}" 1>&2`)
     const exit = Number((err.match(/EXIT:(-?\d+)/) ?? [])[1])
     expect(exit).toBe(1) // confirms the eager-exit path was exercised
     expect(out.length).toBeGreaterThan(1_000_000) // magnitude bound: not truncated to a pipe-buffer multiple

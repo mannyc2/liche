@@ -101,13 +101,15 @@ Executor control results are factory-branded, not structurally detected. Command
 
 `CommandError` carries RFC-9457-shaped Problem Details fields (`type`, `title`, `status`, `detail`, `instance`) and agent recovery extensions (`retry_after`, `suggested_fix`, `code_actions`). The `message`, `code`, `details`, `fieldErrors`, `hint`, `retryable`, and `exitCode` fields support CLI compatibility. `RunContext.error(...)` accepts the full `CommandError` shape plus optional CTA metadata and returns a branded failure `Result`.
 
+Code that needs to **throw** a structured error should throw `LicheError` (exported from the package root) — a `CommandError`-shaped `Error` subclass that `toCommandError` normalizes into `result.error` with full field fidelity. Prefer it over throwing a plain `CommandError` object: although `toCommandError` still preserves plain objects via the duck-typed `isCommandErrorLike` fallback, those lose stack traces, `instanceof Error`, and `cause` chaining, and degrade to `Uncaught [object Object]` if thrown on a path the normalizer does not wrap.
+
 ## Internal-only
 
 The following are source-path internals. White-box tests may import them from source subpaths; generated code and external consumers do not.
 
 ### Internal namespaces (not exported from package root)
 
-- `Errors` — typed error classes (`BaseError`, `LicheError`, `ParseError`, `ValidationError`, `toCommandError`). Public command code uses `ok` / `fail` / `commandError`.
+- `Errors` — `BaseError` and `toCommandError` are source-path internals. `LicheError`, `ParseError`, and `ValidationError` ARE exported from the package root (throw these so dispatch normalizes them). Public command code typically uses `ok` / `fail` / `commandError`.
 - `Help` — state-shaped help renderer.
 - `Parser` — argv/env/config parsers.
 - `Filter` — formatter filter helpers; `Formatter.pick` is the public path.

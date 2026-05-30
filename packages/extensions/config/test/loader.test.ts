@@ -16,9 +16,15 @@ async function runCli(cli: CliInstance, argv: string[], options: Omit<RunOptions
   let exitCode = 0
   await run(cli, argv, {
     ...options,
-    exit(code) { exitCode = code },
-    stderr(chunk) { stderr += chunk },
-    stdout(chunk) { stdout += chunk },
+    exit(code) {
+      exitCode = code
+    },
+    stderr(chunk) {
+      stderr += chunk
+    },
+    stdout(chunk) {
+      stdout += chunk
+    },
   })
   return { exitCode, stdout, stderr }
 }
@@ -28,7 +34,9 @@ function cliFor<T extends Record<string, unknown>>(
   schema: z.ZodType<T> | undefined,
   options: { scopes?: any } = {},
 ): CliInstance {
-  const sources = fileList ? [files({ files: fileList, ...(options.scopes ? { scopes: options.scopes } : undefined) })] : []
+  const sources = fileList
+    ? [files({ files: fileList, ...(options.scopes ? { scopes: options.scopes } : undefined) })]
+    : []
   return defineCli({
     name: 'app',
     extensions: [
@@ -47,15 +55,21 @@ function cliFor<T extends Record<string, unknown>>(
   })
 }
 
-function snapshotSources(ctx: { sources: { source(provider: string, path: string): unknown } }): Record<string, unknown> {
+function snapshotSources(ctx: {
+  sources: { source(provider: string, path: string): unknown }
+}): Record<string, unknown> {
   const fn = (path: string) => ctx.sources.source('config', path)
-  return new Proxy({}, { get: (_, key: string) => fn(key) }) as Record<string, unknown>
+  return new Proxy({}, { get: (_, key: string) => fn(key) })
 }
 
 describe('config extension loader', () => {
   let dir: string
-  beforeEach(() => { dir = tmp() })
-  afterEach(() => { rmSync(dir, { force: true, recursive: true }) })
+  beforeEach(() => {
+    dir = tmp()
+  })
+  afterEach(() => {
+    rmSync(dir, { force: true, recursive: true })
+  })
 
   test('reads JSON, JSONC, YAML, and TOML config files from explicit --config paths', async () => {
     const jsonPath = join(dir, 'app.json')
@@ -82,7 +96,9 @@ describe('config extension loader', () => {
 
   test('reads JSONC with trailing commas while preserving comment markers inside strings', async () => {
     const path = join(dir, 'app.jsonc')
-    writeFileSync(path, `{
+    writeFileSync(
+      path,
+      `{
       // leading comment
       "url": "https://example.test/path",
       "glob": "src/**/*.ts",
@@ -91,7 +107,8 @@ describe('config extension loader', () => {
         "one",
         "two",
       ],
-    }`)
+    }`,
+    )
 
     const cli = cliFor(undefined, undefined)
     const result = await runCli(cli, ['run', '--config', path, '--json'])
@@ -119,8 +136,14 @@ describe('config extension loader', () => {
     const projectPath = join(projectRoot, 'app.json')
     mkdirSync(userRoot)
     mkdirSync(projectRoot)
-    writeFileSync(userPath, JSON.stringify({ baseUrl: 'https://user.example.test', nested: { keep: true, value: 'user' } }))
-    writeFileSync(projectPath, JSON.stringify({ baseUrl: 'https://project.example.test', nested: { value: 'project' } }))
+    writeFileSync(
+      userPath,
+      JSON.stringify({ baseUrl: 'https://user.example.test', nested: { keep: true, value: 'user' } }),
+    )
+    writeFileSync(
+      projectPath,
+      JSON.stringify({ baseUrl: 'https://project.example.test', nested: { value: 'project' } }),
+    )
 
     const previous = process.cwd()
     process.chdir(projectRoot)
@@ -137,10 +160,7 @@ describe('config extension loader', () => {
   })
 
   test('returns schema defaults when no declared file exists', async () => {
-    const cli = cliFor(
-      [join(dir, 'missing.json')],
-      z.object({ mode: z.string().default('default') }),
-    )
+    const cli = cliFor([join(dir, 'missing.json')], z.object({ mode: z.string().default('default') }))
     const result = await runCli(cli, ['run', '--json'])
     expect(JSON.parse(result.stdout).data.config).toEqual({ mode: 'default' })
   })
@@ -148,10 +168,7 @@ describe('config extension loader', () => {
   test('strict config schemas reject unknown keys', async () => {
     const path = join(dir, 'app.json')
     writeFileSync(path, JSON.stringify({ mode: 'ok', typo: true }))
-    const cli = cliFor(
-      [path],
-      z.strictObject({ mode: z.string() }),
-    )
+    const cli = cliFor([path], z.strictObject({ mode: z.string() }))
     const result = await runCli(cli, ['run', '--json'])
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toContain('Invalid config')
@@ -163,10 +180,7 @@ describe('config extension loader', () => {
     writeFileSync(path, JSON.stringify({ mode: 'json', nested: { value: true } }))
     const cli = defineCli({
       name: 'app',
-      extensions: [
-        outputControls({ json: true }),
-        config({ sources: [files({ files: [path] })] }),
-      ],
+      extensions: [outputControls({ json: true }), config({ sources: [files({ files: [path] })] })],
       commands: [
         defineCommand({
           path: ['run'],
@@ -187,10 +201,7 @@ describe('config extension loader', () => {
   test('--no-config skips all external sources and leaves schema defaults', async () => {
     const path = join(dir, 'app.json')
     writeFileSync(path, JSON.stringify({ mode: 'fromfile' }))
-    const cli = cliFor(
-      [path],
-      z.object({ mode: z.string().default('default') }),
-    )
+    const cli = cliFor([path], z.object({ mode: z.string().default('default') }))
     const result = await runCli(cli, ['run', '--no-config', '--json'])
     expect(JSON.parse(result.stdout).data.config).toEqual({ mode: 'default' })
   })

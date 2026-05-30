@@ -1,13 +1,7 @@
 import os from 'node:os'
 
 export default {
-  mutate: [
-    'src/**/*.ts',
-    '!src/index.ts',
-    '!src/bin.ts',
-    '!src/**/__fixtures__/**',
-    '!src/**/*.test.ts',
-  ],
+  mutate: ['src/**/*.ts', '!src/index.ts', '!src/bin.ts', '!src/**/__fixtures__/**', '!src/**/*.test.ts'],
   testRunner: 'bun',
   coverageAnalysis: 'perTest',
   plugins: ['@stryker-mutator/typescript-checker', '@hughescr/stryker-bun-runner'],

@@ -1,9 +1,4 @@
-import type {
-  AuthSpec,
-  ContextSpec,
-  PermissionSpec,
-  ProductContextEntry,
-} from '../auth/types.js'
+import type { AuthSpec, ContextSpec, PermissionSpec, ProductContextEntry } from '../auth/types.js'
 import type {
   CapabilityExample,
   CommandSpec,
@@ -92,9 +87,7 @@ export type ProductDefinition = ProductMetadata & {
   ops?: ProductOpsSpec
   config?: ProductConfigSpec
   remote?: ProductRemoteSpec
-  resources?:
-    | Readonly<Record<string, ProductResourceDefinition>>
-    | readonly ProductResourceDefinitionEntry[]
+  resources?: Readonly<Record<string, ProductResourceDefinition>> | readonly ProductResourceDefinitionEntry[]
   commands?: Readonly<Record<string, CommandSpec>> | readonly ProductCommandEntry[]
   bindings?: Readonly<Record<string, Omit<BindingSpec, 'key'>>> | readonly BindingSpec[]
 }

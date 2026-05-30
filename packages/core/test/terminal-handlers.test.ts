@@ -27,7 +27,15 @@ const makeCli = () =>
     version: '9.9.9',
     // help + version are first-class defaults now; only opt-in extensions are listed.
     extensions: [reflectionControls(), customControl()],
-    commands: [defineCommand({ path: ['greet'], input: { options: z.object({}) }, async run() { return { hi: true } } })],
+    commands: [
+      defineCommand({
+        path: ['greet'],
+        input: { options: z.object({}) },
+        async run() {
+          return { hi: true }
+        },
+      }),
+    ],
   })
 
 const TERMINAL_FLAGS = ['version', 'help', 'schema', 'custom'] as const
@@ -77,15 +85,27 @@ describe('terminal-flag unification', () => {
     const cli = defineCli({
       name: 'nover',
       version: '',
-      commands: [defineCommand({ path: ['greet'], input: { options: z.object({}) }, async run() { return { hi: true } } })],
+      commands: [
+        defineCommand({
+          path: ['greet'],
+          input: { options: z.object({}) },
+          async run() {
+            return { hi: true }
+          },
+        }),
+      ],
     })
     let code = 0
     let err = ''
     await run(cli, ['--version'], {
       streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
       stdout: () => {},
-      stderr: (s) => { err += s },
-      exit: (c) => { code = c },
+      stderr: (s) => {
+        err += s
+      },
+      exit: (c) => {
+        code = c
+      },
     })
     expect(code).toBe(1) // --version is not registered when the version string is empty
     expect(err).toContain('PARSE_ERROR')

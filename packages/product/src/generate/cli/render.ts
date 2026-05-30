@@ -97,11 +97,13 @@ export function renderHttpBind(bind: NormalizedHttpBind): string {
 }
 
 export function renderExamples(examples: NormalizedCapabilityExample[]): string {
-  return `[${examples.map((example) => {
-    const fields = [`command: ${q(example.command)}`]
-    if (example.summary) fields.push(`description: ${q(example.summary)}`)
-    return `{ ${fields.join(', ')} }`
-  }).join(', ')}]`
+  return `[${examples
+    .map((example) => {
+      const fields = [`command: ${q(example.command)}`]
+      if (example.summary) fields.push(`description: ${q(example.summary)}`)
+      return `{ ${fields.join(', ')} }`
+    })
+    .join(', ')}]`
 }
 
 export function renderEffects(effects: NormalizedEffects): string {
@@ -120,11 +122,7 @@ export function renderSafety(cap: Capability, hasHttpTransport: boolean, needsAu
   const destructive = cap.policy?.dangerous === true || effectKind === 'delete' || effectKind === 'auth-session-delete'
   const idempotent = cap.effects?.idempotent ?? readOnly
   const interactive = cap.kind === 'command' && cap.id === 'auth.login' ? 'required' : 'never'
-  const openWorld =
-    hasHttpTransport ||
-    needsAuthResolution ||
-    cap.requires.contexts.length > 0 ||
-    effectKind === 'exec'
+  const openWorld = hasHttpTransport || needsAuthResolution || cap.requires.contexts.length > 0 || effectKind === 'exec'
   const auth = cap.requires.auth ? 'required' : 'none'
   return `{ auth: ${q(auth)}, destructive: ${destructive ? 'true' : 'false'}, idempotent: ${idempotent ? 'true' : 'false'}, interactive: ${q(interactive)}, openWorld: ${openWorld ? 'true' : 'false'}, readOnly: ${readOnly ? 'true' : 'false'} }`
 }

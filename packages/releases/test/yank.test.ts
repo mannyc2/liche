@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  planReleaseYank,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, planReleaseYank } from '../src/index.js'
 import type { CliReleaseManifest, CliReleaseManifestInput } from '../src/index.js'
 
 const ZERO_HASH = '0'.repeat(64)

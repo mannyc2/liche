@@ -8,17 +8,9 @@ import {
 } from '../config.js'
 import { parseCliReleaseManifest } from '../manifest/index.js'
 import { createCliPublisherExecutors, publishGithubReleaseAssets } from '../publishers/default-executors.js'
-import {
-  executeReleasePublish,
-  planReleasePublish,
-  preflightReleasePublish,
-} from '../publishers/index.js'
+import { executeReleasePublish, planReleasePublish, preflightReleasePublish } from '../publishers/index.js'
 import type { EnvRecord } from '../publishers/index.js'
-import {
-  formatExecuteFailure,
-  formatPlanFailures,
-  formatPreflightFailures,
-} from './format-failures.js'
+import { formatExecuteFailure, formatPlanFailures, formatPreflightFailures } from './format-failures.js'
 import { publisherCredentials } from './oidc-env.js'
 import { envRecord, readJsonFile, releaseConfig } from './types.js'
 import type { CommandResult, ReleaseCommandContext } from './types.js'
@@ -151,9 +143,8 @@ export async function publishFromManifest(input: {
         return {
           ok: false,
           error: {
-            code: executed.failure.code === 'EXECUTOR_MISSING'
-              ? 'PUBLISH_EXECUTOR_MISSING'
-              : 'PUBLISH_EXECUTION_FAILED',
+            code:
+              executed.failure.code === 'EXECUTOR_MISSING' ? 'PUBLISH_EXECUTOR_MISSING' : 'PUBLISH_EXECUTION_FAILED',
             message: 'release publish execution failed',
             hint: formatExecuteFailure(executed.failure),
           },

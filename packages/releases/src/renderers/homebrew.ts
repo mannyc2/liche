@@ -1,9 +1,5 @@
 import { join } from 'node:path'
-import {
-  packageArtifact,
-  safeLowerSegment,
-  writeArtifact,
-} from './common.js'
+import { packageArtifact, safeLowerSegment, writeArtifact } from './common.js'
 import type { ReleaseRenderer, ReleaseRendererInput, RenderPackageResult } from './index.js'
 
 export type HomebrewRendererConfig = {
@@ -13,16 +9,18 @@ export type HomebrewRendererConfig = {
 }
 
 function rubyClassName(value: string): string {
-  return value
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((part) => `${part[0]!.toUpperCase()}${part.slice(1)}`)
-    .join('') || 'Cli'
+  return (
+    value
+      .split(/[^A-Za-z0-9]+/)
+      .filter(Boolean)
+      .map((part) => `${part[0]!.toUpperCase()}${part.slice(1)}`)
+      .join('') || 'Cli'
+  )
 }
 
 function homebrewFormula(input: ReleaseRendererInput, className: string, command: string): string {
-  const eligible = input.manifest.binaries.filter((binary) =>
-    binary.platform === 'darwin' || (binary.platform === 'linux' && binary.libc !== 'musl'),
+  const eligible = input.manifest.binaries.filter(
+    (binary) => binary.platform === 'darwin' || (binary.platform === 'linux' && binary.libc !== 'musl'),
   )
   const branchLines = eligible.map((binary) => {
     const os = binary.platform === 'darwin' ? 'on_macos' : 'on_linux'
@@ -79,8 +77,8 @@ async function renderHomebrew(input: ReleaseRendererInput): Promise<RenderPackag
 export const homebrewRenderer: ReleaseRenderer = {
   id: 'homebrew',
   validate: ({ manifest }) => {
-    const eligible = manifest.binaries.some((binary) =>
-      binary.platform === 'darwin' || (binary.platform === 'linux' && binary.libc !== 'musl'),
+    const eligible = manifest.binaries.some(
+      (binary) => binary.platform === 'darwin' || (binary.platform === 'linux' && binary.libc !== 'musl'),
     )
     return eligible ? [] : ['homebrew renderer requires at least one darwin or linux glibc binary']
   },

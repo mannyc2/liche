@@ -1,14 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  manifestFromBuildRecord,
-  parseCliReleaseManifest,
-} from '../src/index.js'
-import type {
-  BuildRecord,
-  RecordedBinary,
-  ReleaseDistConfig,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, manifestFromBuildRecord, parseCliReleaseManifest } from '../src/index.js'
+import type { BuildRecord, RecordedBinary, ReleaseDistConfig } from '../src/index.js'
 
 const SHA = '0'.repeat(64)
 
@@ -71,10 +63,7 @@ describe('manifestFromBuildRecord', () => {
   })
 
   test('honors a core-command-manifest contract override', () => {
-    const manifestInput = manifestFromBuildRecord(
-      record(),
-      baseConfig({ contract: { kind: 'core-command-manifest' } }),
-    )
+    const manifestInput = manifestFromBuildRecord(record(), baseConfig({ contract: { kind: 'core-command-manifest' } }))
     expect(manifestInput.subject.contract.kind).toBe('core-command-manifest')
   })
 
@@ -108,10 +97,7 @@ describe('manifestFromBuildRecord', () => {
       }),
       baseConfig(),
     )
-    expect(manifestInput.binaries.map((b) => b.filename)).toEqual([
-      'workers-darwin-arm64',
-      'workers-windows-x64.exe',
-    ])
+    expect(manifestInput.binaries.map((b) => b.filename)).toEqual(['workers-darwin-arm64', 'workers-windows-x64.exe'])
   })
 
   test('honors a custom filename template', () => {
@@ -144,9 +130,7 @@ describe('manifestFromBuildRecord', () => {
   test('builds URLs from a url-template host', () => {
     const manifestInput = manifestFromBuildRecord(
       record({
-        binaries: [
-          binary({ id: 'linux-x64', target: 'bun-linux-x64', platform: 'linux', arch: 'x64', libc: 'glibc' }),
-        ],
+        binaries: [binary({ id: 'linux-x64', target: 'bun-linux-x64', platform: 'linux', arch: 'x64', libc: 'glibc' })],
       }),
       baseConfig({
         host: {
@@ -155,9 +139,7 @@ describe('manifestFromBuildRecord', () => {
         },
       }),
     )
-    expect(manifestInput.binaries[0]?.url).toBe(
-      'https://cdn.example.test/1.2.3/linux/x64/workers-linux-x64',
-    )
+    expect(manifestInput.binaries[0]?.url).toBe('https://cdn.example.test/1.2.3/linux/x64/workers-linux-x64')
   })
 
   test('preserves libc and cpuVariant facts on each binary', () => {
@@ -201,10 +183,7 @@ describe('manifestFromBuildRecord', () => {
   })
 
   test('release.createdAt is auto-generated when not supplied', () => {
-    const manifestInput = manifestFromBuildRecord(
-      record(),
-      baseConfig({ release: { generatorVersion: '0.0.0' } }),
-    )
+    const manifestInput = manifestFromBuildRecord(record(), baseConfig({ release: { generatorVersion: '0.0.0' } }))
     const parsed = CliReleaseManifestSchema.parse(manifestInput)
     expect(parsed.release.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })

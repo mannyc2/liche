@@ -14,11 +14,8 @@ export default defineProduct({
   description: 'Workers fixture with bearer-token auth and org context.',
   remote: { baseUrl: Runtime.env('ACME_API_BASE_URL') },
   auth: Auth.bearer({
-      id: 'acme',
-      sources: [
-        Auth.token.env('ACME_TOKEN', { label: 'Bearer token' }),
-        Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' }),
-      ],
+    id: 'acme',
+    sources: [Auth.token.env('ACME_TOKEN', { label: 'Bearer token' }), Auth.token.env('ACME_CI_TOKEN', { mode: 'ci' })],
   }),
   permissions: {
     'cache:write': Auth.permission.scope('cache.write'),

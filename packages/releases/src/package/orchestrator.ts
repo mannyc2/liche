@@ -13,10 +13,7 @@ import type {
 import { resolveReleaseRenderers } from '../renderers/index.js'
 import type { BinaryVerificationFailure, VerifiedBinary } from './verify-binary.js'
 import { verifyReleaseBinaries } from './verify-binary.js'
-import type {
-  PackageArtifactVerificationFailure,
-  VerifiedPackageArtifact,
-} from './verify-artifact.js'
+import type { PackageArtifactVerificationFailure, VerifiedPackageArtifact } from './verify-artifact.js'
 import { verifyPackageArtifacts } from './verify-artifact.js'
 
 export type PackageReleaseInput = {
@@ -28,12 +25,7 @@ export type PackageReleaseInput = {
   rendererConfig?: RendererConfigMap
 }
 
-export type PackageReleaseFailureStage =
-  | 'manifest'
-  | 'binary'
-  | 'renderer-selection'
-  | 'renderer'
-  | 'package-artifact'
+export type PackageReleaseFailureStage = 'manifest' | 'binary' | 'renderer-selection' | 'renderer' | 'package-artifact'
 
 export type PackageReleaseFailure = {
   stage: PackageReleaseFailureStage
@@ -50,9 +42,7 @@ export type PackageReleaseSuccess = {
   packageArtifacts: VerifiedPackageArtifact[]
 }
 
-export type PackageReleaseResult =
-  | PackageReleaseSuccess
-  | { ok: false; failures: PackageReleaseFailure[] }
+export type PackageReleaseResult = PackageReleaseSuccess | { ok: false; failures: PackageReleaseFailure[] }
 
 function binaryFailure(failure: BinaryVerificationFailure): PackageReleaseFailure {
   const packaged: PackageReleaseFailure = { stage: 'binary', code: failure.code, message: failure.message }
@@ -143,17 +133,19 @@ export async function packageRelease(input: PackageReleaseInput): Promise<Packag
   if (!parsed.ok) {
     return {
       ok: false,
-      failures: [{
-        stage: 'manifest',
-        code: 'MANIFEST_INVALID',
-        message: 'release manifest is invalid',
-        details: {
-          issues: parsed.error.issues.map((issue) => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-          })),
+      failures: [
+        {
+          stage: 'manifest',
+          code: 'MANIFEST_INVALID',
+          message: 'release manifest is invalid',
+          details: {
+            issues: parsed.error.issues.map((issue) => ({
+              path: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
         },
-      }],
+      ],
     }
   }
 

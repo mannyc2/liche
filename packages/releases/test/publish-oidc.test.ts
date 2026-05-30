@@ -11,7 +11,6 @@ import {
   npmOidcExchangeUrl,
 } from '../src/index.js'
 import type {
-  NpmCredentials,
   NpmPublishStep,
   OidcExchangeEnv,
   OidcIdTokenFetcher,
@@ -172,7 +171,7 @@ describe('executeReleasePublish OIDC dispatch', () => {
     const credentials = { npm: { kind: 'oidc', provider: 'github-actions' } as const }
     const result = await executeReleasePublish({
       plan: npmFixture.plan,
-      credentials: credentials as { npm: NpmCredentials },
+      credentials: credentials,
       executors: { npm: () => ({ ok: true }) },
     })
     expect(result.ok).toBe(false)

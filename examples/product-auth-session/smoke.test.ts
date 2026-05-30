@@ -110,9 +110,7 @@ async function runGenerated(
     exit: (code) => {
       exitCode = code
     },
-    streams: isTty
-      ? { stdin: 'tty', stdout: 'tty', stderr: 'tty' }
-      : { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
+    streams: isTty ? { stdin: 'tty', stdout: 'tty', stderr: 'tty' } : { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
     stderr: (chunk) => {
       stderr += chunk
     },

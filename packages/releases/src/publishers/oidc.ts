@@ -1,6 +1,4 @@
-export type OidcIdTokenResult =
-  | { ok: true; token: string }
-  | { ok: false; reason: string }
+export type OidcIdTokenResult = { ok: true; token: string } | { ok: false; reason: string }
 
 export type OidcIdTokenFetcher = (audience: string) => Promise<OidcIdTokenResult>
 

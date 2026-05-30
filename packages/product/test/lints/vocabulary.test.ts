@@ -105,15 +105,11 @@ describe('lintCatalog — vocabulary/verb', () => {
 
 describe('lintCatalog — product/id', () => {
   test('product id violating the stable-id pattern fails product/id-stable', () => {
-    expect(
-      lintProductInput({ id: 'Workers!' }).find((i) => i.code === 'product/id-stable'),
-    ).toBeDefined()
+    expect(lintProductInput({ id: 'Workers!' }).find((i) => i.code === 'product/id-stable')).toBeDefined()
   })
 
   test('empty product version fails product/version-required', () => {
-    expect(
-      lintProductInput({ version: '' }).find((i) => i.code === 'product/version-required'),
-    ).toBeDefined()
+    expect(lintProductInput({ version: '' }).find((i) => i.code === 'product/version-required')).toBeDefined()
   })
 })
 
@@ -341,11 +337,7 @@ describe('lintCatalog — capability safety metadata', () => {
           }),
         },
       }).map((issue) => issue.code),
-    ).toEqual([
-      'capability/effects-required',
-      'capability/policy-required',
-      'capability/examples-required',
-    ])
+    ).toEqual(['capability/effects-required', 'capability/policy-required', 'capability/examples-required'])
   })
 
   test('dangerous and delete capabilities require consistent policy flags', () => {
@@ -384,9 +376,7 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
   })
 
   test('product/version-required has the expected code, path, and message', () => {
-    const issue = lintProductInput({ version: '' }).find(
-      (i) => i.code === 'product/version-required',
-    )
+    const issue = lintProductInput({ version: '' }).find((i) => i.code === 'product/version-required')
     expect(issue).toEqual({
       code: 'product/version-required',
       path: 'product.version',
@@ -477,12 +467,8 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
       },
     }).find((i) => i.code === 'command/execution-coherent')
     expect(issue?.path).toBe('capabilities[0].execution.http')
-    expect(issue?.message).toBe(
-      "Hybrid-workflow command 'deploy' opted into OpenAPI but has no http trigger",
-    )
-    expect(issue?.recommendation).toBe(
-      'declare http: { method, path } on the workflow or set surfaces.openapi=false',
-    )
+    expect(issue?.message).toBe("Hybrid-workflow command 'deploy' opted into OpenAPI but has no http trigger")
+    expect(issue?.recommendation).toBe('declare http: { method, path } on the workflow or set surfaces.openapi=false')
   })
 
   test('command/id-stable fires for invalid command ids and includes the id', () => {
@@ -507,24 +493,18 @@ describe('lintCatalog — issue shape (code, path, message, recommendation)', ()
     }).find((i) => i.code === 'shape/unknown-resource-ref')
     expect(issue?.path).toBe('capabilities[0].output')
     expect(issue?.message).toBe("Shape.list references unknown resource 'ghost'")
-    expect(issue?.recommendation).toBe(
-      'declare the resource in defineProduct({ resources }) or fix the reference',
-    )
+    expect(issue?.recommendation).toBe('declare the resource in defineProduct({ resources }) or fix the reference')
   })
 })
 
 describe('lintCatalog — hasText whitespace handling', () => {
   test('product id with only whitespace fails product/id-required (trim is not skipped)', () => {
-    expect(
-      lintProductInput({ id: '   ', name: 'W' }).find((i) => i.code === 'product/id-required'),
-    ).toBeDefined()
+    expect(lintProductInput({ id: '   ', name: 'W' }).find((i) => i.code === 'product/id-required')).toBeDefined()
   })
 
   test('product version with only whitespace fails product/version-required', () => {
     expect(
-      lintProductInput({ name: 'W', version: '   ' }).find(
-        (i) => i.code === 'product/version-required',
-      ),
+      lintProductInput({ name: 'W', version: '   ' }).find((i) => i.code === 'product/version-required'),
     ).toBeDefined()
   })
 
@@ -575,15 +555,11 @@ describe('lintCatalog — surface/openapi-on-local is local-mode-only', () => {
 
 describe('lintCatalog — ID_PATTERN edge cases', () => {
   test('uppercase-start ids fail (anchors on ^)', () => {
-    expect(
-      lintProductInput({ id: 'Workers', name: 'W' }).find((i) => i.code === 'product/id-stable'),
-    ).toBeDefined()
+    expect(lintProductInput({ id: 'Workers', name: 'W' }).find((i) => i.code === 'product/id-stable')).toBeDefined()
   })
 
   test('ids with trailing junk fail (anchors on $)', () => {
-    expect(
-      lintProductInput({ id: 'workers!', name: 'W' }).find((i) => i.code === 'product/id-stable'),
-    ).toBeDefined()
+    expect(lintProductInput({ id: 'workers!', name: 'W' }).find((i) => i.code === 'product/id-stable')).toBeDefined()
   })
 
   test('valid ids with dot or dash separators and multi-char segments pass', () => {
@@ -608,9 +584,7 @@ describe('lintCatalog — ID_PATTERN edge cases', () => {
 
   test('ids with consecutive separators (no segment in between) fail', () => {
     expect(
-      lintProductInput({ id: 'workers..platform', name: 'W' }).find(
-        (i) => i.code === 'product/id-stable',
-      ),
+      lintProductInput({ id: 'workers..platform', name: 'W' }).find((i) => i.code === 'product/id-stable'),
     ).toBeDefined()
   })
 })
@@ -627,9 +601,7 @@ describe('lintCatalog — operation/output-required and isNonEmptyShape', () => 
       },
     }).find((i) => i.code === 'operation/output-required')
     expect(issue?.path).toBe('capabilities[0].output')
-    expect(issue?.message).toBe(
-      "Resource operation 'script.list' must declare a non-empty output schema",
-    )
+    expect(issue?.message).toBe("Resource operation 'script.list' must declare a non-empty output schema")
   })
 
   test('operation with a non-empty object output does NOT fail operation/output-required', () => {

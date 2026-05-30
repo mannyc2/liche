@@ -101,8 +101,10 @@ function prepareGeneration(product: RuntimeProduct, options: GenerateToDirOption
   }
   assertDistinctSurfaceConfig(surfaces, compileEntryFileName)
 
-  const cliFileName = surfaces.find((s) => s.id === (options.surfaceId ?? 'cli'))?.fileName
-    ?? options.generatedFileName ?? 'liche.generated.ts'
+  const cliFileName =
+    surfaces.find((s) => s.id === (options.surfaceId ?? 'cli'))?.fileName ??
+    options.generatedFileName ??
+    'liche.generated.ts'
 
   const manifest: GeneratedSurfaceManifest = {
     manifestVersion: 1,
@@ -139,8 +141,8 @@ function prepareSurface(
   inputDigest: string,
 ): PreparedSurface {
   const fields = OPTION_FIELDS[spec.key]!
-  const id = (options[fields.id] as string | undefined) ?? spec.defaultId
-  const fileName = (options[fields.file] as string | undefined) ?? spec.defaultFileName
+  const id = options[fields.id] ?? spec.defaultId
+  const fileName = options[fields.file] ?? spec.defaultFileName
   // The options digest captures every input that would change rendered output
   // for this surface but not the catalog itself. Historical layout preserved
   // exactly (per-surface field-name keys) so digests remain byte-stable.
@@ -172,23 +174,16 @@ function assertDistinctSurfaceConfig(surfaces: PreparedSurface[], compileEntryFi
     }
     ids.add(surface.id)
     if (fileNames.has(surface.fileName)) {
-      throw new Error(
-        `Generated surface artifact filenames must be unique; duplicate '${surface.fileName}'`,
-      )
+      throw new Error(`Generated surface artifact filenames must be unique; duplicate '${surface.fileName}'`)
     }
     fileNames.add(surface.fileName)
   }
   if (fileNames.has(compileEntryFileName)) {
-    throw new Error(
-      `Generated artifact filenames must be unique; duplicate '${compileEntryFileName}'`,
-    )
+    throw new Error(`Generated artifact filenames must be unique; duplicate '${compileEntryFileName}'`)
   }
 }
 
-export async function generateToDir(
-  product: RuntimeProduct,
-  options: GenerateToDirOptions,
-): Promise<GenerateResult> {
+export async function generateToDir(product: RuntimeProduct, options: GenerateToDirOptions): Promise<GenerateResult> {
   const { compileEntrypoint, manifest, manifestPath, surfaces, cliSurfaceId } = prepareGeneration(product, options)
   for (const surface of surfaces) {
     await Bun.write(surface.path, surface.contents)
@@ -212,10 +207,7 @@ export async function generateToDir(
   }
 }
 
-export async function checkAgainstDir(
-  product: RuntimeProduct,
-  options: GenerateToDirOptions,
-): Promise<CheckResult> {
+export async function checkAgainstDir(product: RuntimeProduct, options: GenerateToDirOptions): Promise<CheckResult> {
   const { compileEntrypoint, manifest: expectedManifest, manifestPath, surfaces } = prepareGeneration(product, options)
   const drift: string[] = []
 
@@ -227,16 +219,14 @@ export async function checkAgainstDir(
     }
     const actualContents = await file.text()
     if (actualContents !== surface.contents) {
-      drift.push(
-        `surface '${surface.id}' output digest mismatch (file: ${relative(process.cwd(), surface.path)})`,
-      )
+      drift.push(`surface '${surface.id}' output digest mismatch (file: ${relative(process.cwd(), surface.path)})`)
     }
   }
 
   const compileEntryFile = Bun.file(compileEntrypoint.path)
   if (!(await compileEntryFile.exists())) {
     drift.push(`generated compile entry missing: ${relative(process.cwd(), compileEntrypoint.path)}`)
-  } else if (await compileEntryFile.text() !== compileEntrypoint.contents) {
+  } else if ((await compileEntryFile.text()) !== compileEntrypoint.contents) {
     drift.push(
       `generated compile entry output digest mismatch (file: ${relative(process.cwd(), compileEntrypoint.path)})`,
     )

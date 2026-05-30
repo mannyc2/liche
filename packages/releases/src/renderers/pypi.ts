@@ -61,7 +61,9 @@ async function renderPypi(input: ReleaseRendererInput): Promise<RenderPackageRes
       input.manifest.metadata.homepage ? `Home-page: ${input.manifest.metadata.homepage}` : '',
       input.manifest.metadata.license ? `License: ${input.manifest.metadata.license}` : '',
       '',
-    ].filter((line) => line !== '').join('\n')
+    ]
+      .filter((line) => line !== '')
+      .join('\n')
     const wheel = [
       'Wheel-Version: 1.0',
       `Generator: @liche/releases ${input.manifest.release.generatorVersion}`,
@@ -76,10 +78,7 @@ async function renderPypi(input: ReleaseRendererInput): Promise<RenderPackageRes
     ]
     const recordLines = baseEntries.map((entry) => wheelRecordLine(entry.path, Buffer.from(entry.data)))
     recordLines.push(`${distInfo}/RECORD,,`)
-    const wheelBytes = createZip([
-      ...baseEntries,
-      { path: `${distInfo}/RECORD`, data: `${recordLines.join('\n')}\n` },
-    ])
+    const wheelBytes = createZip([...baseEntries, { path: `${distInfo}/RECORD`, data: `${recordLines.join('\n')}\n` }])
     const fileName = `${distribution}-${version}-${tag}.whl`
     const artifact = await writeArtifact(join(input.outDir, fileName), wheelBytes)
     const packageId = `pypi:${distribution}:${binary.id}`

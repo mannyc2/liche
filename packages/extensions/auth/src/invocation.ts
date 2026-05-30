@@ -19,10 +19,9 @@ export function detectInvocation(ctx: { sources: SourceInspector }): InvocationK
 }
 
 function isCiEnv(sources: SourceInspector): boolean {
-  const truthy = (v: unknown): boolean =>
-    typeof v === 'string' && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
+  const truthy = (v: unknown): boolean => typeof v === 'string' && v !== '' && v !== '0' && v.toLowerCase() !== 'false'
   if (truthy(sources.value('env', 'CI'))) return true
-  return ['GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'].some(
-    (key) => truthy(sources.value('env', key)),
+  return ['GITHUB_ACTIONS', 'GITLAB_CI', 'CIRCLECI', 'BUILDKITE', 'TF_BUILD'].some((key) =>
+    truthy(sources.value('env', key)),
   )
 }

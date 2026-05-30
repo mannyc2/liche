@@ -29,10 +29,7 @@ export type ReleasePublisher = {
 
 export type PublisherRegistry = Partial<Record<PackageEcosystem, ReleasePublisher>>
 
-export {
-  PUBLISHER_ENV_NAMES,
-  loadPublisherCredentialsFromEnv,
-} from './credentials-env.js'
+export { PUBLISHER_ENV_NAMES, loadPublisherCredentialsFromEnv } from './credentials-env.js'
 export type { EnvRecord, PublisherEnvNames } from './credentials-env.js'
 
 export {
@@ -41,12 +38,7 @@ export {
   audienceForNpmRegistry,
   npmOidcExchangeUrl,
 } from './oidc.js'
-export type {
-  OidcExchangeEnv,
-  OidcExecutorFailureCode,
-  OidcIdTokenFetcher,
-  OidcIdTokenResult,
-} from './oidc.js'
+export type { OidcExchangeEnv, OidcExecutorFailureCode, OidcIdTokenFetcher, OidcIdTokenResult } from './oidc.js'
 
 export { executeReleasePublish } from './executor.js'
 export type {

@@ -48,13 +48,17 @@ export type ProductReleaseSpec = {
 }
 
 export type ProductOpsSpec = {
-  doctor?: boolean | {
-    packageManagers?: readonly ProductPackageManager[]
-  }
-  telemetry?: false | {
-    enabledEnvVar?: string
-    fileEnvVar?: string
-  }
+  doctor?:
+    | boolean
+    | {
+        packageManagers?: readonly ProductPackageManager[]
+      }
+  telemetry?:
+    | false
+    | {
+        enabledEnvVar?: string
+        fileEnvVar?: string
+      }
   notices?: {
     updates?: readonly ProductNotice[]
     channels?: readonly ProductNotice[]
@@ -67,13 +71,17 @@ export const DEFAULT_OPS_PACKAGE_MANAGERS: readonly ProductPackageManager[] = ['
 
 export type NormalizedOpsSpec = {
   enabled: boolean
-  doctor: false | {
-    packageManagers: ProductPackageManager[]
-  }
-  telemetry: false | {
-    enabledEnvVar: string
-    fileEnvVar: string
-  }
+  doctor:
+    | false
+    | {
+        packageManagers: ProductPackageManager[]
+      }
+  telemetry:
+    | false
+    | {
+        enabledEnvVar: string
+        fileEnvVar: string
+      }
   notices: {
     updates: ProductNotice[]
     channels: ProductNotice[]
@@ -84,23 +92,28 @@ export type NormalizedOpsSpec = {
 
 export function normalizeOpsSpec(spec: ProductOpsSpec | undefined): NormalizedOpsSpec {
   const enabled = spec !== undefined
-  const doctor = !enabled || spec?.doctor === false
-    ? false
-    : {
-        packageManagers: spec?.doctor && typeof spec.doctor === 'object' && spec.doctor.packageManagers
-          ? [...spec.doctor.packageManagers]
-          : [...DEFAULT_OPS_PACKAGE_MANAGERS],
-      }
-  const telemetry = !enabled || spec?.telemetry === false
-    ? false
-    : {
-        enabledEnvVar: spec?.telemetry && typeof spec.telemetry === 'object' && spec.telemetry.enabledEnvVar
-          ? spec.telemetry.enabledEnvVar
-          : 'LICHE_TELEMETRY',
-        fileEnvVar: spec?.telemetry && typeof spec.telemetry === 'object' && spec.telemetry.fileEnvVar
-          ? spec.telemetry.fileEnvVar
-          : 'LICHE_TELEMETRY_FILE',
-      }
+  const doctor =
+    !enabled || spec?.doctor === false
+      ? false
+      : {
+          packageManagers:
+            spec?.doctor && typeof spec.doctor === 'object' && spec.doctor.packageManagers
+              ? [...spec.doctor.packageManagers]
+              : [...DEFAULT_OPS_PACKAGE_MANAGERS],
+        }
+  const telemetry =
+    !enabled || spec?.telemetry === false
+      ? false
+      : {
+          enabledEnvVar:
+            spec?.telemetry && typeof spec.telemetry === 'object' && spec.telemetry.enabledEnvVar
+              ? spec.telemetry.enabledEnvVar
+              : 'LICHE_TELEMETRY',
+          fileEnvVar:
+            spec?.telemetry && typeof spec.telemetry === 'object' && spec.telemetry.fileEnvVar
+              ? spec.telemetry.fileEnvVar
+              : 'LICHE_TELEMETRY_FILE',
+        }
   return {
     enabled,
     doctor,

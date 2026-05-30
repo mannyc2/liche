@@ -1,9 +1,5 @@
 import type { VerifiedPackageArtifact } from '../package/index.js'
-import type {
-  CliReleaseManifest,
-  PackageEcosystem,
-  PackageRecord,
-} from '../manifest/index.js'
+import type { CliReleaseManifest, PackageEcosystem, PackageRecord } from '../manifest/index.js'
 import { PACKAGE_ECOSYSTEMS, isPackageEcosystem } from '../renderers/index.js'
 import type { PublishSelection } from './index.js'
 
@@ -90,11 +86,7 @@ export type ScoopPublishStep = PublishStepBase & {
   targetPath: string
 }
 
-export type PublishStep =
-  | NpmPublishStep
-  | PypiPublishStep
-  | HomebrewPublishStep
-  | ScoopPublishStep
+export type PublishStep = NpmPublishStep | PypiPublishStep | HomebrewPublishStep | ScoopPublishStep
 
 export type PublishPlanFailureCode =
   | 'PUBLISHER_UNKNOWN'
@@ -156,12 +148,20 @@ function resolveSelection(
   const resolved = new Set<PackageEcosystem>()
   for (const raw of selection) {
     if (seen.has(raw)) {
-      failures.push({ publisher: raw, code: 'PUBLISHER_DUPLICATE', message: `publisher '${raw}' was selected more than once` })
+      failures.push({
+        publisher: raw,
+        code: 'PUBLISHER_DUPLICATE',
+        message: `publisher '${raw}' was selected more than once`,
+      })
       continue
     }
     seen.add(raw)
     if (!isPackageEcosystem(raw)) {
-      failures.push({ publisher: raw, code: 'PUBLISHER_UNKNOWN', message: `publisher '${raw}' is not a supported package ecosystem` })
+      failures.push({
+        publisher: raw,
+        code: 'PUBLISHER_UNKNOWN',
+        message: `publisher '${raw}' is not a supported package ecosystem`,
+      })
       continue
     }
     resolved.add(raw)

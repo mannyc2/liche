@@ -117,9 +117,7 @@ function normalizeRequires(
     permissions: spec?.permissions ? [...spec.permissions] : [],
   }
   if (out.auth && !authEnabled) {
-    throw new Error(
-      `Capability '${capabilityId}' requires auth but product declared Auth.none().`,
-    )
+    throw new Error(`Capability '${capabilityId}' requires auth but product declared Auth.none().`)
   }
   for (const ctx of out.contexts) {
     if (!contextIds.has(ctx)) {
@@ -182,10 +180,7 @@ function normalizeWorkflowStep(step: WorkflowStep): NormalizedWorkflowStep {
   return { id: step.id, label: step.label, uses: step.uses }
 }
 
-function normalizeSurfacesForResourceOperation(
-  hints: SurfaceHints | undefined,
-  hasHttp: boolean,
-): NormalizedSurfaces {
+function normalizeSurfacesForResourceOperation(hints: SurfaceHints | undefined, hasHttp: boolean): NormalizedSurfaces {
   const out = normalizeSurfacesCommon(hints)
   out.openapi = resolveOpenApiForResourceOperation(hints?.openapi, hasHttp)
   return out
@@ -226,9 +221,11 @@ function readCliInclusion(value: SurfaceHints['cli']): { included: boolean; comm
   return out
 }
 
-function readDashboardInclusion(
-  value: SurfaceHints['dashboard'],
-): { included: boolean; view?: string; placement?: string } {
+function readDashboardInclusion(value: SurfaceHints['dashboard']): {
+  included: boolean
+  view?: string
+  placement?: string
+} {
   if (value === undefined) return { included: false }
   if (value === false) return { included: false }
   if (value === true) return { included: true }
@@ -244,10 +241,7 @@ function resolveOpenApiForResourceOperation(value: boolean | undefined, hasHttp:
   return true
 }
 
-function resolveOpenApiForCommand(
-  value: boolean | undefined,
-  execution: NormalizedExecution,
-): boolean {
+function resolveOpenApiForCommand(value: boolean | undefined, execution: NormalizedExecution): boolean {
   if (execution.mode === 'remote-http') return value !== false
   if (execution.mode === 'local') return false
   return value === true && execution.http !== undefined

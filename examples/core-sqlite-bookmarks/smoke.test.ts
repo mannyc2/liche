@@ -43,10 +43,7 @@ describe('core-sqlite-bookmarks example', () => {
 
     const all = JSON.parse((await runCli(['list', '--json'])).stdout)
     expect(all.ok).toBe(true)
-    expect(all.data.bookmarks.map((entry: { url: string }) => entry.url)).toEqual([
-      'https://bun.sh',
-      'https://zod.dev',
-    ])
+    expect(all.data.bookmarks.map((entry: { url: string }) => entry.url)).toEqual(['https://bun.sh', 'https://zod.dev'])
 
     const runtimeOnly = JSON.parse((await runCli(['list', '--tag', 'runtime', '--json'])).stdout)
     expect(runtimeOnly.data.bookmarks.map((entry: { url: string }) => entry.url)).toEqual(['https://bun.sh'])

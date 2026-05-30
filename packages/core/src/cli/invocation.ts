@@ -5,7 +5,7 @@ import { commandFormat } from '../command/registry.js'
 export const DEFAULT_FORMAT: Format = 'json'
 
 export function defaultEnv(): Dict<string | undefined> {
-  return Bun.env as Dict<string | undefined>
+  return Bun.env
 }
 
 export type ResolveFormatInput = {
@@ -49,7 +49,10 @@ export async function runPrepareContext(
   return overrides
 }
 
-export function contextGlobals(flags: Record<string, unknown>, state: CliState): Record<string, boolean | string | undefined> {
+export function contextGlobals(
+  flags: Record<string, unknown>,
+  state: CliState,
+): Record<string, boolean | string | undefined> {
   const out: Record<string, boolean | string | undefined> = {}
   for (const global of state.globals) {
     if (global.expose !== 'context') continue

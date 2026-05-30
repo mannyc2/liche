@@ -20,12 +20,13 @@ export async function callHttpOperation<TInput extends Record<string, unknown>, 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const controller = new AbortController()
   let timedOut = false
-  const timer = timeoutMs >= 0
-    ? setTimeout(() => {
-      timedOut = true
-      controller.abort()
-    }, timeoutMs)
-    : undefined
+  const timer =
+    timeoutMs >= 0
+      ? setTimeout(() => {
+          timedOut = true
+          controller.abort()
+        }, timeoutMs)
+      : undefined
 
   let response: Response
   try {
@@ -38,17 +39,29 @@ export async function callHttpOperation<TInput extends Record<string, unknown>, 
     response = await fetcher(request.url, init)
   } catch (error) {
     if (timedOut || isAbortError(error)) {
-      throw remoteError('REMOTE_TIMEOUT', 'Remote request timed out.', {
+      throw remoteError(
+        'REMOTE_TIMEOUT',
+        'Remote request timed out.',
+        {
+          operationId: options.id,
+          method: request.method,
+          url: safeUrl(request.url),
+        },
+        undefined,
+        { cause: asError(error), retryable: true },
+      )
+    }
+    throw remoteError(
+      'REMOTE_NETWORK',
+      'Remote request failed before receiving a response.',
+      {
         operationId: options.id,
         method: request.method,
         url: safeUrl(request.url),
-      }, undefined, { cause: asError(error), retryable: true })
-    }
-    throw remoteError('REMOTE_NETWORK', 'Remote request failed before receiving a response.', {
-      operationId: options.id,
-      method: request.method,
-      url: safeUrl(request.url),
-    }, undefined, { cause: asError(error), retryable: true })
+      },
+      undefined,
+      { cause: asError(error), retryable: true },
+    )
   } finally {
     if (timer) clearTimeout(timer)
   }
@@ -63,12 +76,18 @@ export async function callHttpOperation<TInput extends Record<string, unknown>, 
     return (await parseSchemaAsync(options.output, parsed, parsed)) as TOutput
   } catch (error) {
     if (error instanceof ValidationError) {
-      throw remoteError('REMOTE_RESPONSE_SCHEMA', 'Remote response did not match the expected schema.', {
-        operationId: options.id,
-        method: request.method,
-        url: safeUrl(request.url),
-        validation: error.fieldErrors.map(({ path, message }) => ({ path, message })),
-      }, undefined, { cause: error })
+      throw remoteError(
+        'REMOTE_RESPONSE_SCHEMA',
+        'Remote response did not match the expected schema.',
+        {
+          operationId: options.id,
+          method: request.method,
+          url: safeUrl(request.url),
+          validation: error.fieldErrors.map(({ path, message }) => ({ path, message })),
+        },
+        undefined,
+        { cause: error },
+      )
     }
     throw error
   }

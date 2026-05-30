@@ -11,7 +11,7 @@ export { checkCommandSurface } from './schema/surface.js'
 export type { CommandSurface, SurfaceCheckResult } from './schema/surface.js'
 export type { ArgDecodeContext, ArgIssue, StoredCodecSurface } from './schema/arg.js'
 export { z, parseSchema, parseSchemaAsync } from './schema/zod.js'
-export { ParseError, ValidationError } from './errors/error.js'
+export { LicheError, ParseError, ValidationError } from './errors/error.js'
 
 // Internals exposed for first-party extensions that contribute terminal/fetch handlers.
 export { execute } from './cli/execute.js'
@@ -27,7 +27,15 @@ export { callHttpOperation, serializeHttpOperationRequest } from './http/index.j
 export type { SecretString } from './auth/secret.js'
 
 export { nonInteractiveStdio, streamKinds } from './cli/stdio.js'
-export type { ColorLevel, ColorSupport, Stdio, StreamKind, StreamKinds, StreamOverrides, StreamView } from './cli/stdio.js'
+export type {
+  ColorLevel,
+  ColorSupport,
+  Stdio,
+  StreamKind,
+  StreamKinds,
+  StreamOverrides,
+  StreamView,
+} from './cli/stdio.js'
 
 export type {
   Awaitable,

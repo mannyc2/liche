@@ -1,0 +1,7 @@
+node_modules
+**/dist/**
+**/.stryker-tmp/**
+bun.lock
+*.md
+# Generated golden artifacts must match generator output byte-for-byte — never reformat
+**/*.generated.*

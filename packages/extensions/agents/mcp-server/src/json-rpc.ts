@@ -1,4 +1,6 @@
-export function validateJsonRpc(message: any):
+export function validateJsonRpc(
+  message: any,
+):
   | { ok: true; id: string | number; notification: false }
   | { ok: true; notification: true }
   | { ok: false; response: ReturnType<typeof jsonRpcError> } {

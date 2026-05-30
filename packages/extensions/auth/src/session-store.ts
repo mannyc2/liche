@@ -6,21 +6,26 @@ import { authSessionCorrupt, authSessionLocked } from './errors.js'
 import type { FileSessionStoreOptions, SessionStore, StoredProfile } from './types.js'
 
 type StoredProfileFile = Omit<StoredProfile, 'credential'> & {
-  credential?: {
-    kind: 'bearer' | 'apiKey'
-    accessToken?: string | undefined
-    expiresAt?: string | undefined
-    scopes?: string[] | undefined
-  } | undefined
+  credential?:
+    | {
+        kind: 'bearer' | 'apiKey'
+        accessToken?: string | undefined
+        expiresAt?: string | undefined
+        scopes?: string[] | undefined
+      }
+    | undefined
 }
 
 type StoredSessionFile = {
   schemaVersion: 1
   productId: string
-  providers: Record<string, {
-    activeProfile?: string | undefined
-    profiles: Record<string, StoredProfileFile>
-  }>
+  providers: Record<
+    string,
+    {
+      activeProfile?: string | undefined
+      profiles: Record<string, StoredProfileFile>
+    }
+  >
 }
 
 const DEFAULT_LOCK_TIMEOUT_MS = 2_000
@@ -184,7 +189,7 @@ async function withLock<T>(lockPath: string, timeoutMs: number, providerId: stri
 
 function ensureProvider(file: StoredSessionFile, providerId: string): StoredSessionFile['providers'][string] {
   file.providers[providerId] ??= { profiles: {} }
-  return file.providers[providerId]!
+  return file.providers[providerId]
 }
 
 function fromFileProfile(profile: StoredProfileFile): StoredProfile {

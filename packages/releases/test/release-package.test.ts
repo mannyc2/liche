@@ -4,12 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, test } from 'bun:test'
 import { packageRelease } from '../src/index.js'
-import type {
-  CliReleaseManifestInput,
-  PackageRecord,
-  ReleaseRenderer,
-  ReleaseRendererInput,
-} from '../src/index.js'
+import type { CliReleaseManifestInput, PackageRecord, ReleaseRenderer, ReleaseRendererInput } from '../src/index.js'
 
 const tmp = mkdtempSync(join(tmpdir(), 'liche-releases-package-'))
 const binaryPath = join(tmp, 'workers-linux-x64')
@@ -88,10 +83,12 @@ function packageRecord(bytes: Uint8Array, sha256 = sha256Hex(bytes)): PackageRec
   }
 }
 
-function fixtureRenderer(options: {
-  artifactSha256?: string
-  capture?: (input: ReleaseRendererInput) => void
-} = {}): ReleaseRenderer {
+function fixtureRenderer(
+  options: {
+    artifactSha256?: string
+    capture?: (input: ReleaseRendererInput) => void
+  } = {},
+): ReleaseRenderer {
   return {
     id: 'npm',
     render: async (input) => {

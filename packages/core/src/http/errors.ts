@@ -4,9 +4,9 @@ import type { RemoteErrorDetails } from './types.js'
 export function remoteError(
   code: string,
   message: string,
-  details?: RemoteErrorDetails | undefined,
-  extra?: Record<string, unknown> | undefined,
-  options?: { cause?: Error | undefined; retryable?: boolean | undefined } | undefined,
+  details?: RemoteErrorDetails,
+  extra?: Record<string, unknown>,
+  options?: { cause?: Error | undefined; retryable?: boolean | undefined },
 ): LicheError {
   const mergedDetails = compactDetails(details, extra)
   return new LicheError({
@@ -64,9 +64,7 @@ function remoteRecovery(
   if (code === 'REMOTE_CONFIG_MISSING_AUTH') {
     const envVar = typeof details?.['envVar'] === 'string' ? details['envVar'] : undefined
     return {
-      suggested_fix: envVar
-        ? `Set ${envVar} before retrying.`
-        : 'Configure remote authentication before retrying.',
+      suggested_fix: envVar ? `Set ${envVar} before retrying.` : 'Configure remote authentication before retrying.',
     }
   }
   if (code === 'REMOTE_NETWORK' || code === 'REMOTE_TIMEOUT') {

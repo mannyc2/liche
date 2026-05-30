@@ -3,18 +3,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  verifyReleaseBinaries,
-} from '../src/index.js'
-import type {
-  BinaryTarget,
-  CliReleaseManifest,
-  CliReleaseManifestInput,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, verifyReleaseBinaries } from '../src/index.js'
+import type { BinaryTarget, CliReleaseManifest, CliReleaseManifestInput } from '../src/index.js'
 
-const sha256Hex = (bytes: Uint8Array): string =>
-  createHash('sha256').update(bytes).digest('hex')
+const sha256Hex = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
 const ZERO_HASH = '0'.repeat(64)
 
@@ -48,12 +40,14 @@ function parseManifest(input: CliReleaseManifestInput): CliReleaseManifest {
   return parsed.data
 }
 
-function makeBinaryEntry(overrides: Partial<BinaryTarget> & {
-  id: string
-  url: string
-  sha256: string
-  size: number
-}): BinaryTarget {
+function makeBinaryEntry(
+  overrides: Partial<BinaryTarget> & {
+    id: string
+    url: string
+    sha256: string
+    size: number
+  },
+): BinaryTarget {
   return {
     target: 'bun-linux-x64',
     platform: 'linux',
@@ -85,10 +79,7 @@ beforeAll(() => {
   // simulate a "signed" mutation BEFORE hashing — manifest records the
   // post-signing bytes, so a verifier that hashed pre-signing bytes would
   // mismatch when reading the final on-disk artifact.
-  const unsignedBytes = Buffer.concat([
-    Buffer.from('UNSIGNED-MACHO-HEADER'),
-    randomBytes(2048),
-  ])
+  const unsignedBytes = Buffer.concat([Buffer.from('UNSIGNED-MACHO-HEADER'), randomBytes(2048)])
   const signedBytes = Buffer.concat([
     Buffer.from('SIGNED-MACHO-HEADER--'),
     unsignedBytes.subarray(Buffer.byteLength('UNSIGNED-MACHO-HEADER')),
@@ -229,9 +220,7 @@ describe('verifyReleaseBinaries', () => {
     // before the simulated signing step would have recorded a different
     // hash; the verifier reading the post-signing file bytes must
     // disagree with that hash.
-    const fakePreSigningHash = sha256Hex(
-      Buffer.from('UNSIGNED-MACHO-HEADER-WHATEVER-PRE-SIGNING-BYTES'),
-    )
+    const fakePreSigningHash = sha256Hex(Buffer.from('UNSIGNED-MACHO-HEADER-WHATEVER-PRE-SIGNING-BYTES'))
     expect(fakePreSigningHash).not.toBe(signedHash)
     const manifest = parseManifest({
       ...baseManifestInput(),

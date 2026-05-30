@@ -1,18 +1,15 @@
-import type { Format, GlobalFlags } from '../types.js'
+import type { GlobalFlags } from '../types.js'
 import { ParseError } from '../errors/error.js'
 import { globalRegistryFor, type RuntimeGlobalInput } from '../globals/registry.js'
 import { flagValue, splitFlag } from './flags.js'
 
 export type { GlobalFlags }
 
-export function parseGlobals(
-  argv: string[],
-  globals?: readonly RuntimeGlobalInput[] | undefined,
-): GlobalFlags {
+export function parseGlobals(argv: string[], globals?: readonly RuntimeGlobalInput[]): GlobalFlags {
   const flags: GlobalFlags = { rest: [] }
   const registry = globals ?? globalRegistryFor({})
   const byFlag = new Map(registry.map((global) => [global.flag, global]))
-  const byAlias = new Map(registry.flatMap((global) => global.alias ? [[global.alias, global] as const] : []))
+  const byAlias = new Map(registry.flatMap((global) => (global.alias ? [[global.alias, global] as const] : [])))
 
   for (let index = 0; index < argv.length; index++) {
     const token = argv[index]!
@@ -55,7 +52,6 @@ export function parseGlobals(
       flags.formatExplicit = true
     } else if (global.key === 'format') {
       flags.formatExplicit = true
-      flags.format = flags.format as Format
     }
   }
 

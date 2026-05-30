@@ -13,10 +13,7 @@ export type GenerateDocsReferenceOptions = {
   surfaceId?: string
 }
 
-export function generateDocsReference(
-  catalog: Catalog,
-  options: GenerateDocsReferenceOptions,
-): string {
+export function generateDocsReference(catalog: Catalog, options: GenerateDocsReferenceOptions): string {
   const lines = [
     `# ${catalog.product.name} CLI reference`,
     '',

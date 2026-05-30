@@ -10,7 +10,9 @@ export function neededContexts(cap: Capability): string[] {
 
 export function authRuntimeUsed(catalog: Catalog): boolean {
   if (catalog.auth.kind === 'none') return false
-  return catalog.capabilities.some((cap) => needsAuthResolution(cap) || (cap.kind === 'command' && cap.family === 'auth'))
+  return catalog.capabilities.some(
+    (cap) => needsAuthResolution(cap) || (cap.kind === 'command' && cap.family === 'auth'),
+  )
 }
 
 export function contextRuntimeUsed(catalog: Catalog): boolean {
@@ -26,9 +28,7 @@ export function capabilityHasAuthMetadata(cap: Capability): boolean {
 }
 
 export function hasHttpTransport(cap: Capability): boolean {
-  return cap.kind === 'resource-operation'
-    ? cap.http !== undefined
-    : cap.execution.mode === 'remote-http'
+  return cap.kind === 'resource-operation' ? cap.http !== undefined : cap.execution.mode === 'remote-http'
 }
 
 export function isAuthCommand(cap: Capability): cap is CommandCapability & { family: 'auth' } {
@@ -48,7 +48,10 @@ export function needsTokens(catalog: Catalog): boolean {
 }
 
 export function profileEnvVar(productId: string): string {
-  return `${productId.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase()}_PROFILE`
+  return `${productId
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase()}_PROFILE`
 }
 
 export function missingRemoteError(capabilityId: string): Error {

@@ -85,9 +85,14 @@ function colorLevel(bits: number): ColorLevel {
  * (it mapped any truthy FORCE_COLOR to truecolor). An explicit `override` (a future
  * --color/--no-color policy, or a test) wins.
  */
-function resolveColor(env: Dict<string | undefined>, stream: StreamView, override: ColorLevel | undefined): ColorSupport {
+function resolveColor(
+  env: Dict<string | undefined>,
+  stream: StreamView,
+  override: ColorLevel | undefined,
+): ColorSupport {
   if (override !== undefined) return { level: override, source: 'override' }
   const probe = (e: Dict<string | undefined>): number => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- referenced unbound but invoked via .call({ fd, isTTY }, …) below, which supplies the receiver
     const getColorDepth = WriteStream.prototype.getColorDepth as
       | undefined
       | ((env?: Dict<string | undefined>) => number)

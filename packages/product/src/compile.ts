@@ -1,6 +1,4 @@
-import {
-  compileEntrypoint,
-} from '@liche/build'
+import { compileEntrypoint } from '@liche/build'
 import type {
   BunBuildFn,
   CompileEntrypointFailure,
@@ -36,7 +34,7 @@ export type CompileProductFailure = {
   compileEntrypointPath: string
   plan: CompilePlan
   logs: unknown[]
-  error?: unknown
+  error?: Error
 }
 
 export type CompileProductResult = CompileProductSuccess | CompileProductFailure
@@ -85,6 +83,6 @@ export async function compileProduct(
   }
 }
 
-function compileError(result: CompileEntrypointFailure): { error?: unknown } {
+function compileError(result: CompileEntrypointFailure): { error?: Error } {
   return result.error === undefined ? {} : { error: result.error }
 }

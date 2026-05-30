@@ -56,7 +56,9 @@ export async function conformProduct(
         name: fixture.name,
         status: 'failed',
         reason: 'Fixture references an unknown or non-HTTP conformance capability.',
-        errors: [{ code: 'CONFORMANCE_UNKNOWN_CAPABILITY', message: `No HTTP-backed capability '${capability}' exists.` }],
+        errors: [
+          { code: 'CONFORMANCE_UNKNOWN_CAPABILITY', message: `No HTTP-backed capability '${capability}' exists.` },
+        ],
       })
     }
   }
@@ -106,17 +108,21 @@ function prepareCases(
     return fixtures.map((fixture) => ({ fixture, input: fixture.input, name: fixture.name, runnable }))
   }
   if (runnable.inputFields.length > 0) {
-    return [{
-      input: {},
-      name: `${runnable.cap.id} missing fixture`,
-      runnable,
-    }]
+    return [
+      {
+        input: {},
+        name: `${runnable.cap.id} missing fixture`,
+        runnable,
+      },
+    ]
   }
-  return [{
-    input: {},
-    name: runnable.cap.examples[0]?.summary ?? runnable.cap.examples[0]?.command ?? runnable.cap.id,
-    runnable,
-  }]
+  return [
+    {
+      input: {},
+      name: runnable.cap.examples[0]?.summary ?? runnable.cap.examples[0]?.command ?? runnable.cap.id,
+      runnable,
+    },
+  ]
 }
 
 async function runCase(
@@ -126,13 +132,18 @@ async function runCase(
 ): Promise<ConformanceReportCase> {
   const { fixture, input, name, runnable } = item
   if (isDestructive(runnable.cap) && options.includeDestructive !== true) {
-    return skipped(runnable.cap.id, name, 'Destructive or confirmation-required capability skipped without --include-destructive.')
+    return skipped(
+      runnable.cap.id,
+      name,
+      'Destructive or confirmation-required capability skipped without --include-destructive.',
+    )
   }
   if (!fixture && runnable.inputFields.length > 0) {
     return skipped(runnable.cap.id, name, 'Capability requires explicit input fixture.')
   }
 
-  const baseUrl = fixture?.target?.baseUrl ?? options.baseUrl ?? resolveCatalogBaseUrl(catalog.remote?.baseUrl, options.env ?? {})
+  const baseUrl =
+    fixture?.target?.baseUrl ?? options.baseUrl ?? resolveCatalogBaseUrl(catalog.remote?.baseUrl, options.env ?? {})
   if (!baseUrl) {
     return failed(runnable.cap.id, name, 'CONFORMANCE_MISSING_BASE_URL', 'Conformance target base URL is required.')
   }
@@ -142,7 +153,8 @@ async function runCase(
   try {
     serialized = serializeHttpOperationRequest(requestSpec)
     const mismatch = compareExpectedRequest(serialized, fixture?.expectRequest)
-    if (mismatch) return failed(runnable.cap.id, name, 'CONFORMANCE_REQUEST_MISMATCH', mismatch, reportRequest(serialized))
+    if (mismatch)
+      return failed(runnable.cap.id, name, 'CONFORMANCE_REQUEST_MISMATCH', mismatch, reportRequest(serialized))
   } catch (error) {
     return errorCase(runnable.cap.id, name, error, undefined)
   }
@@ -167,7 +179,8 @@ async function runCase(
       output: runnable.output,
     }
     const data = await callHttpOperation(call)
-    const responseMismatch = fixture?.expectResponse?.body !== undefined &&
+    const responseMismatch =
+      fixture?.expectResponse?.body !== undefined &&
       JSON.stringify(data) !== JSON.stringify(fixture.expectResponse.body)
     if (responseMismatch) {
       return failed(
@@ -230,10 +243,16 @@ function errorCase(
     name,
     status: 'failed',
     reason: e.message ?? String(error),
-    errors: e.fieldErrors?.map((field) => ({ code: e.code ?? 'CONFORMANCE_ERROR', message: field.message, path: field.path })) ?? [{
+    errors: e.fieldErrors?.map((field) => ({
       code: e.code ?? 'CONFORMANCE_ERROR',
-      message: e.message ?? String(error),
-    }],
+      message: field.message,
+      path: field.path,
+    })) ?? [
+      {
+        code: e.code ?? 'CONFORMANCE_ERROR',
+        message: e.message ?? String(error),
+      },
+    ],
   }
   if (request) out.request = request
   if (response) out.response = response

@@ -64,7 +64,18 @@ describe('package boundary: @liche/extensions', () => {
     const telemetry = await import('@liche/telemetry')
 
     expect(exports['.']).toBeDefined()
-    for (const subpath of ['./auth', './config', './agents', './completions', './mcp-installer', './mcp-server', './skills-installer', './skills-runtime', './telemetry', './support']) {
+    for (const subpath of [
+      './auth',
+      './config',
+      './agents',
+      './completions',
+      './mcp-installer',
+      './mcp-server',
+      './skills-installer',
+      './skills-runtime',
+      './telemetry',
+      './support',
+    ]) {
       expect(exports[subpath]).toBeUndefined()
     }
     expect(root.auth).toBe(auth.auth)

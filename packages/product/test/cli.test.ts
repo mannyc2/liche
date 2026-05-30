@@ -15,10 +15,16 @@ async function runCli(
   let stdout = ''
   await run(cli, argv, {
     ...options,
-    exit: (code) => { exitCode = code },
+    exit: (code) => {
+      exitCode = code
+    },
     streams: options.streams ?? { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
-    stderr: (chunk) => { stderr += chunk },
-    stdout: (chunk) => { stdout += chunk },
+    stderr: (chunk) => {
+      stderr += chunk
+    },
+    stdout: (chunk) => {
+      stdout += chunk
+    },
   })
   return { exitCode, stderr, stdout }
 }
@@ -85,9 +91,7 @@ describe('liche-product CLI', () => {
     const server = Bun.serve({
       port: 0,
       fetch() {
-        return Response.json([
-          { id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' },
-        ])
+        return Response.json([{ id: 'script-1', name: 'Worker One', created_at: '2026-05-20T00:00:00.000Z' }])
       },
     })
     const reportPath = join(dir, 'conformance.json')
@@ -110,7 +114,7 @@ describe('liche-product CLI', () => {
       expect(report.summary).toEqual(body.summary)
       expect(report.cases[0].status).toBe('passed')
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 
@@ -149,7 +153,7 @@ describe('liche-product CLI', () => {
       const report = await Bun.file(reportPath).json()
       expect(report.summary).toEqual({ passed: 0, failed: 1, skipped: 0, total: 1 })
     } finally {
-      server.stop(true)
+      await server.stop(true)
     }
   })
 

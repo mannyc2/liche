@@ -9,7 +9,14 @@ import { commandFormatRenderers, outputPolicy, selectCommand } from '../command/
 import { toCommandInfo } from './terminal-handlers.js'
 import { complete, shells } from '../completions/shells.js'
 import { formatHumanValidationError } from './human-validation-error.js'
-import { DEFAULT_FORMAT, contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareContext } from './invocation.js'
+import {
+  DEFAULT_FORMAT,
+  contextGlobals,
+  defaultEnv,
+  isFlagLikeToken,
+  resolveFormat,
+  runPrepareContext,
+} from './invocation.js'
 import { createLifecycleEvent, emitLifecycleEvent, eventCommand, mergeHooks } from './lifecycle.js'
 
 export async function runTerminalCli(
@@ -208,7 +215,9 @@ export async function runTerminalCli(
   }
 
   const policy = outputPolicy(selected) ?? state.def.outputPolicy ?? 'all'
-  const transformsBuffering = state.outputTransforms.some((t) => (t.bufferingFlagKeys ?? []).some((key) => Boolean(flags[key])))
+  const transformsBuffering = state.outputTransforms.some((t) =>
+    (t.bufferingFlagKeys ?? []).some((key) => Boolean(flags[key])),
+  )
   const streamingEligible = !flags.filterOutput && !transformsBuffering && outputFormat === 'jsonl'
   let streamed = false
   const chunkFormat: Format = outputFormat === 'jsonl' ? 'jsonl' : outputFormat
@@ -261,7 +270,8 @@ export async function runTerminalCli(
   }
 
   const suppressStreamedRecap = streamed && result.ok && outputFormat !== 'jsonl'
-  if (!(policy === 'machine-only' && human && result.ok) && !suppressStreamedRecap) io.out(text.endsWith('\n') ? text : `${text}\n`)
+  if (!(policy === 'machine-only' && human && result.ok) && !suppressStreamedRecap)
+    io.out(text.endsWith('\n') ? text : `${text}\n`)
   if (result.meta?.cta) io.err(formatCta(name, result.meta.cta))
   if (!result.ok && human) {
     if (result.error.fieldErrors?.length) {
@@ -286,4 +296,3 @@ async function emitTerminalLifecycle(
 function isMachineFormat(format: Format): boolean {
   return format === 'json' || format === 'jsonl' || format === 'yaml'
 }
-

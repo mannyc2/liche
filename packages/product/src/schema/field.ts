@@ -1,11 +1,4 @@
-export type FieldType =
-  | 'uuid'
-  | 'hostname'
-  | 'string'
-  | 'int'
-  | 'bool'
-  | 'enum'
-  | 'datetime'
+export type FieldType = 'uuid' | 'hostname' | 'string' | 'int' | 'bool' | 'enum' | 'datetime'
 
 export type FieldMutability = 'immutable' | 'create-only' | 'mutable'
 

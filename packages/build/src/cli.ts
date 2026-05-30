@@ -12,18 +12,26 @@ import type { TargetSelection } from './targets.js'
 
 const BUILD_TOOL_VERSION = '0.8.1'
 
-const BuildCliConfigSchema = z.object({
-  build: z.object({
-    targets: z.string().optional(),
-    out: z.string().optional(),
-    record: z.string().optional(),
-    parallel: z.boolean().optional(),
-  }).strict().optional(),
-  compileEntry: z.object({
-    target: z.string().optional(),
-    out: z.string().optional(),
-  }).strict().optional(),
-}).strict()
+const BuildCliConfigSchema = z
+  .object({
+    build: z
+      .object({
+        targets: z.string().optional(),
+        out: z.string().optional(),
+        record: z.string().optional(),
+        parallel: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    compileEntry: z
+      .object({
+        target: z.string().optional(),
+        out: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
 
 function parseTargets(raw: string): TargetSelection {
   const trimmed = raw.trim()
@@ -69,9 +77,12 @@ export const cli = defineCli({
         })
 
         if (!result.ok) {
-          const hint = result.logs.length > 0
-            ? result.logs.map((log) => String(log)).join('\n')
-            : result.error === undefined ? undefined : String(result.error)
+          const hint =
+            result.logs.length > 0
+              ? result.logs.map((log) => String(log)).join('\n')
+              : result.error === undefined
+                ? undefined
+                : String(result.error)
           return ctx.error({
             code: 'COMPILE_FAILED',
             message: 'Bun.build failed',

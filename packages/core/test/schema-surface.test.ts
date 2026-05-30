@@ -5,7 +5,7 @@ import { z } from '../src/schema/zod.js'
 import type { Entry } from '../src/types.js'
 
 function commandEntry(runtime: { args?: any; options?: any; env?: any }): Entry {
-  return { _command: true, contract: { name: 'x' } as any, runtime } as Entry
+  return { _command: true, contract: { name: 'x' }, runtime }
 }
 
 const FETCH: CommandSurface = 'fetch'
@@ -13,7 +13,8 @@ const CLI: CommandSurface = 'cli'
 const MCP: CommandSurface = { kind: 'extension', transport: 'mcp' }
 const SKILLS: CommandSurface = { kind: 'extension', transport: 'skills' }
 
-const cliOnlyCodec = () => arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: 'cli' })
+const cliOnlyCodec = () =>
+  arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: 'cli' })
 const allCodec = () => arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: 'all' })
 const mcpOnlyCodec = () => arg.fromString<string, string>({ output: z.string(), decode: async (s) => s, surface: MCP })
 
@@ -132,11 +133,7 @@ describe('checkCommandSurface — composite + wrapper recursion', () => {
   })
 
   test('object wrapped in .nullable(), .catch(), .readonly() is still inspected', () => {
-    for (const wrap of [
-      (s: any) => s.nullable(),
-      (s: any) => s.catch({ file: 'x' }),
-      (s: any) => s.readonly(),
-    ]) {
+    for (const wrap of [(s: any) => s.nullable(), (s: any) => s.catch({ file: 'x' }), (s: any) => s.readonly()]) {
       const entry = commandEntry({
         options: z.object({ outer: wrap(z.object({ file: cliOnlyCodec() })) }),
       })
@@ -213,10 +210,7 @@ describe('checkCommandSurface — composite + wrapper recursion', () => {
 
   test('intersection branch containing codec is rejected', () => {
     const entry = commandEntry({
-      options: z.intersection(
-        z.object({ a: z.string() }),
-        z.object({ file: cliOnlyCodec() }),
-      ),
+      options: z.intersection(z.object({ a: z.string() }), z.object({ file: cliOnlyCodec() })),
     })
     expect(checkCommandSurface(entry, FETCH).ok).toBe(false)
   })
@@ -238,11 +232,7 @@ describe('checkCommandSurface — composite + wrapper recursion', () => {
   })
 
   test('prefault, promise, and lazy schemas are inspected', () => {
-    for (const schema of [
-      cliOnlyCodec().prefault('x'),
-      z.promise(cliOnlyCodec()),
-      z.lazy(() => cliOnlyCodec()),
-    ]) {
+    for (const schema of [cliOnlyCodec().prefault('x'), z.promise(cliOnlyCodec()), z.lazy(() => cliOnlyCodec())]) {
       const entry = commandEntry({
         options: z.object({ file: schema }),
       })
@@ -266,10 +256,7 @@ describe('checkCommandSurface — composite + wrapper recursion', () => {
   })
 
   test('record and map key codecs are rejected', () => {
-    for (const schema of [
-      z.record(cliOnlyCodec(), z.string()),
-      z.map(cliOnlyCodec(), z.string()),
-    ]) {
+    for (const schema of [z.record(cliOnlyCodec(), z.string()), z.map(cliOnlyCodec(), z.string())]) {
       const entry = commandEntry({
         options: z.object({ values: schema }),
       })
@@ -281,8 +268,7 @@ describe('checkCommandSurface — composite + wrapper recursion', () => {
   })
 
   test('recursive lazy schemas without codecs do not loop forever', () => {
-    let node: any
-    node = z.lazy(() => z.object({ next: node.optional() }))
+    const node: any = z.lazy(() => z.object({ next: node.optional() }))
     const entry = commandEntry({
       options: z.object({ node }),
     })

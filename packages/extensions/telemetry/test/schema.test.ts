@@ -17,7 +17,7 @@ function validEvent(overrides: Partial<WireEvent> = {}): WireEvent {
       runtime: { name: 'bun', version: '1.3.9', platform: 'darwin', arch: 'arm64' },
     },
     ...overrides,
-  } as WireEvent
+  }
 }
 
 describe('wireEventSchema', () => {

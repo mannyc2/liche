@@ -45,9 +45,7 @@
       { "name": "WORKERS_API_URL", "purpose": "Remote dispatch base URL", "required": true },
       { "name": "WORKERS_DEFAULT_ACCOUNT", "purpose": "Default account id for remote calls", "required": false }
     ],
-    "config": [
-      { "key": "transport.timeoutMs", "purpose": "HTTP timeout for remote operations", "required": false }
-    ]
+    "config": [{ "key": "transport.timeoutMs", "purpose": "HTTP timeout for remote operations", "required": false }]
   },
   "auth": {
     "providers": [
@@ -56,12 +54,8 @@
         "kind": "bearer",
         "credentialTransport": "bearer",
         "modes": ["env"],
-        "envVars": [
-          { "name": "WORKERS_API_TOKEN", "purpose": "bearer-token" }
-        ],
-        "contexts": [
-          { "id": "account", "envVar": "WORKERS_ACCOUNT", "flag": "account" }
-        ],
+        "envVars": [{ "name": "WORKERS_API_TOKEN", "purpose": "bearer-token" }],
+        "contexts": [{ "id": "account", "envVar": "WORKERS_ACCOUNT", "flag": "account" }],
         "requiredRuntimeCapabilities": ["env"]
       }
     ]

@@ -46,8 +46,12 @@ export function renderImports(catalog: Catalog): string[] {
   if (needsAuthExtension(catalog)) {
     const authNames = [
       'auth as authExtension',
-      ...(catalog.capabilities.some(isAuthCommand) ? ['authSwitch', 'authWhoami', 'logoutAuthSession', 'oauthDeviceLogin'] : []),
-      ...(authRuntimeUsed(catalog) ? ['createFileSessionStore', 'credentialHttpAuth', 'detectInvocation', 'resolveAuth'] : []),
+      ...(catalog.capabilities.some(isAuthCommand)
+        ? ['authSwitch', 'authWhoami', 'logoutAuthSession', 'oauthDeviceLogin']
+        : []),
+      ...(authRuntimeUsed(catalog)
+        ? ['createFileSessionStore', 'credentialHttpAuth', 'detectInvocation', 'resolveAuth']
+        : []),
       ...(contextRuntimeUsed(catalog) ? ['resolveContext'] : []),
     ].sort()
     out.push(`import { ${authNames.join(', ')} } from '@liche/auth'`)

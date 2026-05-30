@@ -59,10 +59,10 @@ describe('dispatch', () => {
       stderrCalls++
       return stderrWrite(chunk)
     }) as typeof Bun.stderr.write
-    process.exit = ((code?: number) => {
+    process.exit = (code?: number) => {
       exitCalled = true
       throw new Error(`unexpected process.exit(${code})`)
-    }) as typeof process.exit
+    }
 
     try {
       const result = await dispatch(cli, ['noop'])
@@ -101,9 +101,7 @@ describe('dispatch', () => {
   })
 
   describe('non-runnable returns Result.fail with existing structured codes', () => {
-    const cli = testCli('app', [
-      testCommand('hello', { run: () => ({ ok: true }) }),
-    ])
+    const cli = testCli('app', [testCommand('hello', { run: () => ({ ok: true }) })])
 
     test('empty argv -> COMMAND_NOT_FOUND', async () => {
       const result = await dispatch(cli, [])
@@ -149,14 +147,17 @@ describe('dispatch', () => {
   })
 
   test('prepareContext ParseError is surfaced as Result.fail PARSE_ERROR', async () => {
-    const cli = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => {
-          throw new ParseError({ message: 'bad prep' })
+    const cli = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => {
+            throw new ParseError({ message: 'bad prep' })
+          },
         },
       },
-    }, [testCommand('go', { run: () => ({ done: true }) })])
+      [testCommand('go', { run: () => ({ done: true }) })],
+    )
 
     const result = await dispatch(cli, ['go'])
     expect(result.ok).toBe(false)
@@ -165,14 +166,17 @@ describe('dispatch', () => {
   })
 
   test('non-ParseError thrown from prepareContext is normalized, not rethrown', async () => {
-    const cli = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => {
-          throw new Error('unexpected boom')
+    const cli = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => {
+            throw new Error('unexpected boom')
+          },
         },
       },
-    }, [testCommand('go', { run: () => ({ done: true }) })])
+      [testCommand('go', { run: () => ({ done: true }) })],
+    )
 
     const result = await dispatch(cli, ['go'])
     expect(result.ok).toBe(false)
@@ -182,15 +186,23 @@ describe('dispatch', () => {
   describe('lifecycle events fire on pre-execute failures', () => {
     function collect(): { events: CliEvent[]; sub: (event: CliEvent) => void } {
       const events: CliEvent[] = []
-      return { events, sub: (event) => { events.push(event) } }
+      return {
+        events,
+        sub: (event) => {
+          events.push(event)
+        },
+      }
     }
 
     test('parseGlobals failure emits parse.failed', async () => {
       const recorder = collect()
-      const cli = testCli({
-        name: 'app',
-        events: [recorder.sub],
-      }, [testCommand('go', { run: () => ({ done: true }) })])
+      const cli = testCli(
+        {
+          name: 'app',
+          events: [recorder.sub],
+        },
+        [testCommand('go', { run: () => ({ done: true }) })],
+      )
 
       await dispatch(cli, ['--no-such-global'])
       const types = recorder.events.map((event) => event.type)
@@ -199,10 +211,13 @@ describe('dispatch', () => {
 
     test('unknown command emits command.not_found', async () => {
       const recorder = collect()
-      const cli = testCli({
-        name: 'app',
-        events: [recorder.sub],
-      }, [testCommand('go', { run: () => ({ done: true }) })])
+      const cli = testCli(
+        {
+          name: 'app',
+          events: [recorder.sub],
+        },
+        [testCommand('go', { run: () => ({ done: true }) })],
+      )
 
       await dispatch(cli, ['nope'])
       const types = recorder.events.map((event) => event.type)
@@ -211,10 +226,13 @@ describe('dispatch', () => {
 
     test('display-only flags emit parse.failed', async () => {
       const recorder = collect()
-      const cli = testCli({
-        name: 'app',
-        events: [recorder.sub],
-      }, [testCommand('go', { run: () => ({ done: true }) })])
+      const cli = testCli(
+        {
+          name: 'app',
+          events: [recorder.sub],
+        },
+        [testCommand('go', { run: () => ({ done: true }) })],
+      )
 
       await dispatch(cli, ['--help'])
       const types = recorder.events.map((event) => event.type)
@@ -223,22 +241,24 @@ describe('dispatch', () => {
 
     test('prepareContext failure emits parse.failed with command identified', async () => {
       const recorder = collect()
-      const cli = testCli({
-        name: 'app',
-        events: [recorder.sub],
-        hooks: {
-          prepareContext: () => {
-            throw new ParseError({ message: 'nope' })
+      const cli = testCli(
+        {
+          name: 'app',
+          events: [recorder.sub],
+          hooks: {
+            prepareContext: () => {
+              throw new ParseError({ message: 'nope' })
+            },
           },
         },
-      }, [testCommand('go', { run: () => ({ done: true }) })])
+        [testCommand('go', { run: () => ({ done: true }) })],
+      )
 
       await dispatch(cli, ['go'])
       const failure = recorder.events.find((event) => event.type === 'parse.failed')
       expect(failure).toBeDefined()
       expect(failure?.command?.path).toEqual(['go'])
     })
-
   })
 
   describe('isTty propagates to handler context', () => {
@@ -274,22 +294,28 @@ describe('dispatch', () => {
   })
 
   test('rich CommandError-shaped thrown value is preserved through prepareContext', async () => {
-    const cli = testCli({
-      name: 'app',
-      hooks: {
-        prepareContext: () => {
-          throw {
-            code: 'RATE_LIMITED',
-            message: 'too many requests',
-            status: 429,
-            retryable: true,
-            retry_after: 30,
-            hint: 'wait before retrying',
-            details: { window: 'minute' },
-          }
+    const cli = testCli(
+      {
+        name: 'app',
+        hooks: {
+          prepareContext: () => {
+            // Intentionally throws a PLAIN OBJECT (not an Error) to assert the isCommandErrorLike
+            // duck-typed preservation path in toCommandError still works for third-party throws.
+            // eslint-disable-next-line @typescript-eslint/only-throw-error
+            throw {
+              code: 'RATE_LIMITED',
+              message: 'too many requests',
+              status: 429,
+              retryable: true,
+              retry_after: 30,
+              hint: 'wait before retrying',
+              details: { window: 'minute' },
+            }
+          },
         },
       },
-    }, [testCommand('go', { run: () => ({ done: true }) })])
+      [testCommand('go', { run: () => ({ done: true }) })],
+    )
 
     const result = await dispatch(cli, ['go'])
     expect(result.ok).toBe(false)

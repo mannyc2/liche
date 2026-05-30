@@ -79,10 +79,16 @@ function generatedManifestFacts(value: unknown): CommandResult<{ contractDigest:
   const contractDigest = (schema as Record<string, unknown>)['digest']
   const releaseVersion = (schema as Record<string, unknown>)['version']
   if (typeof contractDigest !== 'string' || contractDigest.length === 0) {
-    return { ok: false, error: { code: 'GENERATED_MANIFEST_INVALID', message: 'generated manifest schema is missing digest' } }
+    return {
+      ok: false,
+      error: { code: 'GENERATED_MANIFEST_INVALID', message: 'generated manifest schema is missing digest' },
+    }
   }
   if (typeof releaseVersion !== 'string' || releaseVersion.length === 0) {
-    return { ok: false, error: { code: 'GENERATED_MANIFEST_INVALID', message: 'generated manifest schema is missing version' } }
+    return {
+      ok: false,
+      error: { code: 'GENERATED_MANIFEST_INVALID', message: 'generated manifest schema is missing version' },
+    }
   }
   return { ok: true, value: { contractDigest, releaseVersion } }
 }
@@ -139,12 +145,18 @@ export async function productShipSource(input: {
   } catch (error) {
     return {
       ok: false,
-      error: { code: 'SHIP_PHASE_OUTPUT_INVALID', message: 'product generation did not return JSON', hint: String(error) },
+      error: {
+        code: 'SHIP_PHASE_OUTPUT_INVALID',
+        message: 'product generation did not return JSON',
+        hint: String(error),
+      },
     }
   }
 
-  const manifestPath = readStringPath(generatedOutput, 'manifestPath') ?? join(input.generatedOut, 'liche.generated.manifest.json')
-  const compileEntrypoint = readStringPath(generatedOutput, 'compileEntrypointPath') ?? join(input.generatedOut, 'liche.compile-entry.ts')
+  const manifestPath =
+    readStringPath(generatedOutput, 'manifestPath') ?? join(input.generatedOut, 'liche.generated.manifest.json')
+  const compileEntrypoint =
+    readStringPath(generatedOutput, 'compileEntrypointPath') ?? join(input.generatedOut, 'liche.compile-entry.ts')
   const rawGeneratedManifest = await readJsonFile(manifestPath)
   if (!rawGeneratedManifest.ok) {
     return {
@@ -178,11 +190,11 @@ export async function coreCliShipSource(input: {
   runner: CliCommandRunner
 }): Promise<CommandResult<ShipSource>> {
   const compileEntrypoint = resolve(input.cwd, SHIP_DEFAULTS.cli)
-  const manifest = await runShipPhase(
-    input.runner,
-    ['bun', compileEntrypoint, '--llms', '--json'],
-    { cwd: input.cwd, env: input.env, phase: 'command manifest generation' },
-  )
+  const manifest = await runShipPhase(input.runner, ['bun', compileEntrypoint, '--llms', '--json'], {
+    cwd: input.cwd,
+    env: input.env,
+    phase: 'command manifest generation',
+  })
   if (!manifest.ok) return manifest
 
   let commandManifest: unknown

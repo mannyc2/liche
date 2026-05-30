@@ -17,7 +17,7 @@ const jsonlRenderer = defineOutputRenderer({
   mediaType: 'application/x-ndjson',
   name: 'jsonl',
   render(value) {
-    return (Array.isArray(value) ? value : [value]).map((item) => JSON.stringify(item ?? null)).join('\n')
+    return (Array.isArray(value) ? value : [value]).map((item: unknown) => JSON.stringify(item ?? null)).join('\n')
   },
 })
 
@@ -49,7 +49,7 @@ function csvScalar(value: unknown): string {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
-  return JSON.stringify(value) ?? String(value)
+  return JSON.stringify(value) ?? ''
 }
 
 function csvCell(value: unknown): string {
@@ -94,7 +94,9 @@ function csvRows(value: unknown): unknown[][] {
 }
 
 function formatCsv(value: unknown): string {
-  return csvRows(value).map((row) => row.map(csvCell).join(',')).join('\n')
+  return csvRows(value)
+    .map((row) => row.map(csvCell).join(','))
+    .join('\n')
 }
 
 const csvRenderer = defineOutputRenderer({

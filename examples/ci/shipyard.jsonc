@@ -1,4 +1,4 @@
 {
   "apiBaseUrl": "https://api.shipyard.example.com",
-  "defaultProject": "web"
+  "defaultProject": "web",
 }

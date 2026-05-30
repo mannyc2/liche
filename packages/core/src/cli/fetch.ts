@@ -22,14 +22,17 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   const path = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
   const selected = selectCommand(state, path)
   if (!selected) {
-    await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
-      streams: FETCH_STREAMS,
-      error: { code: 'COMMAND_NOT_FOUND', status: 404 },
-      format: 'json',
-      formatExplicit: true,
-      surface: { kind: 'command' },
-      type: 'command.not_found',
-    }))
+    await emitLifecycleEvent(
+      state.events,
+      createLifecycleEvent(name, state.def.version, {
+        streams: FETCH_STREAMS,
+        error: { code: 'COMMAND_NOT_FOUND', status: 404 },
+        format: 'json',
+        formatExplicit: true,
+        surface: { kind: 'command' },
+        type: 'command.not_found',
+      }),
+    )
     return Response.json(
       { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No command for ${url.pathname}` } },
       { status: 404 },
@@ -39,30 +42,37 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   const surfaceCheck = checkCommandSurface(selected.entry, 'fetch')
   if (!surfaceCheck.ok) {
     const error = unsupportedSurfaceError(surfaceCheck)
-    await emitLifecycleEvent(state.events, createLifecycleEvent(name, state.def.version, {
-      streams: FETCH_STREAMS,
-      error: { code: 'UNSUPPORTED_SURFACE', status: 400 },
-      format: 'json',
-      formatExplicit: true,
-      surface: { kind: 'command' },
-      type: 'command.unsupported_surface',
-    }))
+    await emitLifecycleEvent(
+      state.events,
+      createLifecycleEvent(name, state.def.version, {
+        streams: FETCH_STREAMS,
+        error: { code: 'UNSUPPORTED_SURFACE', status: 400 },
+        format: 'json',
+        formatExplicit: true,
+        surface: { kind: 'command' },
+        type: 'command.unsupported_surface',
+      }),
+    )
     return Response.json(fail(error), { status: 400 })
   }
 
-  const parsed = request.method === 'GET' || request.method === 'HEAD' ? { kind: 'empty' as const } : await readBody(request)
+  const parsed =
+    request.method === 'GET' || request.method === 'HEAD' ? { kind: 'empty' as const } : await readBody(request)
   if (parsed.kind === 'invalid') {
-    await emitLifecycleEvent(state.events.concat(selected.events), createLifecycleEvent(name, state.def.version, {
-      streams: FETCH_STREAMS,
-      command: eventCommand(selected),
-      error: { code: 'INVALID_REQUEST_BODY', exitCode: 1, status: 400 },
-      exitCode: 1,
-      format: 'json',
-      formatExplicit: true,
-      result: 'user_error',
-      surface: { kind: 'parse' },
-      type: 'parse.failed',
-    }))
+    await emitLifecycleEvent(
+      state.events.concat(selected.events),
+      createLifecycleEvent(name, state.def.version, {
+        streams: FETCH_STREAMS,
+        command: eventCommand(selected),
+        error: { code: 'INVALID_REQUEST_BODY', exitCode: 1, status: 400 },
+        exitCode: 1,
+        format: 'json',
+        formatExplicit: true,
+        result: 'user_error',
+        surface: { kind: 'parse' },
+        type: 'parse.failed',
+      }),
+    )
     return Response.json(
       fail({ code: 'INVALID_REQUEST_BODY', message: 'Request body is not valid JSON', status: 400 }),
       { status: 400 },
@@ -79,7 +89,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
 
   if (wantsStream) {
     const stream = new ReadableStream({
-      async start(controller) {
+      async start(controller: ReadableStreamDefaultController<Uint8Array>) {
         const encoder = new TextEncoder()
         const result = await execute(name, selected, {
           argvOptions: { args: selected.argv.args, options: mergedOptions },
@@ -127,10 +137,7 @@ export async function fetchCli(name: string, state: CliState, request: Request):
   return Response.json(result, { status: result.ok ? 200 : Number(result.error.status ?? 400) })
 }
 
-type ParsedBody =
-  | { kind: 'empty' }
-  | { kind: 'parsed'; value: unknown }
-  | { kind: 'invalid' }
+type ParsedBody = { kind: 'empty' } | { kind: 'parsed'; value: unknown } | { kind: 'invalid' }
 
 async function readBody(request: Request): Promise<ParsedBody> {
   const raw = await request.text()

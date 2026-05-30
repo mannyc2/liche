@@ -10,10 +10,12 @@ const DeploymentSchema = z.object({
   url: z.string().optional(),
 })
 
-const CliConfigSchema = z.object({
-  apiBaseUrl: z.string().url().default('https://api.shipyard.example.com'),
-  defaultProject: z.string().optional(),
-}).strict()
+const CliConfigSchema = z
+  .object({
+    apiBaseUrl: z.string().url().default('https://api.shipyard.example.com'),
+    defaultProject: z.string().optional(),
+  })
+  .strict()
 
 type CliConfig = z.infer<typeof CliConfigSchema>
 
@@ -27,7 +29,11 @@ async function readJson(response: Response): Promise<unknown> {
   return JSON.parse(text)
 }
 
-async function apiFetch(ctx: { sources: { value(provider: string, path: string): unknown } }, path: string, init?: RequestInit): Promise<unknown> {
+async function apiFetch(
+  ctx: { sources: { value(provider: string, path: string): unknown } },
+  path: string,
+  init?: RequestInit,
+): Promise<unknown> {
   const baseUrl = cliConfig(ctx).apiBaseUrl.replace(/\/$/, '')
   const response = await fetch(`${baseUrl}${path}`, init)
   if (!response.ok) {

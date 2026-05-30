@@ -74,10 +74,7 @@ function activeEcosystems(steps: readonly PublishStep[]): PackageEcosystem[] {
   return PACKAGE_ECOSYSTEMS.filter((id) => seen.has(id))
 }
 
-function checkTokenCredential(
-  ecosystem: PackageEcosystem,
-  supplied: Record<string, unknown>,
-): PreflightFailure[] {
+function checkTokenCredential(ecosystem: PackageEcosystem, supplied: Record<string, unknown>): PreflightFailure[] {
   const field = TOKEN_FIELDS[ecosystem]
   const value = supplied[field]
   if (typeof value === 'string' && value.length > 0) return []
@@ -91,10 +88,7 @@ function checkTokenCredential(
   ]
 }
 
-function checkOidcCredential(
-  ecosystem: PackageEcosystem,
-  supplied: Record<string, unknown>,
-): PreflightFailure[] {
+function checkOidcCredential(ecosystem: PackageEcosystem, supplied: Record<string, unknown>): PreflightFailure[] {
   if (!OIDC_SUPPORTED[ecosystem]) {
     return [
       {
@@ -128,10 +122,7 @@ function checkOidcCredential(
   return failures
 }
 
-function checkEcosystem(
-  ecosystem: PackageEcosystem,
-  credentials: PublisherCredentials,
-): PreflightFailure[] {
+function checkEcosystem(ecosystem: PackageEcosystem, credentials: PublisherCredentials): PreflightFailure[] {
   const supplied = credentials[ecosystem] as Record<string, unknown> | undefined
   if (!supplied) {
     return [
@@ -155,9 +146,7 @@ function checkEcosystem(
   ]
 }
 
-export function preflightReleasePublish(
-  input: PreflightReleasePublishInput,
-): PreflightReleasePublishResult {
+export function preflightReleasePublish(input: PreflightReleasePublishInput): PreflightReleasePublishResult {
   const active = activeEcosystems(input.plan.steps)
   const failures: PreflightFailure[] = []
   for (const ecosystem of active) {

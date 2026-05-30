@@ -41,7 +41,8 @@ function lintCapabilitySafety(cap: Capability, base: string, issues: LintIssue[]
       code: 'capability/effects-required',
       path: `${base}.effects`,
       message: `Capability '${cap.id}' is agent or conformance visible and must declare effects`,
-      recommendation: 'declare effects: { kind } so agents can distinguish read/write/delete/exec/auth-session behavior',
+      recommendation:
+        'declare effects: { kind } so agents can distinguish read/write/delete/exec/auth-session behavior',
     })
   }
   if (!cap.policy) {
@@ -111,12 +112,7 @@ function lintResourceOperation(
   }
 }
 
-function lintCommand(
-  cap: CommandCapability,
-  base: string,
-  catalog: Catalog,
-  issues: LintIssue[],
-): void {
+function lintCommand(cap: CommandCapability, base: string, catalog: Catalog, issues: LintIssue[]): void {
   if (!ID_PATTERN.test(cap.id)) {
     issues.push({
       code: 'command/id-stable',
@@ -131,11 +127,7 @@ function lintCommand(
       message: `Local command '${cap.id}' must not appear in OpenAPI; remove surfaces.openapi or change execution mode`,
     })
   }
-  if (
-    cap.execution.mode === 'hybrid-workflow' &&
-    cap.surfaces.openapiRequested === true &&
-    !cap.execution.http
-  ) {
+  if (cap.execution.mode === 'hybrid-workflow' && cap.surfaces.openapiRequested === true && !cap.execution.http) {
     issues.push({
       code: 'command/execution-coherent',
       path: `${base}.execution.http`,

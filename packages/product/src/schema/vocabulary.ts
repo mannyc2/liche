@@ -8,7 +8,7 @@ export const DEFAULT_GENERATED_VOCABULARY: Vocabulary = Object.freeze({
   verbs: Object.freeze(['get', 'list', 'create', 'update', 'delete', 'run']),
   flags: Object.freeze(['json', 'local', 'remote', 'force']),
   aliases: Object.freeze({}),
-}) as Vocabulary
+})
 
 export type VocabularyOverrides = {
   verbs?: readonly string[]

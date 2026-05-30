@@ -16,7 +16,10 @@ function request(id: string | number, method: string, params?: Record<string, un
   return { jsonrpc: '2.0', id, method, ...(params === undefined ? undefined : { params }) }
 }
 
-function expectSchema(schema: { safeParse: (value: unknown) => { success: boolean; error?: unknown } }, value: unknown) {
+function expectSchema(
+  schema: { safeParse: (value: unknown) => { success: boolean; error?: unknown } },
+  value: unknown,
+) {
   const result = schema.safeParse(value)
   expect(result.success, result.success ? undefined : String(result.error)).toBe(true)
 }
@@ -24,11 +27,15 @@ function expectSchema(schema: { safeParse: (value: unknown) => { success: boolea
 describe('MCP conformance against the official TypeScript SDK schemas', () => {
   test('initialize returns a JSON-RPC result with a current supported InitializeResult', async () => {
     const cli = testCli('app', { version: '1.2.3' }, [testCommand('run', { run: () => ({ ok: true }) })])
-    const response: any = await Mcp.mcpMessage('app', stateOf(cli), request(1, 'initialize', {
-      capabilities: {},
-      clientInfo: { name: 'test-client', version: '0.0.0' },
-      protocolVersion: LATEST_PROTOCOL_VERSION,
-    }))
+    const response: any = await Mcp.mcpMessage(
+      'app',
+      stateOf(cli),
+      request(1, 'initialize', {
+        capabilities: {},
+        clientInfo: { name: 'test-client', version: '0.0.0' },
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+      }),
+    )
 
     expectSchema(JSONRPCResultResponseSchema, response)
     expectSchema(InitializeResultSchema, response.result)
@@ -37,11 +44,13 @@ describe('MCP conformance against the official TypeScript SDK schemas', () => {
   })
 
   test('tools/list returns an official ListToolsResult with JSON Schema object inputs', async () => {
-    const cli = testCli('app', [testCommand('build', {
+    const cli = testCli('app', [
+      testCommand('build', {
         args: z.object({ target: z.string() }),
         options: z.object({ dryRun: z.boolean().default(false) }),
         run: () => ({ ok: true }),
-      })])
+      }),
+    ])
     const response: any = await Mcp.mcpMessage('app', stateOf(cli), request(2, 'tools/list'))
 
     expectSchema(JSONRPCResultResponseSchema, response)
@@ -60,7 +69,10 @@ describe('MCP conformance against the official TypeScript SDK schemas', () => {
   })
 
   test('tools/call returns an official CallToolResult for successful and command-error calls', async () => {
-    const cli = testCli('app', [testCommand('ok', { run: () => ({ value: 1 }) }), testCommand('fail', { run: ({ error }) => error({ code: 'FAIL', message: 'nope' }) })])
+    const cli = testCli('app', [
+      testCommand('ok', { run: () => ({ value: 1 }) }),
+      testCommand('fail', { run: ({ error }) => error({ code: 'FAIL', message: 'nope' }) }),
+    ])
     const state = stateOf(cli)
 
     const ok: any = await Mcp.mcpMessage('app', state, request(3, 'tools/call', { name: 'ok', arguments: {} }))

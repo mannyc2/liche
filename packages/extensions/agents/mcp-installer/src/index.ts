@@ -18,12 +18,14 @@ export type WriteMcpOptions = {
   global?: boolean | undefined
 }
 
-const installEnv = z.object({
-  APPDATA: z.string().optional(),
-  HOME: z.string().optional(),
-  USERPROFILE: z.string().optional(),
-  XDG_CONFIG_HOME: z.string().optional(),
-}).passthrough()
+const installEnv = z
+  .object({
+    APPDATA: z.string().optional(),
+    HOME: z.string().optional(),
+    USERPROFILE: z.string().optional(),
+    XDG_CONFIG_HOME: z.string().optional(),
+  })
+  .passthrough()
 
 const installOptions = z.object({
   agent: z.string().optional(),
@@ -57,8 +59,9 @@ export function mcpInstaller(options: McpInstallerOptions = {}): CliExtension {
 }
 
 export async function writeMcp(name: string, optionsOrCommand: string | WriteMcpOptions = {}): Promise<string> {
-  const options: WriteMcpOptions = typeof optionsOrCommand === 'string' ? { command: optionsOrCommand } : optionsOrCommand
-  const env = options.env ?? (process.env as Env)
+  const options: WriteMcpOptions =
+    typeof optionsOrCommand === 'string' ? { command: optionsOrCommand } : optionsOrCommand
+  const env = options.env ?? process.env
   const cwd = options.cwd ?? process.cwd()
   const command = options.command ?? name
   const isGlobal = options.global !== false
@@ -100,9 +103,9 @@ function mergeJsonTarget(file: string, name: string, entry: McpEntry): McpTarget
     file,
     async write() {
       const existing = await readJsonOrEmpty(file)
-      const servers = (existing['mcpServers'] && typeof existing['mcpServers'] === 'object'
-        ? existing['mcpServers']
-        : {}) as Record<string, unknown>
+      const servers = (
+        existing['mcpServers'] && typeof existing['mcpServers'] === 'object' ? existing['mcpServers'] : {}
+      ) as Record<string, unknown>
       return JSON.stringify({ ...existing, mcpServers: { ...servers, [name]: entry } }, null, 2)
     },
   }

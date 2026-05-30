@@ -1,14 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  PUBLISHER_ENV_NAMES,
-  loadPublisherCredentialsFromEnv,
-  preflightReleasePublish,
-} from '../src/index.js'
-import type {
-  HomebrewPublishStep,
-  PypiPublishStep,
-  ReleasePublishPlan,
-} from '../src/index.js'
+import { PUBLISHER_ENV_NAMES, loadPublisherCredentialsFromEnv, preflightReleasePublish } from '../src/index.js'
+import type { HomebrewPublishStep, PypiPublishStep, ReleasePublishPlan } from '../src/index.js'
 
 const ZERO_HASH = '0'.repeat(64)
 

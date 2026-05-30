@@ -51,18 +51,19 @@ export const cli = defineCli({
   // the schema migration, stashes the handle on ctx.var.db, and — crucially —
   // closes it in `finally` so every invocation cleans up after itself. Command
   // handlers never open or close the connection; they just read ctx.var.db.
-  middleware: [middleware(async (ctx, next) => {
-    const path = ctx.env['BOOKMARKS_DB']
-    // Help, version, and reflection commands don't declare BOOKMARKS_DB, so the
-    // resource is only acquired for commands that actually need it.
-    if (typeof path !== 'string' || path.length === 0) {
-      await next()
-      return
-    }
-    const db = new Database(path)
-    try {
-      db.exec('PRAGMA journal_mode = WAL')
-      db.exec(`
+  middleware: [
+    middleware(async (ctx, next) => {
+      const path = ctx.env['BOOKMARKS_DB']
+      // Help, version, and reflection commands don't declare BOOKMARKS_DB, so the
+      // resource is only acquired for commands that actually need it.
+      if (typeof path !== 'string' || path.length === 0) {
+        await next()
+        return
+      }
+      const db = new Database(path)
+      try {
+        db.exec('PRAGMA journal_mode = WAL')
+        db.exec(`
         CREATE TABLE IF NOT EXISTS bookmarks (
           id    INTEGER PRIMARY KEY AUTOINCREMENT,
           url   TEXT NOT NULL UNIQUE,
@@ -70,12 +71,13 @@ export const cli = defineCli({
           tags  TEXT
         )
       `)
-      ctx.set('db', db)
-      await next()
-    } finally {
-      db.close()
-    }
-  })],
+        ctx.set('db', db)
+        await next()
+      } finally {
+        db.close()
+      }
+    }),
+  ],
   extensions: [outputControls(), reflectionControls()],
   commands: [
     defineCommand({
@@ -94,7 +96,10 @@ export const cli = defineCli({
       run({ ctx, input }) {
         const db = database(ctx)
         const tags = input.options.tags
-          ? input.options.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
+          ? input.options.tags
+              .split(',')
+              .map((tag) => tag.trim())
+              .filter(Boolean)
           : []
         try {
           const info = db

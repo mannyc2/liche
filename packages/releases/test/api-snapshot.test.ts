@@ -52,7 +52,11 @@ describe('public API snapshot', () => {
     expect(Object.keys(Artifacts).sort()).toEqual(['verifyPackageArtifacts'])
     expect(Object.keys(Package).sort()).toEqual(['packageRelease'])
     expect(Object.keys(Yank).sort()).toEqual(['planReleaseYank'])
-    expect(Object.keys(Renderers).sort()).toEqual(['PACKAGE_ECOSYSTEMS', 'isPackageEcosystem', 'resolveReleaseRenderers'])
+    expect(Object.keys(Renderers).sort()).toEqual([
+      'PACKAGE_ECOSYSTEMS',
+      'isPackageEcosystem',
+      'resolveReleaseRenderers',
+    ])
     expect(Object.keys(RenderersAll).sort()).toEqual([
       'createDefaultRendererRegistry',
       'homebrewRenderer',

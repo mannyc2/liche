@@ -1,17 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  defineCli,
-  defineCommand,
-  outputControls,
-  run,
-  z,
-} from '@liche/core'
-import type {
-  CliExtension,
-  CliInstance,
-  DeclarativeCommand,
-  RunOptions,
-} from '@liche/core'
+import { defineCli, defineCommand, outputControls, run, z } from '@liche/core'
+import type { CliExtension, CliInstance, DeclarativeCommand, RunOptions } from '@liche/core'
 
 type CapturedRun = { exitCode: number; stderr: string; stdout: string }
 
@@ -25,11 +14,10 @@ describe('extension lane coverage', () => {
 
   test('hook extensions can enforce non-interactive policy without core widening', async () => {
     const middlewareRuns: string[] = []
-    const cli = appWithExtensions([
-      outputControls({ json: true }),
-      middlewareSpyExtension(middlewareRuns),
-      nonInteractiveConfirmationExtension(),
-    ], [deleteCommand()])
+    const cli = appWithExtensions(
+      [outputControls({ json: true }), middlewareSpyExtension(middlewareRuns), nonInteractiveConfirmationExtension()],
+      [deleteCommand()],
+    )
 
     const blocked = await runCli(cli, ['delete', '--non-interactive', '--json'])
     expect(blocked.exitCode).toBe(1)
@@ -87,10 +75,7 @@ function nonInteractiveConfirmationExtension(): CliExtension {
   }
 }
 
-function appWithExtensions(
-  extensions: readonly CliExtension[],
-  commands: readonly DeclarativeCommand[],
-): CliInstance {
+function appWithExtensions(extensions: readonly CliExtension[], commands: readonly DeclarativeCommand[]): CliInstance {
   return defineCli({
     name: 'app',
     commands,

@@ -69,7 +69,10 @@ export function readTarGzEntries(archive: Uint8Array): Map<string, Uint8Array> {
   const entries = new Map<string, Uint8Array>()
   let offset = 0
   while (offset + 512 <= tar.byteLength) {
-    const name = tar.subarray(offset, offset + 100).toString('utf8').replace(/\0.*$/, '')
+    const name = tar
+      .subarray(offset, offset + 100)
+      .toString('utf8')
+      .replace(/\0.*$/, '')
     if (!name) break
     const size = parseTarSize(tar.subarray(offset + 124, offset + 136))
     const dataStart = offset + 512

@@ -4,11 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { renderCompileEntrypoint } from '@liche/build'
 import type { BunBuildFn } from '@liche/build'
-import {
-  canonicalDigest,
-  compileProduct,
-  normalizeProduct,
-} from '../src/index.js'
+import { canonicalDigest, compileProduct, normalizeProduct } from '../src/index.js'
 import product from './fixtures/workers.product.js'
 
 type BunBuildOptions = Parameters<typeof Bun.build>[0]
@@ -23,7 +19,7 @@ const constants = {
 function successfulBuild(captured: BunBuildOptions[]): BunBuildFn {
   return async (options) => {
     captured.push(options)
-    return { success: true, outputs: [], logs: [] } as BunBuildOutput
+    return { success: true, outputs: [], logs: [] }
   }
 }
 
@@ -83,8 +79,7 @@ describe('compileProduct', () => {
         sourceCommit: constants.sourceCommit,
         generatorVersion: constants.generatorVersion,
       },
-      async () =>
-        ({ success: false, outputs: [], logs: [{ message: 'bad build' }] } as unknown as BunBuildOutput),
+      async () => ({ success: false, outputs: [], logs: [{ message: 'bad build' }] }) as unknown as BunBuildOutput,
     )
 
     expect(result.ok).toBe(false)

@@ -44,11 +44,7 @@ function applyTemplate(template: string, variables: Record<string, string>): str
   })
 }
 
-function publicFilename(
-  binary: RecordedBinary,
-  command: string,
-  template: string,
-): string {
+function publicFilename(binary: RecordedBinary, command: string, template: string): string {
   const ext = binary.filename.includes('.') ? `.${binary.filename.split('.').pop()}` : ''
   return applyTemplate(template, {
     command,
@@ -61,10 +57,7 @@ function publicFilename(
   })
 }
 
-function urlFor(
-  host: ReleaseHost,
-  variables: Record<string, string>,
-): string {
+function urlFor(host: ReleaseHost, variables: Record<string, string>): string {
   if (host.kind === 'github-assets') {
     const tag = applyTemplate(host.tag ?? DEFAULT_GITHUB_TAG_TEMPLATE, variables)
     return `https://github.com/${host.repository}/releases/download/${tag}/${variables['filename']}`
@@ -105,10 +98,7 @@ function binaryEntry(
   return entry
 }
 
-export function manifestFromBuildRecord(
-  record: BuildRecord,
-  config: ReleaseDistConfig,
-): CliReleaseManifestInput {
+export function manifestFromBuildRecord(record: BuildRecord, config: ReleaseDistConfig): CliReleaseManifestInput {
   const command = config.subject.command ?? config.subject.id
   const template = config.filenameTemplate ?? DEFAULT_FILENAME_TEMPLATE
   const releaseVersion = record.constants.releaseVersion
@@ -139,8 +129,6 @@ export function manifestFromBuildRecord(
       ...(config.release.buildId ? { buildId: config.release.buildId } : {}),
     },
     runtime: { command },
-    binaries: record.binaries.map((binary) =>
-      binaryEntry(binary, command, config.host, template, releaseVersion),
-    ),
+    binaries: record.binaries.map((binary) => binaryEntry(binary, command, config.host, template, releaseVersion)),
   }
 }

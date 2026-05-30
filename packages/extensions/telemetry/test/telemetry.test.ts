@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { defineCli, defineCommand, run, z } from '@liche/core'
-import { telemetry, type WireEvent } from '../src/index.js'
+import { telemetry } from '../src/index.js'
 import { memorySink } from '../src/testing/index.js'
 
-function buildCli(env: Record<string, string | undefined>, telemetryOpts: Parameters<typeof telemetry>[0] = {}): ReturnType<typeof defineCli> {
+function buildCli(
+  env: Record<string, string | undefined>,
+  telemetryOpts: Parameters<typeof telemetry>[0] = {},
+): ReturnType<typeof defineCli> {
   return defineCli({
     name: 'shipyard',
     version: '0.1.0',
@@ -19,7 +22,11 @@ function buildCli(env: Record<string, string | undefined>, telemetryOpts: Parame
   })
 }
 
-async function runSilent(cli: ReturnType<typeof defineCli>, argv: string[], env: Record<string, string | undefined>): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runSilent(
+  cli: ReturnType<typeof defineCli>,
+  argv: string[],
+  env: Record<string, string | undefined>,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   let stdout = ''
   let stderr = ''
   let exitCode = 0
@@ -125,7 +132,7 @@ describe('enrichment (telemetry envelope)', () => {
     const sink = memorySink()
     const cli = buildCli(env, { sinks: [sink] })
     await runSilent(cli, ['deploy'], env)
-    const completed = sink.events.find((e) => e.type === 'command.completed') as WireEvent | undefined
+    const completed = sink.events.find((e) => e.type === 'command.completed')
     expect(completed).toBeDefined()
     expect(completed!.telemetry.schemaVersion).toBe(1)
     expect(typeof completed!.telemetry.sessionId).toBe('string')
@@ -195,14 +202,14 @@ describe('debug mode', () => {
     const cli = buildCli(env, { events: 'all' })
     const original = process.stderr.write.bind(process.stderr)
     const captured: string[] = []
-    process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+    process.stderr.write = (chunk: string | Uint8Array): boolean => {
       captured.push(typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk))
       return true
-    }) as unknown as typeof process.stderr.write
+    }
     try {
       await runSilent(cli, ['deploy'], env)
     } finally {
-      process.stderr.write = original as typeof process.stderr.write
+      process.stderr.write = original
     }
     const all = captured.join('')
     expect(all).toContain('[telemetry]')

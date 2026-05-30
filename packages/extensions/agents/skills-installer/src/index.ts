@@ -16,12 +16,14 @@ export type WriteSkillOptions = {
   skill?: SkillDefinition | undefined
 }
 
-const installEnv = z.object({
-  APPDATA: z.string().optional(),
-  HOME: z.string().optional(),
-  USERPROFILE: z.string().optional(),
-  XDG_CONFIG_HOME: z.string().optional(),
-}).passthrough()
+const installEnv = z
+  .object({
+    APPDATA: z.string().optional(),
+    HOME: z.string().optional(),
+    USERPROFILE: z.string().optional(),
+    XDG_CONFIG_HOME: z.string().optional(),
+  })
+  .passthrough()
 
 const installOptions = z.object({
   agent: z.string().optional(),
@@ -57,7 +59,7 @@ export function skillsInstaller(options: SkillsInstallerOptions = {}): CliExtens
 }
 
 export async function writeSkill(name: string, options: WriteSkillOptions = {}): Promise<string> {
-  const env = options.env ?? (process.env as Env)
+  const env = options.env ?? process.env
   const cwd = options.cwd ?? process.cwd()
   const isGlobal = options.global !== false
   const dir = skillDirFor(name, options.agent ?? 'claude-code', isGlobal, env, cwd)

@@ -48,12 +48,7 @@ describe('TARGET_PRESETS', () => {
   })
 
   test("'homebrew' preset excludes musl + windows", () => {
-    expect([...TARGET_PRESETS.homebrew]).toEqual([
-      'darwin-arm64',
-      'darwin-x64',
-      'linux-arm64',
-      'linux-x64',
-    ])
+    expect([...TARGET_PRESETS.homebrew]).toEqual(['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'])
   })
 
   test("'npm' preset includes musl Linux targets as first-class defaults", () => {

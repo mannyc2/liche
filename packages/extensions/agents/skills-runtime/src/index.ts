@@ -1,5 +1,5 @@
 import { Formatter, defineExtension, manifestEnvelope } from '@liche/core'
-import type { CliExtension, Format } from '@liche/core'
+import type { CliExtension } from '@liche/core'
 import { skillIndex } from './generate.js'
 import type { SkillCommandPolicy } from './generate.js'
 
@@ -17,7 +17,7 @@ export function skillsRuntime(options: SkillsRuntimeOptions = {}): CliExtension 
         flagKey: 'llms',
         handle: ({ binaryName, flags, options, state }) => {
           const out = options.stdout ?? ((text: string) => void Bun.stdout.write(text))
-          const outputFormat = (flags.format ?? (flags.json ? 'json' : 'md')) as Format
+          const outputFormat = flags.format ?? (flags.json ? 'json' : 'md')
           const wantsStructured = flags.formatExplicit === true && outputFormat !== 'md'
           if (wantsStructured) {
             return out(`${Formatter.format(manifestEnvelope(binaryName, state), outputFormat)}\n`)

@@ -1,14 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  CliReleaseManifestSchema,
-  resolveReleaseRenderers,
-} from '../src/index.js'
-import type {
-  CliReleaseManifest,
-  CliReleaseManifestInput,
-  PackageEcosystem,
-  ReleaseRenderer,
-} from '../src/index.js'
+import { CliReleaseManifestSchema, resolveReleaseRenderers } from '../src/index.js'
+import type { CliReleaseManifest, CliReleaseManifestInput, PackageEcosystem, ReleaseRenderer } from '../src/index.js'
 
 function baseManifestInput(): CliReleaseManifestInput {
   return {
@@ -40,10 +32,7 @@ function parseManifest(): CliReleaseManifest {
   return parsed.data
 }
 
-function fixtureRenderer(
-  id: PackageEcosystem,
-  validate?: ReleaseRenderer['validate'],
-): ReleaseRenderer {
+function fixtureRenderer(id: PackageEcosystem, validate?: ReleaseRenderer['validate']): ReleaseRenderer {
   const renderer: ReleaseRenderer = {
     id,
     render: () => ({ packages: [], artifacts: [] }),
@@ -53,11 +42,7 @@ function fixtureRenderer(
 }
 
 function enabledConfig(config: unknown): boolean {
-  return (
-    typeof config === 'object' &&
-    config !== null &&
-    (config as { enabled?: unknown }).enabled === true
-  )
+  return typeof config === 'object' && config !== null && (config as { enabled?: unknown }).enabled === true
 }
 
 describe('resolveReleaseRenderers', () => {
@@ -121,11 +106,7 @@ describe('resolveReleaseRenderers', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.renderers.map((renderer) => renderer.id)).toEqual([
-      'npm',
-      'homebrew',
-      'scoop',
-    ])
+    expect(result.renderers.map((renderer) => renderer.id)).toEqual(['npm', 'homebrew', 'scoop'])
   })
 
   test('rejects unsupported and duplicate selected renderers', () => {
@@ -138,10 +119,7 @@ describe('resolveReleaseRenderers', () => {
 
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.failures.map((failure) => failure.code)).toEqual([
-      'RENDERER_DUPLICATE',
-      'RENDERER_UNKNOWN',
-    ])
+    expect(result.failures.map((failure) => failure.code)).toEqual(['RENDERER_DUPLICATE', 'RENDERER_UNKNOWN'])
   })
 
   test('underconfigured selected renderers fail before staging', () => {

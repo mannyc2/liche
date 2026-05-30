@@ -23,9 +23,7 @@ function normalizeObjectShape(shape: ObjectShape): NormalizedObjectShape {
   return { kind: 'object', properties, jsonSchema: objectShapeToJsonSchema(properties) }
 }
 
-export function normalizeFieldMap(
-  fields: Readonly<Record<string, FieldBuilder>>,
-): Record<string, NormalizedField> {
+export function normalizeFieldMap(fields: Readonly<Record<string, FieldBuilder>>): Record<string, NormalizedField> {
   const out: Record<string, NormalizedField> = {}
   for (const key of Object.keys(fields)) {
     out[key] = fields[key]!.toField()
@@ -33,9 +31,7 @@ export function normalizeFieldMap(
   return out
 }
 
-function objectShapeToJsonSchema(
-  properties: Record<string, NormalizedField>,
-): JsonSchemaNode {
+function objectShapeToJsonSchema(properties: Record<string, NormalizedField>): JsonSchemaNode {
   const keys = Object.keys(properties)
   const required: string[] = []
   const props: Record<string, JsonSchemaNode> = {}
@@ -85,7 +81,7 @@ export function fieldToJsonSchema(field: NormalizedField): JsonSchemaNode {
   if (field.identifier) base['x-liche-identifier'] = true
   if (field.humanLabel) base['x-liche-human-label'] = true
   if (field.mutability !== 'mutable') base['x-liche-mutability'] = field.mutability
-  return base as JsonSchemaNode
+  return base
 }
 
 export type ResolvedListShape =

@@ -1,4 +1,13 @@
-import type { CliEvent, CliEventError, CliEventSubscription, CliState, CommandError, Dict, FieldErrorSource, Result } from '@liche/core'
+import type {
+  CliEvent,
+  CliEventError,
+  CliEventSubscription,
+  CliState,
+  CommandError,
+  Dict,
+  FieldErrorSource,
+  Result,
+} from '@liche/core'
 import {
   checkCommandSurface,
   collectCommandContracts,
@@ -99,7 +108,9 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       return jsonRpcError(id, -32600, 'Invalid Request')
     }
     const { name: toolName, arguments: input = {} } = message.params
-    const canonical = mcpCommandContracts(state, policy).find((entry: any) => mcpToolName(entry.name) === toolName)?.name
+    const canonical = mcpCommandContracts(state, policy).find(
+      (entry: any) => mcpToolName(entry.name) === toolName,
+    )?.name
     const path = canonical ? commandNameToPath(canonical) : []
     const selected = canonical ? selectCommand(state, path) : undefined
     const selectedToolName = selected?.path.length ? mcpToolName(selected.path.join(' ')) : '(root)'
@@ -144,39 +155,42 @@ export async function mcpMessage(binaryName: string, state: CliState, message: a
       })
     }
     const argHints: Record<string, FieldErrorSource> = {}
-    for (const key of Object.keys((input as any).args ?? {})) {
+    for (const key of Object.keys(input.args ?? {})) {
       argHints[key] = { kind: 'extension', transport: 'mcp', key }
     }
     const optionHints: Record<string, FieldErrorSource> = {}
-    for (const key of Object.keys((input as any).options ?? {})) {
+    for (const key of Object.keys(input.options ?? {})) {
       optionHints[key] = { kind: 'extension', transport: 'mcp', key }
     }
-    const result: Result = selected && command
-      ? await execute(binaryName, selected, {
-          argvOptions: { args: [], argsObject: input.args ?? {}, options: input.options ?? {} },
-          displayName: binaryName,
-          events: subscriptions,
-          env: { ...(Bun.env as Dict<string | undefined>), LICHE_INVOCATION: 'mcp' } as Dict<string | undefined>,
-          format: 'json',
-          formatExplicit: true,
-          global: {},
-          hooks: mergeHooks(state.hooks, selected.hooks),
-          inputSourceHints: { args: argHints, options: optionHints },
-          stdio: MCP_STDIO,
-          middlewares: state.middlewares.concat(selected.middlewares),
-          version: state.def.version,
-        })
-      : { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }
+    const result: Result =
+      selected && command
+        ? await execute(binaryName, selected, {
+            argvOptions: { args: [], argsObject: input.args ?? {}, options: input.options ?? {} },
+            displayName: binaryName,
+            events: subscriptions,
+            env: { ...(Bun.env as Dict<string | undefined>), LICHE_INVOCATION: 'mcp' },
+            format: 'json',
+            formatExplicit: true,
+            global: {},
+            hooks: mergeHooks(state.hooks, selected.hooks),
+            inputSourceHints: { args: argHints, options: optionHints },
+            stdio: MCP_STDIO,
+            middlewares: state.middlewares.concat(selected.middlewares),
+            version: state.def.version,
+          })
+        : { ok: false, data: null, error: { code: 'COMMAND_NOT_FOUND', message: `No tool ${toolName}` } }
 
     await emitMcpLifecycle(binaryName, state, subscriptions, {
       streams: MCP_STREAMS,
       ...(command ? { command } : undefined),
       durationMs: Date.now() - startedAt,
-      ...(result.ok ? { exitCode: 0, result: 'success' as const } : {
-        error: mcpEventError(result.error),
-        exitCode: Number(result.error.exitCode ?? 1),
-        result: 'user_error' as const,
-      }),
+      ...(result.ok
+        ? { exitCode: 0, result: 'success' as const }
+        : {
+            error: mcpEventError(result.error),
+            exitCode: Number(result.error.exitCode ?? 1),
+            result: 'user_error' as const,
+          }),
       format: 'json',
       formatExplicit: true,
       attributes: { mcpMethod: 'tools/call' },

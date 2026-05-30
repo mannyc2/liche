@@ -2,12 +2,7 @@ import type { ProductConfigSpec } from '../config/create.js'
 import type { ProductRemoteSpec } from '../runtime/runtime.js'
 import type { RuntimeValueSpec } from '../runtime/runtime.js'
 import { normalizeShape } from './shape.js'
-import type {
-  NormalizedConfig,
-  NormalizedConfigScopes,
-  NormalizedRemote,
-  NormalizedRuntimeValue,
-} from './types.js'
+import type { NormalizedConfig, NormalizedConfigScopes, NormalizedRemote, NormalizedRuntimeValue } from './types.js'
 
 export function normalizeConfig(config: ProductConfigSpec): NormalizedConfig {
   const fields = normalizeShape(config.fields)
@@ -25,12 +20,11 @@ function normalizeConfigScopes(config: ProductConfigSpec): NormalizedConfigScope
   const project = config.scopes?.project
   const user = config.scopes?.user
   return {
-    project: project === false
-      ? false
-      : { discoverUpwards: project === true || (typeof project === 'object' && project.discoverUpwards === true) },
-    user: user === true || (typeof user === 'object' && user.xdg === true)
-      ? { xdg: true }
-      : false,
+    project:
+      project === false
+        ? false
+        : { discoverUpwards: project === true || (typeof project === 'object' && project.discoverUpwards === true) },
+    user: user === true || (typeof user === 'object' && user.xdg === true) ? { xdg: true } : false,
   }
 }
 

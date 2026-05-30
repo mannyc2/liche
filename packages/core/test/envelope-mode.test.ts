@@ -8,12 +8,29 @@ function captureRun(argv: string[], options: any, command: { name: string; def: 
   let exitCode = 0
   const cli = testCli('app', options ?? {}, [testCommand(command.name, command.def)])
   const promise = run(cli, argv, {
-    stdout: (s) => { out += s },
-    stderr: (s) => { err += s },
-    exit: (code) => { exitCode = code },
+    stdout: (s) => {
+      out += s
+    },
+    stderr: (s) => {
+      err += s
+    },
+    exit: (code) => {
+      exitCode = code
+    },
     streams: { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
   })
-  return { promise, get out() { return out }, get err() { return err }, get exitCode() { return exitCode } }
+  return {
+    promise,
+    get out() {
+      return out
+    },
+    get err() {
+      return err
+    },
+    get exitCode() {
+      return exitCode
+    },
+  }
 }
 
 describe('envelope mode — --json always returns the full envelope', () => {
@@ -125,16 +142,22 @@ describe('envelope mode — --json always returns the full envelope', () => {
 
 describe('output controls — selected globals are installed explicitly', () => {
   test('--format json is rejected when output controls omit format', async () => {
-    const capture = captureRun(['ping', '--format', 'json'], {
-      testControls: false,
-      extensions: [outputControls({ json: true })],
-    }, {
-      name: 'ping',
-      def: {
-        output: z.object({ message: z.string() }),
-        run(ctx: any) { return ctx.ok({ message: 'pong' }) },
+    const capture = captureRun(
+      ['ping', '--format', 'json'],
+      {
+        testControls: false,
+        extensions: [outputControls({ json: true })],
       },
-    })
+      {
+        name: 'ping',
+        def: {
+          output: z.object({ message: z.string() }),
+          run(ctx: any) {
+            return ctx.ok({ message: 'pong' })
+          },
+        },
+      },
+    )
     await capture.promise
     expect(capture.exitCode).toBe(1)
     expect(JSON.parse(capture.out).error.message).toBe('Unknown option: --format')
@@ -145,7 +168,9 @@ describe('output controls — selected globals are installed explicitly', () => 
       name: 'ping',
       def: {
         output: z.object({ message: z.string() }),
-        run(ctx: any) { return ctx.ok({ message: 'pong' }) },
+        run(ctx: any) {
+          return ctx.ok({ message: 'pong' })
+        },
       },
     })
     await capture.promise

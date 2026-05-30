@@ -1,14 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  Auth,
-  Command,
-  createConfig,
-  Field,
-  FieldBuilder,
-  Runtime,
-  Shape,
-  defineProduct,
-} from '../../src/index.js'
+import { Auth, Command, createConfig, Field, FieldBuilder, Runtime, Shape, defineProduct } from '../../src/index.js'
 
 describe('Field builder', () => {
   test('factory methods set the catalog type tag, not the constructor name', () => {
@@ -344,19 +335,21 @@ describe('Auth authoring API', () => {
       label: 'email',
     })
     const commands = Auth.commands({ login: 'login', logout: 'logout', switch: 'switch', whoami: 'whoami' })
-    expect(Auth.oauthDevice({
-      id: 'acme',
-      token: { kind: 'bearer' },
-      clientId: 'acme-cli',
-      endpoints: {
-        deviceAuthorization: 'https://auth.example.test/device',
-        token: 'https://auth.example.test/token',
-      },
-      sources: [Auth.token.env('ACME_TOKEN'), Auth.token.session({ profiles: true })],
-      identity,
-      commands,
-      scopes: ['cache.write'],
-    })).toEqual({
+    expect(
+      Auth.oauthDevice({
+        id: 'acme',
+        token: { kind: 'bearer' },
+        clientId: 'acme-cli',
+        endpoints: {
+          deviceAuthorization: 'https://auth.example.test/device',
+          token: 'https://auth.example.test/token',
+        },
+        sources: [Auth.token.env('ACME_TOKEN'), Auth.token.session({ profiles: true })],
+        identity,
+        commands,
+        scopes: ['cache.write'],
+      }),
+    ).toEqual({
       kind: 'oauthDevice',
       id: 'acme',
       token: { kind: 'bearer' },

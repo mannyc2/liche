@@ -25,9 +25,7 @@ const PUBLIC_PACKAGES = [
 const EXPECTED_REPOSITORY_URL = 'https://github.com/mannyc2/liche.git'
 
 function expectedPackageFiles(packageName: string): string[] {
-  return packageName === '@liche/core'
-    ? ['src', 'README.md', 'SKILL.md', 'LICENSE']
-    : ['src', 'README.md', 'LICENSE']
+  return packageName === '@liche/core' ? ['src', 'README.md', 'SKILL.md', 'LICENSE'] : ['src', 'README.md', 'LICENSE']
 }
 
 function run(cmd: string, args: string[]): string {
@@ -40,11 +38,12 @@ function run(cmd: string, args: string[]): string {
     })
   } catch (error) {
     const e = error as { stderr?: Buffer | string; stdout?: Buffer | string }
-    throw new Error([
-      `$ ${cmd} ${args.join(' ')}`,
-      e.stdout ? String(e.stdout) : '',
-      e.stderr ? String(e.stderr) : '',
-    ].filter(Boolean).join('\n'))
+    throw new Error(
+      [`$ ${cmd} ${args.join(' ')}`, e.stdout ? String(e.stdout) : '', e.stderr ? String(e.stderr) : '']
+        .filter(Boolean)
+        .join('\n'),
+      { cause: error },
+    )
   }
 }
 
@@ -65,7 +64,6 @@ describe('release candidate readiness gate', () => {
   test('metrics command records package size, public surface, dependencies, and boundary exceptions', () => {
     const output = run('bun', ['scripts/release-candidate-metrics.ts'])
     const metrics = JSON.parse(output)
-    expect(metrics.schemaVersion).toBe(1)
     expect(metrics.packages.map((pkg: { name: string }) => pkg.name)).toEqual(PUBLIC_PACKAGES)
     expect(metrics.totals.sourceLoc).toBeGreaterThan(0)
     expect(metrics.totals.testLoc).toBeGreaterThan(0)

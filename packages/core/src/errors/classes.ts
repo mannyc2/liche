@@ -13,7 +13,7 @@ export class BaseError extends Error {
     this.details = details
   }
 
-  walk(fn?: ((error: unknown) => boolean) | undefined): unknown {
+  walk(fn?: (error: unknown) => boolean): unknown {
     return walkCause(this, fn)
   }
 }
@@ -109,7 +109,7 @@ export declare namespace ParseError {
   }
 }
 
-function walkCause(error: unknown, fn?: ((error: unknown) => boolean) | undefined): unknown {
+function walkCause(error: unknown, fn?: (error: unknown) => boolean): unknown {
   if (fn) {
     let current = (error as { cause?: unknown })?.cause
     while (current) {
