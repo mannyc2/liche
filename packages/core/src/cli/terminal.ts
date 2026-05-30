@@ -6,8 +6,7 @@ import { ParseError } from '../errors/error.js'
 import { formatCta, pick, renderOutput } from '../format/index.js'
 import { parseGlobals } from '../parser/index.js'
 import { commandFormatRenderers, outputPolicy, selectCommand } from '../command/registry.js'
-import { renderHelp } from '../help/render.js'
-import { commandContract } from '../command/contract.js'
+import { toCommandInfo } from './terminal-handlers.js'
 import { complete, shells } from '../completions/shells.js'
 import { formatHumanValidationError } from './human-validation-error.js'
 import { DEFAULT_FORMAT, contextGlobals, defaultEnv, isFlagLikeToken, resolveFormat, runPrepareContext } from './invocation.js'
@@ -99,18 +98,24 @@ export async function runTerminalCli(
     return io.out(`${suggestions.join('\n')}${suggestions.length ? '\n' : ''}`)
   }
 
-  if (flags.version) {
-    await emitTerminalLifecycle(name, state, state.events, {
-      streams,
-      format: rootOutputFormat,
-      formatExplicit,
-      surface: { kind: 'version' },
-      type: 'version.rendered',
-    })
-    return io.out(`${state.def.version ?? '0.0.0'}\n`)
-  }
-  for (const handler of state.terminalHandlers) {
-    if (flags[handler.flagKey]) return await handler.handle({ binaryName: name, flags, options, state })
+  const terminalHandlers = state.terminalHandlers
+  // Command-AGNOSTIC terminal flags (version, extension handlers) short-circuit BEFORE
+  // command selection, ignoring the rest of argv — so `cli --version --x` prints the version
+  // and `cli --llms junk` lists commands, rather than erroring on the extra token.
+  for (const handler of terminalHandlers) {
+    if (handler.commandAware) continue
+    if (!(handler.matches ? handler.matches(flags, undefined) : Boolean(flags[handler.flagKey]))) continue
+    if (handler.event) {
+      await emitTerminalLifecycle(name, state, state.events, {
+        streams,
+        format: rootOutputFormat,
+        formatExplicit,
+        surface: { kind: 'terminal', name: handler.event.surface },
+        type: handler.event.type,
+      })
+    }
+    await handler.handle({ binaryName: name, flags, options, state, selected: undefined, format: rootOutputFormat, io })
+    return
   }
 
   const selected = selectCommand(state, flags.rest)
@@ -141,28 +146,28 @@ export async function runTerminalCli(
       type: 'command.not_found',
     })
   }
-  if (flags.help || !selected) {
-    await emitTerminalLifecycle(name, state, selected ? state.events.concat(selected.events) : state.events, {
-      streams,
-      ...(selected ? { command: eventCommand(selected) } : undefined),
-      format: outputFormat,
-      formatExplicit,
-      surface: { kind: 'help' },
-      type: 'help.rendered',
-    })
-    return io.out(`${renderHelp(name, state, selected, flags.rest)}\n`)
+  // Command-AWARE terminal flags (help fallback, schema) run AFTER selection and after the
+  // unknown-option / command-not-found checks, matching the legacy order.
+  const selectedInfo = toCommandInfo(selected)
+  for (const handler of terminalHandlers) {
+    if (!handler.commandAware) continue
+    const matches = handler.matches ? handler.matches(flags, selectedInfo) : Boolean(flags[handler.flagKey])
+    if (!matches) continue
+    if (handler.event) {
+      await emitTerminalLifecycle(name, state, selected ? state.events.concat(selected.events) : state.events, {
+        streams,
+        ...(selected ? { command: eventCommand(selected) } : undefined),
+        format: outputFormat,
+        formatExplicit,
+        surface: { kind: 'terminal', name: handler.event.surface },
+        type: handler.event.type,
+      })
+    }
+    await handler.handle({ binaryName: name, flags, options, state, selected: selectedInfo, format: outputFormat, io })
+    return
   }
-  if (flags.schema) {
-    await emitTerminalLifecycle(name, state, state.events.concat(selected.events), {
-      streams,
-      command: eventCommand(selected),
-      format: outputFormat,
-      formatExplicit,
-      surface: { kind: 'schema' },
-      type: 'schema.generated',
-    })
-    return io.out(`${renderOutput(commandContract(selected.path.join(' ') || '(root)', selected.entry)?.schema, outputFormat, state.outputRenderers, { stage: 'schema' })}\n`)
-  }
+  // The help handler renders whenever no command resolves, so `selected` is defined below.
+  if (!selected) return
 
   const prepareHooks = [...state.hooks.prepareContext, ...selected.hooks.prepareContext]
   let contextOverrides: Partial<RunContext>

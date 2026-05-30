@@ -5,7 +5,7 @@ export { help, outputControls, reflectionControls, version } from './cli/control
 export type { HelpControlOptions, OutputControlsOptions, ReflectionControlsOptions } from './cli/controls.js'
 export { middleware } from './cli/context.js'
 export { defineOutputRenderer } from './format/index.js'
-export { defaultHelpRenderer } from './help/render.js'
+export { buildHelpModel, defaultHelpRenderer } from './help/render.js'
 export { arg } from './schema/arg.js'
 export { checkCommandSurface } from './schema/surface.js'
 export type { CommandSurface, SurfaceCheckResult } from './schema/surface.js'
@@ -98,8 +98,10 @@ export type {
   ResultMeta,
   RunContext,
   Schema,
+  TerminalCommandInfo,
   TerminalHandler,
   TerminalHandlerInput,
+  TerminalIo,
   RunOptions,
   SourceInspector,
   SkillDefinition,

@@ -15,6 +15,7 @@ const FROZEN_PUBLIC_VALUES = [
   'execute',
   'Formatter',
   'callHttpOperation',
+  'buildHelpModel',
   'defaultHelpRenderer',
   'defineCli',
   'defineCommand',
