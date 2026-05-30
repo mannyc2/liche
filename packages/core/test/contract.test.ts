@@ -97,6 +97,17 @@ describe('contract: args, flags, env, middleware', () => {
     expect(parseJsonData(result.stdout)).toEqual({ count: 0, enabled: false })
   })
 
+  test('`--name=` is the empty string and does not swallow the next positional', async () => {
+    const cli = testCli('app', [testCommand('run', {
+      args: z.object({ extra: z.string().optional() }),
+      options: z.object({ name: z.string().optional() }),
+      run: ({ args, options }) => ({ name: options.name, extra: args.extra }),
+    })])
+
+    const result = await runCli(cli, ['run', '--name=', 'positional', '--json'])
+    expect(parseJsonData(result.stdout)).toEqual({ name: '', extra: 'positional' })
+  })
+
   test('env input source populates option defaults from env (argv > env > default)', async () => {
     const make = () =>
       testCli('app', [testCommand('run', {
